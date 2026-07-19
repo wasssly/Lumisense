@@ -1,0 +1,98 @@
+# Автосборка и публикация релиза.
+#
+# Срабатывает на пуш тега вида "v1.5.0" (можно также запустить вручную из вкладки Actions на
+# GitHub — см. workflow_dispatch ниже, удобно для проверки без реального релиза).
+#
+# Что делает:
+#   1. Собирает Lumisense (dotnet publish, self-contained win-x64 — см. Lumisense.csproj).
+#   2. Собирает установщик Installer/Lumisense.iss (Inno Setup), передавая ему номер версии
+#      из тега через /DMyAppVersion — см. #ifndef MyAppVersion в самом .iss.
+#   3. Достаёт текст изменений для этой версии из Changelog/changelog.json (берётся запись
+#      с самой свежей датой — её же приложение показывает как "текущую версию", см.
+#      ChangelogLoader.cs) и использует как описание релиза.
+#   4. Публикует релиз на GitHub с прикреплённым Lumisense_Setup.exe — его и находит
+#      UpdateChecker.cs в самом плеере при проверке обновлений.
+#
+# ВАЖНО перед тем как поставить тег: добавьте в Changelog/changelog.json новую запись с
+# сегодняшней датой и списком изменений — она станет и текстом релиза, и версией, которую
+# приложение покажет в "О программе" после обновления.
+
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Версия для тестовой сборки без тега (например 1.5.0)"
+        required: true
+        default: "0.0.0-test"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: ver
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $version = "${{ inputs.version }}"
+          } else {
+            $version = "${{ github.ref_name }}".TrimStart("v")
+          }
+          Write-Host "Версия релиза: $version"
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Publish Lumisense (self-contained win-x64)
+        run: dotnet publish Lumisense/Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer
+        shell: pwsh
+        run: |
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" "Installer\Lumisense.iss"
+
+      - name: Extract changelog for this release
+        id: notes
+        shell: pwsh
+        run: |
+          $notesPath = "release_notes.md"
+          try {
+            $entries = Get-Content "Lumisense\Changelog\changelog.json" -Raw | ConvertFrom-Json
+            $latest = $entries | Sort-Object { [datetime]::ParseExact($_.date, "dd.MM.yy", $null) } -Descending | Select-Object -First 1
+            $lines = foreach ($c in $latest.changes) { "- $($c.text)" }
+            $lines -join "`n" | Out-File -FilePath $notesPath -Encoding utf8
+          } catch {
+            "Список изменений см. в приложении (Настройки → О программе → Список изменений)." | Out-File -FilePath $notesPath -Encoding utf8
+          }
+
+      - name: Create GitHub Release
+        if: github.event_name != 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Lumisense ${{ steps.ver.outputs.version }}"
+          body_path: release_notes.md
+          files: Lumisense_Setup.exe
+
+      - name: Upload build artifact (manual test run)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lumisense_Setup
+          path: Lumisense_Setup.exe

@@ -1,0 +1,85 @@
+<ui:FluentWindow x:Class="AudioPlayer.UpdateAvailableWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:AudioPlayer"
+        Title="Lumisense"
+        Icon="/Icons/app/lumisense.ico"
+        Height="360" Width="420"
+        MinHeight="360" MinWidth="380"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+
+    <!-- Диалог "доступно обновление" — показывается и автоматически при старте (если давно не
+         отклоняли эту же версию, см. AppSettings.SkippedUpdateVersion), и по кнопке "Проверить
+         обновления" на странице "О программе" в настройках. Скачивает и запускает установщик
+         (Lumisense_Setup.exe), а не архив — Inno Setup сам обновляет уже установленную копию
+         на месте (см. подробный комментарий в UpdateChecker). -->
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Lumisense" ShowMaximize="False" ShowMinimize="False" />
+
+        <Grid Grid.Row="1" Margin="20,4,20,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <Grid Grid.Row="0" Margin="0,0,0,4">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Width="40" Height="40" CornerRadius="10"
+                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                        Margin="0,0,12,0">
+                    <local:SvgPathIcon Icon="IconInfo" Size="18"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Доступно обновление" FontSize="16" FontWeight="SemiBold" />
+                    <TextBlock x:Name="VersionsText" Text="Версия 1.1.0 (у вас 1.0.0)"
+                               FontSize="12" Opacity="0.6" />
+                </StackPanel>
+            </Grid>
+
+            <TextBlock Grid.Row="1" Text="Что нового:" FontSize="12" FontWeight="SemiBold"
+                       Opacity="0.8" Margin="0,12,0,6"
+                       Visibility="{Binding ElementName=NotesText, Path=Visibility}" />
+
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
+                <TextBlock x:Name="NotesText" TextWrapping="Wrap" FontSize="13" Opacity="0.85"
+                           Text="" />
+            </ScrollViewer>
+
+            <ProgressBar x:Name="DownloadProgressBar" Grid.Row="3" Height="4" Margin="0,10,0,0"
+                         Minimum="0" Maximum="1" Visibility="Collapsed" />
+
+            <TextBlock x:Name="StatusText" Grid.Row="3" Margin="0,10,0,0" FontSize="12"
+                       Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                       TextWrapping="Wrap" Visibility="Collapsed" />
+
+            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <ui:Button x:Name="LaterButton" Content="Позже" Appearance="Secondary"
+                           Width="88" Margin="0,0,8,0" Click="LaterButton_Click" />
+                <ui:Button x:Name="MoreButton" Content="Подробнее" Appearance="Secondary"
+                           Width="96" Margin="0,0,8,0" Click="MoreButton_Click" />
+                <ui:Button x:Name="InstallButton" Content="Скачать и установить" Appearance="Primary"
+                           Padding="14,0" Click="InstallButton_Click" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

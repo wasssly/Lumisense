@@ -1,0 +1,45 @@
+<ui:FluentWindow x:Class="AudioPlayer.CoverArtWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Обложка"
+        Icon="/Icons/app/lumisense.ico"
+        Height="580" Width="520"
+        MinHeight="320" MinWidth="320"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar x:Name="ArtTitleBar" Grid.Row="0" Title="Обложка" ShowMaximize="True" />
+
+        <!-- Тёмная подложка, как в фотопросмотрщиках — обложка на ней смотрится лучше,
+             чем на обычном фоне окна -->
+        <Border x:Name="ArtHost" Grid.Row="1" Background="#141414" ClipToBounds="True"
+                SizeChanged="ArtHost_SizeChanged">
+
+            <ScrollViewer x:Name="ArtScrollViewer"
+                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto">
+                <!-- Ширина/высота выставляются из кода в зависимости от текущего масштаба.
+                     Клик (без перетаскивания) — приближает ещё сильнее, зажатая кнопка
+                     мыши с движением — панорамирует, ПКМ — сбрасывает к размеру окна. -->
+                <!-- Opacity="0" до первого точного расчёта масштаба "по окну" в коде (см.
+                     ResetToFit/Loaded) — без этого на мгновение видна картинка в натуральную
+                     величину (часто крупнее окна), что выглядит как самопроизвольный зум при
+                     открытии окна. -->
+                <Image x:Name="ArtImage" Cursor="Hand" Opacity="0"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       MouseLeftButtonDown="ArtImage_MouseLeftButtonDown"
+                       MouseMove="ArtImage_MouseMove"
+                       MouseLeftButtonUp="ArtImage_MouseLeftButtonUp"
+                       MouseRightButtonDown="ArtImage_MouseRightButtonDown" />
+            </ScrollViewer>
+        </Border>
+    </Grid>
+</ui:FluentWindow>

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" data-default-size="18" viewBox="0 0 24 24" width="24px" height="24px" fill="#e3e3e3">
+  <path fill-rule="evenodd" clip-rule="evenodd" d="M2,6 H22 V18 H2 Z M4,8 H20 V16 H4 Z"/>
+  <rect x="5.2" y="9.2" width="1.7" height="1.7"/>
+  <rect x="8.1" y="9.2" width="1.7" height="1.7"/>
+  <rect x="11" y="9.2" width="1.7" height="1.7"/>
+  <rect x="13.9" y="9.2" width="1.7" height="1.7"/>
+  <rect x="16.8" y="9.2" width="1.7" height="1.7"/>
+  <rect x="5.2" y="11.6" width="1.7" height="1.7"/>
+  <rect x="8.1" y="11.6" width="1.7" height="1.7"/>
+  <rect x="11" y="11.6" width="1.7" height="1.7"/>
+  <rect x="13.9" y="11.6" width="1.7" height="1.7"/>
+  <rect x="16.8" y="11.6" width="1.7" height="1.7"/>
+  <rect x="6.5" y="14" width="11" height="1.7" rx="0.6"/>
+</svg>

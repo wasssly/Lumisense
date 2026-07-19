@@ -1,0 +1,18 @@
+# Сборочные артефакты .NET
+[Bb]in/
+[Oo]bj/
+publish/
+
+# Установщик, собираемый локально (в CI собирается и публикуется в Releases — см.
+# .github/workflows/release.yml, .iss-скрипт кладёт результат в корень репозитория)
+/Lumisense_Setup.exe
+
+# Пользовательские файлы IDE
+.vs/
+.vscode/
+*.user
+*.suo
+
+# ОС
+.DS_Store
+Thumbs.db

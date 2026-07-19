@@ -1,0 +1,144 @@
+<ui:FluentWindow x:Class="AudioPlayer.TrackTagsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:AudioPlayer"
+        Title="Изменение тегов"
+        Icon="/Icons/app/lumisense.ico"
+        Height="520" Width="420"
+        MinHeight="480" MinWidth="360"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar x:Name="TagsTitleBar" Grid.Row="0" Title="Изменение тегов" ShowMaximize="False" />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Padding="24,4,24,12">
+            <StackPanel>
+                <Grid Margin="0,4,0,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <TextBlock x:Name="FileNameHeader" Grid.Column="0" FontSize="13" Opacity="0.55"
+                               TextWrapping="Wrap" VerticalAlignment="Center" />
+
+                    <!-- Копирование названия трека (имени файла) в буфер обмена — сама строка
+                         выше не выделяется мышью (TextBlock), поэтому нужна отдельная кнопка.
+                         После клика иконка на секунду сменяется на галочку — подтверждение,
+                         что копирование прошло, без модальных окон и всплывающих уведомлений. -->
+                    <ui:Button x:Name="CopyFileNameButton" Grid.Column="1" Appearance="Transparent"
+                               Width="26" Height="26" Padding="0" Margin="8,0,0,0"
+                               Click="CopyFileNameButton_Click"
+                               ToolTip="Скопировать название трека">
+                        <ui:Button.Icon>
+                            <local:SvgPathIcon x:Name="CopyFileNameIcon" Icon="IconCopy" Size="13" />
+                        </ui:Button.Icon>
+                    </ui:Button>
+                </Grid>
+
+                <TextBlock Text="Обложка" FontSize="12" Opacity="0.6" Margin="2,0,0,4" />
+                <Grid Margin="0,0,0,18">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- Клик по самой обложке — тот же способ выбрать новую, что и кнопка
+                         "Изменить…" рядом, просто более очевидное место для клика -->
+                    <Border x:Name="CoverArtBorder" Grid.Column="0" Width="72" Height="72" CornerRadius="10"
+                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                            Cursor="Hand"
+                            MouseLeftButtonDown="CoverArtBorder_MouseLeftButtonDown"
+                            ToolTip="Нажмите, чтобы выбрать изображение">
+                        <local:SvgPathIcon x:Name="CoverArtPlaceholderIcon" Icon="IconMusicNote" Size="24"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </Border>
+
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <ui:Button x:Name="ChangeCoverButton" Content="Изменить…" Appearance="Secondary"
+                                   HorizontalAlignment="Left" Margin="0,0,0,6"
+                                   Click="ChangeCoverButton_Click">
+                            <ui:Button.Icon>
+                                <local:SvgPathIcon Icon="IconAddFile" Size="13" />
+                            </ui:Button.Icon>
+                        </ui:Button>
+                        <ui:Button x:Name="FindCoverOnlineButton" Content="Найти в интернете…" Appearance="Secondary"
+                                   HorizontalAlignment="Left" Margin="0,0,0,6"
+                                   Click="FindCoverOnlineButton_Click"
+                                   ToolTip="Поиск обложки по исполнителю и названию трека">
+                            <ui:Button.Icon>
+                                <local:SvgPathIcon Icon="IconSearch" Size="13" />
+                            </ui:Button.Icon>
+                        </ui:Button>
+                        <ui:Button x:Name="RemoveCoverButton" Content="Удалить обложку" Appearance="Transparent"
+                                   HorizontalAlignment="Left" Padding="0,2"
+                                   Click="RemoveCoverButton_Click" Visibility="Collapsed" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="Название" FontSize="12" Opacity="0.6" Margin="2,0,0,4" />
+                <ui:TextBox x:Name="TitleBox" Margin="0,0,0,14" PlaceholderText="Не указано в файле" />
+
+                <TextBlock Text="Исполнитель" FontSize="12" Opacity="0.6" Margin="2,0,0,4" />
+                <ui:TextBox x:Name="ArtistBox" Margin="0,0,0,14" PlaceholderText="Не указано в файле" />
+
+                <TextBlock Text="Альбом" FontSize="12" Opacity="0.6" Margin="2,0,0,4" />
+                <ui:TextBox x:Name="AlbumBox" Margin="0,0,0,14" PlaceholderText="Не указано в файле" />
+
+                <Grid Margin="0,0,0,14">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="12" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <StackPanel Grid.Column="0">
+                        <TextBlock Text="Год" FontSize="12" Opacity="0.6" Margin="2,0,0,4" />
+                        <ui:TextBox x:Name="YearBox" PreviewTextInput="NumericBox_PreviewTextInput" MaxLength="4"
+                                    PlaceholderText="Не указан" />
+                    </StackPanel>
+
+                    <StackPanel Grid.Column="2">
+                        <TextBlock Text="Трек №" FontSize="12" Opacity="0.6" Margin="2,0,0,4" />
+                        <ui:TextBox x:Name="TrackNumberBox" PreviewTextInput="NumericBox_PreviewTextInput" MaxLength="4"
+                                    PlaceholderText="Не указан" />
+                    </StackPanel>
+                </Grid>
+
+                <TextBlock Text="Жанр" FontSize="12" Opacity="0.6" Margin="2,0,0,4" />
+                <ui:TextBox x:Name="GenreBox" Margin="0,0,0,14" PlaceholderText="Не указано в файле" />
+
+                <TextBlock Text="Комментарий" FontSize="12" Opacity="0.6" Margin="2,0,0,4" />
+                <ui:TextBox x:Name="CommentBox" Margin="0,0,0,4" AcceptsReturn="True"
+                            TextWrapping="Wrap" Height="70" VerticalContentAlignment="Top"
+                            PlaceholderText="Не указан в файле" />
+
+                <TextBlock x:Name="ErrorText" Foreground="{DynamicResource SystemFillColorCriticalBrush}"
+                           FontSize="12" Margin="2,10,0,0" TextWrapping="Wrap" Visibility="Collapsed" />
+            </StackPanel>
+        </ScrollViewer>
+
+        <Grid Grid.Row="2" Margin="24,0,24,20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ui:Button Grid.Column="1" Content="Отмена" Appearance="Secondary" Margin="0,0,8,0" Click="CancelButton_Click" />
+            <ui:Button Grid.Column="2" x:Name="SaveButton" Content="Сохранить" Appearance="Primary" Click="SaveButton_Click" />
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

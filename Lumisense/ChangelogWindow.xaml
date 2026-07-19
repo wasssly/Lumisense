@@ -1,0 +1,523 @@
+<ui:FluentWindow x:Class="AudioPlayer.ChangelogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:AudioPlayer"
+        Title="Список изменений"
+        Icon="/Icons/app/lumisense.ico"
+        Height="680" Width="820"
+        MinHeight="480" MinWidth="660"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <!-- ============================================================================
+         Окно "Список изменений": слева — поиск, фильтр по типу изменений (цветные чипы),
+         переключатель сортировки (дата/версия + направление) и сам список версий; справа —
+         подробности выбранной версии, где каждая строка изменения показывает свой тип
+         иконкой и цветом (см. ChangeTypeCatalog). Поиск ищет по номеру версии, дате, тексту
+         изменений и названию их типа. Правая панель — ElementName-биндинг на
+         VersionsListBox.SelectedItem, код-behind версткой деталей не занимается.
+         ============================================================================ -->
+
+    <ui:FluentWindow.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+
+        <!-- Карточка версии в списке слева: скруглённый фон при наведении/выборе + тонкая
+             акцентная полоска слева у выбранной версии -->
+        <Style x:Key="VersionNavItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Bg" CornerRadius="10" Background="Transparent">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="3" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border x:Name="AccentBar" Grid.Column="0" Width="3" CornerRadius="2" Margin="0,7"
+                                        Background="{DynamicResource AccentFillColorDefaultBrush}" Opacity="0" />
+                                <ContentPresenter Grid.Column="1" Margin="12,10,12,10" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background"
+                                        Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Bg" Property="Background"
+                                        Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                <Setter TargetName="AccentBar" Property="Opacity" Value="1" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Цветная кнопка-чип фильтра по типу изменений: рамка/фон подсвечиваются, когда чип
+             выбран, а иконка внутри всегда сохраняет свой цвет типа (задаётся прямо в разметке
+             конкретного чипа, не в стиле — у каждого типа свой цвет) -->
+        <Style x:Key="TypeChipStyle" TargetType="ToggleButton">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ToggleButton">
+                        <Border x:Name="Bg" CornerRadius="13"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter Margin="9,5" HorizontalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background"
+                                        Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background"
+                                        Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                <Setter TargetName="Bg" Property="BorderThickness" Value="1.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Сегмент переключателя "Дата / Версия" -->
+        <Style x:Key="SortSegmentStyle" TargetType="RadioButton">
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="HorizontalContentAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bg" CornerRadius="6" Background="Transparent" Padding="0,6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                               TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Bg" Property="Background"
+                                        Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Кнопка-иконка в собственном контейнере (переключатель направления сортировки) —
+             рамка/фон видны всегда, чтобы стрелка не "висела в воздухе" рядом с сегментом
+             Дата/Версия, а читалась как отдельный, но однородный с ним элемент управления -->
+        <Style x:Key="IconOnlyButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="8"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background"
+                                        Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </ui:FluentWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Список изменений" ShowMaximize="True" />
+
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="304" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- ===== Слева: поиск, фильтр по типу, сортировка, список версий ===== -->
+            <Border Grid.Column="0" Background="{DynamicResource LayerFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
+                <Grid Margin="16,16,16,16">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,2,16">
+                        <Border Width="36" Height="36" CornerRadius="10" Margin="0,0,10,0"
+                                Background="{DynamicResource AccentFillColorDefaultBrush}">
+                            <local:SvgPathIcon Icon="IconMusicNote" Size="18"
+                                                Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Список изменений" FontSize="15" FontWeight="SemiBold" />
+                            <TextBlock x:Name="ResultsCountText" FontSize="11" Opacity="0.55" Margin="0,1,0,0" />
+                        </StackPanel>
+                    </StackPanel>
+
+                    <ui:TextBox x:Name="SearchBox" Grid.Row="1" Margin="0,0,0,10"
+                                PlaceholderText="Поиск по версиям и типу"
+                                ClearButtonEnabled="True"
+                                TextChanged="SearchBox_TextChanged">
+                        <ui:TextBox.Icon>
+                            <local:SvgPathIcon Icon="IconSearch" />
+                        </ui:TextBox.Icon>
+                    </ui:TextBox>
+
+                    <!-- Фильтр по типу изменений: чипы можно комбинировать (выбрано несколько —
+                         показываются версии, где есть хотя бы один из выбранных типов) -->
+                    <WrapPanel Grid.Row="2" Margin="0,0,0,10">
+                        <ToggleButton x:Name="FilterAddedToggle" Style="{StaticResource TypeChipStyle}"
+                                      Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconAdd" Size="11" Foreground="#22C55E" />
+                                <TextBlock Text="Добавлено" FontSize="11" Margin="5,0,0,0" />
+                            </StackPanel>
+                        </ToggleButton>
+                        <ToggleButton x:Name="FilterChangedToggle" Style="{StaticResource TypeChipStyle}"
+                                      Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconEdit" Size="11" Foreground="#3B82F6" />
+                                <TextBlock Text="Изменено" FontSize="11" Margin="5,0,0,0" />
+                            </StackPanel>
+                        </ToggleButton>
+                        <ToggleButton x:Name="FilterFixedToggle" Style="{StaticResource TypeChipStyle}"
+                                      Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconWrench" Size="11" Foreground="#F59E0B" />
+                                <TextBlock Text="Исправлено" FontSize="11" Margin="5,0,0,0" />
+                            </StackPanel>
+                        </ToggleButton>
+                        <ToggleButton x:Name="FilterRemovedToggle" Style="{StaticResource TypeChipStyle}"
+                                      Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconDelete" Size="11" Foreground="#EF4444" />
+                                <TextBlock Text="Удалено" FontSize="11" Margin="5,0,0,0" />
+                            </StackPanel>
+                        </ToggleButton>
+                    </WrapPanel>
+
+                    <!-- Сортировка: по дате или по версии, плюс направление -->
+                    <Grid Grid.Row="3" Margin="0,0,0,12">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" CornerRadius="8" Padding="2"
+                                Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <RadioButton x:Name="SortByDateToggle" Grid.Column="0" GroupName="ChangelogSort"
+                                             Style="{StaticResource SortSegmentStyle}" Content="Дата"
+                                             IsChecked="True" Checked="SortOption_Changed" />
+                                <RadioButton x:Name="SortByCountToggle" Grid.Column="1" GroupName="ChangelogSort"
+                                             Style="{StaticResource SortSegmentStyle}" Content="Кол-во"
+                                             Checked="SortOption_Changed" />
+                            </Grid>
+                        </Border>
+
+                        <Button Grid.Column="1" x:Name="SortDirectionButton" Width="30" Height="30" Margin="8,0,0,0"
+                                Style="{StaticResource IconOnlyButtonStyle}" Click="SortDirectionButton_Click"
+                                ToolTip="Направление сортировки">
+                            <local:SvgPathIcon x:Name="SortDirectionIcon" Icon="IconChevronDown" Size="14"
+                                                Foreground="White" />
+                        </Button>
+                    </Grid>
+
+                    <Grid Grid.Row="4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="14" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Свой скроллбар с нуля (тот же приём, что и у плейлиста в главном окне):
+                             никакого встроенного скроллбара ListBox/ScrollViewer — он у WPF-UI рисуется
+                             ПОВЕРХ содержимого и на такой узкой панели налезал на точку "текущая версия"
+                             и счётчик изменений у правого края карточек. Вместо этого — обычный
+                             ScrollViewer с полностью скрытым скроллбаром (VerticalScrollBarVisibility
+                             Hidden) слева и отдельная дорожка с ползунком (VersionsScrollTrack/Thumb)
+                             в своей собственной колонке справа, которая никогда не перекрывает контент,
+                             потому что физически занимает отдельное место, а не лежит поверх. У самого
+                             ListBox встроенная прокрутка отключена (ScrollViewer.VerticalScrollBarVisibility
+                             = Disabled), чтобы не скроллилось сразу в двух местах — вся прокрутка отдана
+                             внешнему VersionsScrollViewer. -->
+                        <ScrollViewer x:Name="VersionsScrollViewer" Grid.Column="0"
+                                      VerticalScrollBarVisibility="Hidden"
+                                      HorizontalScrollBarVisibility="Disabled"
+                                      PreviewMouseWheel="VersionsScrollViewer_PreviewMouseWheel"
+                                      ScrollChanged="VersionsScrollViewer_ScrollChanged">
+                            <ListBox x:Name="VersionsListBox" Padding="0,0,4,0" BorderThickness="0"
+                                     Background="Transparent" SelectionMode="Single"
+                                     ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ItemContainerStyle="{StaticResource VersionNavItemStyle}"
+                                     SelectionChanged="VersionsListBox_SelectionChanged">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Grid.Column="0" FontWeight="SemiBold" FontSize="13.5" VerticalAlignment="Center">
+                                                <Run Text="Версия " /><Run Text="{Binding Version, Mode=OneWay}" />
+                                            </TextBlock>
+                                            <Ellipse Grid.Column="1" Width="7" Height="7" VerticalAlignment="Center"
+                                                     Fill="{DynamicResource AccentFillColorDefaultBrush}"
+                                                     Visibility="{Binding IsCurrent, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                        </Grid>
+                                        <TextBlock Text="{Binding Date, Mode=OneWay}" FontSize="11" Opacity="0.55" Margin="0,3,0,0" />
+
+                                        <Grid Margin="0,5,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <!-- Цветные точки — беглый обзор состава версии по типам, без раскрытия карточки -->
+                                            <ItemsControl Grid.Column="0" ItemsSource="{Binding PresentTypeBrushes}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <StackPanel Orientation="Horizontal" />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Ellipse Width="6" Height="6" Margin="0,0,4,0" Fill="{Binding}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <TextBlock Grid.Column="1" Text="{Binding ChangesCountLabel, Mode=OneWay}"
+                                                       FontSize="11" Opacity="0.4" Margin="4,0,0,0" />
+                                        </Grid>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        </ScrollViewer>
+
+                        <Grid x:Name="VersionsScrollTrack" Grid.Column="1" Background="Transparent"
+                              SizeChanged="VersionsScrollTrack_SizeChanged"
+                              MouseLeftButtonDown="VersionsScrollTrack_MouseLeftButtonDown">
+                            <Border x:Name="VersionsScrollThumb" Width="5" CornerRadius="2.5"
+                                    HorizontalAlignment="Center" VerticalAlignment="Top"
+                                    Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                    Cursor="Hand" Visibility="Collapsed"
+                                    MouseLeftButtonDown="VersionsScrollThumb_MouseLeftButtonDown"
+                                    MouseMove="VersionsScrollThumb_MouseMove"
+                                    MouseLeftButtonUp="VersionsScrollThumb_MouseLeftButtonUp" />
+                        </Grid>
+
+                        <!-- Пусто, если поиск/фильтр ничего не нашли -->
+                        <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+                            <local:SvgPathIcon Icon="IconSearch" Size="22" Opacity="0.35" HorizontalAlignment="Center" />
+                            <TextBlock Text="Ничего не найдено" Opacity="0.5" FontSize="12" Margin="0,8,0,0" HorizontalAlignment="Center" />
+                        </StackPanel>
+                    </Grid>
+                </Grid>
+            </Border>
+
+            <!-- ===== Справа: детали выбранной версии ===== -->
+            <Grid Grid.Column="1">
+                <ScrollViewer x:Name="DetailsScroll" VerticalScrollBarVisibility="Auto">
+                    <StackPanel x:Name="DetailsPanel" Margin="0,0,0,32"
+                                DataContext="{Binding ElementName=VersionsListBox, Path=SelectedItem}">
+
+                        <!-- Хедер-"обложка" версии: крупный акцентный блок сверху, а не просто заголовок в
+                             общем потоке — сразу считывается, какая версия открыта, ещё до чтения списка -->
+                        <Border Padding="36,30,36,26">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Offset="0" Color="#1A605CFF" />
+                                    <GradientStop Offset="1" Color="#00605CFF" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+
+                            <StackPanel>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Width="52" Height="52" CornerRadius="16" Margin="0,0,16,0"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <local:SvgPathIcon Icon="IconChangelog" Size="22"
+                                                            Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock FontSize="26" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                <Run Text="Версия " /><Run Text="{Binding Version, Mode=OneWay}" />
+                                            </TextBlock>
+                                            <Border Height="22" CornerRadius="11" Padding="11,0" Margin="10,0,0,0"
+                                                    VerticalAlignment="Center"
+                                                    Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                    Visibility="{Binding IsCurrent, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                <TextBlock Text="Текущая версия" FontSize="11" FontWeight="SemiBold"
+                                                           Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock Text="{Binding Date, Mode=OneWay}" FontSize="13" Opacity="0.6" Margin="0,3,0,0" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <!-- Сводка состава версии по типам — сразу видно, чего и сколько, ещё до
+                                     прокрутки к самим секциям ниже -->
+                                <ItemsControl ItemsSource="{Binding Groups}" Margin="0,18,0,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="14" Padding="10,5" Margin="0,0,8,0">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="{Binding Brush.Color}" Opacity="0.14" />
+                                                </Border.Background>
+                                                <StackPanel Orientation="Horizontal">
+                                                    <local:SvgPathIcon Icon="{Binding IconKey}" Size="11" Foreground="{Binding Brush}" />
+                                                    <TextBlock Text="{Binding Count}" FontSize="12" FontWeight="SemiBold"
+                                                               Foreground="{Binding Brush}" Margin="5,0,0,0" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Необязательная картинка версии (поле "image" в changelog.json) — скриншот,
+                             баннер релиза и т.п. Показывается только если она реально задана -->
+                        <Border Margin="36,18,36,0" CornerRadius="12" ClipToBounds="True"
+                                Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <Image Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="320"
+                                   HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality" />
+                        </Border>
+
+                        <!-- Сами изменения — секциями по типу (Добавлено / Изменено / Исправлено / Удалено),
+                             а не одним плоским списком, чтобы состав версии читался по смыслу с первого взгляда -->
+                        <ItemsControl ItemsSource="{Binding Groups}" Margin="36,10,36,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="0,0,0,24">
+                                        <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                                            <Border Width="24" Height="24" CornerRadius="8">
+                                                <Border.Background>
+                                                    <SolidColorBrush Color="{Binding Brush.Color}" Opacity="0.16" />
+                                                </Border.Background>
+                                                <local:SvgPathIcon Icon="{Binding IconKey}" Size="12" Foreground="{Binding Brush}"
+                                                                    HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <TextBlock Text="{Binding Label}" FontSize="15" FontWeight="SemiBold"
+                                                       VerticalAlignment="Center" Margin="10,0,0,0" />
+                                            <TextBlock Text="{Binding Count}" FontSize="13" Opacity="0.4"
+                                                       VerticalAlignment="Center" Margin="6,0,0,0" />
+                                        </StackPanel>
+
+                                        <!-- Каждое изменение — отдельная карточка, слегка подсвеченная цветом своего типа,
+                                             вместо плоского списка или тонких разделительных линий: так пункты явно
+                                             отделены друг от друга и сразу видно, к какой секции относится каждый -->
+                                        <ItemsControl ItemsSource="{Binding Items}" Margin="0,2,0,0">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="10" Padding="14,12" Margin="0,0,0,8" BorderThickness="1">
+                                                        <Border.Background>
+                                                            <SolidColorBrush Color="{Binding DataContext.Brush.Color, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                              Opacity="0.07" />
+                                                        </Border.Background>
+                                                        <Border.BorderBrush>
+                                                            <SolidColorBrush Color="{Binding DataContext.Brush.Color, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                              Opacity="0.22" />
+                                                        </Border.BorderBrush>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="14" LineHeight="21" />
+
+                                                            <!-- Необязательная картинка ИМЕННО этого пункта (поле "image" внутри
+                                                                 конкретного изменения в changelog.json), отдельно от общей картинки
+                                                                 версии сверху — показывается только если реально задана -->
+                                                            <Border CornerRadius="8" ClipToBounds="True" Margin="0,10,0,0"
+                                                                    Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}">
+                                                                <Image Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="260"
+                                                                       HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality" />
+                                                            </Border>
+                                                        </StackPanel>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <!-- Показывается, если для версии совсем нет описания изменений -->
+                        <TextBlock Text="Для этой версии пока нет описания изменений." Opacity="0.5" FontSize="13"
+                                   TextWrapping="Wrap" Margin="36,10,36,0">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Visibility" Value="Collapsed" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Groups.Count}" Value="0">
+                                            <Setter Property="Visibility" Value="Visible" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                    </StackPanel>
+                </ScrollViewer>
+
+                <!-- Показывается вместо панели деталей, если поиск/фильтр отфильтровали все версии -->
+                <StackPanel x:Name="NoSelectionState" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
+                    <local:SvgPathIcon Icon="IconMusicNote" Size="30" Opacity="0.3" HorizontalAlignment="Center" />
+                    <TextBlock Text="Версия не выбрана" Opacity="0.5" FontSize="13" Margin="0,12,0,0" HorizontalAlignment="Center" />
+                </StackPanel>
+            </Grid>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

@@ -1,0 +1,64 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Icons\app\lumisense.ico</ApplicationIcon>
+    <RootNamespace>AudioPlayer</RootNamespace>
+    <AssemblyName>Lumisense</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+
+    <!-- ========================================== -->
+    <!-- ДОБАВЬТЕ ЭТИ СТРОКИ ДЛЯ ПУБЛИКАЦИИ -->
+    <!-- ========================================== -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishReadyToRun>false</PublishReadyToRun>
+    <!-- ========================================== -->
+
+  </PropertyGroup>
+
+  <!-- ОСТАЛЬНОЕ БЕЗ ИЗМЕНЕНИЙ -->
+  <ItemGroup>
+    <PackageReference Include="WPF-UI" Version="3.0.5" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+    <PackageReference Include="TagLibSharp" Version="2.3.0" />
+    <PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Microsoft.VisualBasic" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Icons\svg\**\*.svg" />
+    <Resource Include="Icons\app\lumisense.ico" />
+    <Resource Include="Icons\app\lumisense.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Changelog\changelog.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Changelog\changelog.template.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Changelog\changelog.template.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
+</Project>

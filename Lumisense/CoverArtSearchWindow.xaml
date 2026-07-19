@@ -1,0 +1,62 @@
+<ui:FluentWindow x:Class="AudioPlayer.CoverArtSearchWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:AudioPlayer"
+        Title="Поиск обложки"
+        Icon="/Icons/app/lumisense.ico"
+        Height="580" Width="460"
+        MinHeight="420" MinWidth="360"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar x:Name="SearchTitleBar" Grid.Row="0" Title="Поиск обложки" ShowMaximize="False" />
+
+        <!-- Строка поиска предзаполняется "Исполнитель Название" из окна тегов, но её
+             можно свободно отредактировать перед поиском (например, убрать "(Remastered)") -->
+        <Grid Grid.Row="1" Margin="24,4,24,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="8" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <ui:TextBox x:Name="QueryBox" Grid.Column="0" PlaceholderText="Исполнитель и название трека"
+                        KeyDown="QueryBox_KeyDown" />
+            <ui:Button x:Name="SearchButton" Grid.Column="2" Content="Искать" Appearance="Primary"
+                       Click="SearchButton_Click" />
+            <ui:Button x:Name="CancelSearchButton" Grid.Column="4" Content="Отмена" Appearance="Secondary"
+                       Visibility="Collapsed" Click="CancelSearchButton_Click" />
+        </Grid>
+
+        <Grid Grid.Row="2" Margin="24,0,24,8">
+            <TextBlock x:Name="StatusText" HorizontalAlignment="Center" VerticalAlignment="Top"
+                       Margin="0,32,0,0" Opacity="0.6" FontSize="13" TextWrapping="Wrap"
+                       TextAlignment="Center" MaxWidth="320"
+                       Text="Введите исполнителя и название и нажмите «Искать»" />
+
+            <ScrollViewer x:Name="ResultsScrollViewer" VerticalScrollBarVisibility="Auto" Visibility="Collapsed">
+                <WrapPanel x:Name="ResultsPanel" Orientation="Horizontal" />
+            </ScrollViewer>
+        </Grid>
+
+        <Grid Grid.Row="3" Margin="24,0,24,20">
+            <TextBlock VerticalAlignment="Center" FontSize="11" Opacity="0.45" TextWrapping="Wrap" MaxWidth="260"
+                       HorizontalAlignment="Left"
+                       Text="Источники обложек — открытые каталоги iTunes и Deezer (без регистрации и ключей)" />
+            <ui:Button Content="Закрыть" Appearance="Secondary" HorizontalAlignment="Right" Click="CloseButton_Click" />
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

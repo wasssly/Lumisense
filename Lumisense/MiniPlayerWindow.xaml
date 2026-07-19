@@ -1,0 +1,171 @@
+<Window x:Class="AudioPlayer.MiniPlayerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:AudioPlayer"
+        Title="Мини-плеер"
+        Width="220" Height="96"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="Manual">
+
+    <Window.Resources>
+        <!-- Индикатор громкости (см. VolumeIndicator ниже): плавно появляется и, спустя
+             паузу, сам плавно исчезает. Запускается заново с нуля при каждом изменении
+             громкости — см. ShowVolumeIndicator() в code-behind, которая останавливает
+             предыдущий прогон анимации перед стартом нового, чтобы быстрые повторные
+             нажатия хоткея не давали резких скачков прозрачности. -->
+        <Storyboard x:Key="VolumeIndicatorStoryboard">
+            <DoubleAnimation Storyboard.TargetName="VolumeIndicator" Storyboard.TargetProperty="Opacity"
+                              From="0" To="1" Duration="0:0:0.12" />
+            <DoubleAnimation Storyboard.TargetName="VolumeIndicator" Storyboard.TargetProperty="Opacity"
+                              From="1" To="0" BeginTime="0:0:0.9" Duration="0:0:0.35" />
+        </Storyboard>
+    </Window.Resources>
+
+    <!-- AllowsTransparency=True на самом окне (задаётся один раз при создании и не меняется) —
+         именно это даёт настоящую прозрачность через Window.Opacity, в отличие от FluentWindow
+         с Mica-фоном, где Opacity не просвечивает системный backdrop. -->
+    <Grid>
+    <Border x:Name="RootBorder" CornerRadius="14"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
+            MouseEnter="RootBorder_MouseEnter" MouseLeave="RootBorder_MouseLeave"
+            MouseWheel="RootBorder_MouseWheel">
+        <!-- ПКМ по любому месту мини-плеера: закрепление (запрет перетаскивания) и
+             "поверх окон" — те же две настройки, что и в окне настроек, здесь просто
+             под рукой. MiniPlayerContextMenu_Opened каждый раз перед показом меню
+             подставляет актуальное состояние, так что галочки не могут разъехаться
+             с реальными настройками, даже если их поменяли из другого места. -->
+        <Border.ContextMenu>
+            <ContextMenu Opened="MiniPlayerContextMenu_Opened">
+                <MenuItem x:Name="PinnedMenuItem" Header="Закрепить" IsCheckable="True"
+                          Click="PinnedMenuItem_Click" />
+                <MenuItem x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
+                          Click="TopmostMenuItem_Click" />
+            </ContextMenu>
+        </Border.ContextMenu>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Обложка + название/исполнитель. Здесь же перетаскиваем окно (своего заголовка нет). -->
+            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="14,10,14,2"
+                        Background="Transparent"
+                        MouseLeftButtonDown="Header_MouseLeftButtonDown">
+                <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
+                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                    <local:SvgPathIcon x:Name="ArtIcon" Icon="IconMusicNote" Size="15"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                </Border>
+
+                <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                    <!-- Ширина 140 подобрана под фактически доступное место: 220 (окно) минус
+                         14+14 (отступы StackPanel-заголовка) минус 42 (обложка) минус 10 (отступ
+                         перед текстом) = 140. Окно мини-плеера имеет фиксированный размер
+                         (ResizeMode="NoResize"), поэтому число не "поедет" при изменении окна.
+
+                         TextBlock лежит внутри Canvas, а не прямо внутри Border: если бы он был
+                         прямым ребёнком Border с фиксированной шириной 140, WPF сам, ещё ДО
+                         применения RenderTransform, обрезал бы его отрисовку до этих 140px —
+                         это автоматическое поведение layout-системы (обрезка элемента по
+                         выделенному ему месту у родителя, когда его DesiredSize больше), отдельное
+                         от ClipToBounds на самом Border. В результате прокручивать оказывалось
+                         попросту нечего: часть названия за пределами 140px никогда не рисовалась,
+                         и бегущая строка visually показывала только начало, сколько бы TitleTranslate
+                         её ни сдвигал. Canvas же не обрезает детей по своим границам (даёт им
+                         столько места, сколько они просят), поэтому TextBlock рисуется на полную
+                         естественную ширину — а нужную видимую "рамку" по-прежнему обеспечивает
+                         ClipToBounds самого Border снаружи. -->
+                    <Border x:Name="TitleClipBorder" Width="140" ClipToBounds="True" HorizontalAlignment="Left">
+                        <Canvas Height="18">
+                            <TextBlock x:Name="TitleText" Text="Файл не выбран"
+                                       FontSize="13" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
+                                       TextWrapping="NoWrap" TextTrimming="None">
+                                <TextBlock.RenderTransform>
+                                    <TranslateTransform x:Name="TitleTranslate" X="0" />
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                        </Canvas>
+                    </Border>
+                    <TextBlock x:Name="ArtistText" Text="—" FontSize="11"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                </StackPanel>
+            </StackPanel>
+
+            <!-- Прогресс (простая полоса + прозрачный слой для перемотки кликом/перетаскиванием) -->
+            <Grid Grid.Row="1" Margin="14,4,14,0" Height="20">
+                <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                <Border x:Name="ProgressFill" Height="4" CornerRadius="2" Width="0"
+                        HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                <Border Background="Transparent"
+                        MouseLeftButtonDown="Progress_MouseLeftButtonDown"
+                        MouseMove="Progress_MouseMove"
+                        MouseLeftButtonUp="Progress_MouseLeftButtonUp" />
+            </Grid>
+
+            <!-- Кнопки — показываются только при наведении курсора на окно -->
+            <StackPanel x:Name="ControlsPanel" Grid.Row="2" Orientation="Horizontal"
+                        HorizontalAlignment="Center" Margin="0,8,0,10" Visibility="Collapsed">
+                <ui:Button x:Name="PrevButton" Appearance="Secondary"
+                           Width="30" Height="30" Padding="0" Margin="3,0"
+                           Click="PrevButton_Click" ToolTip="Предыдущий">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon Icon="IconPrevious" />
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ui:Button x:Name="PlayPauseButton" Appearance="Primary"
+                           Width="36" Height="36" Padding="0" Margin="3,0"
+                           Click="PlayPauseButton_Click" ToolTip="Пуск/Пауза">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon Icon="IconPlay" />
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ui:Button x:Name="NextButton" Appearance="Secondary"
+                           Width="30" Height="30" Padding="0" Margin="3,0"
+                           Click="NextButton_Click" ToolTip="Следующий">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon Icon="IconNext" />
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ui:Button x:Name="RestoreButton" Appearance="Secondary"
+                           Width="28" Height="28" Padding="0" Margin="3,0"
+                           Click="RestoreButton_Click" ToolTip="Развернуть плеер">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon Icon="IconExpand" />
+                    </ui:Button.Icon>
+                </ui:Button>
+            </StackPanel>
+        </Grid>
+    </Border>
+
+    <!-- Всплывающий индикатор процентов громкости — виден поверх всего окна, сам появляется
+         и исчезает (см. VolumeIndicatorStoryboard). IsHitTestVisible="False", чтобы не мешать
+         кликам/скроллу по мини-плееру, пока показан. Opacity="0" по умолчанию: без анимации
+         полностью невидим, а не просто "пустой", чтобы не перехватывать события мыши даже
+         на миллисекунду до первого запуска анимации. -->
+    <Border x:Name="VolumeIndicator" CornerRadius="10" Padding="12,6"
+            Background="{DynamicResource ControlFillColorDefaultBrush}"
+            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+            HorizontalAlignment="Center" VerticalAlignment="Center"
+            Opacity="0" IsHitTestVisible="False">
+        <StackPanel Orientation="Horizontal">
+            <local:SvgPathIcon x:Name="VolumeIndicatorIcon" Icon="IconSpeaker" Size="14"
+                           VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            <TextBlock x:Name="VolumeIndicatorText" Text="30%" FontSize="14" FontWeight="SemiBold"
+                       Margin="7,0,0,0" VerticalAlignment="Center"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+        </StackPanel>
+    </Border>
+    </Grid>
+</Window>
