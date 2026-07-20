@@ -82,12 +82,23 @@ Source: "..\Lumisense\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\*";
 Source: "..\Lumisense\Icons\app\lumisense.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 ; ============================================
+; ДОПОЛНИТЕЛЬНЫЕ ЗАДАЧИ (флажки на странице мастера)
+; ============================================
+
+[Tasks]
+; Флажок на отдельной странице мастера ("Выберите дополнительные задачи") — отмечен по
+; умолчанию (Flags: unchecked отсутствует), но пользователь может снять галочку и не получить
+; ярлык на рабочем столе. Сам ярлык в [Icons] ниже ставится только если эта задача выбрана
+; (Tasks: desktopicon).
+Name: "desktopicon"; Description: "Создать значок на рабочем столе"; GroupDescription: "Дополнительные значки:"
+
+; ============================================
 ; ЯРЛЫКИ
 ; ============================================
 
 [Icons]
 Name: "{group}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"
-Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"
+Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"; Tasks: desktopicon
 Name: "{group}\Удалить Lumisense"; Filename: "{uninstallexe}"
 
 ; ============================================

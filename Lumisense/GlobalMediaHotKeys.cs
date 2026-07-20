@@ -42,6 +42,7 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private const int IdCustomMute = 0xA017;
     private const int IdCustomShuffle = 0xA018;
     private const int IdCustomRepeat = 0xA019;
+    private const int IdCustomDeleteTrack = 0xA01A;
 
     private readonly IntPtr _handle;
     private readonly HwndSource _source;
@@ -55,6 +56,7 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private bool _customMuteRegistered;
     private bool _customShuffleRegistered;
     private bool _customRepeatRegistered;
+    private bool _customDeleteTrackRegistered;
 
     public event Action? NextPressed;
     public event Action? PreviousPressed;
@@ -65,6 +67,7 @@ public sealed class GlobalMediaHotKeys : IDisposable
     public event Action? MutePressed;
     public event Action? ShufflePressed;
     public event Action? RepeatPressed;
+    public event Action? DeleteTrackPressed;
 
     public GlobalMediaHotKeys(Window window)
     {
@@ -102,6 +105,7 @@ public sealed class GlobalMediaHotKeys : IDisposable
         if (_customMuteRegistered) UnregisterHotKey(_handle, IdCustomMute);
         if (_customShuffleRegistered) UnregisterHotKey(_handle, IdCustomShuffle);
         if (_customRepeatRegistered) UnregisterHotKey(_handle, IdCustomRepeat);
+        if (_customDeleteTrackRegistered) UnregisterHotKey(_handle, IdCustomDeleteTrack);
 
         _customPlayPauseRegistered = TryRegister(IdCustomPlayPause, settings.HotkeyPlayPause);
         _customNextRegistered = TryRegister(IdCustomNext, settings.HotkeyNext, allowRepeat: true);
@@ -112,6 +116,9 @@ public sealed class GlobalMediaHotKeys : IDisposable
         _customMuteRegistered = TryRegister(IdCustomMute, settings.HotkeyMute);
         _customShuffleRegistered = TryRegister(IdCustomShuffle, settings.HotkeyShuffle);
         _customRepeatRegistered = TryRegister(IdCustomRepeat, settings.HotkeyRepeat);
+        // Удаление с диска — намеренно БЕЗ allowRepeat: держать клавишу зажатой не должно
+        // пытаться удалить несколько треков подряд одно за другим.
+        _customDeleteTrackRegistered = TryRegister(IdCustomDeleteTrack, settings.HotkeyDeleteTrack);
     }
 
     // allowRepeat=true снимает флаг MOD_NOREPEAT: Windows будет сама слать повторные
@@ -179,6 +186,10 @@ public sealed class GlobalMediaHotKeys : IDisposable
                     RepeatPressed?.Invoke();
                     handled = true;
                     break;
+                case IdCustomDeleteTrack:
+                    DeleteTrackPressed?.Invoke();
+                    handled = true;
+                    break;
             }
         }
 
@@ -201,6 +212,7 @@ public sealed class GlobalMediaHotKeys : IDisposable
         if (_customMuteRegistered) UnregisterHotKey(_handle, IdCustomMute);
         if (_customShuffleRegistered) UnregisterHotKey(_handle, IdCustomShuffle);
         if (_customRepeatRegistered) UnregisterHotKey(_handle, IdCustomRepeat);
+        if (_customDeleteTrackRegistered) UnregisterHotKey(_handle, IdCustomDeleteTrack);
 
         _source.RemoveHook(WndProc);
     }

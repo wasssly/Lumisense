@@ -130,7 +130,7 @@ public static class UpdateChecker
         }
     }
 
-    // Версия программы берётся из того же changelog.json, что и карточка "О программе" в
+    // Версия программы берётся из того же changelog.json, что и карточка "О плеере" в
     // настройках (см. SettingsWindow.RefreshAppVersionText) — единственное место, где она
     // задаётся, чтобы номер нигде не мог разойтись.
     private static string GetCurrentVersion()

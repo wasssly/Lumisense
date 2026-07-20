@@ -98,6 +98,11 @@ public partial class MainWindow : FluentWindow
     public event Action<double, double>? ProgressChanged;
     public event Action<bool>? PlaybackStateChanged;
 
+    // Тоже только для мини-плеера — у него теперь своя кнопка повтора (см.
+    // MiniPlayerWindow.RepeatButton_Click), и её вид должен оставаться в синхроне с основным
+    // окном, чем бы режим ни переключили: этой кнопкой, кнопкой в основном окне или хоткеем.
+    public event Action<string>? RepeatModeChanged;
+
     // Отдельно от VolumeSlider_ValueChanged (который дёргается и при загрузке сохранённой
     // громкости на старте) — только для мини-плеера, который показывает всплывающий
     // индикатор процентов при изменении громкости хоткеями/скроллом. Аргумент — итоговая
@@ -110,6 +115,11 @@ public partial class MainWindow : FluentWindow
     public string CurrentArtist => TrackArtistText.Text;
     public Brush? CurrentArtBrush => AlbumArtIcon.Visibility == Visibility.Visible ? null : AlbumArtBorder.Background;
     public bool IsPlayingNow => _isPlaying;
+
+    // Для мини-плеера — узнать текущий режим повтора сразу при открытии, до первого события
+    // RepeatModeChanged (тем же способом, каким мини-плеер узнаёт текущий трек/состояние
+    // воспроизведения при своём создании — см. конструктор MiniPlayerWindow).
+    public string CurrentRepeatModeName => _repeatMode.ToString();
 
     // Полноразмерная обложка текущего трека (или null, если у трека нет обложки/тегов).
     // Хранится отдельно от ImageBrush, которым залит AlbumArtBorder, потому что окну
@@ -472,6 +482,7 @@ public partial class MainWindow : FluentWindow
         _mediaHotKeys.MutePressed += () => Dispatcher.Invoke(ToggleMute);
         _mediaHotKeys.ShufflePressed += () => Dispatcher.Invoke(() => ShuffleButton_Click(this, new RoutedEventArgs()));
         _mediaHotKeys.RepeatPressed += () => Dispatcher.Invoke(() => RepeatButton_Click(this, new RoutedEventArgs()));
+        _mediaHotKeys.DeleteTrackPressed += () => Dispatcher.Invoke(DeleteCurrentTrackFromDiskHotkey);
         _mediaHotKeys.ApplyCustomHotkeys(_settings);
 
         // Интеграция с Now Playing Windows 11 (панель задач, блокировка экрана, наушники с кнопками)
@@ -1458,6 +1469,23 @@ public partial class MainWindow : FluentWindow
         if (sender is not System.Windows.Controls.MenuItem menuItem) return;
         if (menuItem.DataContext is not string filePath) return;
 
+        DeleteTrackFromDisk(filePath);
+    }
+
+    // Хоткей "Удалить трек с диска" (см. AppSettings.HotkeyDeleteTrack и GlobalMediaHotKeys) —
+    // без выключенной по умолчанию комбинации; пользователь должен сам назначить её в
+    // настройках. Удаляет ИМЕННО текущий загруженный/играющий трек тем же путём, что и
+    // одноимённый пункт контекстного меню плейлиста (см. DeleteTrackFromDiskMenuItem_Click) —
+    // с тем же подтверждением и той же отправкой в корзину, просто без необходимости сначала
+    // искать трек в списке и кликать по нему правой кнопкой.
+    private void DeleteCurrentTrackFromDiskHotkey()
+    {
+        if (_currentTrackPath == null) return;
+        DeleteTrackFromDisk(_currentTrackPath);
+    }
+
+    private void DeleteTrackFromDisk(string filePath)
+    {
         var trackName = Path.GetFileName(filePath);
 
         var confirm = System.Windows.MessageBox.Show(
@@ -2041,6 +2069,8 @@ public partial class MainWindow : FluentWindow
                 RepeatButton.ToolTip = "Повтор: один трек";
                 break;
         }
+
+        RepeatModeChanged?.Invoke(_repeatMode.ToString());
     }
 
     // ---------- Мини-плеер (отдельное окно с настоящей прозрачностью) ----------
@@ -2161,6 +2191,7 @@ public partial class MainWindow : FluentWindow
     public void ExternalPlayPause() => PlayPauseButton_Click(this, new RoutedEventArgs());
     public void ExternalNext() => PlayNextTrack();
     public void ExternalPrev() => PrevButton_Click(this, new RoutedEventArgs());
+    public void ExternalToggleRepeat() => RepeatButton_Click(this, new RoutedEventArgs());
 
     // Используется и колесом мыши над ползунком громкости в главном окне (см.
     // VolumeOverlay_MouseWheel), и колесом мыши над мини-плеером целиком

@@ -195,7 +195,7 @@
                                  GroupName="SettingsNav" Tag="About" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
                             <local:SvgPathIcon Icon="IconInfo" Size="18" VerticalAlignment="Center" />
-                            <TextBlock Text="О программе" Margin="10,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text="О плеере" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
 
@@ -587,13 +587,30 @@
                                                </ui:Button.Icon>
                                            </ui:Button>
                                 </Grid>
+
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Удалить трек с диска" VerticalAlignment="Center" />
+                                    <ui:Button Grid.Column="1" x:Name="HotkeyDeleteTrackButton" Appearance="Secondary"
+                                               MinWidth="140" Margin="8,0,4,0" Click="HotkeyDeleteTrackButton_Click" />
+                                    <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                               Click="HotkeyDeleteTrackClearButton_Click" ToolTip="Очистить">
+                                               <ui:Button.Icon>
+                                                   <local:SvgPathIcon Icon="IconDismiss" />
+                                               </ui:Button.Icon>
+                                           </ui:Button>
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </StackPanel>
 
-                    <!-- О программе (+ Патчноуты) -->
+                    <!-- О плеере (+ Патчноуты) -->
                     <StackPanel x:Name="PageAbout" Visibility="Collapsed">
-                        <TextBlock Text="О программе" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="О плеере" Style="{StaticResource PageTitleStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}" x:Name="AboutInfoCard">
                             <StackPanel>

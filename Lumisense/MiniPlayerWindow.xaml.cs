@@ -73,12 +73,14 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.ProgressChanged += OnProgressChanged;
         _mainWindow.PlaybackStateChanged += OnPlaybackStateChanged;
         _mainWindow.VolumeChanged += OnVolumeChanged;
+        _mainWindow.RepeatModeChanged += OnRepeatModeChanged;
 
         Height = CollapsedHeight;
 
         // Сразу отображаем текущее состояние плеера
         OnTrackInfoChanged(_mainWindow.CurrentTitle, _mainWindow.CurrentArtist, _mainWindow.CurrentArtBrush);
         OnPlaybackStateChanged(_mainWindow.IsPlayingNow);
+        OnRepeatModeChanged(_mainWindow.CurrentRepeatModeName);
 
         // Название могло быть длинным ещё до открытия мини-плеера — пересчитываем бегущую
         // строку после первого прохода layout, когда TitleClipBorder.ActualWidth уже известен.
@@ -298,7 +300,35 @@ public partial class MiniPlayerWindow : Window
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPlayPause();
     private void NextButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalNext();
     private void PrevButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPrev();
+    private void RepeatButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalToggleRepeat();
     private void RestoreButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExitMiniMode();
+
+    // Синхронизирует вид кнопки повтора с фактическим режимом в основном окне — тот же набор
+    // иконок/акцента, что и у RepeatButton там (см. MainWindow.SetRepeatMode), просто в
+    // уменьшенном размере под мини-плеер. Вызывается и при открытии мини-плеера (текущее
+    // состояние на момент создания — см. конструктор), и при каждой смене режима откуда
+    // угодно (эта же кнопка, кнопка в основном окне или хоткей).
+    private void OnRepeatModeChanged(string modeName)
+    {
+        switch (modeName)
+        {
+            case "All":
+                RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatAll", size: 12);
+                RepeatButton.Appearance = ControlAppearance.Primary;
+                RepeatButton.ToolTip = "Повтор: весь плейлист";
+                break;
+            case "One":
+                RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatOne", size: 12);
+                RepeatButton.Appearance = ControlAppearance.Primary;
+                RepeatButton.ToolTip = "Повтор: один трек";
+                break;
+            default:
+                RepeatButton.Icon = IconResources.Make("IconRepeatAll", size: 12);
+                RepeatButton.Appearance = ControlAppearance.Secondary;
+                RepeatButton.ToolTip = "Повтор: выключен";
+                break;
+        }
+    }
 
     // Подставляем актуальное состояние настроек прямо перед показом меню — на случай, если
     // закрепление/топмост поменяли в другом месте (например, в окне настроек) уже после
@@ -387,6 +417,7 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.ProgressChanged -= OnProgressChanged;
         _mainWindow.PlaybackStateChanged -= OnPlaybackStateChanged;
         _mainWindow.VolumeChanged -= OnVolumeChanged;
+        _mainWindow.RepeatModeChanged -= OnRepeatModeChanged;
         base.OnClosed(e);
     }
 }

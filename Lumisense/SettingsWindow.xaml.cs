@@ -12,7 +12,7 @@ namespace AudioPlayer;
 
 public partial class SettingsWindow : FluentWindow
 {
-    private enum HotkeyTarget { None, PlayPause, Next, Previous, Stop, VolumeUp, VolumeDown, Mute, Shuffle, Repeat }
+    private enum HotkeyTarget { None, PlayPause, Next, Previous, Stop, VolumeUp, VolumeDown, Mute, Shuffle, Repeat, DeleteTrack }
 
     private readonly AppSettings _settings;
     private readonly MainWindow _owner;
@@ -40,7 +40,7 @@ public partial class SettingsWindow : FluentWindow
         //
         // initialPage позволяет сразу открыть окно на нужной странице вместо страницы по
         // умолчанию — используется, когда настройки открываются автоматически после закрытия
-        // окна списка изменений: тогда логично сразу оказаться на "О программе", а не снова
+        // окна списка изменений: тогда логично сразу оказаться на "О плеере", а не снова
         // листать до неё вручную.
         (initialPage switch
         {
@@ -78,6 +78,7 @@ public partial class SettingsWindow : FluentWindow
         RefreshHotkeyButtonText(HotkeyTarget.Mute);
         RefreshHotkeyButtonText(HotkeyTarget.Shuffle);
         RefreshHotkeyButtonText(HotkeyTarget.Repeat);
+        RefreshHotkeyButtonText(HotkeyTarget.DeleteTrack);
 
         SearchResultsList.ItemsSource = _searchResults;
         BuildSearchIndex();
@@ -122,7 +123,7 @@ public partial class SettingsWindow : FluentWindow
         _owner.SetPlayerViewModeByName(modeName);
     }
 
-    // Номер версии в карточке "О программе" берётся не из отдельного захардкоженного текста,
+    // Номер версии в карточке "О плеере" берётся не из отдельного захардкоженного текста,
     // а из того же changelog.json, что и окно "Список изменений" — самая первая (самая новая,
     // см. ChangelogLoader) запись и есть текущая версия программы. Так номер версии задаётся
     // ровно в одном месте — в changelog.json — и не может разъехаться с тем, что показывает
@@ -134,7 +135,7 @@ public partial class SettingsWindow : FluentWindow
         AppVersionText.Text = current != null ? $"Версия {current.Version}" : "Версия";
     }
 
-    // Ручная проверка обновлений (кнопка на странице "О программе"). В отличие от тихой
+    // Ручная проверка обновлений (кнопка на странице "О плеере"). В отличие от тихой
     // проверки на старте (см. MainWindow.CheckForUpdatesOnStartupAsync) всегда показывает
     // результат — в том числе "версия уже последняя" и текст ошибки, если GitHub недоступен —
     // и не учитывает AppSettings.SkippedUpdateVersion: раз пользователь сам нажал кнопку,
@@ -197,9 +198,10 @@ public partial class SettingsWindow : FluentWindow
         Add("Без звука", "Горячие клавиши", "Hotkeys", HotkeyMuteButton, "mute без звука горячая клавиша");
         Add("Перемешать", "Горячие клавиши", "Hotkeys", HotkeyShuffleButton, "shuffle перемешать горячая клавиша");
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
-        Add("О программе", "О программе", "About", AboutInfoCard, "версия lumisense о программе");
-        Add("Проверить обновления", "О программе", "About", CheckUpdatesButton, "обновление update github версия проверить");
-        Add("Список изменений", "О программе", "About", ChangelogButton, "патчноуты changelog версии история изменений");
+        Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
+        Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
+        Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
+        Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
     }
 
     private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -407,6 +409,7 @@ public partial class SettingsWindow : FluentWindow
     private void HotkeyMuteButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Mute);
     private void HotkeyShuffleButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Shuffle);
     private void HotkeyRepeatButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Repeat);
+    private void HotkeyDeleteTrackButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.DeleteTrack);
 
     private void HotkeyPlayPauseClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.PlayPause);
     private void HotkeyNextClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Next);
@@ -417,6 +420,7 @@ public partial class SettingsWindow : FluentWindow
     private void HotkeyMuteClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Mute);
     private void HotkeyShuffleClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Shuffle);
     private void HotkeyRepeatClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Repeat);
+    private void HotkeyDeleteTrackClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.DeleteTrack);
 
     private void BeginRecording(HotkeyTarget target)
     {
@@ -516,6 +520,7 @@ public partial class SettingsWindow : FluentWindow
             case HotkeyTarget.Mute: _settings.HotkeyMute = binding; break;
             case HotkeyTarget.Shuffle: _settings.HotkeyShuffle = binding; break;
             case HotkeyTarget.Repeat: _settings.HotkeyRepeat = binding; break;
+            case HotkeyTarget.DeleteTrack: _settings.HotkeyDeleteTrack = binding; break;
         }
     }
 
@@ -530,6 +535,7 @@ public partial class SettingsWindow : FluentWindow
         HotkeyTarget.Mute => _settings.HotkeyMute,
         HotkeyTarget.Shuffle => _settings.HotkeyShuffle,
         HotkeyTarget.Repeat => _settings.HotkeyRepeat,
+        HotkeyTarget.DeleteTrack => _settings.HotkeyDeleteTrack,
         _ => new HotkeyBinding()
     };
 
@@ -544,6 +550,7 @@ public partial class SettingsWindow : FluentWindow
         HotkeyTarget.Mute => HotkeyMuteButton,
         HotkeyTarget.Shuffle => HotkeyShuffleButton,
         HotkeyTarget.Repeat => HotkeyRepeatButton,
+        HotkeyTarget.DeleteTrack => HotkeyDeleteTrackButton,
         _ => throw new ArgumentOutOfRangeException(nameof(target))
     };
 

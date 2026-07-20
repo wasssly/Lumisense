@@ -125,6 +125,13 @@
             <!-- Кнопки — показываются только при наведении курсора на окно -->
             <StackPanel x:Name="ControlsPanel" Grid.Row="2" Orientation="Horizontal"
                         HorizontalAlignment="Center" Margin="0,8,0,10" Visibility="Collapsed">
+                <ui:Button x:Name="RepeatButton" Appearance="Secondary"
+                           Width="26" Height="26" Padding="0" Margin="3,0"
+                           Click="RepeatButton_Click" ToolTip="Повтор: выключен">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon Icon="IconRepeatAll" Size="12" />
+                    </ui:Button.Icon>
+                </ui:Button>
                 <ui:Button x:Name="PrevButton" Appearance="Secondary"
                            Width="30" Height="30" Padding="0" Margin="3,0"
                            Click="PrevButton_Click" ToolTip="Предыдущий">
