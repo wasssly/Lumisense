@@ -9,7 +9,13 @@ namespace AudioPlayer;
 ///  - уже полный локальный путь (например, скопированный из проводника) — тоже используется
 ///    как есть, без подстановки папки Changelog;
 ///  - имя файла или относительный путь ("release-1.2.png", "screenshots\dark-theme.png") —
-///    ищется внутри папки Changelog, рядом с changelog.json.</summary>
+///    ищется внутри папки Changelog, рядом с changelog.json.
+///
+/// ВАЖНО: начиная с того, как changelog.json стал EmbeddedResource (см. ChangelogLoader), папка
+/// Changelog/ рядом с .exe в установленной программе больше не существует — третий вариант
+/// (имя файла без полного пути) работать не будет, если реально не положить туда файлы вручную.
+/// На практике сейчас везде используются полные ссылки на изображения (репозиторий
+/// github.com/wasssly/LumisenseImg) — так и стоит делать дальше.</summary>
 public static class ChangelogImageResolver
 {
     public static string? Resolve(string? image)

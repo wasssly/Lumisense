@@ -50,15 +50,15 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="Changelog\changelog.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Changelog\changelog.template.md">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Changelog\changelog.template.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
+    <!-- changelog.json встроен В САМУ сборку (EmbeddedResource), а не лежит рядом с .exe как
+         обычный файл — раньше он копировался в папку установки как есть (CopyToOutputDirectory),
+         и любой желающий мог открыть его в блокноте и подправить историю изменений или номер
+         версии. Embedded resource запекается прямо в exe при сборке (см. ChangelogLoader.Load) —
+         в установленной программе отдельного Changelog/changelog.json на диске больше нет.
+         *.template.* — это шаблоны-памятки для того, кто редактирует changelog.json в
+         исходниках; пользователю установленной программы они не нужны, поэтому в сборку
+         (и тем более в установленную папку) вообще не попадают. -->
+    <EmbeddedResource Include="Changelog\changelog.json" />
   </ItemGroup>
 
 </Project>

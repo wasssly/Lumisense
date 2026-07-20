@@ -29,6 +29,12 @@ public class PlaylistFolder : INotifyPropertyChanged
     // — да для всего, что не привязано к папке на диске: и для "Отдельные файлы", и для ручных папок.
     public bool CanAddFilesDirectly => SourcePath == null;
 
+    // Можно ли проверить эту группу на новые треки, появившиеся на диске после добавления
+    // (см. RescanFolderButton_Click / RescanFolderForNewTracks) — только для групп, реально
+    // привязанных к папке на диске. У "Отдельные файлы" и ручных папок нет источника на диске,
+    // который можно было бы пересканировать.
+    public bool CanRescan => SourcePath != null;
+
     // Полные пути к файлам, в порядке добавления
     public List<string> Tracks { get; } = new();
 

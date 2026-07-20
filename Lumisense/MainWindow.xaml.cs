@@ -133,7 +133,7 @@ public partial class MainWindow : FluentWindow
         // Не await — намеренно "запустили и забыли": файловая проверка треков и загрузка
         // последнего трека идут в фоне, окно тем временем показывается сразу, без ожидания
         // (см. подробный комментарий над RestoreSavedPlaylistAsync).
-        _ = RestoreSavedPlaylistAsync();
+        _ = StartupRestoreAndRescanAsync();
 
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
@@ -394,6 +394,67 @@ public partial class MainWindow : FluentWindow
 
         LoadAndPlay(_settings.LastTrackPath, autoPlay: false,
             startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)));
+    }
+
+    // Оборачивает восстановление плейлиста и последующую тихую проверку папок на новые треки
+    // в одну задачу — именно её (а не RestoreSavedPlaylistAsync напрямую) запускает конструктор.
+    // Порядок важен: сканировать папки на новые файлы имеет смысл только после того, как сам
+    // список папок восстановлен из настроек.
+    private async System.Threading.Tasks.Task StartupRestoreAndRescanAsync()
+    {
+        await RestoreSavedPlaylistAsync();
+        await RescanAllFoldersForNewTracksAsync();
+    }
+
+    // Тихая фоновая проверка всех папок плейлиста, реально привязанных к папке на диске (то
+    // есть у которых SourcePath не null — не "Отдельные файлы" и не созданные вручную "Новую
+    // папку…"), на новые треки, появившиеся там уже ПОСЛЕ того, как папка была добавлена в
+    // плейлист (докинули в неё файлов, пока плеер был закрыт, и т.п.).
+    //
+    // Запускается один раз при старте, сразу следом за восстановлением плейлиста, а также по
+    // кнопке "Проверить папку на новые треки" в заголовке конкретной группы (см.
+    // RescanFolderButton_Click — там переиспользуется тот же самый сканер через AddFolderPath,
+    // просто для одной папки и синхронно, раз это явное разовое действие пользователя, а не
+    // фоновая проверка при старте).
+    //
+    // Каждая папка сканируется в фоновом потоке (Task.Run) — диск, особенно сетевой или
+    // большая библиотека, может отвечать не мгновенно, а UI-поток трогать этим не хочется
+    // (см. ровно то же обоснование у RestoreSavedPlaylistAsync). Никаких диалогов/уведомлений
+    // при старте не показываем — новые треки просто тихо появляются в списке, если найдутся.
+    private async System.Threading.Tasks.Task RescanAllFoldersForNewTracksAsync()
+    {
+        // Снимок на момент запуска: если пользователь успеет что-то поменять в плейлисте прямо
+        // во время фоновой проверки (удалить папку и т.п.), не идём по уже несуществующим.
+        var foldersToCheck = _folders.Where(f => f.SourcePath != null).ToList();
+
+        foreach (var folder in foldersToCheck)
+        {
+            if (!_folders.Contains(folder)) continue; // могли успеть удалить, пока проверяли предыдущую
+
+            string sourcePath = folder.SourcePath!;
+            List<string>? newTracks;
+
+            try
+            {
+                newTracks = await System.Threading.Tasks.Task.Run(() =>
+                    Directory.EnumerateFiles(sourcePath, "*.*", SearchOption.AllDirectories)
+                        .Where(f => SupportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
+                        .Where(f => !folder.Tracks.Contains(f))
+                        .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                        .ToList());
+            }
+            catch
+            {
+                // Папка стала недоступна (отключили флешку/сетевой диск, удалили с диска и
+                // т.п.) — это не ошибка уровня "нужно показать пользователю", просто пропускаем
+                continue;
+            }
+
+            if (newTracks.Count == 0 || !_folders.Contains(folder)) continue;
+
+            folder.Tracks.AddRange(newTracks);
+            RefreshPlaylistView();
+        }
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -1079,6 +1140,29 @@ public partial class MainWindow : FluentWindow
         if (wasEmptyBeforeAdd)
         {
             LoadAndPlay(actuallyNew[0]);
+        }
+    }
+
+    // Кнопка "Проверить папку на новые треки" в заголовке группы — разовая ручная проверка по
+    // требованию пользователя (в отличие от тихой фоновой RescanAllFoldersForNewTracksAsync при
+    // старте). Переиспользует AddFolderPath: он и так умеет, если папка с таким SourcePath уже
+    // есть в плейлисте, добавить в неё только те файлы, которых там ещё нет — то есть делает
+    // ровно то же самое, что нужно здесь, просто в ответ на клик. Выполняется синхронно на
+    // UI-потоке (это единичное явное действие пользователя над одной папкой, а не фоновая
+    // проверка всего плейлиста при старте) — как и у обычного "Добавить папку" из меню.
+    private void RescanFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
+        if (folder.SourcePath == null) return;
+
+        int before = folder.Tracks.Count;
+        bool foundAnything = AddFolderPath(folder.SourcePath);
+        int addedCount = folder.Tracks.Count - before;
+
+        if (!foundAnything || addedCount <= 0)
+        {
+            System.Windows.MessageBox.Show("Новых треков в этой папке не найдено.",
+                "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
 

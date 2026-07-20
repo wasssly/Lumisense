@@ -5,12 +5,13 @@ using System.Text.Json;
 namespace AudioPlayer;
 
 /// <summary>
-/// Читает список версий из Changelog/changelog.json, который лежит рядом с .exe (копируется
-/// туда при сборке — см. Lumisense.csproj). Файл можно редактировать вручную самому: просто
-/// открой Changelog/changelog.json в папке с собранным проектом (или в исходниках, в папке
-/// Changelog/ — при пересборке он скопируется в выходную папку) любым текстовым редактором.
-/// Шаблон со всеми возможными полями и пояснениями к ним — см. Changelog/changelog.template.md
-/// рядом с этим файлом.
+/// Читает список версий из changelog.json — он встроен прямо в сборку как EmbeddedResource
+/// (см. Lumisense.csproj), а не лежит рядом с .exe отдельным файлом: специально, чтобы его
+/// нельзя было открыть и поправить прямо из папки установленной программы. Редактировать его
+/// нужно в исходниках, в файле Changelog/changelog.json (при пересборке содержимое запекается
+/// в сборку заново) — любым текстовым редактором. Шаблон со всеми возможными полями и
+/// пояснениями к ним — см. Changelog/changelog.template.md рядом с этим файлом (сам шаблон в
+/// сборку не попадает, это просто памятка для того, кто редактирует changelog.json).
 ///
 /// Номер версии в файле писать не нужно — он вычисляется автоматически (см. AssignComputedFields
 /// и BumpForChanges ниже) по правилам SemVer (semver.org, "major.minor.patch") и зависит от
@@ -54,28 +55,42 @@ namespace AudioPlayer;
 /// </summary>
 public static class ChangelogLoader
 {
-    private static readonly string FilePath = Path.Combine(AppContext.BaseDirectory, "Changelog", "changelog.json");
-
+    // Раньше changelog.json лежал рядом с .exe и читался через File.ReadAllText — теперь он
+    // встроен в саму сборку (EmbeddedResource, см. Lumisense.csproj) именно для того, чтобы его
+    // нельзя было открыть и подправить прямо из папки установки. Имя ресурса .NET SDK собирает
+    // как "{RootNamespace}.{путь с \ заменёнными на .}" — здесь это "AudioPlayer.Changelog.
+    // changelog.json", но чтобы не завязываться на точное совпадение (переименуют RootNamespace
+    // — и точное имя разъедется), просто ищем среди всех ресурсов сборки тот, что заканчивается
+    // на "changelog.json".
     public static List<ChangelogEntry> Load()
     {
         try
         {
-            if (File.Exists(FilePath))
-            {
-                var json = File.ReadAllText(FilePath);
-                var entries = JsonSerializer.Deserialize<List<ChangelogEntry>>(json,
-                    new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            var resourceName = assembly.GetManifestResourceNames()
+                .FirstOrDefault(n => n.EndsWith("changelog.json", StringComparison.OrdinalIgnoreCase));
 
-                if (entries is { Count: > 0 })
+            if (resourceName != null)
+            {
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream != null)
                 {
-                    CalculateVersions(entries);
-                    return entries;
+                    using var reader = new StreamReader(stream);
+                    var json = reader.ReadToEnd();
+                    var entries = JsonSerializer.Deserialize<List<ChangelogEntry>>(json,
+                        new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                    if (entries is { Count: > 0 })
+                    {
+                        CalculateVersions(entries);
+                        return entries;
+                    }
                 }
             }
         }
         catch
         {
-            // Файл отсутствует, повреждён или не читается — просто покажем встроенный список ниже
+            // Ресурс отсутствует, повреждён или не читается — просто покажем встроенный список ниже
         }
 
         var fallback = DefaultEntries();

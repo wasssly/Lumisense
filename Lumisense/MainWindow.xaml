@@ -354,6 +354,7 @@
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
                                         <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,4,0"
@@ -389,7 +390,20 @@
                                             </ui:Button.Icon>
                                         </ui:Button>
 
+                                        <!-- Только у групп, привязанных к реальной папке на диске — проверить,
+                                             не появились ли в ней новые файлы после добавления в плейлист
+                                             (см. RescanFolderButton_Click) -->
                                         <ui:Button Grid.Column="4" Appearance="Secondary"
+                                                   Width="28" Height="28" Padding="0" Margin="0,0,4,0"
+                                                   Click="RescanFolderButton_Click"
+                                                   Visibility="{Binding CanRescan, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                   ToolTip="Проверить папку на новые треки">
+                                            <ui:Button.Icon>
+                                                <local:SvgPathIcon Icon="IconRefresh" Size="13" />
+                                            </ui:Button.Icon>
+                                        </ui:Button>
+
+                                        <ui:Button Grid.Column="5" Appearance="Secondary"
                                                    Width="28" Height="28" Padding="0"
                                                    Click="RemoveFolderButton_Click"
                                                    ToolTip="Убрать эту папку из плейлиста">
