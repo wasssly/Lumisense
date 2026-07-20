@@ -129,7 +129,12 @@ public partial class MainWindow : FluentWindow
         IconResources.SetOnAccent(PlayPauseIcon, true);
         _progressTimer.Tick += ProgressTimer_Tick;
         ApplySettingsOnStartup();
-        RestoreSavedPlaylist();
+
+        // Не await — намеренно "запустили и забыли": файловая проверка треков и загрузка
+        // последнего трека идут в фоне, окно тем временем показывается сразу, без ожидания
+        // (см. подробный комментарий над RestoreSavedPlaylistAsync).
+        _ = RestoreSavedPlaylistAsync();
+
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
     }
@@ -332,31 +337,52 @@ public partial class MainWindow : FluentWindow
     // Восстанавливает плейлист, сохранённый при прошлом закрытии приложения, а также
     // последний проигранный трек и позицию в нём (без автозапуска воспроизведения).
     // Файлы, которые с тех пор были удалены/перемещены, просто пропускаются.
-    private void RestoreSavedPlaylist()
+    // Раньше это делалось СИНХРОННО прямо в конструкторе, то есть ДО того, как окно вообще
+    // успевало появиться на экране — а File.Exists по каждому треку сохранённого плейлиста
+    // (это реальное обращение к диску на каждый файл) при плейлисте в сотни-тысячи треков,
+    // особенно на HDD или сетевом пути, вполне может суммарно занять несколько секунд. Плюс
+    // следом ещё и LoadAndPlay последнего трека — открытие аудиофайла, чтение тегов/обложки.
+    // Именно это и было основной причиной долгого "чёрного экрана" при запуске плеера.
+    //
+    // Теперь сканирование File.Exists уходит в пул потоков через Task.Run, а окно тем временем
+    // уже показано и отзывчиво — плейлист и последний трек просто появляются в нём чуть позже,
+    // как только фоновая проверка закончится (обычно доли секунды, редко больше).
+    private async System.Threading.Tasks.Task RestoreSavedPlaylistAsync()
     {
         if (_settings.SavedPlaylistFolders.Count == 0) return;
 
-        foreach (var saved in _settings.SavedPlaylistFolders)
+        var restoredFolders = await System.Threading.Tasks.Task.Run(() =>
         {
-            var existingTracks = saved.Tracks.Where(File.Exists).ToList();
+            var result = new List<PlaylistFolder>();
 
-            // Пропускаем группу, только если в ней ДЕЙСТВИТЕЛЬНО были файлы, а теперь их не
-            // осталось (все удалены/перемещены) — а не любую группу с нулём треков. Иначе
-            // ручная папка, созданная вручную и ещё не наполненная файлами до закрытия
-            // приложения, терялась бы при следующем запуске.
-            if (saved.Tracks.Count > 0 && existingTracks.Count == 0) continue;
-
-            var folder = new PlaylistFolder
+            foreach (var saved in _settings.SavedPlaylistFolders)
             {
-                SourcePath = saved.SourcePath,
-                DisplayName = saved.DisplayName,
-                IsEnabled = saved.IsEnabled,
-                IsLooseFilesBucket = saved.IsLooseFilesBucket,
-                IsExpanded = saved.IsExpanded
-            };
-            folder.Tracks.AddRange(existingTracks);
-            _folders.Add(folder);
-        }
+                var existingTracks = saved.Tracks.Where(File.Exists).ToList();
+
+                // Пропускаем группу, только если в ней ДЕЙСТВИТЕЛЬНО были файлы, а теперь их не
+                // осталось (все удалены/перемещены) — а не любую группу с нулём треков. Иначе
+                // ручная папка, созданная вручную и ещё не наполненная файлами до закрытия
+                // приложения, терялась бы при следующем запуске.
+                if (saved.Tracks.Count > 0 && existingTracks.Count == 0) continue;
+
+                var folder = new PlaylistFolder
+                {
+                    SourcePath = saved.SourcePath,
+                    DisplayName = saved.DisplayName,
+                    IsEnabled = saved.IsEnabled,
+                    IsLooseFilesBucket = saved.IsLooseFilesBucket,
+                    IsExpanded = saved.IsExpanded
+                };
+                folder.Tracks.AddRange(existingTracks);
+                result.Add(folder);
+            }
+
+            return result;
+        });
+
+        // Дальше — снова в UI-потоке (обычное поведение await в WPF): трогаем _folders,
+        // элементы окна и т.п.
+        foreach (var folder in restoredFolders) _folders.Add(folder);
 
         if (_folders.Count == 0) return;
         RefreshPlaylistView();
@@ -433,6 +459,17 @@ public partial class MainWindow : FluentWindow
     {
         Dispatcher.Invoke(() =>
         {
+            // Если сейчас активен мини-плеер, у MainWindow нет валидного показанного состояния
+            // (оно скрыто через Hide() — см. EnterMiniMode) — обычный Show() здесь показал бы
+            // его ПОВЕРХ ещё открытого окошка мини-плеера, то есть оба сразу на экране разом.
+            // Разворачиваем полноценно через тот же путь, что и кнопка "развернуть" в самом
+            // мини-плеере — это и закрывает мини-плеер, и корректно поднимает основное окно.
+            if (_isMiniMode)
+            {
+                ExitMiniMode();
+                return;
+            }
+
             Show();
             WindowState = WindowState.Normal;
             Activate();
@@ -1961,6 +1998,13 @@ public partial class MainWindow : FluentWindow
 
         _isMiniMode = true;
         Hide();
+
+        // У мини-плеера ShowInTaskbar="False" (см. MiniPlayerWindow.xaml) — в мини-режиме у
+        // приложения вообще нет никакого присутствия ни в панели задач, ни в трее, кроме самого
+        // окошка мини-плеера. Показываем иконку в трее и здесь, а не только при закрытии
+        // основного окна в трей (см. OnClosing) — иначе, свернув плеер в мини-режим, до него
+        // потом никак не добраться, кроме как найти и кликнуть само окошко мини-плеера.
+        _trayIconManager?.Show($"Lumisense — {TrackTitleText.Text}");
     }
 
     // Вызывается из MiniPlayerWindow при нажатии кнопки "развернуть"
@@ -1974,6 +2018,7 @@ public partial class MainWindow : FluentWindow
         Show();
         WindowState = WindowState.Normal;
         Activate();
+        _trayIconManager?.Hide();
 
         // Ширина/высота окна не менялись, пока плеер был свёрнут в мини-режим — они уже
         // соответствуют тому виду, в котором плеер был до сворачивания. Здесь только
