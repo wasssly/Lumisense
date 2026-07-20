@@ -17,12 +17,21 @@
              паузу, сам плавно исчезает. Запускается заново с нуля при каждом изменении
              громкости — см. ShowVolumeIndicator() в code-behind, которая останавливает
              предыдущий прогон анимации перед стартом нового, чтобы быстрые повторные
-             нажатия хоткея не давали резких скачков прозрачности. -->
+             нажатия хоткея не давали резких скачков прозрачности.
+
+             Синхронно с ним (те же тайминги, тот же Storyboard) обложка+название+исполнитель
+             (HeaderPanel) гаснут в ноль и появляются обратно — пока крутится громкость, в
+             мини-плеере видно ТОЛЬКО процент громкости, а не обе надписи разом друг на друге. -->
         <Storyboard x:Key="VolumeIndicatorStoryboard">
             <DoubleAnimation Storyboard.TargetName="VolumeIndicator" Storyboard.TargetProperty="Opacity"
                               From="0" To="1" Duration="0:0:0.12" />
             <DoubleAnimation Storyboard.TargetName="VolumeIndicator" Storyboard.TargetProperty="Opacity"
                               From="1" To="0" BeginTime="0:0:0.9" Duration="0:0:0.35" />
+
+            <DoubleAnimation Storyboard.TargetName="HeaderPanel" Storyboard.TargetProperty="Opacity"
+                              From="1" To="0" Duration="0:0:0.12" />
+            <DoubleAnimation Storyboard.TargetName="HeaderPanel" Storyboard.TargetProperty="Opacity"
+                              From="0" To="1" BeginTime="0:0:0.9" Duration="0:0:0.35" />
         </Storyboard>
     </Window.Resources>
 
@@ -55,7 +64,7 @@
             </Grid.RowDefinitions>
 
             <!-- Обложка + название/исполнитель. Здесь же перетаскиваем окно (своего заголовка нет). -->
-            <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="14,10,14,2"
+            <StackPanel x:Name="HeaderPanel" Grid.Row="0" Orientation="Horizontal" Margin="14,10,14,2"
                         Background="Transparent"
                         MouseLeftButtonDown="Header_MouseLeftButtonDown">
                 <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
