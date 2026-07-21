@@ -16,7 +16,7 @@
 
     <!-- ============================================================================
          Окно "Список изменений": слева — поиск, фильтр по типу изменений (цветные чипы),
-         переключатель сортировки (дата/версия + направление) и сам список версий; справа —
+         переключатель сортировки (версия/кол-во изменений + направление) и сам список версий; справа —
          подробности выбранной версии, где каждая строка изменения показывает свой тип
          иконкой и цветом (см. ChangeTypeCatalog). Поиск ищет по номеру версии, дате, тексту
          изменений и названию их типа. Правая панель — ElementName-биндинг на
@@ -247,8 +247,8 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <RadioButton x:Name="SortByDateToggle" Grid.Column="0" GroupName="ChangelogSort"
-                                             Style="{StaticResource SortSegmentStyle}" Content="Дата"
+                                <RadioButton x:Name="SortByVersionToggle" Grid.Column="0" GroupName="ChangelogSort"
+                                             Style="{StaticResource SortSegmentStyle}" Content="Версия"
                                              IsChecked="True" Checked="SortOption_Changed" />
                                 <RadioButton x:Name="SortByCountToggle" Grid.Column="1" GroupName="ChangelogSort"
                                              Style="{StaticResource SortSegmentStyle}" Content="Кол-во"
@@ -307,7 +307,8 @@
                                                      Fill="{DynamicResource AccentFillColorDefaultBrush}"
                                                      Visibility="{Binding IsCurrent, Converter={StaticResource BoolToVisibilityConverter}}" />
                                         </Grid>
-                                        <TextBlock Text="{Binding Date, Mode=OneWay}" FontSize="11" Opacity="0.55" Margin="0,3,0,0" />
+                                        <TextBlock Text="{Binding Date, Mode=OneWay}" FontSize="11" Opacity="0.55" Margin="0,3,0,0"
+                                                   Visibility="{Binding HasDate, Converter={StaticResource BoolToVisibilityConverter}}" />
 
                                         <Grid Margin="0,5,0,0">
                                             <Grid.ColumnDefinitions>
@@ -401,7 +402,8 @@
                                                            HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                         </StackPanel>
-                                        <TextBlock Text="{Binding Date, Mode=OneWay}" FontSize="13" Opacity="0.6" Margin="0,3,0,0" />
+                                        <TextBlock Text="{Binding Date, Mode=OneWay}" FontSize="13" Opacity="0.6" Margin="0,3,0,0"
+                                                   Visibility="{Binding HasDate, Converter={StaticResource BoolToVisibilityConverter}}" />
                                     </StackPanel>
                                 </Grid>
 

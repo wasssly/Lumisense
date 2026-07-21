@@ -20,7 +20,7 @@ public partial class ChangelogWindow : FluentWindow
 
     private bool _sortDescending = true;
 
-    // RadioButton.IsChecked="True" в XAML (у SortByDateToggle) вызывает Checked ещё во время
+    // RadioButton.IsChecked="True" в XAML (у SortByVersionToggle) вызывает Checked ещё во время
     // InitializeComponent(), до того как _allEntries вообще загружен — этот флаг не даёт
     // обработчикам сортировки/фильтра дёрнуть RefreshVisible раньше времени.
     private readonly bool _isInitializing;
@@ -78,13 +78,18 @@ public partial class ChangelogWindow : FluentWindow
             entry.Matches(query) &&
             (selectedTypes.Count == 0 || selectedTypes.Any(entry.HasType)));
 
-        // Версия всегда идёт в том же порядке, что и дата (номер версии как раз и вычисляется
-        // по хронологии дат в ChangelogLoader.AssignComputedFields) — сортировка "по версии"
-        // была бы точной копией сортировки "по дате". Вместо дубликата — сортировка по
-        // количеству изменений в версии, которая действительно может дать другой порядок.
+        // Версия всегда идёт в том же порядке, что и дата у уже выпущенных (датированных)
+        // записей — номер версии как раз и вычисляется по хронологии дат в
+        // ChangelogLoader.AssignComputedFields. Но у НОВЫХ записей даты вообще нет (changelog
+        // теперь привязан к версии, а не к дате, см. ChangelogLoader) — поэтому сортируем по
+        // ParsedVersion, а не по SortDate: для старых записей результат тот же самый, а для
+        // новых, у которых date пустая, только version и даёт правильный порядок (пустая дата
+        // сортировалась бы как "самая старая", отправляя свежедобавленные записи в самый конец
+        // вместо начала). Отдельная сортировка "по версии" была бы дублем — вместо неё сортировка
+        // по количеству изменений в версии, которая действительно может дать другой порядок.
         filtered = SortByCountToggle.IsChecked == true
             ? (_sortDescending ? filtered.OrderByDescending(e => e.Items.Count) : filtered.OrderBy(e => e.Items.Count))
-            : (_sortDescending ? filtered.OrderByDescending(e => e.SortDate) : filtered.OrderBy(e => e.SortDate));
+            : (_sortDescending ? filtered.OrderByDescending(e => e.ParsedVersion) : filtered.OrderBy(e => e.ParsedVersion));
 
         var previouslySelected = VersionsListBox.SelectedItem as ChangelogEntryViewModel;
 

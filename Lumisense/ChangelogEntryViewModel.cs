@@ -16,9 +16,29 @@ public sealed class ChangelogEntryViewModel
     public bool IsCurrent { get; }
     public IReadOnlyList<ChangeItemViewModel> Items { get; }
 
-    /// <summary>Разобранная дата — для сортировки "по дате" (см. ChangelogDateParser).
-    /// Не для отображения — в UI показывается исходная строка Date как есть.</summary>
+    /// <summary>Есть ли у записи вообще дата — у старых (уже выпущенных) записей есть, у новых
+    /// нет: changelog теперь привязан к версии, а не к дате (см. ChangelogLoader). Используется
+    /// в UI, чтобы просто не показывать пустую строку под версией там, где раньше была бы дата
+    /// (см. ChangelogWindow.xaml).</summary>
+    public bool HasDate => !string.IsNullOrWhiteSpace(Date);
+
+    /// <summary>Разобранная дата — не для отображения (в UI показывается исходная строка Date
+    /// как есть), а исторически использовалась для сортировки "по хронологии". Теперь для этого
+    /// используется <see cref="ParsedVersion"/> (см. его комментарий) — SortDate оставлен только
+    /// для полноты и на случай, если когда-нибудь понадобится сортировка именно по календарной
+    /// дате отдельно от номера версии.</summary>
     public DateTime SortDate { get; }
+
+    /// <summary>Номер версии, разобранный в <see cref="System.Version"/> — используется для
+    /// сортировки "по хронологии" в окне списка изменений (см. ChangelogWindow.RefreshVisible)
+    /// ВМЕСТО даты. У старых записей порядок по версии буквально совпадает с порядком по дате
+    /// (версия и вычисляется по хронологии дат, см. ChangelogLoader.AssignComputedFields) —
+    /// поэтому переход на сортировку по версии никак не меняет их порядок. А у новых записей,
+    /// которые вообще не привязаны к дате, только версия и остаётся источником правильного
+    /// порядка. Null, если Version почему-то не разобрался (не должно происходить в норме —
+    /// ChangelogLoader всегда пишет туда валидный "major.minor.patch") — в этом случае запись
+    /// просто уходит в конец сортировки по версии.</summary>
+    public System.Version? ParsedVersion { get; }
 
     /// <summary>Цветные точки по одной на каждый встречающийся в версии тип изменений, в
     /// постоянном порядке (Добавлено → Изменено → Исправлено → Удалено) — беглый обзор состава
@@ -52,6 +72,8 @@ public sealed class ChangelogEntryViewModel
         ImageSource = ChangelogImageResolver.Resolve(source.Image);
 
         SortDate = ChangelogDateParser.Parse(source.Date);
+        System.Version.TryParse(source.Version, out var parsedVersion);
+        ParsedVersion = parsedVersion;
 
         var presentKeys = Items.Select(i => i.TypeKey).ToHashSet();
         PresentTypeBrushes = ChangeTypeCatalog.All
