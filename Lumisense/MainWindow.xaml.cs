@@ -165,6 +165,13 @@ public partial class MainWindow : FluentWindow
 
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
+
+        // Подстраховка для завершения сеанса Windows (выключение/перезагрузка/выход из
+        // системы) — в этот момент OnClosing/OnClosed могут не успеть отработать штатно, а
+        // сворачивание в трей само по себе новых сохранений после первого раза не вызывает.
+        // Без этого позиция трека, начатого прямо перед выключением компьютера, терялась бы
+        // до следующего периодического автосохранения (см. ProgressTimer_Tick).
+        System.Windows.Application.Current.SessionEnding += (_, _) => PersistPlaybackAndPlaylistState();
     }
 
     // ---------- Полноэкранный режим ----------
@@ -590,6 +597,16 @@ public partial class MainWindow : FluentWindow
             e.Cancel = true;
             Hide();
             _trayIconManager?.Show($"Lumisense — {TrackTitleText.Text}");
+
+            // Сворачивание в трей раньше вообще ничего не сохраняло — settings.json обновлялся
+            // только в OnClosed, то есть только при настоящем "Выход" из трея. А поскольку
+            // MinimizeToTrayOnClose включён по умолчанию, обычное закрытие крестиком почти
+            // всегда идёт именно сюда: пользователь месяцами мог ни разу не заходить в трей за
+            // "Выход" (просто выключал компьютер, пока плеер тихо играл в фоне) — и плеер при
+            // следующем запуске каждый раз открывал один и тот же трек с той самой первой
+            // позиции, что сохранилась при самом первом настоящем закрытии. См. подробности у
+            // PersistPlaybackAndPlaylistState.
+            PersistPlaybackAndPlaylistState();
             return;
         }
 
@@ -1933,6 +1950,10 @@ public partial class MainWindow : FluentWindow
             _progressTimer.Stop();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
             PlaybackStateChanged?.Invoke(false);
+
+            // На паузе часто и надолго оставляют трек, не закрывая плеер вовсе — сохраняем
+            // позицию сразу же, а не ждём следующего реального закрытия (см. PersistPlaybackAndPlaylistState).
+            PersistPlaybackAndPlaylistState();
         }
         else
         {
@@ -2372,6 +2393,14 @@ public partial class MainWindow : FluentWindow
         slider.Value = slider.Minimum + ratio * (slider.Maximum - slider.Minimum);
     }
 
+    // Раз в ~10 секунд во время игры (таймер тикает каждые 250мс — 40 тиков) сохраняем
+    // текущий трек/позицию на диск, а не только по паузе/сворачиванию в трей/закрытию — так
+    // даже при аварийном завершении процесса (зависание, "снять задачу" и т.п.) позиция
+    // потеряется не больше чем на несколько секунд, а не полностью, как раньше (см.
+    // PersistPlaybackAndPlaylistState).
+    private const int AutoSaveEveryNTicks = 40;
+    private int _ticksSinceLastAutoSave;
+
     private void ProgressTimer_Tick(object? sender, EventArgs e)
     {
         // Пока пользователь держит ползунок нажатым (клик или перетаскивание) — не трогаем его
@@ -2385,6 +2414,12 @@ public partial class MainWindow : FluentWindow
 
         CurrentTimeText.Text = _audioFile.CurrentTime.ToString(@"mm\:ss");
         ProgressChanged?.Invoke(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+
+        if (++_ticksSinceLastAutoSave >= AutoSaveEveryNTicks)
+        {
+            _ticksSinceLastAutoSave = 0;
+            PersistPlaybackAndPlaylistState();
+        }
     }
 
     private void ProgressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -2507,20 +2542,20 @@ public partial class MainWindow : FluentWindow
     // нажатии возвращает ровно то значение громкости, что было до выключения.
     private void MuteButton_Click(object sender, RoutedEventArgs e) => ToggleMute();
 
-    protected override void OnClosed(EventArgs e)
+    // Единая точка сохранения всего, что должно переживать перезапуск — плейлист, громкость,
+    // последний трек и позиция в нём, вид плеера, шафл/повтор, избранное. Раньше это было
+    // только внутри OnClosed, то есть срабатывало исключительно при настоящем "Выход" из трея —
+    // а поскольку MinimizeToTrayOnClose включён по умолчанию, обычное закрытие крестиком почти
+    // всегда просто прячет окно в трей (см. OnClosing) и до "Выход" дело может вообще не
+    // доходить месяцами: пользователь просто выключает компьютер, пока плеер тихо играет в
+    // фоне. Из-за этого settings.json так и оставался с треком/позицией от самого первого
+    // настоящего закрытия — плеер каждый раз при запуске открывал один и тот же трек, будто
+    // вообще не запоминал последний. Теперь этот же метод дополнительно вызывается при
+    // сворачивании в трей, на паузе и периодически во время игры (см. вызовы ниже) — так
+    // актуальное состояние почти всегда уже на диске к моменту следующего запуска, даже если
+    // процесс завершится не штатно.
+    private void PersistPlaybackAndPlaylistState()
     {
-        // OnClosed означает, что окно действительно закрывается насовсем (в отличие от
-        // OnClosing, где закрытие ещё можно было заменить сворачиванием в трей) — на всякий
-        // случай выставляем здесь и так, чтобы Closed-обработчик ShowChangelogWindow ниже
-        // точно не попытался открыть окно настроек заново посреди выключения программы.
-        _isExiting = true;
-
-        // Запоминаем позицию ДО остановки — StopPlayback ниже обнуляет _audioFile
-        double lastPositionSeconds = _audioFile?.CurrentTime.TotalSeconds ?? 0;
-        string? lastTrackPath = GetCurrentTrackPath();
-
-        StopPlayback(disposeOnly: true);
-
         if (_settings.RememberVolume)
             _settings.SavedVolume = VolumeSlider.Value;
 
@@ -2534,8 +2569,8 @@ public partial class MainWindow : FluentWindow
             IsLooseFilesBucket = f.IsLooseFilesBucket
         }).ToList();
 
-        _settings.LastTrackPath = lastTrackPath;
-        _settings.LastPositionSeconds = lastPositionSeconds;
+        _settings.LastTrackPath = GetCurrentTrackPath();
+        _settings.LastPositionSeconds = _audioFile?.CurrentTime.TotalSeconds ?? _settings.LastPositionSeconds;
         _settings.WasMiniPlayerOnClose = _isMiniMode;
         _settings.IsPlaylistVisible = _isPlaylistVisible;
         _settings.PlayerViewMode = _viewMode.ToString();
@@ -2544,6 +2579,20 @@ public partial class MainWindow : FluentWindow
         _settings.FavoriteTracks = FavoritesManager.GetAll();
 
         SettingsManager.Save(_settings);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        // OnClosed означает, что окно действительно закрывается насовсем (в отличие от
+        // OnClosing, где закрытие ещё можно было заменить сворачиванием в трей) — на всякий
+        // случай выставляем здесь и так, чтобы Closed-обработчик ShowChangelogWindow ниже
+        // точно не попытался открыть окно настроек заново посреди выключения программы.
+        _isExiting = true;
+
+        // Сохраняем состояние ДО остановки — StopPlayback ниже обнуляет _audioFile, а
+        // PersistPlaybackAndPlaylistState читает текущую позицию именно из него.
+        PersistPlaybackAndPlaylistState();
+        StopPlayback(disposeOnly: true);
 
         _mediaHotKeys?.Dispose();
         _trayIconManager?.Dispose();

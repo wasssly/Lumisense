@@ -187,10 +187,15 @@ public partial class MiniPlayerWindow : Window
         TitleText.Text = title;
         ArtistText.Text = artist;
 
+        Color? artColor = null;
+
         if (art != null)
         {
             ArtBorder.Background = art;
             ArtIcon.Visibility = Visibility.Collapsed;
+
+            if (art is ImageBrush { ImageSource: System.Windows.Media.Imaging.BitmapSource artBitmap })
+                artColor = ExtractAverageColor(artBitmap);
         }
         else
         {
@@ -198,7 +203,97 @@ public partial class MiniPlayerWindow : Window
             ArtIcon.Visibility = Visibility.Visible;
         }
 
+        ApplyAdaptiveBackground(artColor);
         UpdateTitleMarquee();
+    }
+
+    // ---------- Адаптивный фон мини-плеера ----------
+    //
+    // Раньше RootBorder всегда был залит одним и тем же нейтральным цветом темы
+    // (ControlFillColorDefaultBrush) независимо от того, что играет — мини-плеер выглядел
+    // одинаково и для яркой обложки, и для тёмной, и без обложки вовсе. Теперь фон слегка
+    // подсвечивается усреднённым цветом текущей обложки (см. ExtractAverageColor) и плавно
+    // переливается в новый оттенок при каждой смене трека — а без обложки просто остаётся
+    // обычным цветом темы, как и было.
+
+    // Доля цвета обложки в итоговом фоне: заметно "подсвечивает" панель, но не настолько
+    // сильно, чтобы текст поверх потерял контраст (особенно на светлой теме, где обложки
+    // бывают весьма насыщенными). Подобрано на глаз.
+    private const double ArtTintWeight = 0.35;
+
+    private void ApplyAdaptiveBackground(Color? artColor)
+    {
+        // Базовый цвет берём из темы каждый раз заново (а не кешируем один раз) — так фон
+        // остаётся верным даже если пользователь переключил тему, пока мини-плеер уже открыт.
+        // `as`, а не приведение типа — ресурсы темы это, как правило, SolidColorBrush, но
+        // ломать фон мини-плеера исключением из-за неожиданного типа ресурса ни к чему.
+        var baseColor = (FindResource("ControlFillColorDefaultBrush") as SolidColorBrush)?.Color ?? Colors.Transparent;
+
+        var targetColor = artColor is { } c
+            ? Color.FromRgb(
+                (byte)(baseColor.R * (1 - ArtTintWeight) + c.R * ArtTintWeight),
+                (byte)(baseColor.G * (1 - ArtTintWeight) + c.G * ArtTintWeight),
+                (byte)(baseColor.B * (1 - ArtTintWeight) + c.B * ArtTintWeight))
+            : baseColor;
+
+        var animation = new ColorAnimation
+        {
+            To = targetColor,
+            Duration = TimeSpan.FromMilliseconds(400),
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        AdaptiveBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation);
+    }
+
+    // Средний цвет обложки — не самый строгий "доминантный цвет" (это потребовало бы
+    // кластеризации палитры), но для мягкой подсветки фона его вполне достаточно, а считается
+    // он на порядки быстрее. Обложка сначала уменьшается до совсем маленького размера — так
+    // обход пикселей остаётся дешёвым даже для тяжёлых, в несколько тысяч пикселей исходников.
+    private static Color? ExtractAverageColor(System.Windows.Media.Imaging.BitmapSource source)
+    {
+        try
+        {
+            const int sampleSize = 12;
+            if (source.PixelWidth <= 0 || source.PixelHeight <= 0) return null;
+
+            var scaled = new System.Windows.Media.Imaging.TransformedBitmap(source,
+                new ScaleTransform((double)sampleSize / source.PixelWidth, (double)sampleSize / source.PixelHeight));
+            var converted = new System.Windows.Media.Imaging.FormatConvertedBitmap(scaled, PixelFormats.Bgra32, null, 0);
+
+            int width = converted.PixelWidth;
+            int height = converted.PixelHeight;
+            if (width <= 0 || height <= 0) return null;
+
+            int stride = width * 4;
+            var pixels = new byte[stride * height];
+            converted.CopyPixels(pixels, stride, 0);
+
+            long sumB = 0, sumG = 0, sumR = 0;
+            int counted = 0;
+
+            for (int i = 0; i < pixels.Length; i += 4)
+            {
+                // Пропускаем почти прозрачные пиксели (края непрямоугольных обложек и т.п.) —
+                // иначе прозрачность (обычно чёрная в BGRA-буфере под ней) тянула бы средний
+                // цвет к чёрному, даже если сама видимая часть обложки светлая и яркая.
+                if (pixels[i + 3] < 16) continue;
+
+                sumB += pixels[i];
+                sumG += pixels[i + 1];
+                sumR += pixels[i + 2];
+                counted++;
+            }
+
+            if (counted == 0) return null;
+
+            var color = Color.FromRgb((byte)(sumR / counted), (byte)(sumG / counted), (byte)(sumB / counted));
+            return color;
+        }
+        catch
+        {
+            // Нестандартный формат пикселей, битая обложка и т.п. — просто не подсвечиваем фон
+            return null;
+        }
     }
 
     // ---------- Бегущая строка названия трека ----------

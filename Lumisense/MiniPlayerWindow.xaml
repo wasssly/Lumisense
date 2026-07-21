@@ -40,9 +40,17 @@
          с Mica-фоном, где Opacity не просвечивает системный backdrop. -->
     <Grid>
     <Border x:Name="RootBorder" CornerRadius="14"
-            Background="{DynamicResource ControlFillColorDefaultBrush}"
             MouseEnter="RootBorder_MouseEnter" MouseLeave="RootBorder_MouseLeave"
             MouseWheel="RootBorder_MouseWheel">
+        <!-- Раньше здесь стоял просто {DynamicResource ControlFillColorDefaultBrush} — фон был
+             постоянным вне зависимости от того, что играет. Теперь это именованная
+             SolidColorBrush: код в MiniPlayerWindow.xaml.cs (см. ApplyAdaptiveBackground)
+             анимирует её Color при каждой смене трека, подмешивая усреднённый цвет обложки в
+             обычный цвет темы — так фон мягко "подстраивается" под обложку, а без неё просто
+             остаётся обычным цветом темы, как и раньше. -->
+        <Border.Background>
+            <SolidColorBrush x:Name="AdaptiveBackgroundBrush" />
+        </Border.Background>
         <!-- ПКМ по любому месту мини-плеера: закрепление (запрет перетаскивания) и
              "поверх окон" — те же две настройки, что и в окне настроек, здесь просто
              под рукой. MiniPlayerContextMenu_Opened каждый раз перед показом меню
