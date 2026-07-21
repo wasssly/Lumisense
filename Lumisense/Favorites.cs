@@ -42,16 +42,23 @@ public static class FavoritesManager
 
     public static void SetFavorite(string path, bool isFavorite)
     {
+        bool changed;
+
         if (isFavorite)
         {
-            if (_lookup.Add(path))
-                _order.Add(path);
+            changed = _lookup.Add(path);
+            if (changed) _order.Add(path);
         }
         else
         {
-            if (_lookup.Remove(path))
-                _order.Remove(path);
+            changed = _lookup.Remove(path);
+            if (changed) _order.Remove(path);
         }
+
+        // Уведомляем только когда состояние реально поменялось — а не на каждый вызов (Toggle
+        // всегда меняет, но SetFavorite сама по себе могла быть вызвана и "впустую", например
+        // повторным снятием сердечка с уже не избранного трека).
+        if (changed) FavoritesChangeNotifier.Instance.Bump();
     }
 
     // Переключает состояние "избранное" для трека и возвращает новое состояние — удобно для
@@ -69,4 +76,34 @@ public static class FavoritesManager
     // Возвращает копию, а не сам список, чтобы вызывающий код не мог случайно испортить
     // внутреннее состояние менеджера.
     public static List<string> GetAll() => new(_order);
+}
+
+/// <summary>
+/// Лёгкий bindable-объект, единственная задача которого — дать XAML-биндингам сердечка трека
+/// (см. TrackItemTemplate в MainWindow.xaml, IsFavoriteMultiConverter в Converters.cs) повод
+/// перевычислиться, когда где-то поменялось избранное. Сам путь к файлу трека, на который
+/// завязан основной Binding, никогда не меняется — то есть без этого объекта WPF попросту не
+/// узнал бы, что результат конвертера мог измениться, и единственным способом обновить
+/// сердечки был бы полный пересбор ItemsSource всего плейлиста при КАЖДОМ переключении
+/// избранного. На плейлистах с большим числом треков это было главной причиной подвисания
+/// интерфейса при добавлении трека в избранное.
+/// </summary>
+public sealed class FavoritesChangeNotifier : System.ComponentModel.INotifyPropertyChanged
+{
+    public static readonly FavoritesChangeNotifier Instance = new();
+
+    private FavoritesChangeNotifier() { }
+
+    private int _epoch;
+
+    // Значение само по себе смысла не несёт — важен сам факт PropertyChanged на нём.
+    public int Epoch => _epoch;
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    public void Bump()
+    {
+        _epoch++;
+        PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(nameof(Epoch)));
+    }
 }

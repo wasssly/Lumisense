@@ -96,21 +96,26 @@ public class TrackNumberFromListConverter : IMultiValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>true, если трек (value — путь к файлу, DataContext строки ListView в плейлисте)
-/// сейчас в избранном. Используется в DataTrigger сердечка строки трека (см. MainWindow.xaml) —
-/// по умолчанию показан контур сердечка приглушённым цветом, а при true шаблон переключает его
-/// на закрашенное красное сердечко.
+/// <summary>true, если трек (values[0] — путь к файлу, обычный Binding без Path на DataContext
+/// строки ListView в плейлисте) сейчас в избранном. Используется в DataTrigger сердечка строки
+/// трека (см. TrackItemTemplate в MainWindow.xaml) — по умолчанию показан контур сердечка
+/// приглушённым цветом, а при true шаблон переключает его на закрашенное красное сердечко.
 ///
-/// Состояние берётся из FavoritesManager, а не из самого value, поэтому после переключения
-/// избранного (см. MainWindow.FavoriteButton_Click) нужно заново перепривязать ItemsSource
-/// (см. MainWindow.RefreshPlaylistView) — иначе WPF не узнает, что результат конвертера мог
-/// измениться, и не перевызовет его сам по себе.</summary>
-public class IsFavoriteConverter : IValueConverter
+/// MultiBinding, а не обычный однозначный Binding — второе плечо (values[1]) привязано к
+/// FavoritesChangeNotifier.Instance.Epoch и само по себе не используется, но благодаря ему у
+/// WPF есть повод перевызвать этот конвертер заново, когда избранное где-то поменялось: путь к
+/// файлу трека (values[0]) никогда не меняется сам по себе, поэтому обычный Binding никогда не
+/// перевычислился бы автоматически. Раньше вместо этого приходилось целиком пересобирать
+/// ItemsSource всего плейлиста при каждом клике по сердечку (см. старую версию
+/// MainWindow.RefreshPlaylistView) — на плейлистах с большим числом треков это заметно подвешивало
+/// интерфейс. Теперь обновляются только реально показанные на экране строки, и то только когда
+/// избранное действительно изменилось.</summary>
+public class IsFavoriteMultiConverter : IMultiValueConverter
 {
-    public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
-        => value is string path && FavoritesManager.IsFavorite(path);
+    public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
+        => values.Length > 0 && values[0] is string path && FavoritesManager.IsFavorite(path);
 
-    public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture)
+    public object?[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
 

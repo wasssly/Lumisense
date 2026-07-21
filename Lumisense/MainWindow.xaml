@@ -17,9 +17,127 @@
         <local:ExpandChevronConverter x:Key="ExpandChevronConverter" />
         <local:TrackNumberConverter x:Key="TrackNumberConverter" />
         <local:TrackNumberFromListConverter x:Key="TrackNumberFromListConverter" />
-        <local:IsFavoriteConverter x:Key="IsFavoriteConverter" />
+        <local:IsFavoriteMultiConverter x:Key="IsFavoriteMultiConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
+
+        <!-- Шаблон строки трека — общий и для обычных групп плейлиста (вложенный ListView
+             внутри PlaylistFoldersControl), и для отдельного FavoritesTrackListView
+             виртуального плейлиста "Избранное". Раньше был только один, inline-объявленный
+             прямо внутри группы; вынесен сюда ресурсом, чтобы не дублировать одну и ту же
+             разметку строки трека дважды. -->
+        <DataTemplate x:Key="TrackItemTemplate">
+            <Grid Tag="{Binding RelativeSource={RelativeSource AncestorType=ListView}, Path=DataContext}">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="30" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Grid.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Воспроизвести" Click="PlayTrackMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconPlay" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconHeart" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="Показать в проводнике" Click="ShowInExplorerMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Копировать путь к файлу" Click="CopyPathMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Копировать файл" Click="CopyFileMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <Separator />
+                        <MenuItem Header="Свойства" Click="TrackPropertiesMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
+                        <MenuItem Header="Изменить теги" Click="EditTagsMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconEdit" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <Separator />
+                        <MenuItem Header="Убрать из плейлиста" Click="RemoveTrackMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconDelete" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Удалить трек с диска…" Click="DeleteTrackFromDiskMenuItem_Click"
+                                  CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
+                                  Foreground="#E53935">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconDelete" Size="13" Foreground="#E53935" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </Grid.ContextMenu>
+
+                <Grid Grid.Column="0" Width="26" Margin="0,0,4,0">
+                    <TextBlock x:Name="TrackIndexText"
+                               FontSize="11" Opacity="0.5"
+                               HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource TrackNumberFromListConverter}">
+                                <Binding />
+                                <Binding RelativeSource="{RelativeSource AncestorType=ListView}" Path="ItemsSource" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                    <local:SvgPathIcon x:Name="TrackPlayIcon" Icon="IconPlay" Size="10"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Visibility="Collapsed" />
+                </Grid>
+
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Converter={StaticResource FileNameConverter}}"
+                           VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+
+                <!-- Сердечко "добавить/убрать из избранного" на строке трека. Контур,
+                     приглушённый — трек не избранный; закрашенное красное — избранный
+                     (переключается DataTrigger-ом ниже по IsFavoriteMultiConverter). -->
+                <ui:Button x:Name="TrackFavoriteButton" Grid.Column="2" Appearance="Transparent"
+                           Width="26" Height="26" Padding="0" Margin="4,0,0,0"
+                           Click="FavoriteButton_Click"
+                           ToolTip="Добавить/убрать из избранного">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5" />
+                    </ui:Button.Icon>
+                </ui:Button>
+            </Grid>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsMouseOver}" Value="True">
+                    <Setter TargetName="TrackIndexText" Property="Visibility" Value="Collapsed" />
+                    <Setter TargetName="TrackPlayIcon" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <!-- MultiBinding, а не обычный Binding по одному только пути к файлу — путь у
+                     трека никогда не меняется, поэтому обычный Binding никогда бы не
+                     перевычислился заново сам по себе при изменении избранного, и сердечко
+                     обновлялось бы только через полный пересбор ItemsSource всего плейлиста
+                     (см. FavoritesChangeNotifier — второе плечо этого MultiBinding как раз и
+                     даёт триггеру повод перевычислиться, когда избранное действительно
+                     поменялось, независимо от того, у какого именно трека). -->
+                <DataTrigger Value="True">
+                    <DataTrigger.Binding>
+                        <MultiBinding Converter="{StaticResource IsFavoriteMultiConverter}">
+                            <Binding />
+                            <Binding Source="{x:Static local:FavoritesChangeNotifier.Instance}" Path="Epoch" />
+                        </MultiBinding>
+                    </DataTrigger.Binding>
+                    <Setter TargetName="TrackFavoriteIcon" Property="Icon" Value="IconHeartFilled" />
+                    <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#E53935" />
+                    <Setter TargetName="TrackFavoriteIcon" Property="Opacity" Value="1" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid x:Name="RootGrid">
@@ -355,220 +473,143 @@
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
                               ScrollChanged="PlaylistScrollViewer_ScrollChanged">
-                    <ItemsControl x:Name="PlaylistFoldersControl">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <Border Margin="2,2,2,10" CornerRadius="8" Padding="10,8"
-                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
-                                    <StackPanel>
-                                        <!-- Заголовок группы: чекбокс включения, шеврон сворачивания,
-                                             название папки, счётчик, удаление -->
-                                        <Grid Margin="0,0,0,4">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="Auto" />
-                                        </Grid.ColumnDefinitions>
+                    <!-- Обычный плейлист (PlaylistFoldersControl) и виртуальный плейлист
+                         "Избранное" (FavoritesTrackListView) лежат друг на друге в одном Grid и
+                         переключаются видимостью (см. MainWindow.SetFavoritesViewActive), а не
+                         тем, что один и тот же ItemsControl каждый раз перепривязывается то к
+                         _folders, то к списку избранного. Раньше именно перепривязка
+                         ItemsSource была причиной подвисания при каждом переходе туда и
+                         обратно: WPF пересоздавал контейнеры ВСЕХ папок и треков обычного
+                         плейлиста целиком, даже когда сам он вообще не менялся. Теперь
+                         PlaylistFoldersControl всегда привязан к _folders и никогда не
+                         трогается ради избранного — переключение между двумя списками ничего
+                         не пересобирает. -->
+                    <Grid>
+                        <ItemsControl x:Name="PlaylistFoldersControl">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="2,2,2,10" CornerRadius="8" Padding="10,8"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                        <StackPanel>
+                                            <!-- Заголовок группы: чекбокс включения, шеврон сворачивания,
+                                                 название папки, счётчик, удаление -->
+                                            <Grid Margin="0,0,0,4">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
 
-                                        <!-- У виртуальной группы "Избранное" нет смысла включать/выключать —
-                                             она одна и не участвует в списке обычных групп плейлиста. -->
-                                        <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,4,0"
-                                                  IsChecked="{Binding IsEnabled, Mode=TwoWay}"
-                                                  Visibility="{Binding IsFavoritesGroup, Converter={StaticResource InverseBoolToVisibilityConverter}}"
-                                                  ToolTip="Включить/выключить эту папку в проигрывании" />
+                                            <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,4,0"
+                                                      IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                      ToolTip="Включить/выключить эту папку в проигрывании" />
 
-                                        <ui:Button Grid.Column="1" Appearance="Secondary"
-                                                   Width="26" Height="26" Margin="0,0,4,0" Padding="0"
-                                                   Click="ToggleFolderExpand_Click"
-                                                   ToolTip="Свернуть/развернуть список треков">
-                                            <ui:Button.Icon>
-                                                <local:SvgPathIcon Icon="{Binding IsExpanded, Converter={StaticResource ExpandChevronConverter}}" />
-                                            </ui:Button.Icon>
-                                        </ui:Button>
+                                            <ui:Button Grid.Column="1" Appearance="Secondary"
+                                                       Width="26" Height="26" Margin="0,0,4,0" Padding="0"
+                                                       Click="ToggleFolderExpand_Click"
+                                                       ToolTip="Свернуть/развернуть список треков">
+                                                <ui:Button.Icon>
+                                                    <local:SvgPathIcon Icon="{Binding IsExpanded, Converter={StaticResource ExpandChevronConverter}}" />
+                                                </ui:Button.Icon>
+                                            </ui:Button>
 
-                                        <StackPanel Grid.Column="2" VerticalAlignment="Center"
-                                                    Opacity="{Binding IsEnabled, Converter={StaticResource BoolToOpacityConverter}}">
-                                            <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
-                                                       TextTrimming="CharacterEllipsis" />
-                                            <TextBlock Text="{Binding SubtitleText}" FontSize="10" Opacity="0.6"
-                                                       TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
+                                            <StackPanel Grid.Column="2" VerticalAlignment="Center"
+                                                        Opacity="{Binding IsEnabled, Converter={StaticResource BoolToOpacityConverter}}">
+                                                <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock Text="{Binding SubtitleText}" FontSize="10" Opacity="0.6"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
 
-                                        <!-- Только у "Отдельные файлы" и у папок, созданных вручную (не привязанных
-                                             к реальной папке на диске) — добавить файлы прямо в эту группу -->
-                                        <ui:Button Grid.Column="3" Appearance="Secondary"
-                                                   Width="28" Height="28" Padding="0" Margin="0,0,4,0"
-                                                   Click="AddFilesToFolderButton_Click"
-                                                   Visibility="{Binding CanAddFilesDirectly, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   ToolTip="Добавить файлы в эту папку">
-                                            <ui:Button.Icon>
-                                                <local:SvgPathIcon Icon="IconAddFile" Size="13" />
-                                            </ui:Button.Icon>
-                                        </ui:Button>
+                                            <!-- Только у "Отдельные файлы" и у папок, созданных вручную (не привязанных
+                                                 к реальной папке на диске) — добавить файлы прямо в эту группу -->
+                                            <ui:Button Grid.Column="3" Appearance="Secondary"
+                                                       Width="28" Height="28" Padding="0" Margin="0,0,4,0"
+                                                       Click="AddFilesToFolderButton_Click"
+                                                       Visibility="{Binding CanAddFilesDirectly, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                       ToolTip="Добавить файлы в эту папку">
+                                                <ui:Button.Icon>
+                                                    <local:SvgPathIcon Icon="IconAddFile" Size="13" />
+                                                </ui:Button.Icon>
+                                            </ui:Button>
 
-                                        <!-- Только у групп, привязанных к реальной папке на диске — проверить,
-                                             не появились ли в ней новые файлы после добавления в плейлист
-                                             (см. RescanFolderButton_Click) -->
-                                        <ui:Button Grid.Column="4" Appearance="Secondary"
-                                                   Width="28" Height="28" Padding="0" Margin="0,0,4,0"
-                                                   Click="RescanFolderButton_Click"
-                                                   Visibility="{Binding CanRescan, Converter={StaticResource BoolToVisibilityConverter}}"
-                                                   ToolTip="Проверить папку на новые треки">
-                                            <ui:Button.Icon>
-                                                <local:SvgPathIcon Icon="IconRefresh" Size="13" />
-                                            </ui:Button.Icon>
-                                        </ui:Button>
+                                            <!-- Только у групп, привязанных к реальной папке на диске — проверить,
+                                                 не появились ли в ней новые файлы после добавления в плейлист
+                                                 (см. RescanFolderButton_Click) -->
+                                            <ui:Button Grid.Column="4" Appearance="Secondary"
+                                                       Width="28" Height="28" Padding="0" Margin="0,0,4,0"
+                                                       Click="RescanFolderButton_Click"
+                                                       Visibility="{Binding CanRescan, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                       ToolTip="Проверить папку на новые треки">
+                                                <ui:Button.Icon>
+                                                    <local:SvgPathIcon Icon="IconRefresh" Size="13" />
+                                                </ui:Button.Icon>
+                                            </ui:Button>
 
-                                        <!-- Виртуальную группу "Избранное" саму нельзя убрать из плейлиста —
-                                             только снять сердечко с отдельных треков внутри неё. -->
-                                        <ui:Button Grid.Column="5" Appearance="Secondary"
-                                                   Width="28" Height="28" Padding="0"
-                                                   Click="RemoveFolderButton_Click"
-                                                   Visibility="{Binding IsFavoritesGroup, Converter={StaticResource InverseBoolToVisibilityConverter}}"
-                                                   ToolTip="Убрать эту папку из плейлиста">
-                                            <ui:Button.Icon>
-                                                <local:SvgPathIcon Icon="IconDelete" />
-                                            </ui:Button.Icon>
-                                        </ui:Button>
-                                    </Grid>
+                                            <ui:Button Grid.Column="5" Appearance="Secondary"
+                                                       Width="28" Height="28" Padding="0"
+                                                       Click="RemoveFolderButton_Click"
+                                                       ToolTip="Убрать эту папку из плейлиста">
+                                                <ui:Button.Icon>
+                                                    <local:SvgPathIcon Icon="IconDelete" />
+                                                </ui:Button.Icon>
+                                            </ui:Button>
+                                        </Grid>
 
-                                    <!-- Треки внутри группы. Подсветка текущего играющего трека — это то же самое
-                                         выделение строки (IsSelected), что появляется при обычном клике мышью по
-                                         треку (см. общий Style TargetType="ListViewItem" в App.xaml — скруглённая
-                                         акцентная заливка). Никакой отдельной подсветки для "текущего трека" тут
-                                         нет: код в MainWindow.xaml.cs при каждой смене трека сам выставляет
-                                         SelectedItem нужной строки — то есть трек оказывается выделен ТОЧНО так же,
-                                         как если бы пользователь кликнул по нему сам.
+                                        <!-- Треки внутри группы. Подсветка текущего играющего трека — это то же самое
+                                             выделение строки (IsSelected), что появляется при обычном клике мышью по
+                                             треку (см. общий Style TargetType="ListViewItem" в App.xaml — скруглённая
+                                             акцентная заливка). Никакой отдельной подсветки для "текущего трека" тут
+                                             нет: код в MainWindow.xaml.cs при каждой смене трека сам выставляет
+                                             SelectedItem нужной строки — то есть трек оказывается выделен ТОЧНО так же,
+                                             как если бы пользователь кликнул по нему сам.
 
-                                         Разделение треков между собой раньше держалось на тонкой линии снизу
-                                         каждой строки — визуально это спорило со скруглёнными карточками
-                                         hover/selected из App.xaml (линия + скруглённый акцент одновременно).
-                                         Вместо линий — построчная нумерация слева (как в Spotify/Apple Music):
-                                         она и так однозначно отделяет одну строку от другой, а на наведении
-                                         мышью сама превращается в иконку воспроизведения, подсказывая, что по
-                                         строке можно кликнуть. Номер берётся из AlternationIndex ListView
-                                         (AlternationCount ниже намеренно завышен, чтобы индекс не зацикливался
-                                         на реалистичных размерах плейлиста). -->
-                                    <ListView Margin="0" Background="Transparent" BorderThickness="0"
-                                              ItemsSource="{Binding Tracks}"
-                                              AlternationCount="100000"
-                                              Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}"
-                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
-                                              ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                                              Opacity="{Binding IsEnabled, Converter={StaticResource BoolToOpacityConverter}}"
-                                              MouseDoubleClick="PlaylistTrackList_MouseDoubleClick"
-                                              PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel">
-                                        <ListView.ItemTemplate>
-                                            <DataTemplate>
-                                                <Grid Tag="{Binding RelativeSource={RelativeSource AncestorType=ListView}, Path=DataContext}">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="30" />
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <Grid.ContextMenu>
-                                                        <ContextMenu>
-                                                            <MenuItem Header="Воспроизвести" Click="PlayTrackMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
-                                                                <MenuItem.Icon>
-                                                                    <local:SvgPathIcon Icon="IconPlay" Size="13" />
-                                                                </MenuItem.Icon>
-                                                            </MenuItem>
-                                                            <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
-                                                                <MenuItem.Icon>
-                                                                    <local:SvgPathIcon Icon="IconHeart" Size="13" />
-                                                                </MenuItem.Icon>
-                                                            </MenuItem>
-                                                            <Separator />
-                                                            <MenuItem Header="Показать в проводнике" Click="ShowInExplorerMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                                            <MenuItem Header="Копировать путь к файлу" Click="CopyPathMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                                            <MenuItem Header="Копировать файл" Click="CopyFileMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                                            <Separator />
-                                                            <MenuItem Header="Свойства" Click="TrackPropertiesMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}" />
-                                                            <MenuItem Header="Изменить теги" Click="EditTagsMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
-                                                                <MenuItem.Icon>
-                                                                    <local:SvgPathIcon Icon="IconEdit" Size="13" />
-                                                                </MenuItem.Icon>
-                                                            </MenuItem>
-                                                            <Separator />
-                                                            <MenuItem Header="Убрать из плейлиста" Click="RemoveTrackMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
-                                                                <MenuItem.Icon>
-                                                                    <local:SvgPathIcon Icon="IconDelete" Size="13" />
-                                                                </MenuItem.Icon>
-                                                            </MenuItem>
-                                                            <MenuItem Header="Удалить трек с диска…" Click="DeleteTrackFromDiskMenuItem_Click"
-                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}"
-                                                                      Foreground="#E53935">
-                                                                <MenuItem.Icon>
-                                                                    <local:SvgPathIcon Icon="IconDelete" Size="13" Foreground="#E53935" />
-                                                                </MenuItem.Icon>
-                                                            </MenuItem>
-                                                        </ContextMenu>
-                                                    </Grid.ContextMenu>
+                                             Разделение треков между собой раньше держалось на тонкой линии снизу
+                                             каждой строки — визуально это спорило со скруглёнными карточками
+                                             hover/selected из App.xaml (линия + скруглённый акцент одновременно).
+                                             Вместо линий — построчная нумерация слева (как в Spotify/Apple Music):
+                                             она и так однозначно отделяет одну строку от другой, а на наведении
+                                             мышью сама превращается в иконку воспроизведения, подсказывая, что по
+                                             строке можно кликнуть. Номер берётся из AlternationIndex ListView
+                                             (AlternationCount ниже намеренно завышен, чтобы индекс не зацикливался
+                                             на реалистичных размерах плейлиста). -->
+                                        <ListView Margin="0" Background="Transparent" BorderThickness="0"
+                                                  ItemsSource="{Binding Tracks}"
+                                                  AlternationCount="100000"
+                                                  Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVisibilityConverter}}"
+                                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                                  Opacity="{Binding IsEnabled, Converter={StaticResource BoolToOpacityConverter}}"
+                                                  MouseDoubleClick="PlaylistTrackList_MouseDoubleClick"
+                                                  PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel"
+                                                  ItemTemplate="{StaticResource TrackItemTemplate}" />
+                                    </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
 
-                                                    <Grid Grid.Column="0" Width="26" Margin="0,0,4,0">
-                                                        <TextBlock x:Name="TrackIndexText"
-                                                                   FontSize="11" Opacity="0.5"
-                                                                   HorizontalAlignment="Center" VerticalAlignment="Center">
-                                                            <TextBlock.Text>
-                                                                <MultiBinding Converter="{StaticResource TrackNumberFromListConverter}">
-                                                                    <Binding />
-                                                                    <Binding RelativeSource="{RelativeSource AncestorType=ListView}" Path="ItemsSource" />
-                                                                </MultiBinding>
-                                                            </TextBlock.Text>
-                                                        </TextBlock>
-                                                        <local:SvgPathIcon x:Name="TrackPlayIcon" Icon="IconPlay" Size="10"
-                                                                           HorizontalAlignment="Center" VerticalAlignment="Center"
-                                                                           Visibility="Collapsed" />
-                                                    </Grid>
-
-                                                    <TextBlock Grid.Column="1"
-                                                               Text="{Binding Converter={StaticResource FileNameConverter}}"
-                                                               VerticalAlignment="Center"
-                                                               TextTrimming="CharacterEllipsis" />
-
-                                                    <!-- Сердечко "добавить/убрать из избранного" на строке трека. Контур,
-                                                         приглушённый — трек не избранный; закрашенное красное — избранный
-                                                         (переключается DataTrigger-ом ниже по IsFavoriteConverter). -->
-                                                    <ui:Button x:Name="TrackFavoriteButton" Grid.Column="2" Appearance="Transparent"
-                                                               Width="26" Height="26" Padding="0" Margin="4,0,0,0"
-                                                               Click="FavoriteButton_Click"
-                                                               ToolTip="Добавить/убрать из избранного">
-                                                        <ui:Button.Icon>
-                                                            <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5" />
-                                                        </ui:Button.Icon>
-                                                    </ui:Button>
-                                                </Grid>
-                                                <DataTemplate.Triggers>
-                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsMouseOver}" Value="True">
-                                                        <Setter TargetName="TrackIndexText" Property="Visibility" Value="Collapsed" />
-                                                        <Setter TargetName="TrackPlayIcon" Property="Visibility" Value="Visible" />
-                                                    </DataTrigger>
-                                                    <DataTrigger Binding="{Binding Converter={StaticResource IsFavoriteConverter}}" Value="True">
-                                                        <Setter TargetName="TrackFavoriteIcon" Property="Icon" Value="IconHeartFilled" />
-                                                        <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#E53935" />
-                                                        <Setter TargetName="TrackFavoriteIcon" Property="Opacity" Value="1" />
-                                                    </DataTrigger>
-                                                </DataTemplate.Triggers>
-                                            </DataTemplate>
-                                        </ListView.ItemTemplate>
-                                    </ListView>
-                                </StackPanel>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                        <!-- Виртуальный плейлист "Избранное" — отдельный, плоский список без обёртки
+                             "группы" (чекбокс/пересканирование/удаление папки к нему просто не
+                             применимы, см. заголовок "Избранное" в тулбаре плейлиста вместо этого).
+                             DataContext выставлен в code-behind на _favoritesFolder (см.
+                             MainWindow constructor) — тот же PlaylistFolder, что используется и для
+                             ItemsSource ниже (см. RefreshFavoritesTrackList), так что весь код
+                             контекстного меню/двойного клика, ожидающий DataContext=PlaylistFolder,
+                             работает без изменений. -->
+                        <ListView x:Name="FavoritesTrackListView" Margin="0" Background="Transparent" BorderThickness="0"
+                                  AlternationCount="100000"
+                                  Visibility="Collapsed"
+                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                  MouseDoubleClick="PlaylistTrackList_MouseDoubleClick"
+                                  PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel"
+                                  ItemTemplate="{StaticResource TrackItemTemplate}" />
+                    </Grid>
+                </ScrollViewer>
 
                 <!-- Свой скроллбар с нуля: никаких ScrollBar/Track — просто дорожка (Grid) и
                      ползунок (Border), позиция и размер которого целиком считаются вручную в

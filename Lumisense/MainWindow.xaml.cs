@@ -155,6 +155,15 @@ public partial class MainWindow : FluentWindow
         InitializeComponent();
         IconResources.SetOnAccent(PlayPauseIcon, true);
         FavoritesManager.Initialize(_settings.FavoriteTracks);
+
+        // FavoritesTrackListView — самостоятельный ListView вне PlaylistFoldersControl (см.
+        // MainWindow.xaml), поэтому DataContext ему никто не проставит через биндинг сам —
+        // выставляем один раз вручную на _favoritesFolder, чтобы весь код контекстного
+        // меню/двойного клика по треку, ожидающий DataContext=PlaylistFolder (см.
+        // PlaylistTrackList_MouseDoubleClick, RemoveTrackMenuItem_Click и т.д.), работал для
+        // него точно так же, как и для обычных папок плейлиста.
+        FavoritesTrackListView.DataContext = _favoritesFolder;
+
         _progressTimer.Tick += ProgressTimer_Tick;
         ApplySettingsOnStartup();
 
@@ -1261,24 +1270,17 @@ public partial class MainWindow : FluentWindow
         TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
     }
 
-    // Пока открыт виртуальный плейлист "Избранное", здесь показывается не _folders, а один
-    // _favoritesFolder, каждый раз пересобираемый заново из FavoritesManager — так его список
-    // треков (и, как следствие, сердечки/навигация "Далее-Назад") всегда актуален, даже если
-    // избранное поменяли где-то ещё (например, сняли сердечко с трека в обычном плейлисте, пока
-    // сам виртуальный плейлист был открыт в другом окне — мини-плеере это не грозит, но принцип
-    // тот же, что и у остального кода: не хранить то, что можно на лету вычислить).
+    // Обычный плейлист — теперь ВСЕГДА привязан к _folders, независимо от того, открыт ли сейчас
+    // виртуальный плейлист "Избранное" (см. SetFavoritesViewActive: между ними переключается
+    // только видимость, PlaylistFoldersControl и FavoritesTrackListView — два независимых
+    // элемента). Раньше этот метод при открытом "Избранном" перепривязывал ItemsSource ЭТОГО ЖЕ
+    // ItemsControl то к _folders, то к списку избранного — а значит вызывался и на каждый клик
+    // по сердечку тоже, пересобирая контейнеры вообще всех папок и треков обычного плейлиста
+    // целиком ради одной иконки. Теперь он вызывается только когда реально меняется сам список
+    // _folders (добавили/убрали трек или папку, пересканировали и т.п.) — то есть ровно тогда,
+    // когда полный пересбор действительно нужен.
     private void RefreshPlaylistView()
     {
-        if (_isFavoritesView)
-        {
-            _favoritesFolder.Tracks.Clear();
-            _favoritesFolder.Tracks.AddRange(FavoritesManager.GetAll());
-
-            PlaylistFoldersControl.ItemsSource = null;
-            PlaylistFoldersControl.ItemsSource = new[] { _favoritesFolder };
-            return;
-        }
-
         PlaylistFoldersControl.ItemsSource = null;
         PlaylistFoldersControl.ItemsSource = _folders;
     }
@@ -1287,10 +1289,18 @@ public partial class MainWindow : FluentWindow
 
     private void FavoritesButton_Click(object sender, RoutedEventArgs e) => SetFavoritesViewActive(!_isFavoritesView);
 
-    // Переключает панель плейлиста между обычным видом (группы _folders) и виртуальным
-    // плейлистом "Избранное". Кнопки "Добавить"/"Очистить" в этом режиме скрыты — в виртуальную
-    // группу нельзя добавлять файлы напрямую и нечего "очищать" (это не настоящая группа, а
-    // производная от сердечек на треках, см. PlaylistFolder.IsFavoritesGroup).
+    // Переключает панель плейлиста между обычным видом (PlaylistFoldersControl, привязан к
+    // _folders) и виртуальным плейлистом "Избранное" (FavoritesTrackListView) — оба уже лежат в
+    // разметке друг на друге (см. MainWindow.xaml), переключается только Visibility, а
+    // PlaylistFoldersControl вообще не трогается. Раньше здесь стоял единственный общий
+    // ItemsControl, который при каждом переходе перепривязывался то к _folders, то к списку
+    // избранного — то есть WPF пересоздавал контейнеры ВСЕХ папок и треков обычного плейлиста
+    // заново, даже если сам он не менялся ни на волос. На большой библиотеке это было заметно и
+    // подвешивало интерфейс на каждый переход туда и обратно.
+    //
+    // Кнопки "Добавить"/"Очистить" в режиме избранного скрыты — в виртуальную группу нельзя
+    // добавлять файлы напрямую и нечего "очищать" (это не настоящая группа, а производная от
+    // сердечек на треках, см. PlaylistFolder.IsFavoritesGroup).
     private void SetFavoritesViewActive(bool active)
     {
         _isFavoritesView = active;
@@ -1303,7 +1313,25 @@ public partial class MainWindow : FluentWindow
         AddButton.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
         ClearPlaylistButton.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
 
-        RefreshPlaylistView();
+        PlaylistFoldersControl.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+        FavoritesTrackListView.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+
+        if (active)
+            RefreshFavoritesTrackList();
+    }
+
+    // Пересобирает СОДЕРЖИМОЕ только виртуального плейлиста "Избранное" — не трогая
+    // PlaylistFoldersControl вообще. Стоимость пропорциональна числу избранных треков, а не
+    // размеру всей библиотеки, поэтому вызывать его можно гораздо чаще, чем раньше можно было
+    // позволить себе полный RefreshPlaylistView().
+    private void RefreshFavoritesTrackList()
+    {
+        var favorites = FavoritesManager.GetAll();
+
+        _favoritesFolder.Tracks.Clear();
+        _favoritesFolder.Tracks.AddRange(favorites);
+
+        FavoritesTrackListView.ItemsSource = favorites;
     }
 
     // Сердечко на строке трека (см. TrackFavoriteButton в MainWindow.xaml) и одноимённый пункт
@@ -1313,15 +1341,30 @@ public partial class MainWindow : FluentWindow
     private void FavoriteButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: string filePath }) return;
-        FavoritesManager.Toggle(filePath);
-        RefreshPlaylistView();
+        ToggleFavoriteAndRefresh(filePath);
     }
 
     private void FavoriteMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
+        ToggleFavoriteAndRefresh(filePath);
+    }
+
+    // Переключает избранное и обновляет UI МИНИМАЛЬНО необходимым способом. Сердечки во всех
+    // сейчас показанных строках плейлиста (и обычного, и "Избранного") перерисовываются сами —
+    // это делает FavoritesChangeNotifier, на который завязан DataTrigger сердечка в
+    // TrackItemTemplate (см. MainWindow.xaml и IsFavoriteMultiConverter в Converters.cs).
+    // Полный пересбор ItemsSource здесь не нужен и раньше был главной причиной подвисания
+    // плеера при каждом клике по сердечку. Единственное, что действительно нужно пересобрать
+    // вручную, — сам СПИСОК виртуального плейлиста "Избранное" (не сердечки в нём, а то, какие
+    // строки там вообще есть), и то только пока он открыт: трек должен тут же исчезнуть из
+    // него, как только с него сняли сердечко.
+    private void ToggleFavoriteAndRefresh(string filePath)
+    {
         FavoritesManager.Toggle(filePath);
-        RefreshPlaylistView();
+
+        if (_isFavoritesView)
+            RefreshFavoritesTrackList();
     }
 
     private void ToggleFolderExpand_Click(object sender, RoutedEventArgs e)
@@ -1553,13 +1596,13 @@ public partial class MainWindow : FluentWindow
         if (menuItem.CommandParameter is not PlaylistFolder folder) return;
 
         // В виртуальной группе "Избранное" своего списка треков по сути нет — она каждый раз
-        // пересобирается из FavoritesManager (см. RefreshPlaylistView), поэтому "убрать из
-        // плейлиста" здесь означает "снять сердечко", а не удаление из folder.Tracks — иначе
+        // пересобирается из FavoritesManager (см. RefreshFavoritesTrackList), поэтому "убрать
+        // из плейлиста" здесь означает "снять сердечко", а не удаление из folder.Tracks — иначе
         // трек тут же вернулся бы в список при следующем обновлении.
         if (folder.IsFavoritesGroup)
         {
             FavoritesManager.SetFavorite(filePath, false);
-            RefreshPlaylistView();
+            if (_isFavoritesView) RefreshFavoritesTrackList();
             return;
         }
 
@@ -1636,7 +1679,11 @@ public partial class MainWindow : FluentWindow
             folder.Tracks.RemoveAll(t => t == filePath);
         FavoritesManager.SetFavorite(filePath, false);
 
+        // Действие редкое (явное подтверждённое удаление файла с диска, не частый клик по
+        // сердечку) — полный пересбор обоих списков здесь не проблема с точки зрения
+        // производительности, а вот забыть обновить один из них было бы багом.
         RefreshPlaylistView();
+        if (_isFavoritesView) RefreshFavoritesTrackList();
     }
 
     // ---------- Загрузка и воспроизведение ----------
@@ -1746,26 +1793,45 @@ public partial class MainWindow : FluentWindow
     {
         System.Windows.Controls.ListView? activeListView = null;
 
-        if (folder != null && trackPath != null &&
-            PlaylistFoldersControl.ItemContainerGenerator.ContainerFromItem(folder) is FrameworkElement folderContainer &&
-            FindVisualChild<System.Windows.Controls.ListView>(folderContainer) is { } listView)
+        if (_isFavoritesView)
         {
-            listView.UpdateLayout();
-            listView.SelectedItem = trackPath;
-            activeListView = listView;
+            // FavoritesTrackListView — самостоятельный ListView, не вложенный в
+            // PlaylistFoldersControl (см. MainWindow.xaml) — его не нужно искать через
+            // ItemContainerGenerator какой-то ещё папки, он у нас уже есть напрямую.
+            if (folder != null && trackPath != null)
+            {
+                FavoritesTrackListView.UpdateLayout();
+                FavoritesTrackListView.SelectedItem = trackPath;
+                activeListView = FavoritesTrackListView;
+            }
+            else
+            {
+                FavoritesTrackListView.SelectedIndex = -1;
+            }
         }
-
-        // Снимаем выделение во всех остальных группах — иначе там осталась бы висеть подсветка
-        // от предыдущего трека или от случайного клика пользователя по другой группе.
-        IEnumerable<PlaylistFolder> shownFolders = _isFavoritesView ? new[] { _favoritesFolder } : _folders;
-        foreach (var otherFolder in shownFolders)
+        else
         {
-            if (PlaylistFoldersControl.ItemContainerGenerator.ContainerFromItem(otherFolder) is not FrameworkElement otherContainer)
-                continue;
-            if (FindVisualChild<System.Windows.Controls.ListView>(otherContainer) is not { } otherListView)
-                continue;
-            if (!ReferenceEquals(otherListView, activeListView))
-                otherListView.SelectedIndex = -1;
+            if (folder != null && trackPath != null &&
+                PlaylistFoldersControl.ItemContainerGenerator.ContainerFromItem(folder) is FrameworkElement folderContainer &&
+                FindVisualChild<System.Windows.Controls.ListView>(folderContainer) is { } listView)
+            {
+                listView.UpdateLayout();
+                listView.SelectedItem = trackPath;
+                activeListView = listView;
+            }
+
+            // Снимаем выделение во всех остальных группах — иначе там осталась бы висеть
+            // подсветка от предыдущего трека или от случайного клика пользователя по другой
+            // группе.
+            foreach (var otherFolder in _folders)
+            {
+                if (PlaylistFoldersControl.ItemContainerGenerator.ContainerFromItem(otherFolder) is not FrameworkElement otherContainer)
+                    continue;
+                if (FindVisualChild<System.Windows.Controls.ListView>(otherContainer) is not { } otherListView)
+                    continue;
+                if (!ReferenceEquals(otherListView, activeListView))
+                    otherListView.SelectedIndex = -1;
+            }
         }
 
         if (activeListView == null || trackPath == null) return;
