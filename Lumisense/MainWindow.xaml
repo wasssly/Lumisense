@@ -17,7 +17,9 @@
         <local:ExpandChevronConverter x:Key="ExpandChevronConverter" />
         <local:TrackNumberConverter x:Key="TrackNumberConverter" />
         <local:TrackNumberFromListConverter x:Key="TrackNumberFromListConverter" />
+        <local:IsFavoriteConverter x:Key="IsFavoriteConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
     </Window.Resources>
 
     <Grid x:Name="RootGrid">
@@ -260,6 +262,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <!-- Скрывает/показывает весь блок плейлиста целиком (не путать с шевроном
@@ -272,12 +275,25 @@
                 </ui:Button.Icon>
             </ui:Button>
 
-            <TextBlock Grid.Column="1" Text="Плейлист" FontSize="14" FontWeight="SemiBold"
+            <TextBlock x:Name="PlaylistHeaderText" Grid.Column="1" Text="Плейлист" FontSize="14" FontWeight="SemiBold"
                        VerticalAlignment="Center" Opacity="0.85" />
 
+            <!-- Переключает показ обычного плейлиста на виртуальный плейлист "Избранное"
+                 (собирается на лету из треков, отмеченных сердечком, см. FavoritesManager) и
+                 обратно. Активное состояние подсвечено акцентным фоном (Appearance="Primary"),
+                 как и у ShuffleButton/RepeatButton — см. MainWindow.SetFavoritesViewActive. -->
+            <ui:Button Grid.Column="2" x:Name="FavoritesButton" Appearance="Secondary"
+                       Width="32" Height="32" Padding="0" Margin="4,0,0,0"
+                       Click="FavoritesButton_Click" ToolTip="Избранное">
+                <ui:Button.Icon>
+                    <local:SvgPathIcon x:Name="FavoritesButtonIcon" Icon="IconHeart" Size="15" />
+                </ui:Button.Icon>
+            </ui:Button>
+
             <!-- Одна кнопка вместо прежних "Файлы"/"Папка": клик открывает её собственное
-                 контекстное меню с выбором, что именно добавлять. -->
-            <ui:Button Grid.Column="2" x:Name="AddButton" Appearance="Secondary"
+                 контекстное меню с выбором, что именно добавлять. Скрыта, пока открыт
+                 виртуальный плейлист "Избранное" — добавлять файлы напрямую в него нельзя. -->
+            <ui:Button Grid.Column="3" x:Name="AddButton" Appearance="Secondary"
                        Content="Добавить" Margin="4,0"
                        Click="AddButton_Click" ToolTip="Добавить файлы или папку">
                 <ui:Button.Icon>
@@ -306,7 +322,7 @@
                 </ui:Button.ContextMenu>
             </ui:Button>
 
-            <ui:Button Grid.Column="3" x:Name="ClearPlaylistButton" Appearance="Secondary"
+            <ui:Button Grid.Column="4" x:Name="ClearPlaylistButton" Appearance="Secondary"
                        Width="32" Height="32" Padding="0" Margin="4,0,0,0"
                        Click="ClearPlaylistButton_Click" ToolTip="Очистить плейлист">
                 <ui:Button.Icon>
@@ -314,7 +330,7 @@
                 </ui:Button.Icon>
             </ui:Button>
 
-            <ui:Button Grid.Column="4" x:Name="SettingsButton" Appearance="Secondary"
+            <ui:Button Grid.Column="5" x:Name="SettingsButton" Appearance="Secondary"
                        Width="32" Height="32" Padding="0" Margin="4,0,0,0"
                        Click="SettingsButton_Click" ToolTip="Настройки">
                 <ui:Button.Icon>
@@ -357,8 +373,11 @@
                                                 <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
 
+                                        <!-- У виртуальной группы "Избранное" нет смысла включать/выключать —
+                                             она одна и не участвует в списке обычных групп плейлиста. -->
                                         <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,4,0"
                                                   IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                                                  Visibility="{Binding IsFavoritesGroup, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                                   ToolTip="Включить/выключить эту папку в проигрывании" />
 
                                         <ui:Button Grid.Column="1" Appearance="Secondary"
@@ -403,9 +422,12 @@
                                             </ui:Button.Icon>
                                         </ui:Button>
 
+                                        <!-- Виртуальную группу "Избранное" саму нельзя убрать из плейлиста —
+                                             только снять сердечко с отдельных треков внутри неё. -->
                                         <ui:Button Grid.Column="5" Appearance="Secondary"
                                                    Width="28" Height="28" Padding="0"
                                                    Click="RemoveFolderButton_Click"
+                                                   Visibility="{Binding IsFavoritesGroup, Converter={StaticResource InverseBoolToVisibilityConverter}}"
                                                    ToolTip="Убрать эту папку из плейлиста">
                                             <ui:Button.Icon>
                                                 <local:SvgPathIcon Icon="IconDelete" />
@@ -445,6 +467,7 @@
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="30" />
                                                         <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <Grid.ContextMenu>
                                                         <ContextMenu>
@@ -452,6 +475,12 @@
                                                                       CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
                                                                 <MenuItem.Icon>
                                                                     <local:SvgPathIcon Icon="IconPlay" Size="13" />
+                                                                </MenuItem.Icon>
+                                                            </MenuItem>
+                                                            <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click"
+                                                                      CommandParameter="{Binding PlacementTarget.Tag, RelativeSource={RelativeSource AncestorType=ContextMenu}}">
+                                                                <MenuItem.Icon>
+                                                                    <local:SvgPathIcon Icon="IconHeart" Size="13" />
                                                                 </MenuItem.Icon>
                                                             </MenuItem>
                                                             <Separator />
@@ -507,11 +536,28 @@
                                                                Text="{Binding Converter={StaticResource FileNameConverter}}"
                                                                VerticalAlignment="Center"
                                                                TextTrimming="CharacterEllipsis" />
+
+                                                    <!-- Сердечко "добавить/убрать из избранного" на строке трека. Контур,
+                                                         приглушённый — трек не избранный; закрашенное красное — избранный
+                                                         (переключается DataTrigger-ом ниже по IsFavoriteConverter). -->
+                                                    <ui:Button x:Name="TrackFavoriteButton" Grid.Column="2" Appearance="Transparent"
+                                                               Width="26" Height="26" Padding="0" Margin="4,0,0,0"
+                                                               Click="FavoriteButton_Click"
+                                                               ToolTip="Добавить/убрать из избранного">
+                                                        <ui:Button.Icon>
+                                                            <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5" />
+                                                        </ui:Button.Icon>
+                                                    </ui:Button>
                                                 </Grid>
                                                 <DataTemplate.Triggers>
                                                     <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsMouseOver}" Value="True">
                                                         <Setter TargetName="TrackIndexText" Property="Visibility" Value="Collapsed" />
                                                         <Setter TargetName="TrackPlayIcon" Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Converter={StaticResource IsFavoriteConverter}}" Value="True">
+                                                        <Setter TargetName="TrackFavoriteIcon" Property="Icon" Value="IconHeartFilled" />
+                                                        <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#E53935" />
+                                                        <Setter TargetName="TrackFavoriteIcon" Property="Opacity" Value="1" />
                                                     </DataTrigger>
                                                 </DataTemplate.Triggers>
                                             </DataTemplate>

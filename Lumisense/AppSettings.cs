@@ -80,6 +80,13 @@ public class AppSettings
     // предыдущей версией плеера. Само приложение больше в него не пишет.
     public List<string>? SavedPlaylist { get; set; }
 
+    // Пути избранных треков (сердечко на строке трека) — общий список, не привязанный ни к
+    // одной конкретной группе плейлиста. Из него на лету строится виртуальная группа
+    // "Избранное" (см. FavoritesManager и MainWindow._favoritesFolder). Порядок сохраняется —
+    // это порядок добавления в избранное, тот же, в котором треки показываются в плейлисте
+    // "Избранное".
+    public List<string> FavoriteTracks { get; set; } = new();
+
     public string? LastTrackPath { get; set; }              // Путь последнего проигранного трека
     public double LastPositionSeconds { get; set; }          // Позиция в треке на момент закрытия
 

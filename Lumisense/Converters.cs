@@ -96,6 +96,24 @@ public class TrackNumberFromListConverter : IMultiValueConverter
         => throw new NotSupportedException();
 }
 
+/// <summary>true, если трек (value — путь к файлу, DataContext строки ListView в плейлисте)
+/// сейчас в избранном. Используется в DataTrigger сердечка строки трека (см. MainWindow.xaml) —
+/// по умолчанию показан контур сердечка приглушённым цветом, а при true шаблон переключает его
+/// на закрашенное красное сердечко.
+///
+/// Состояние берётся из FavoritesManager, а не из самого value, поэтому после переключения
+/// избранного (см. MainWindow.FavoriteButton_Click) нужно заново перепривязать ItemsSource
+/// (см. MainWindow.RefreshPlaylistView) — иначе WPF не узнает, что результат конвертера мог
+/// измениться, и не перевызовет его сам по себе.</summary>
+public class IsFavoriteConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
+        => value is string path && FavoritesManager.IsFavorite(path);
+
+    public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 /// <summary>Шеврон для кнопки сворачивания/разворачивания списка треков группы.
 /// Возвращает ключ нужной иконки ("IconChevronDown" / "IconChevronRight", см. папку Icons/) —
 /// SvgPathIcon.Icon биндится сюда напрямую в MainWindow.xaml и сам подставляет нужную геометрию.</summary>

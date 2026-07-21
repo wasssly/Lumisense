@@ -37,6 +37,23 @@ public partial class MainWindow : FluentWindow
     // Каждую группу можно включать/выключать — выключенные пропускаются при воспроизведении.
     private readonly List<PlaylistFolder> _folders = new();
 
+    // Виртуальная группа "Избранное" — не входит в _folders (это не настоящая группа плейлиста,
+    // её незачем сохранять в SavedPlaylistFolders), а собирается на лету из FavoritesManager
+    // каждый раз перед показом (см. RefreshPlaylistView). Единственный экземпляр переиспользуется,
+    // чтобы не пересоздавать PlaylistFolder (и, как следствие, не терять IsExpanded) при каждом
+    // обновлении списка избранного.
+    private readonly PlaylistFolder _favoritesFolder = new()
+    {
+        DisplayName = "Избранное",
+        IsFavoritesGroup = true
+    };
+
+    // true, пока на месте основного плейлиста показан виртуальный плейлист "Избранное"
+    // (см. FavoritesButton_Click/SetFavoritesViewActive) — влияет и на то, что показывает
+    // PlaylistFoldersControl, и на то, какой список треков используют "Далее"/"Назад"/шафл
+    // (см. FlattenAll/FlattenActive).
+    private bool _isFavoritesView;
+
     private readonly Random _random = new();
 
     // Проверяется ДО загрузки настроек (сама загрузка ничего не создаёт на диске, поэтому
@@ -137,6 +154,7 @@ public partial class MainWindow : FluentWindow
     {
         InitializeComponent();
         IconResources.SetOnAccent(PlayPauseIcon, true);
+        FavoritesManager.Initialize(_settings.FavoriteTracks);
         _progressTimer.Tick += ProgressTimer_Tick;
         ApplySettingsOnStartup();
 
@@ -338,9 +356,15 @@ public partial class MainWindow : FluentWindow
     // "плоские" списки на лету из групп. Группы почти никогда не бывают настолько большими,
     // чтобы это было заметно по производительности.
 
-    private List<string> FlattenAll() => _folders.SelectMany(f => f.Tracks).ToList();
+    // Пока открыт виртуальный плейлист "Избранное" (см. SetFavoritesViewActive), "Далее"/"Назад"/
+    // шафл и автопереход к следующему треку должны листать именно его, а не основной плейлист,
+    // который в этот момент даже не показан на экране — поэтому обе "плоские" версии плейлиста,
+    // от которых зависит вся навигация по трекам, подменяются списком избранного целиком.
+    private List<string> FlattenAll() =>
+        _isFavoritesView ? FavoritesManager.GetAll() : _folders.SelectMany(f => f.Tracks).ToList();
 
-    private List<string> FlattenActive() => _folders.Where(f => f.IsEnabled).SelectMany(f => f.Tracks).ToList();
+    private List<string> FlattenActive() =>
+        _isFavoritesView ? FavoritesManager.GetAll() : _folders.Where(f => f.IsEnabled).SelectMany(f => f.Tracks).ToList();
 
     private string? GetCurrentTrackPath() => _currentTrackPath;
 
@@ -1220,10 +1244,67 @@ public partial class MainWindow : FluentWindow
         TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
     }
 
+    // Пока открыт виртуальный плейлист "Избранное", здесь показывается не _folders, а один
+    // _favoritesFolder, каждый раз пересобираемый заново из FavoritesManager — так его список
+    // треков (и, как следствие, сердечки/навигация "Далее-Назад") всегда актуален, даже если
+    // избранное поменяли где-то ещё (например, сняли сердечко с трека в обычном плейлисте, пока
+    // сам виртуальный плейлист был открыт в другом окне — мини-плеере это не грозит, но принцип
+    // тот же, что и у остального кода: не хранить то, что можно на лету вычислить).
     private void RefreshPlaylistView()
     {
+        if (_isFavoritesView)
+        {
+            _favoritesFolder.Tracks.Clear();
+            _favoritesFolder.Tracks.AddRange(FavoritesManager.GetAll());
+
+            PlaylistFoldersControl.ItemsSource = null;
+            PlaylistFoldersControl.ItemsSource = new[] { _favoritesFolder };
+            return;
+        }
+
         PlaylistFoldersControl.ItemsSource = null;
         PlaylistFoldersControl.ItemsSource = _folders;
+    }
+
+    // ---------- Избранное ----------
+
+    private void FavoritesButton_Click(object sender, RoutedEventArgs e) => SetFavoritesViewActive(!_isFavoritesView);
+
+    // Переключает панель плейлиста между обычным видом (группы _folders) и виртуальным
+    // плейлистом "Избранное". Кнопки "Добавить"/"Очистить" в этом режиме скрыты — в виртуальную
+    // группу нельзя добавлять файлы напрямую и нечего "очищать" (это не настоящая группа, а
+    // производная от сердечек на треках, см. PlaylistFolder.IsFavoritesGroup).
+    private void SetFavoritesViewActive(bool active)
+    {
+        _isFavoritesView = active;
+
+        PlaylistHeaderText.Text = active ? "Избранное" : "Плейлист";
+        FavoritesButton.Appearance = active ? ControlAppearance.Primary : ControlAppearance.Secondary;
+        FavoritesButtonIcon.Icon = active ? "IconHeartFilled" : "IconHeart";
+        IconResources.SetOnAccent(FavoritesButtonIcon, active);
+
+        AddButton.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+        ClearPlaylistButton.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+
+        RefreshPlaylistView();
+    }
+
+    // Сердечко на строке трека (см. TrackFavoriteButton в MainWindow.xaml) и одноимённый пункт
+    // контекстного меню приводят сюда же — оба просто переключают избранное для того же трека,
+    // единственная разница в том, откуда берётся путь к файлу (DataContext кнопки против
+    // DataContext пункта меню).
+    private void FavoriteButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: string filePath }) return;
+        FavoritesManager.Toggle(filePath);
+        RefreshPlaylistView();
+    }
+
+    private void FavoriteMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
+        FavoritesManager.Toggle(filePath);
+        RefreshPlaylistView();
     }
 
     private void ToggleFolderExpand_Click(object sender, RoutedEventArgs e)
@@ -1454,6 +1535,17 @@ public partial class MainWindow : FluentWindow
         if (menuItem.DataContext is not string filePath) return;
         if (menuItem.CommandParameter is not PlaylistFolder folder) return;
 
+        // В виртуальной группе "Избранное" своего списка треков по сути нет — она каждый раз
+        // пересобирается из FavoritesManager (см. RefreshPlaylistView), поэтому "убрать из
+        // плейлиста" здесь означает "снять сердечко", а не удаление из folder.Tracks — иначе
+        // трек тут же вернулся бы в список при следующем обновлении.
+        if (folder.IsFavoritesGroup)
+        {
+            FavoritesManager.SetFavorite(filePath, false);
+            RefreshPlaylistView();
+            return;
+        }
+
         // Если убираемый трек сейчас играет — не прерываем воспроизведение (он уже
         // загружен в память и от списка не зависит), просто убираем строку из плейлиста.
         folder.Tracks.Remove(filePath);
@@ -1522,9 +1614,10 @@ public partial class MainWindow : FluentWindow
 
         // Файла больше нет — убираем эту дорожку из ВСЕХ плейлистов, где она встречается,
         // а не только из того, где был вызван правый клик (иначе в других группах осталась
-        // бы "битая" ссылка на несуществующий файл).
+        // бы "битая" ссылка на несуществующий файл). Избранное — туда же, по той же причине.
         foreach (var folder in _folders)
             folder.Tracks.RemoveAll(t => t == filePath);
+        FavoritesManager.SetFavorite(filePath, false);
 
         RefreshPlaylistView();
     }
@@ -1616,7 +1709,11 @@ public partial class MainWindow : FluentWindow
     private void ScrollPlaylistToCurrentTrack()
     {
         var path = _currentTrackPath;
-        var folder = string.IsNullOrEmpty(path) ? null : _folders.FirstOrDefault(f => f.Tracks.Contains(path));
+        var folder = string.IsNullOrEmpty(path)
+            ? null
+            : _isFavoritesView
+                ? (_favoritesFolder.Tracks.Contains(path) ? _favoritesFolder : null)
+                : _folders.FirstOrDefault(f => f.Tracks.Contains(path));
 
         if (folder != null && !folder.IsExpanded)
             folder.IsExpanded = true;
@@ -1643,7 +1740,8 @@ public partial class MainWindow : FluentWindow
 
         // Снимаем выделение во всех остальных группах — иначе там осталась бы висеть подсветка
         // от предыдущего трека или от случайного клика пользователя по другой группе.
-        foreach (var otherFolder in _folders)
+        IEnumerable<PlaylistFolder> shownFolders = _isFavoritesView ? new[] { _favoritesFolder } : _folders;
+        foreach (var otherFolder in shownFolders)
         {
             if (PlaylistFoldersControl.ItemContainerGenerator.ContainerFromItem(otherFolder) is not FrameworkElement otherContainer)
                 continue;
@@ -2443,6 +2541,7 @@ public partial class MainWindow : FluentWindow
         _settings.PlayerViewMode = _viewMode.ToString();
         _settings.IsShuffleEnabled = _isShuffleEnabled;
         _settings.RepeatMode = _repeatMode.ToString();
+        _settings.FavoriteTracks = FavoritesManager.GetAll();
 
         SettingsManager.Save(_settings);
 

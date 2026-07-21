@@ -25,9 +25,18 @@ public class PlaylistFolder : INotifyPropertyChanged
     // у которых SourcePath тоже null, но это отдельные именованные группы.
     public bool IsLooseFilesBucket { get; init; }
 
+    // true только у единственной виртуальной группы "Избранное" (см. MainWindow._favoritesFolder) —
+    // её содержимое каждый раз пересобирается из FavoritesManager, а не хранится и не
+    // редактируется как обычная группа: нельзя добавить в неё файлы напрямую, пересканировать
+    // или удалить её саму — только снять сердечко с отдельного трека (см. RemoveTrackMenuItem_Click
+    // и MainWindow.FavoriteButton_Click).
+    public bool IsFavoritesGroup { get; init; }
+
     // Можно ли добавлять файлы прямо в эту группу кнопкой в её заголовке (см. AddFilesToFolderButton_Click)
     // — да для всего, что не привязано к папке на диске: и для "Отдельные файлы", и для ручных папок.
-    public bool CanAddFilesDirectly => SourcePath == null;
+    // Виртуальная группа "Избранное" исключение: у неё SourcePath тоже null, но добавлять в неё
+    // файлы напрямую нельзя — она собирается только из отмеченных сердечком треков.
+    public bool CanAddFilesDirectly => SourcePath == null && !IsFavoritesGroup;
 
     // Можно ли проверить эту группу на новые треки, появившиеся на диске после добавления
     // (см. RescanFolderButton_Click / RescanFolderForNewTracks) — только для групп, реально

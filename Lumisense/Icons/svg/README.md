@@ -56,6 +56,13 @@ IconResources.Make("ИмяФайла")
 (Microsoft, MIT), которые использовались в проекте раньше — чтобы приложение
 не потеряло эти иконки при переходе на новую систему.
 
+`IconHeart` (контур) и `IconHeartFilled` (закрашенное) — сердечко "избранное" на строке
+трека и на кнопке-переключателе виртуального плейлиста "Избранное" (см. FavoritesManager
+и MainWindow.SetFavoritesViewActive). Это классические пути Material Icons "favorite"/
+"favorite_border", а не Material Symbols в формате остальных иконок этой поставки —
+поэтому у них другой viewBox (`0 0 24 24` вместо `0 -960 960 960`), что не мешает: SvgPathIcon
+и SharpVectors одинаково хорошо рендерят оба формата.
+
 Четыре иконки — `IconRepeat`, `IconShuffleOn`, `IconSpeaker1`, `IconSpeaker2` —
 пока лежат про запас: в текущей разметке они нигде не используются (например,
 приложение сейчас переключает только `IconSpeaker` / `IconSpeakerMute`, без
