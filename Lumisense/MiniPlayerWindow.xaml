@@ -1,4 +1,4 @@
-<Window x:Class="AudioPlayer.MiniPlayerWindow"
+<ui:FluentWindow x:Class="AudioPlayer.MiniPlayerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
@@ -6,8 +6,7 @@
         Title="Мини-плеер"
         Width="220" Height="96"
         WindowStyle="None"
-        AllowsTransparency="True"
-        Background="Transparent"
+        WindowBackdropType="Mica"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         WindowStartupLocation="Manual">
@@ -35,9 +34,19 @@
         </Storyboard>
     </Window.Resources>
 
-    <!-- AllowsTransparency=True на самом окне (задаётся один раз при создании и не меняется) —
-         именно это даёт настоящую прозрачность через Window.Opacity, в отличие от FluentWindow
-         с Mica-фоном, где Opacity не просвечивает системный backdrop. -->
+    <!-- Фон мини-плеера — тот же Mica-backdrop, что и у обычного окна плеера (см. MainWindow.xaml,
+         WindowBackdropType="Mica"), а не собственная непрозрачная заливка поверх обычного окна,
+         как было раньше. Из-за этого настройка "прозрачность мини-плеера" больше не может
+         работать через Window.Opacity — у окна с системным backdrop это свойство гасит уже
+         готовый отрисованный кадр целиком (включая текст, обложку и кнопки), а не даёт
+         Mica-фону просвечивать сильнее. Вместо этого прозрачность управляет альфа-каналом
+         именно цветной подложки RootBorder (AdaptiveBackgroundBrush, см. ниже и
+         MiniPlayerWindow.xaml.cs → ApplyAdaptiveBackground/ApplyOpacityLive): чем ниже
+         значение, тем сильнее сквозь тонированный слой проступает сам Mica снизу — тот же
+         принцип, что у системного Acrylic поверх Mica в Windows 11, только со степенью,
+         управляемой пользователем. Текст и кнопки при этом остаются полностью читаемыми
+         на любом уровне прозрачности — раньше при низкой прозрачности мутнел и весь
+         интерфейс мини-плеера целиком, что затрудняло чтение. -->
     <Grid>
     <Border x:Name="RootBorder" CornerRadius="14"
             MouseEnter="RootBorder_MouseEnter" MouseLeave="RootBorder_MouseLeave"
@@ -192,4 +201,4 @@
         </StackPanel>
     </Border>
     </Grid>
-</Window>
+</ui:FluentWindow>
