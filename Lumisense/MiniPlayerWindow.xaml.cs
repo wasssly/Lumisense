@@ -9,7 +9,7 @@ using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
 
-public partial class MiniPlayerWindow : Window
+public partial class MiniPlayerWindow : FluentWindow
 {
     private readonly MainWindow _mainWindow;
     private bool _isDraggingProgress;
@@ -256,8 +256,15 @@ public partial class MiniPlayerWindow : Window
     // бывают весьма насыщенными). Подобрано на глаз.
     private const double ArtTintWeight = 0.35;
 
+    // Запоминаем последний цвет обложки отдельно от таргета анимации — нужен, чтобы
+    // ApplyOpacityLive (настройка "прозрачность" в окне настроек) могла пересчитать фон
+    // заново без смены трека: сам цвет обложки не меняется, меняется только альфа-канал.
+    private Color? _lastArtColor;
+
     private void ApplyAdaptiveBackground(Color? artColor)
     {
+        _lastArtColor = artColor;
+
         // Базовый цвет берём из темы каждый раз заново (а не кешируем один раз) — так фон
         // остаётся верным даже если пользователь переключил тему, пока мини-плеер уже открыт.
         // `as`, а не приведение типа — ресурсы темы это, как правило, SolidColorBrush, но
@@ -271,6 +278,13 @@ public partial class MiniPlayerWindow : Window
                 (byte)(baseColor.B * (1 - ArtTintWeight) + c.B * ArtTintWeight))
             : baseColor;
 
+        // Окно теперь рисует настоящий Mica-backdrop (см. комментарий в MiniPlayerWindow.xaml
+        // над <Grid>), поэтому "прозрачность мини-плеера" из настроек применяется не через
+        // Window.Opacity, а альфа-каналом именно этой подложки: 30% (минимум слайдера) даёт
+        // едва тонированный Mica, 100% — полностью непрозрачную панель, как раньше.
+        byte alpha = (byte)Math.Round(Math.Clamp(_mainWindow.Settings.MiniPlayerOpacity, 0.0, 1.0) * 255);
+        targetColor = Color.FromArgb(alpha, targetColor.R, targetColor.G, targetColor.B);
+
         var animation = new ColorAnimation
         {
             To = targetColor,
@@ -279,6 +293,11 @@ public partial class MiniPlayerWindow : Window
         };
         AdaptiveBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation);
     }
+
+    // Вызывается из MainWindow.ApplyMiniPlayerOpacityLive, когда пользователь двигает
+    // слайдер прозрачности в окне настроек, пока мини-плеер уже открыт — пересчитывает фон
+    // с текущим (уже известным) цветом обложки, но с новым значением альфы.
+    public void ApplyOpacityLive() => ApplyAdaptiveBackground(_lastArtColor);
 
     // Средний цвет обложки — не самый строгий "доминантный цвет" (это потребовало бы
     // кластеризации палитры), но для мягкой подсветки фона его вполне достаточно, а считается
