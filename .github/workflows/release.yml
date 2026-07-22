@@ -7,15 +7,17 @@
 #   1. Собирает Lumisense (dotnet publish, self-contained win-x64 — см. Lumisense.csproj).
 #   2. Собирает установщик Installer/Lumisense.iss (Inno Setup), передавая ему номер версии
 #      из тега через /DMyAppVersion — см. #ifndef MyAppVersion в самом .iss.
-#   3. Достаёт текст изменений для этой версии из Changelog/changelog.json (берётся запись
-#      с самой свежей датой — её же приложение показывает как "текущую версию", см.
-#      ChangelogLoader.cs) и использует как описание релиза.
+#   3. Достаёт текст изменений для этой версии из Changelog/changelog.json (берётся самая
+#      последняя запись в общем порядке — датированные по возрастанию даты, затем
+#      недатированные в порядке файла; та же логика, что и в самом приложении, см.
+#      ChangelogLoader.AssignComputedFields) и использует как описание релиза.
 #   4. Публикует релиз на GitHub с прикреплённым Lumisense_Setup.exe — его и находит
 #      UpdateChecker.cs в самом плеере при проверке обновлений.
 #
-# ВАЖНО перед тем как поставить тег: добавьте в Changelog/changelog.json новую запись с
-# сегодняшней датой и списком изменений — она станет и текстом релиза, и версией, которую
-# приложение покажет в "О программе" после обновления.
+# ВАЖНО перед тем как поставить тег: добавьте в Changelog/changelog.json новую запись со
+# списком изменений (дату указывать больше не обязательно — см. комментарий в
+# ChangelogLoader.cs, новые записи привязаны к версии, а не к дате) — она станет и текстом
+# релиза, и версией, которую приложение покажет в "О программе" после обновления.
 
 name: Release
 
@@ -75,7 +77,24 @@ jobs:
           $notesPath = "release_notes.md"
           try {
             $entries = Get-Content "Lumisense\Changelog\changelog.json" -Raw | ConvertFrom-Json
-            $latest = $entries | Sort-Object { [datetime]::ParseExact($_.date, "dd.MM.yy", $null) } -Descending | Select-Object -First 1
+
+            # changelog.json теперь поддерживает записи без даты (новые версии привязаны к
+            # версии, а не к дате — см. комментарий в ChangelogLoader.cs) — те же правила
+            # порядка, что и в самом приложении (ChangelogLoader.AssignComputedFields):
+            # сначала все датированные записи по возрастанию даты, затем все недатированные
+            # в порядке, в котором они перечислены в файле; "текущая" — последняя в этом
+            # общем порядке.
+            function Parse-ChangelogDate($text) {
+              foreach ($fmt in @("dd.MM.yyyy", "dd.MM.yy")) {
+                try { return [datetime]::ParseExact($text, $fmt, $null) } catch {}
+              }
+              return [datetime]::MinValue
+            }
+
+            $dated = @($entries | Where-Object { $_.date }) | Sort-Object { Parse-ChangelogDate $_.date }
+            $undated = @($entries | Where-Object { -not $_.date })
+            $latest = @($dated) + @($undated) | Select-Object -Last 1
+
             $lines = foreach ($c in $latest.changes) { "- $($c.text)" }
             $lines -join "`n" | Out-File -FilePath $notesPath -Encoding utf8
           } catch {
