@@ -13,20 +13,14 @@
     <AssemblyName>Lumisense</AssemblyName>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
-
-    <!-- ========================================== -->
-    <!-- ДОБАВЬТЕ ЭТИ СТРОКИ ДЛЯ ПУБЛИКАЦИИ -->
-    <!-- ========================================== -->
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <PublishReadyToRun>false</PublishReadyToRun>
-    <!-- ========================================== -->
 
   </PropertyGroup>
 
-  <!-- ОСТАЛЬНОЕ БЕЗ ИЗМЕНЕНИЙ -->
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="3.0.5" />
     <PackageReference Include="NAudio" Version="2.2.1" />
