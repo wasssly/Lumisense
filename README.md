@@ -66,7 +66,7 @@
 ## Готовая сборка
 
 Собранный установщик (`Lumisense_Setup.exe`) публикуется на странице
-[Releases](../releases) при каждом новом теге `v*.*.*` — собирается и публикуется
+[Releases](releases) при каждом новом теге `v*.*.*` — собирается и публикуется
 автоматически через `.github/workflows/release.yml` (self-contained `dotnet publish` +
 установщик Inno Setup из `Installer/Lumisense.iss`). Сам плеер умеет проверять и подсказывать
 про новые версии оттуда же.
