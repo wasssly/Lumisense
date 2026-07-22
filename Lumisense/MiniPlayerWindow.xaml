@@ -181,15 +181,21 @@
         </Grid>
     </Border>
 
-    <!-- Всплывающий индикатор процентов громкости — виден поверх всего окна, сам появляется
-         и исчезает (см. VolumeIndicatorStoryboard). IsHitTestVisible="False", чтобы не мешать
-         кликам/скроллу по мини-плееру, пока показан. Opacity="0" по умолчанию: без анимации
-         полностью невидим, а не просто "пустой", чтобы не перехватывать события мыши даже
-         на миллисекунду до первого запуска анимации. -->
+    <!-- Всплывающий индикатор процентов громкости — сам появляется и исчезает (см.
+         VolumeIndicatorStoryboard), синхронно с этим гаснет HeaderPanel (обложка+название+
+         исполнитель), освобождая для него место — поэтому индикатор специально позиционируется
+         НАД HeaderPanel (Top + отступ, подобранный под её фактическую высоту), а не по центру
+         всего окна: у окна мини-плеера бывает две высоты (свёрнутая/с кнопками при наведении,
+         см. CollapsedHeight/ExpandedHeight в MiniPlayerWindow.xaml.cs), и центр по всей высоте
+         окна в развёрнутом состоянии попадал уже на полосу прогресса под заголовком — индикатор
+         громкости налезал на неё вместо того, чтобы просто занять место погасшего заголовка.
+         IsHitTestVisible="False", чтобы не мешать кликам/скроллу по мини-плееру, пока показан.
+         Opacity="0" по умолчанию: без анимации полностью невидим, а не просто "пустой", чтобы
+         не перехватывать события мыши даже на миллисекунду до первого запуска анимации. -->
     <Border x:Name="VolumeIndicator" CornerRadius="10" Padding="12,6"
             Background="{DynamicResource ControlFillColorDefaultBrush}"
             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
-            HorizontalAlignment="Center" VerticalAlignment="Center"
+            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,15,0,0"
             Opacity="0" IsHitTestVisible="False">
         <StackPanel Orientation="Horizontal">
             <local:SvgPathIcon x:Name="VolumeIndicatorIcon" Icon="IconSpeaker" Size="14"
