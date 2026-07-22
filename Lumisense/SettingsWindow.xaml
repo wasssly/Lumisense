@@ -189,6 +189,14 @@
                         </StackPanel>
                     </RadioButton>
 
+                    <RadioButton x:Name="NavExperimental" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Experimental" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconWrench" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Экспериментальное" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
                     <Separator Margin="4,8" Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
 
                     <RadioButton x:Name="NavAbout" Style="{StaticResource NavItemStyle}"
@@ -604,6 +612,20 @@
                                                </ui:Button.Icon>
                                            </ui:Button>
                                 </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Экспериментальное -->
+                    <StackPanel x:Name="PageExperimental" Visibility="Collapsed">
+                        <TextBlock Text="Экспериментальное" Style="{StaticResource PageTitleStyle}" />
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Улучшенный шаффл"
+                                          Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
+                                <TextBlock Text="Вместо чисто случайного выбора трека на каждом шаге сначала тасуется весь плейлист целиком, а треки проигрываются по порядку из этой тасовки — так один и тот же трек не может повториться, пока не сыграют все остальные. Настройка экспериментальная: может измениться или стать поведением по умолчанию в будущих версиях."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
