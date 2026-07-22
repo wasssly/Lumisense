@@ -170,7 +170,7 @@ public partial class MainWindow : FluentWindow
         // Не await — намеренно "запустили и забыли": файловая проверка треков и загрузка
         // последнего трека идут в фоне, окно тем временем показывается сразу, без ожидания
         // (см. подробный комментарий над RestoreSavedPlaylistAsync).
-        _ = StartupRestoreAndRescanAsync();
+        _ = StartupRestoreRescanAndWarmupAsync();
 
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
@@ -284,6 +284,59 @@ public partial class MainWindow : FluentWindow
         if (!_isMiniMode) Show();
 
         _ = CheckForUpdatesOnStartupAsync();
+    }
+
+    // Оборачивает StartupRestoreAndRescanAsync, чтобы прогреть layout окна (см.
+    // WarmUpMainWindowLayout) СРАЗУ ПОСЛЕ того, как плейлист реально восстановлен и показан
+    // (RefreshPlaylistView внутри RestoreSavedPlaylistAsync) — а не в фиксированной точке
+    // StartupPresent, чтобы не попасть в гонку: и восстановление плейлиста, и прогрев
+    // запускаются из конструктора почти одновременно, и что случится раньше — заранее не
+    // гарантировано. Проверка _isMiniMode — уже ПОСЛЕ ожидания, а не заранее: если пользователь
+    // успел вручную развернуть плеер (или окно вовсе закрыли) до того, как эта фоновая задача
+    // дошла до прогрева, значение уже не то, и прогревать (или тем более прятать обратно уже
+    // настоящее видимое окно) не нужно и не следует.
+    private async System.Threading.Tasks.Task StartupRestoreRescanAndWarmupAsync()
+    {
+        await StartupRestoreAndRescanAsync();
+
+        if (_isMiniMode) WarmUpMainWindowLayout();
+    }
+
+    // Пока плеер стартует сразу в мини-режиме, обычное окно ни разу не показывается (см.
+    // комментарий у StartupPresent) — а раз оно ни разу не Show()-нулось, WPF откладывает
+    // вообще весь первый layout этого окна (Loaded, построение контейнеров плейлиста —
+    // групп, вложенных ListView, у каждого трека — конвертеры и DataTrigger'ы) на самый
+    // первый настоящий Show(). Без этого прогрева тот самый первый Show() происходил бы
+    // прямо в ExitMiniMode, то есть ровно в момент клика "Развернуть плеер" — на большой
+    // библиотеке это ощутимо подвешивало интерфейс на несколько секунд именно тогда, когда
+    // пользователь меньше всего этого ждёт.
+    //
+    // Вместо этого прогоняем тот же самый первый Show()+layout здесь и сейчас, пока плеер и
+    // так только запускается (лишняя доля секунды в фоне на старте гораздо менее заметна,
+    // чем то же самое посреди явного клика позже) — Opacity=0 и ShowInTaskbar=false не дают
+    // окну промелькнуть на экране или в панели задач, а ShowActivated=false — перехватить
+    // фокус у уже открывшегося мини-плеера. WPF всё равно проводит по окну настоящий
+    // Show()-проход (Loaded, полный layout, первый рендер), после чего сразу прячем его
+    // обратно и возвращаем нормальные значения — к моменту реального "Развернуть" вся эта
+    // работа уже сделана, и ExitMiniMode остаётся практически мгновенным.
+    private void WarmUpMainWindowLayout()
+    {
+        try
+        {
+            ShowActivated = false;
+            ShowInTaskbar = false;
+            Opacity = 0;
+
+            Show();
+            UpdateLayout();
+        }
+        finally
+        {
+            Hide();
+            Opacity = 1;
+            ShowInTaskbar = true;
+            ShowActivated = true;
+        }
     }
 
     // Тихая проверка обновлений на старте: не блокирует запуск (полностью в фоне, с задержкой,
