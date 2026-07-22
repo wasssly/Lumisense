@@ -78,6 +78,10 @@ public partial class MainWindow : FluentWindow
     // вернуться к реально предыдущему треку.
     private readonly List<string> _shuffleHistory = new();
     private int _shuffleHistoryIndex = -1;
+
+    // "Колода" для улучшенного шаффла (см. GetNextShuffleTrack) — активна только когда
+    // включена экспериментальная настройка Settings.UseImprovedShuffle.
+    private List<string> _shuffleBag = new();
     private bool _isMiniMode;
     private RepeatMode _repeatMode = RepeatMode.Off;
 
@@ -2190,6 +2194,66 @@ public partial class MainWindow : FluentWindow
         return candidate;
     }
 
+    // ---------- Улучшенный шаффл (Settings.UseImprovedShuffle, экспериментальная настройка) ----------
+    //
+    // Старый способ (GetRandomTrack выше) на каждом шаге просто берёт случайный трек из
+    // всего активного плейлиста, не совпадающий с текущим. У чисто случайного выбора на
+    // каждом шаге есть известный побочный эффект: на плейлисте среднего размера один и тот
+    // же трек вполне может выпасть повторно уже через несколько треков, а какие-то треки
+    // подолгу вообще не попадаться — статистически это ожидаемо для равномерного случайного
+    // распределения ("иллюзия кластеризации"), но на слух воспринимается как "плохой шаффл".
+    //
+    // Новый способ — колода ("bag shuffle"): вместо выбора вслепую на каждом шаге один раз
+    // тасуем (Фишер-Йейтс) копию всего активного плейлиста и затем просто идём по ней по
+    // порядку, вынимая по одному треку с начала. Это гарантирует, что каждый трек играет
+    // ровно один раз, прежде чем какой-либо трек повторится, а когда колода заканчивается —
+    // тасуется заново. Единственное дополнительное правило: не даём самому первому треку
+    // новой колоды случайно совпасть с последним треком предыдущей — иначе можно было бы
+    // услышать один и тот же трек дважды подряд прямо на стыке двух колод.
+    //
+    // GetShuffleHistoryTrack/AppendNewShuffleTrack/PrependNewShuffleTrack (навигация назад/
+    // вперёд по уже пройденным трекам и дозапись новых) остаются общими для обоих режимов —
+    // разница только в том, ОТКУДА берётся следующий ещё не пройденный трек, поэтому здесь
+    // достаточно просто подменить источник в зависимости от настройки.
+    private string GetNextShuffleTrack(List<string> activeTracks, string? excludePath)
+    {
+        if (!_settings.UseImprovedShuffle)
+            return GetRandomTrack(activeTracks, excludePath);
+
+        if (activeTracks.Count <= 1) return activeTracks[0];
+
+        // Убираем из колоды треки, которых уже нет в активном плейлисте (сняли галочку с
+        // папки, удалили файл и т.п.) — иначе можно было бы вытащить путь, которого больше
+        // нет в текущем наборе.
+        _shuffleBag.RemoveAll(t => !activeTracks.Contains(t));
+
+        if (_shuffleBag.Count == 0)
+        {
+            _shuffleBag = new List<string>(activeTracks);
+            ShuffleInPlace(_shuffleBag);
+
+            if (excludePath != null && _shuffleBag.Count > 1 && _shuffleBag[0] == excludePath)
+            {
+                int swapIndex = _random.Next(1, _shuffleBag.Count);
+                (_shuffleBag[0], _shuffleBag[swapIndex]) = (_shuffleBag[swapIndex], _shuffleBag[0]);
+            }
+        }
+
+        var next = _shuffleBag[0];
+        _shuffleBag.RemoveAt(0);
+        return next;
+    }
+
+    // Классическая тасовка Фишера-Йейтса — равновероятная случайная перестановка списка на месте.
+    private void ShuffleInPlace(List<string> list)
+    {
+        for (int i = list.Count - 1; i > 0; i--)
+        {
+            int j = _random.Next(i + 1);
+            (list[i], list[j]) = (list[j], list[i]);
+        }
+    }
+
     // Двигается по уже накопленной истории шафла на shift (-1 — назад, +1 — вперёд) и
     // возвращает трек по новому положению, либо null, если двигаться в эту сторону
     // больше некуда (истории ещё нет, или она уже кончилась). Трек, который мог быть
@@ -2229,7 +2293,7 @@ public partial class MainWindow : FluentWindow
     // только когда двигаться вперёд по уже существующей истории больше некуда.
     private string AppendNewShuffleTrack(List<string> activeTracks, string? currentPath)
     {
-        var next = GetRandomTrack(activeTracks, currentPath);
+        var next = GetNextShuffleTrack(activeTracks, currentPath);
 
         if (_shuffleHistory.Count == 0 && currentPath != null)
             _shuffleHistory.Add(currentPath);
@@ -2243,7 +2307,7 @@ public partial class MainWindow : FluentWindow
     // в истории шафла ещё нет ничего раньше текущего трека.
     private string PrependNewShuffleTrack(List<string> activeTracks, string? currentPath)
     {
-        var prev = GetRandomTrack(activeTracks, currentPath);
+        var prev = GetNextShuffleTrack(activeTracks, currentPath);
 
         if (_shuffleHistory.Count == 0 && currentPath != null)
             _shuffleHistory.Add(currentPath);
@@ -2268,6 +2332,17 @@ public partial class MainWindow : FluentWindow
         // её заново, чтобы "назад" не утаскивал в состояние из совсем другого включения.
         _shuffleHistory.Clear();
         _shuffleHistoryIndex = -1;
+        _shuffleBag.Clear();
+    }
+
+    // Вызывается из окна настроек при переключении экспериментальной настройки
+    // "Улучшенный шаффл" — колода от старого/нового алгоритма не имеет смысла продолжать
+    // использовать после смены режима на лету, поэтому просто начинаем её заново.
+    public void ResetShuffleState()
+    {
+        _shuffleHistory.Clear();
+        _shuffleHistoryIndex = -1;
+        _shuffleBag.Clear();
     }
 
     private void RepeatButton_Click(object sender, RoutedEventArgs e)
@@ -2326,7 +2401,6 @@ public partial class MainWindow : FluentWindow
 
         _miniPlayerWindow = new MiniPlayerWindow(this)
         {
-            Opacity = _settings.MiniPlayerOpacity,
             Topmost = _settings.MiniPlayerAlwaysOnTop
         };
 
@@ -2395,7 +2469,10 @@ public partial class MainWindow : FluentWindow
     // если мини-плеер сейчас открыт
     public void ApplyMiniPlayerOpacityLive(double opacity)
     {
-        if (_miniPlayerWindow != null) _miniPlayerWindow.Opacity = opacity;
+        // _settings.MiniPlayerOpacity уже обновлён вызывающей стороной (см.
+        // SettingsWindow.MiniOpacitySlider_ValueChanged) — ApplyOpacityLive просто
+        // перечитывает его и пересчитывает альфа-канал фона мини-плеера.
+        if (_miniPlayerWindow != null) _miniPlayerWindow.ApplyOpacityLive();
     }
 
     public void ApplyMiniPlayerTopmostLive(bool topmost)
