@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Interop;
@@ -35,7 +36,14 @@ public partial class MainWindow : FluentWindow
 
     // Плейлист теперь хранится как список групп (папка целиком или отдельные файлы).
     // Каждую группу можно включать/выключать — выключенные пропускаются при воспроизведении.
-    private readonly List<PlaylistFolder> _folders = new();
+    // ObservableCollection, а не обычный List — так PlaylistFoldersControl (см.
+    // RestoreSavedPlaylistAsync) может быть привязан к этой коллекции один раз и дальше
+    // получать только реально новые/удалённые папки через CollectionChanged, без
+    // принудительного пересоздания контейнеров ВСЕХ папок и их треков при каждом добавлении
+    // (как раньше приходилось делать через RefreshPlaylistView — она по-прежнему используется
+    // для случаев, когда меняется НЕ сам список папок, а треки внутри уже существующей папки,
+    // поскольку PlaylistFolder.Tracks остаётся обычным List<string>).
+    private readonly ObservableCollection<PlaylistFolder> _folders = new();
 
     // Виртуальная группа "Избранное" — не входит в _folders (это не настоящая группа плейлиста,
     // её незачем сохранять в SavedPlaylistFolders), а собирается на лету из FavoritesManager
@@ -397,11 +405,14 @@ public partial class MainWindow : FluentWindow
         else
         {
             // Вид плеера ещё не сохранялся, но settings.json уже существует — это версия
-            // плеера до появления этой настройки. Раньше "скрытый плейлист" не означал
-            // увеличенный квадратный стиль (эта настройка появилась только сейчас), поэтому
-            // не подменяем его новым квадратным видом, а просто открываем прямоугольный вид
-            // и восстанавливаем видимость плейлиста отдельно, как и раньше.
-            startupMode = _settings.WasMiniPlayerOnClose ? PlayerViewMode.Mini : PlayerViewMode.Rectangular;
+            // плеера до появления этой настройки. Раньше в этом случае по умолчанию
+            // открывался прямоугольный вид, а квадратный — только на самом первом запуске
+            // вообще (см. ветку _isFirstLaunch выше). Теперь по умолчанию используется
+            // квадратный вид в обоих случаях — единообразно, а не только для совсем новых
+            // пользователей; видимость плейлиста (IsPlaylistVisible) по-прежнему
+            // восстанавливается отдельно ниже, так что открытый/скрытый плейлист у
+            // существующих пользователей не меняется сам по себе.
+            startupMode = _settings.WasMiniPlayerOnClose ? PlayerViewMode.Mini : PlayerViewMode.Square;
             legacyPlaylistVisible = _settings.IsPlaylistVisible;
         }
 
@@ -489,10 +500,40 @@ public partial class MainWindow : FluentWindow
 
         // Дальше — снова в UI-потоке (обычное поведение await в WPF): трогаем _folders,
         // элементы окна и т.п.
-        foreach (var folder in restoredFolders) _folders.Add(folder);
+        //
+        // _folders теперь ObservableCollection — если PlaylistFoldersControl ещё ни разу не
+        // был привязан к ней (самый обычный случай на старте), привязываем сейчас, пока она
+        // ещё пуста, чтобы вся дальнейшая загрузка сразу шла по "инкрементальному" пути: каждое
+        // добавление ниже само уведомит ItemsControl и породит контейнеры только для ОДНОЙ
+        // новой папки, а не для всех сразу через полный сброс ItemsSource (как раньше делал
+        // RefreshPlaylistView для этого случая).
+        if (PlaylistFoldersControl.ItemsSource == null)
+            PlaylistFoldersControl.ItemsSource = _folders;
+
+        // Раньше все папки добавлялись в _folders одним foreach, после чего RefreshPlaylistView()
+        // одним махом пересоздавал контейнеры для ВСЕХ папок и ВСЕХ треков внутри них сразу. У
+        // вложенных ListView (см. MainWindow.xaml) отключена собственная прокрутка —
+        // ScrollViewer.VerticalScrollBarVisibility="Disabled", весь скролл общий, снаружи — из-за
+        // этого они не виртуализируются и вынуждены за один проход реализовать (создать визуальные
+        // контейнеры) КАЖДУЮ строку трека целиком, а не только видимые. На большой библиотеке это
+        // был один долгий блокирующий проход layout, во время которого окно вообще не отвечало на
+        // ввод и перерисовку — то есть попросту "зависало" на всё это время. Раньше та же по
+        // объёму работа просто пряталась ЗА чёрным экраном ДО показа окна, поэтому не бросалась в
+        // глаза — после ускорения запуска (окно показывается почти сразу) она стала заметна как
+        // "плеер стартует быстро, но потом на несколько секунд перестаёт отвечать".
+        //
+        // Добавляем папки по одной, с Dispatcher.Yield между каждой — так один гигантский проход
+        // разбивается на несколько отдельных, по одной папке за раз, а между ними окно успевает
+        // откликнуться на ввод и перерисоваться, оставаясь отзывчивым на протяжении всей загрузки
+        // (суммарно та же по объёму работа может занять на долю секунды дольше, зато не выглядит
+        // зависшей ни на одном из этих шагов).
+        foreach (var folder in restoredFolders)
+        {
+            _folders.Add(folder);
+            await Dispatcher.Yield(DispatcherPriority.Background);
+        }
 
         if (_folders.Count == 0) return;
-        RefreshPlaylistView();
 
         if (string.IsNullOrEmpty(_settings.LastTrackPath)) return;
 
