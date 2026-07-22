@@ -49,6 +49,7 @@ public partial class SettingsWindow : FluentWindow
             "Playback" => NavPlayback,
             "MiniPlayer" => NavMiniPlayer,
             "Hotkeys" => NavHotkeys,
+            "Experimental" => NavExperimental,
             _ => NavAppearance
         }).IsChecked = true;
 
@@ -66,6 +67,8 @@ public partial class SettingsWindow : FluentWindow
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
+
+        ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
 
         RefreshViewModeRadios();
 
@@ -199,6 +202,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Перемешать", "Горячие клавиши", "Hotkeys", HotkeyShuffleButton, "shuffle перемешать горячая клавиша");
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
+        Add("Улучшенный шаффл", "Экспериментальное", "Experimental", ImprovedShuffleCheckBox, "шаффл перемешать shuffle экспериментальное bag колода");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
@@ -242,6 +246,7 @@ public partial class SettingsWindow : FluentWindow
             "Playback" => NavPlayback,
             "MiniPlayer" => NavMiniPlayer,
             "Hotkeys" => NavHotkeys,
+            "Experimental" => NavExperimental,
             "About" => NavAbout,
             _ => NavAppearance
         };
@@ -364,6 +369,19 @@ public partial class SettingsWindow : FluentWindow
         _settings.MiniPlayerPinned = MiniPinnedCheckBox.IsChecked == true;
     }
 
+    // ---------- Экспериментальное ----------
+
+    private void ImprovedShuffleCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.UseImprovedShuffle = ImprovedShuffleCheckBox.IsChecked == true;
+
+        // Колода/история от предыдущего режима шаффла не имеет смысла в новом —
+        // начинаем с чистого листа, а не пытаемся домешать её в новую логику.
+        _owner.ResetShuffleState();
+    }
+
     // ---------- Навигация по страницам настроек ----------
     // Каждый пункт слева — RadioButton с Tag = ключ страницы; Checked-обработчик прячет
     // все страницы и показывает ту, что соответствует выбранному пункту. Патчноуты и
@@ -385,6 +403,7 @@ public partial class SettingsWindow : FluentWindow
         PagePlayback.Visibility = key == "Playback" ? Visibility.Visible : Visibility.Collapsed;
         PageMiniPlayer.Visibility = key == "MiniPlayer" ? Visibility.Visible : Visibility.Collapsed;
         PageHotkeys.Visibility = key == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
+        PageExperimental.Visibility = key == "Experimental" ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = key == "About" ? Visibility.Visible : Visibility.Collapsed;
     }
 
