@@ -4,6 +4,7 @@ using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
@@ -49,6 +50,26 @@ public partial class MiniPlayerWindow : Window
     [DllImport("user32.dll")]
     private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
 
+    [DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+        int x, int y, int cx, int cy, uint uFlags);
+
+    private static readonly IntPtr HWND_TOPMOST = new(-1);
+    private const uint SWP_NOMOVE = 0x0002;
+    private const uint SWP_NOSIZE = 0x0001;
+    private const uint SWP_NOACTIVATE = 0x0010;
+
+    // Windows иногда молча "теряет" топмост-состояние окна (WS_EX_TOPMOST-флаг формально
+    // остаётся, но реальный Z-order — нет): это случается, например, когда другое окно
+    // само на время встаёт HWND_TOPMOST и потом уходит, после полноэкранных приложений/игр,
+    // после диалогов UAC, после переключения RDP-сессии или блокировки экрана. Свойство
+    // WPF Window.Topmost при этом продолжает возвращать true, поэтому просто выставить
+    // его один раз при открытии мини-плеера — недостаточно: спустя какое-то время окно
+    // тихо "проваливается" под другие. Раз в несколько секунд принудительно переустанавливаем
+    // окно поверх остальных через Win32 SetWindowPos — это чинит и уже "отвалившийся"
+    // топмост, а не только поддерживает уже работающий.
+    private readonly DispatcherTimer _topmostTimer = new() { Interval = TimeSpan.FromSeconds(3) };
+
     private IntPtr _hwnd;
 
     // Снимок состояния на МОМЕНТ НАЧАЛА текущего перетаскивания: позиция курсора и
@@ -85,6 +106,20 @@ public partial class MiniPlayerWindow : Window
         // Название могло быть длинным ещё до открытия мини-плеера — пересчитываем бегущую
         // строку после первого прохода layout, когда TitleClipBorder.ActualWidth уже известен.
         Loaded += (_, _) => UpdateTitleMarquee();
+
+        _topmostTimer.Tick += TopmostTimer_Tick;
+        _topmostTimer.Start();
+    }
+
+    // См. комментарий у объявления _topmostTimer — периодически принудительно возвращаем
+    // окно в топмост через Win32, а не полагаемся на то, что WPF Topmost=true держится сам.
+    // Трогаем реальный Z-order только когда настройка "поверх окон" включена и мини-плеер
+    // не свёрнут — незачем дёргать SetWindowPos впустую.
+    private void TopmostTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!Topmost || _hwnd == IntPtr.Zero || WindowState == WindowState.Minimized) return;
+
+        SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     // Перехватываем оконные сообщения на уровне Win32: это единственный способ подправить
@@ -508,6 +543,9 @@ public partial class MiniPlayerWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        _topmostTimer.Stop();
+        _topmostTimer.Tick -= TopmostTimer_Tick;
+
         _mainWindow.TrackInfoChanged -= OnTrackInfoChanged;
         _mainWindow.ProgressChanged -= OnProgressChanged;
         _mainWindow.PlaybackStateChanged -= OnPlaybackStateChanged;
