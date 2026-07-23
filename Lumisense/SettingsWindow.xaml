@@ -685,6 +685,31 @@
                             </Grid>
                         </ui:Button>
 
+                        <TextBlock Text="Источник загрузки обновлений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Откуда скачивать сам файл установщика при обновлении. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из зеркал gh-proxy. На саму проверку версии эта настройка не влияет."
+                                           TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
+
+                                <RadioButton x:Name="UpdateSourceGitHubRadio" GroupName="UpdateSource" Tag="GitHub"
+                                             Content="GitHub (напрямую)" Margin="0,0,0,8"
+                                             Checked="UpdateSourceRadio_Checked" />
+                                <RadioButton x:Name="UpdateSourceGhProxyRadio" GroupName="UpdateSource" Tag="GhProxy"
+                                             Content="gh-proxy.org (зеркало)" Margin="0,0,0,8"
+                                             Checked="UpdateSourceRadio_Checked" />
+                                <RadioButton x:Name="UpdateSourceGhProxyV4Radio" GroupName="UpdateSource" Tag="GhProxyV4"
+                                             Content="v4.gh-proxy.org (зеркало, только IPv4)" Margin="0,0,0,8"
+                                             Checked="UpdateSourceRadio_Checked" />
+                                <RadioButton x:Name="UpdateSourceGhProxyV6Radio" GroupName="UpdateSource" Tag="GhProxyV6"
+                                             Content="v6.gh-proxy.org (зеркало, только IPv6)" Margin="0,0,0,8"
+                                             Checked="UpdateSourceRadio_Checked" />
+                                <RadioButton x:Name="UpdateSourceGhProxyCdnRadio" GroupName="UpdateSource" Tag="GhProxyCdn"
+                                             Content="cdn.gh-proxy.org (зеркало, через CDN)"
+                                             Checked="UpdateSourceRadio_Checked" />
+                            </StackPanel>
+                        </Border>
+
                         <TextBlock Text="Список изменений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
 
                         <ui:Button x:Name="ChangelogButton" Appearance="Secondary"
