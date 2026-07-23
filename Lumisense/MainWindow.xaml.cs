@@ -143,6 +143,12 @@ public partial class MainWindow : FluentWindow
     public string CurrentTitle => TrackTitleText.Text;
     public string CurrentArtist => TrackArtistText.Text;
     public Brush? CurrentArtBrush => AlbumArtIcon.Visibility == Visibility.Visible ? null : AlbumArtBorder.Background;
+
+    // Сырые байты текущей обложки (JPEG/PNG прямо из тега) — специально байты, а не сам
+    // Brush/BitmapImage: TrayIconManager живёт в WinForms-стеке (NotifyIcon), и из сырых байт
+    // он сам декодирует System.Drawing.Bitmap для миниатюры в меню трея (см.
+    // TrayIconManager.SetNowPlaying), не завися от WPF-типов вроде BitmapSource/ImageBrush.
+    public byte[]? CurrentAlbumArtBytes => AlbumArtIcon.Visibility == Visibility.Visible ? null : _currentAlbumArtBytes;
     public bool IsPlayingNow => _isPlaying;
 
     // Для мини-плеера — узнать текущий режим повтора сразу при открытии, до первого события
@@ -654,7 +660,7 @@ public partial class MainWindow : FluentWindow
         _trayIconManager.NextRequested += () => Dispatcher.Invoke(PlayNextTrack);
         _trayIconManager.PreviousRequested += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
         PlaybackStateChanged += isPlaying => _trayIconManager?.SetPlayingState(isPlaying);
-        TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlayingText(title, artist);
+        TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
         _trayIconManager.SetPlayingState(_isPlaying);
         _trayIconManager.ApplyTheme(isLight: _settings.Theme == "Light");
     }
@@ -693,6 +699,36 @@ public partial class MainWindow : FluentWindow
         {
             _isExiting = true;
             Close();
+        });
+    }
+
+    // Вызывается из App при повторной попытке запуска плеера (например, повторным нажатием
+    // на ярлык плеера на панели задач/в меню Пуск), пока он уже работает — см.
+    // App.OnStartup/WaitForToggleSignal. В отличие от RestoreFromTray (которая всегда просто
+    // ПОКАЗЫВАЕТ окно) здесь именно переключение: мини-плеер активен — открываем обычное окно
+    // (как кнопкой "развернуть"), обычное окно уже открыто и видимо — сворачиваем в мини-плеер
+    // (как кнопкой "мини-плеер"); а если окно было свёрнуто в трей, просто восстанавливаем его,
+    // не превращая это в переключение в мини-режим.
+    public void ToggleMiniOrMainFromExternalActivation()
+    {
+        Dispatcher.Invoke(() =>
+        {
+            if (_isMiniMode)
+            {
+                ExitMiniMode();
+                return;
+            }
+
+            if (Visibility != Visibility.Visible)
+            {
+                Show();
+                WindowState = WindowState.Normal;
+                Activate();
+                _trayIconManager?.Hide();
+                return;
+            }
+
+            SetPlayerViewModeByName("Mini");
         });
     }
 
