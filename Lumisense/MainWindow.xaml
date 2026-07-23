@@ -472,6 +472,7 @@
                 <ScrollViewer x:Name="PlaylistScrollViewer" Grid.Column="0" Margin="4"
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
+                              SizeChanged="PlaylistScrollViewer_SizeChanged"
                               ScrollChanged="PlaylistScrollViewer_ScrollChanged">
                     <!-- Обычный плейлист (PlaylistFoldersControl) и виртуальный плейлист
                          "Избранное" (FavoritesTrackListView) лежат друг на друге в одном Grid и
