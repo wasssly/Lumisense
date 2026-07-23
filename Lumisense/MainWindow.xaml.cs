@@ -442,13 +442,23 @@ public partial class MainWindow : FluentWindow
     // Теперь сканирование File.Exists уходит в пул потоков через Task.Run, а окно тем временем
     // уже показано и отзывчиво — плейлист и последний трек просто появляются в нём чуть позже,
     // как только фоновая проверка закончится (обычно доли секунды, редко больше).
+    // Сколько треков добавлять в Tracks одной порцией между Dispatcher.Yield (см.
+    // AddTracksIncrementallyAsync) — компромисс: слишком маленькое число сильно замедлит
+    // общую загрузку (каждый Yield сам по себе не бесплатен), слишком большое — вернёт тот же
+    // видимый "рывок", от которого и уходим. 40 подобрано на глаз как разумная середина.
+    private const int TrackBatchSize = 40;
+
     private async System.Threading.Tasks.Task RestoreSavedPlaylistAsync()
     {
         if (_settings.SavedPlaylistFolders.Count == 0) return;
 
-        var restoredFolders = await System.Threading.Tasks.Task.Run(() =>
+        // Здесь только читаем диск (File.Exists) и готовим "чертежи" будущих папок — сами
+        // объекты PlaylistFolder создаём с пустым Tracks и наполняем его уже на UI-потоке
+        // порциями чуть ниже (см. AddTracksIncrementallyAsync), а не одним разовым AddRange
+        // на несколько тысяч треков сразу.
+        var blueprints = await System.Threading.Tasks.Task.Run(() =>
         {
-            var result = new List<PlaylistFolder>();
+            var result = new List<(PlaylistFolder Folder, List<string> Tracks)>();
 
             foreach (var saved in _settings.SavedPlaylistFolders)
             {
@@ -468,8 +478,7 @@ public partial class MainWindow : FluentWindow
                     IsLooseFilesBucket = saved.IsLooseFilesBucket,
                     IsExpanded = saved.IsExpanded
                 };
-                folder.Tracks.AddRange(existingTracks);
-                result.Add(folder);
+                result.Add((folder, existingTracks));
             }
 
             return result;
@@ -487,27 +496,31 @@ public partial class MainWindow : FluentWindow
         if (PlaylistFoldersControl.ItemsSource == null)
             PlaylistFoldersControl.ItemsSource = _folders;
 
-        // Раньше все папки добавлялись в _folders одним foreach, после чего RefreshPlaylistView()
-        // одним махом пересоздавал контейнеры для ВСЕХ папок и ВСЕХ треков внутри них сразу. У
-        // вложенных ListView (см. MainWindow.xaml) отключена собственная прокрутка —
-        // ScrollViewer.VerticalScrollBarVisibility="Disabled", весь скролл общий, снаружи — из-за
-        // этого они не виртуализируются и вынуждены за один проход реализовать (создать визуальные
-        // контейнеры) КАЖДУЮ строку трека целиком, а не только видимые. На большой библиотеке это
-        // был один долгий блокирующий проход layout, во время которого окно вообще не отвечало на
-        // ввод и перерисовку — то есть попросту "зависало" на всё это время. Раньше та же по
-        // объёму работа просто пряталась ЗА чёрным экраном ДО показа окна, поэтому не бросалась в
-        // глаза — после ускорения запуска (окно показывается почти сразу) она стала заметна как
-        // "плеер стартует быстро, но потом на несколько секунд перестаёт отвечать".
+        // Раньше все папки добавлялись в _folders одним foreach, УЖЕ полностью наполненные
+        // треками, после чего RefreshPlaylistView() одним махом пересоздавал контейнеры для
+        // ВСЕХ папок и ВСЕХ треков внутри них сразу. У вложенных ListView (см. MainWindow.xaml)
+        // отключена собственная прокрутка — ScrollViewer.VerticalScrollBarVisibility="Disabled",
+        // весь скролл общий, снаружи — из-за этого они не виртуализируются и вынуждены за один
+        // проход реализовать (создать визуальные контейнеры) КАЖДУЮ строку трека целиком, а не
+        // только видимые. На большой библиотеке это был один долгий блокирующий проход layout,
+        // во время которого окно вообще не отвечало на ввод и перерисовку — то есть попросту
+        // "зависало" на всё это время.
         //
-        // Добавляем папки по одной, с Dispatcher.Yield между каждой — так один гигантский проход
-        // разбивается на несколько отдельных, по одной папке за раз, а между ними окно успевает
-        // откликнуться на ввод и перерисоваться, оставаясь отзывчивым на протяжении всей загрузки
-        // (суммарно та же по объёму работа может занять на долю секунды дольше, зато не выглядит
-        // зависшей ни на одном из этих шагов).
-        foreach (var folder in restoredFolders)
+        // Первый заход на эту проблему (добавлять папки по одной, с Dispatcher.Yield между
+        // каждой) помогал только когда библиотека разбита на много некрупных папок — если же
+        // одна-две папки сами по себе огромные, вся их куча треков всё равно реализовывалась
+        // за один присест В МОМЕНТ добавления такой папки в _folders (Tracks на тот момент уже
+        // был полностью заполнен разом через AddRange). Теперь папка добавляется в _folders
+        // ПУСТОЙ (дёшево — контейнер только для заголовка папки), а её треки дозаполняются
+        // отдельно, тоже небольшими порциями с Yield между ними (см.
+        // AddTracksIncrementallyAsync) — так что даже одна огромная папка грузится плавно, а
+        // не одним рывком.
+        foreach (var (folder, tracks) in blueprints)
         {
             _folders.Add(folder);
             await Dispatcher.Yield(DispatcherPriority.Background);
+
+            await AddTracksIncrementallyAsync(folder, tracks);
         }
 
         if (_folders.Count == 0) return;
@@ -519,6 +532,21 @@ public partial class MainWindow : FluentWindow
 
         LoadAndPlay(_settings.LastTrackPath, autoPlay: false,
             startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)));
+    }
+
+    // См. комментарий в RestoreSavedPlaylistAsync — наполняет уже добавленную в _folders (и
+    // потому уже привязанную к UI) папку небольшими порциями треков, уступая диспетчеру между
+    // каждой порцией, вместо одного разового AddRange на весь список сразу.
+    private async System.Threading.Tasks.Task AddTracksIncrementallyAsync(PlaylistFolder folder, List<string> tracks)
+    {
+        for (int i = 0; i < tracks.Count; i += TrackBatchSize)
+        {
+            int count = Math.Min(TrackBatchSize, tracks.Count - i);
+            for (int j = 0; j < count; j++)
+                folder.Tracks.Add(tracks[i + j]);
+
+            await Dispatcher.Yield(DispatcherPriority.Background);
+        }
     }
 
     // Оборачивает восстановление плейлиста и последующую тихую проверку папок на новые треки
