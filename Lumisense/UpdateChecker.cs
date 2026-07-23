@@ -166,6 +166,37 @@ public static class UpdateChecker
         };
     }
 
+    /// <summary>Возможные источники загрузки установщика — см. AppSettings.UpdateDownloadSource
+    /// и переключатель в настройках ("О плеере" → "Источник загрузки обновлений"). gh-proxy —
+    /// сторонний бесплатный прокси-сервис для github.com/githubusercontent.com, полезен там,
+    /// где сам GitHub недоступен напрямую или скачивается очень медленно; несколько доменов —
+    /// это разные точки входа одного и того же сервиса (обычная/только IPv4/только IPv6/через
+    /// CDN), какая из них быстрее — зависит от провайдера и региона пользователя, поэтому
+    /// даём выбрать самому, а не решаем один вариант "правильным" за всех.</summary>
+    public static readonly (string Key, string DisplayName)[] DownloadSources =
+    {
+        ("GitHub", "GitHub (напрямую)"),
+        ("GhProxy", "gh-proxy.org (зеркало)"),
+        ("GhProxyV4", "v4.gh-proxy.org (зеркало, IPv4)"),
+        ("GhProxyV6", "v6.gh-proxy.org (зеркало, IPv6)"),
+        ("GhProxyCdn", "cdn.gh-proxy.org (зеркало, CDN)"),
+    };
+
+    /// <summary>Оборачивает прямую ссылку на GitHub-ассет в выбранное зеркало. Саму ссылку от
+    /// GitHub API (browser_download_url) подменяем на зеркало только непосредственно перед
+    /// скачиванием — CheckAsync (обращение к api.github.com) всегда идёт напрямую: у
+    /// gh-proxy-подобных сервисов проксирование, как правило, рассчитано на
+    /// github.com/githubusercontent.com/codeload.github.com, а не на поддомен api.*, так что
+    /// незачем рисковать самой проверкой версии ради экономии на маленьком JSON-ответе.</summary>
+    public static string ApplyDownloadSource(string githubUrl, string source) => source switch
+    {
+        "GhProxy" => $"https://gh-proxy.org/{githubUrl}",
+        "GhProxyV4" => $"https://v4.gh-proxy.org/{githubUrl}",
+        "GhProxyV6" => $"https://v6.gh-proxy.org/{githubUrl}",
+        "GhProxyCdn" => $"https://cdn.gh-proxy.org/{githubUrl}",
+        _ => githubUrl
+    };
+
     /// <summary>Скачивает установщик во временную папку, докладывая прогресс от 0 до 1.</summary>
     public static async Task<string> DownloadInstallerAsync(string downloadUrl, System.IProgress<double>? progress, CancellationToken ct)
     {
