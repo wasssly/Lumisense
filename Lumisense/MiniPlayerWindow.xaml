@@ -1,4 +1,4 @@
-<ui:FluentWindow x:Class="AudioPlayer.MiniPlayerWindow"
+<Window x:Class="AudioPlayer.MiniPlayerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
@@ -6,8 +6,8 @@
         Title="Мини-плеер"
         Width="220" Height="96"
         WindowStyle="None"
-        WindowBackdropType="Mica"
-        ExtendsContentIntoTitleBar="True"
+        AllowsTransparency="True"
+        Background="Transparent"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         WindowStartupLocation="Manual">
@@ -35,19 +35,21 @@
         </Storyboard>
     </Window.Resources>
 
-    <!-- Фон мини-плеера — тот же Mica-backdrop, что и у обычного окна плеера (см. MainWindow.xaml,
-         WindowBackdropType="Mica"), а не собственная непрозрачная заливка поверх обычного окна,
-         как было раньше. Из-за этого настройка "прозрачность мини-плеера" больше не может
-         работать через Window.Opacity — у окна с системным backdrop это свойство гасит уже
-         готовый отрисованный кадр целиком (включая текст, обложку и кнопки), а не даёт
-         Mica-фону просвечивать сильнее. Вместо этого прозрачность управляет альфа-каналом
-         именно цветной подложки RootBorder (AdaptiveBackgroundBrush, см. ниже и
-         MiniPlayerWindow.xaml.cs → ApplyAdaptiveBackground/ApplyOpacityLive): чем ниже
-         значение, тем сильнее сквозь тонированный слой проступает сам Mica снизу — тот же
-         принцип, что у системного Acrylic поверх Mica в Windows 11, только со степенью,
-         управляемой пользователем. Текст и кнопки при этом остаются полностью читаемыми
-         на любом уровне прозрачности — раньше при низкой прозрачности мутнел и весь
-         интерфейс мини-плеера целиком, что затрудняло чтение. -->
+    <!-- Фон мини-плеера — ПЫТАЛСЯ быть тем же Mica-backdrop, что и у обычного окна плеера, через
+         ui:FluentWindow + WindowBackdropType="Mica". На практике это окно слишком маленькое и
+         совсем без рамки (WindowStyle="None", 220×82/140), и связка Mica+ExtendsContentIntoTitleBar
+         на нём вела себя нестабильно (падение при входе в мини-режим, затем — совсем не тот
+         размер окна на экране), поэтому от Mica здесь отказались в пользу обычного
+         AllowsTransparency="True" — это давало корректный результат раньше и продолжает быть
+         самым надёжным вариантом именно для такого маленького безрамочного окна.
+
+         Настройка "прозрачность мини-плеера" при этом всё равно НЕ трогает Window.Opacity
+         напрямую (это гасило бы весь кадр целиком, включая текст, обложку и кнопки) — вместо
+         этого она управляет альфа-каналом именно цветной подложки RootBorder
+         (AdaptiveBackgroundBrush, см. ниже и MiniPlayerWindow.xaml.cs →
+         ApplyAdaptiveBackground/ApplyOpacityLive): чем ниже значение, тем прозрачнее сама эта
+         подложка и тем сильнее сквозь неё виден рабочий стол/окна под мини-плеером — а текст и
+         кнопки остаются полностью читаемыми на любом уровне прозрачности. -->
     <Grid>
     <Border x:Name="RootBorder" CornerRadius="14"
             MouseEnter="RootBorder_MouseEnter" MouseLeave="RootBorder_MouseLeave"
@@ -208,4 +210,4 @@
         </StackPanel>
     </Border>
     </Grid>
-</ui:FluentWindow>
+</Window>
