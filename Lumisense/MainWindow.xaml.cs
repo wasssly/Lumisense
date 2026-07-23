@@ -1543,6 +1543,31 @@ public partial class MainWindow : FluentWindow
         UpdatePlaylistScrollThumb();
     }
 
+    // ScrollViewer сам по себе ничего не скругляет — по умолчанию он просто обрезает
+    // содержимое строго прямоугольно по своим границам. Пока список не прокручен, это
+    // незаметно: сверху/снизу видимой области ещё нет ни одной карточки впритык к краю,
+    // прямой обрез спрятан внутри отступа (Margin="4") до скруглённой рамки PlaylistBorder
+    // вокруг (CornerRadius="10"). Но стоит начать прокручивать — карточки папок и строки
+    // треков оказываются ровно у верхнего/нижнего края видимой области, и там становится
+    // виден чёткий прямоугольный обрез, визуально спорящий со скруглённой рамкой вокруг.
+    // Задаём собственный Clip с закруглёнными углами вместо обычного прямоугольного —
+    // тогда даже карточка, обрезанная у самого края во время прокрутки, выглядит аккуратно
+    // скруглённой, а не квадратно "срезанной". Радиус (8) — тот же, что и у самих карточек
+    // папок/треков (CornerRadius="8"), а не как у внешней рамки (10) — она снаружи этого
+    // ScrollViewer на 4px (Margin), так что при таком же радиусе скругление визуально не
+    // концентрично внешнему и слегка режет edge-case по углам; 8 ближе к своим внутренним
+    // соседям и не создаёт заметного разнобоя на глаз.
+    private void PlaylistScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        if (e.NewSize.Width <= 0 || e.NewSize.Height <= 0)
+        {
+            PlaylistScrollViewer.Clip = null;
+            return;
+        }
+
+        PlaylistScrollViewer.Clip = new RectangleGeometry(new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 8, 8);
+    }
+
     private void PlaylistScrollTrack_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         UpdatePlaylistScrollThumb();
