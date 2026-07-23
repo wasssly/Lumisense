@@ -70,6 +70,15 @@ public partial class SettingsWindow : FluentWindow
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
 
+        (_settings.UpdateDownloadSource switch
+        {
+            "GhProxy" => UpdateSourceGhProxyRadio,
+            "GhProxyV4" => UpdateSourceGhProxyV4Radio,
+            "GhProxyV6" => UpdateSourceGhProxyV6Radio,
+            "GhProxyCdn" => UpdateSourceGhProxyCdnRadio,
+            _ => UpdateSourceGitHubRadio
+        }).IsChecked = true;
+
         RefreshViewModeRadios();
 
         RefreshHotkeyButtonText(HotkeyTarget.PlayPause);
@@ -176,6 +185,17 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
+    // Переключатель источника загрузки установщика (GitHub напрямую / одно из зеркал
+    // gh-proxy, см. UpdateChecker.DownloadSources) — сама проверка версии (кнопка выше) этой
+    // настройкой не затрагивается, она влияет только на скачивание файла в UpdateAvailableWindow.
+    private void UpdateSourceRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        if (sender is not System.Windows.Controls.RadioButton { Tag: string key }) return;
+
+        _settings.UpdateDownloadSource = key;
+    }
+
     // ---------- Поиск настроек ----------
 
     private void BuildSearchIndex()
@@ -204,6 +224,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Улучшенный шаффл", "Экспериментальное", "Experimental", ImprovedShuffleCheckBox, "шаффл перемешать shuffle экспериментальное bag колода");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
+        Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
     }
