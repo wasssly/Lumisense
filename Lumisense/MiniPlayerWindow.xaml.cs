@@ -9,7 +9,7 @@ using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
 
-public partial class MiniPlayerWindow : FluentWindow
+public partial class MiniPlayerWindow : Window
 {
     private readonly MainWindow _mainWindow;
     private bool _isDraggingProgress;
