@@ -86,7 +86,10 @@ public partial class UpdateAvailableWindow : FluentWindow
 
         try
         {
-            string installerPath = await UpdateChecker.DownloadInstallerAsync(_result.DownloadUrl, progress, _downloadCts.Token);
+            string source = _settings?.UpdateDownloadSource ?? "GitHub";
+            string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.DownloadUrl, source);
+
+            string installerPath = await UpdateChecker.DownloadInstallerAsync(downloadUrl, progress, _downloadCts.Token);
 
             // Установщик сам закроет запущенный плеер перед копированием файлов (см.
             // CloseApplications в Lumisense.iss), но выходим сами — так плавнее и без лишнего
