@@ -7,6 +7,7 @@
         Width="220" Height="96"
         WindowStyle="None"
         WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         WindowStartupLocation="Manual">
