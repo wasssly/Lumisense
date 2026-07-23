@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
@@ -44,8 +45,30 @@ public class PlaylistFolder : INotifyPropertyChanged
     // который можно было бы пересканировать.
     public bool CanRescan => SourcePath != null;
 
-    // Полные пути к файлам, в порядке добавления
-    public List<string> Tracks { get; } = new();
+    // Полные пути к файлам, в порядке добавления. ObservableCollection, а не обычный List — у
+    // вложенного ListView в MainWindow.xaml (ItemsSource="{Binding Tracks}") отключена
+    // собственная прокрутка, поэтому он не виртуализируется и при первом связывании реализует
+    // (создаёт визуальные контейнеры) КАЖДЫЙ трек сразу — на большой папке это заметно
+    // подвешивает интерфейс. С ObservableCollection можно наполнять список порциями через Add
+    // (см. MainWindow.AddTracksIncrementallyAsync) — тогда контейнеры создаются небольшими
+    // партиями с паузами между ними, а не всей папкой целиком за один присест. AddRange и
+    // RemoveAll (которых у ObservableCollection нет "из коробки" в отличие от List) добавлены
+    // как обычные методы-расширения ниже — специально для того, чтобы все существующие места,
+    // где Tracks.AddRange(...)/Tracks.RemoveAll(...) уже вызывались как на List, продолжили
+    // работать без изменений.
+    public ObservableCollection<string> Tracks { get; } = new();
+
+    public PlaylistFolder()
+    {
+        // SubtitleText ("N треков · путь") вычисляется из Tracks.Count, но сам по себе не
+        // уведомляет об изменениях — WPF не узнает, что его нужно перечитать, просто потому
+        // что Tracks пополнился. Раньше это было не важно: Tracks заполнялся целиком ДО того,
+        // как папка попадала в UI, так что первое же чтение SubtitleText уже видело верное
+        // число. Теперь (см. MainWindow.AddTracksIncrementallyAsync) папка появляется в UI
+        // ПУСТОЙ и наполняется треками порциями уже после — без этой подписки подпись так и
+        // осталась бы "0 треков" до следующего не связанного с этим обновления.
+        Tracks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(SubtitleText));
+    }
 
     private bool _isEnabled = true;
 
@@ -103,4 +126,28 @@ public class PlaylistFolder : INotifyPropertyChanged
 
     private void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+}
+
+// См. комментарий у PlaylistFolder.Tracks — эти два метода существуют только для того, чтобы
+// код, писавшийся под List<string>.AddRange/.RemoveAll, продолжил компилироваться и работать
+// без изменений после перехода Tracks на ObservableCollection<string>, у которой таких методов
+// нет "из коробки". Каждый Add/Remove здесь по-прежнему поднимает своё собственное событие
+// CollectionChanged (как и обычный ObservableCollection.Add/.Remove) — это осознанно: именно
+// на этом строится инкрементальное наполнение списка в MainWindow.AddTracksIncrementallyAsync.
+public static class ObservableCollectionExtensions
+{
+    public static void AddRange<T>(this ObservableCollection<T> collection, IEnumerable<T> items)
+    {
+        foreach (var item in items)
+            collection.Add(item);
+    }
+
+    public static void RemoveAll<T>(this ObservableCollection<T> collection, Func<T, bool> predicate)
+    {
+        // Сначала собираем, что удалять, а не удаляем прямо во время перечисления — менять
+        // коллекцию, по которой в этот момент идёт foreach/enumerator, нельзя.
+        var toRemove = collection.Where(predicate).ToList();
+        foreach (var item in toRemove)
+            collection.Remove(item);
+    }
 }
