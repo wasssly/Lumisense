@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
 
@@ -20,6 +21,20 @@ public partial class App : Application
     private Mutex? _singleInstanceMutex;
     private EventWaitHandle? _toggleViewEvent;
 
+    // Проект собран как OutputType=WinExe (см. Lumisense.csproj) — у таких приложений нет
+    // собственной консольной подсистемы, поэтому Console.WriteLine ниже сам по себе никуда не
+    // пишет, даже если запускать `dotnet run`/готовый .exe прямо из cmd/PowerShell: в отличие
+    // от консольных приложений, WinExe не наследует и не создаёт консоль автоматически.
+    // AttachConsole(ATTACH_PARENT_PROCESS) вручную подключается к консоли того процесса,
+    // который запустил нас (терминала) — если она есть. Если приложение запущено двойным
+    // кликом из проводника или ярлыком, никакой консоли нет вообще, и вызов просто вернёт
+    // false — это не ошибка, поэтому оборачиваем в try и ничего не показываем пользователю
+    // по этому поводу.
+    [DllImport("kernel32.dll")]
+    private static extern bool AttachConsole(int dwProcessId);
+
+    private const int AttachParentProcess = -1;
+
     // Раньше показ главного окна был отдан на откуп StartupUri="MainWindow.xaml" — WPF сам
     // создавал MainWindow и сразу вызывал Show(). Проблема в том, что Show() безусловно
     // выставляет Visibility.Visible, даже если код внутри окна (например, восстановление
@@ -35,6 +50,19 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        try { AttachConsole(AttachParentProcess); } catch { /* нет родительской консоли — и ладно */ }
+
+        // Логируем необработанные исключения максимально рано — если что-то упадёт ещё до
+        // показа первого окна (например, при запуске через `dotnet run`/из терминала), раньше
+        // это выглядело как полная тишина: WinExe не печатает стандартный стек вызовов в
+        // консоль, а Windows Error Reporting либо тихо прибивает процесс, либо показывает
+        // диалог, который легко закрыть не глядя. Не помечаем исключение как обработанное —
+        // само поведение (крах) не меняем, только даём его увидеть.
+        AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+            Console.Error.WriteLine($"[Lumisense] Необработанное исключение: {args.ExceptionObject}");
+        DispatcherUnhandledException += (_, args) =>
+            Console.Error.WriteLine($"[Lumisense] Необработанное исключение в UI-потоке: {args.Exception}");
+
         // В мини-режиме у окон плеера нет присутствия на панели задач вообще (ни у главного
         // окна — оно спрятано через Hide, ни у самого мини-плеера — у него ShowInTaskbar=False,
         // см. MiniPlayerWindow.xaml), поэтому повторный клик по ярлыку плеера на панели задач/в
@@ -49,16 +77,25 @@ public partial class App : Application
 
         if (!createdNew)
         {
+            // Именно то место, из-за которого запуск через `dotnet run`/.exe в консоли мог
+            // выглядеть как "плеер просто не запускается, и ничего не пишется": до добавления
+            // AttachConsole/логов выше этот путь молча вызывал Shutdown() без единого сообщения
+            // — пользователь видел успешную сборку и... тишину, хотя на самом деле плеер уже
+            // работал (например, был свёрнут в трей после предыдущего запуска, см.
+            // AppSettings.MinimizeToTrayOnClose) и корректно принял сигнал переключить вид.
+            Console.WriteLine("[Lumisense] Плеер уже запущен — переключаю вид у уже открытого экземпляра и завершаюсь (это не ошибка).");
+
             try
             {
                 using var existingToggleEvent = EventWaitHandle.OpenExisting(ToggleViewEventName);
                 existingToggleEvent.Set();
             }
-            catch
+            catch (Exception ex)
             {
                 // Основной процесс мог оказаться в процессе завершения ровно между проверкой
                 // Mutex выше и открытием события — крайне маловероятная гонка, но в этом случае
                 // просто тихо выходим, не переключая ничего и не показывая ошибку на пустом месте.
+                Console.Error.WriteLine($"[Lumisense] Не удалось просигналить уже запущенному экземпляру: {ex.Message}");
             }
 
             Shutdown();
