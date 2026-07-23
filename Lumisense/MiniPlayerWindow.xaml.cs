@@ -134,6 +134,7 @@ public partial class MiniPlayerWindow : Window
         {
             _hwnd = hwndSource.Handle;
             hwndSource.AddHook(WndProc);
+            ApplyBlurBehind();
         }
     }
 
@@ -222,15 +223,10 @@ public partial class MiniPlayerWindow : Window
         TitleText.Text = title;
         ArtistText.Text = artist;
 
-        Color? artColor = null;
-
         if (art != null)
         {
             ArtBorder.Background = art;
             ArtIcon.Visibility = Visibility.Collapsed;
-
-            if (art is ImageBrush { ImageSource: System.Windows.Media.Imaging.BitmapSource artBitmap })
-                artColor = ExtractAverageColor(artBitmap);
         }
         else
         {
@@ -238,117 +234,99 @@ public partial class MiniPlayerWindow : Window
             ArtIcon.Visibility = Visibility.Visible;
         }
 
-        ApplyAdaptiveBackground(artColor);
         UpdateTitleMarquee();
     }
 
-    // ---------- Адаптивный фон мини-плеера ----------
+    // ---------- Фон мини-плеера: размытие того, что находится позади окна ----------
     //
-    // Раньше RootBorder всегда был залит одним и тем же нейтральным цветом темы
-    // (ControlFillColorDefaultBrush) независимо от того, что играет — мини-плеер выглядел
-    // одинаково и для яркой обложки, и для тёмной, и без обложки вовсе. Теперь фон слегка
-    // подсвечивается усреднённым цветом текущей обложки (см. ExtractAverageColor) и плавно
-    // переливается в новый оттенок при каждой смене трека — а без обложки просто остаётся
-    // обычным цветом темы, как и было.
-
-    // Доля цвета обложки в итоговом фоне: заметно "подсвечивает" панель, но не настолько
-    // сильно, чтобы текст поверх потерял контраст (особенно на светлой теме, где обложки
-    // бывают весьма насыщенными). Подобрано на глаз.
-    private const double ArtTintWeight = 0.35;
-
-    // Запоминаем последний цвет обложки отдельно от таргета анимации — нужен, чтобы
-    // ApplyOpacityLive (настройка "прозрачность" в окне настроек) могла пересчитать фон
-    // заново без смены трека: сам цвет обложки не меняется, меняется только альфа-канал.
-    private Color? _lastArtColor;
-
-    private void ApplyAdaptiveBackground(Color? artColor)
+    // Раньше фон был заливкой RootBorder, которая подстраивалась под усреднённый цвет
+    // текущей обложки (см. историю в git) — панель окрашивалась в тон играющего трека. По
+    // отзыву это оказалось не тем, что хотелось: фон должен быть нейтральным и просто
+    // показывать сквозь себя размытое содержимое рабочего стола/окон позади, не завися от
+    // того, что сейчас играет.
+    //
+    // Также перед этим была попытка получить фон через Mica (ui:FluentWindow +
+    // WindowBackdropType) — тот же подход, что и у обычного окна плеера — но именно на этом
+    // маленьком окне без рамки (WindowStyle="None", 220×82/140) она вела себя нестабильно
+    // (падение при входе в мини-режим, затем — совсем не тот размер окна на экране), поэтому
+    // от неё отказались (см. MiniPlayerWindow.xaml). Взамен здесь настоящее размытие через
+    // SetWindowCompositionAttribute — недокументированный, но очень давно и широко
+    // используемый в WPF-приложениях способ получить эффект "матового стекла" на Windows
+    // 10/11 напрямую через HWND, в обход WPF-UI FluentWindow и его требований к
+    // ExtendsContentIntoTitleBar/композиции. RootBorder при этом просто прозрачен (см.
+    // MiniPlayerWindow.xaml) — весь визуальный фон (блюр + тонировка + альфа) даёт эта
+    // Win32-подложка целиком.
+    [StructLayout(LayoutKind.Sequential)]
+    private struct AccentPolicy
     {
-        _lastArtColor = artColor;
+        public int AccentState;
+        public int AccentFlags;
+        public int GradientColor;
+        public int AnimationId;
+    }
 
-        // Базовый цвет берём из темы каждый раз заново (а не кешируем один раз) — так фон
-        // остаётся верным даже если пользователь переключил тему, пока мини-плеер уже открыт.
-        // `as`, а не приведение типа — ресурсы темы это, как правило, SolidColorBrush, но
-        // ломать фон мини-плеера исключением из-за неожиданного типа ресурса ни к чему.
-        var baseColor = (FindResource("ControlFillColorDefaultBrush") as SolidColorBrush)?.Color ?? Colors.Transparent;
+    [StructLayout(LayoutKind.Sequential)]
+    private struct WindowCompositionAttributeData
+    {
+        public int Attribute;
+        public IntPtr Data;
+        public int SizeOfData;
+    }
 
-        var targetColor = artColor is { } c
-            ? Color.FromRgb(
-                (byte)(baseColor.R * (1 - ArtTintWeight) + c.R * ArtTintWeight),
-                (byte)(baseColor.G * (1 - ArtTintWeight) + c.G * ArtTintWeight),
-                (byte)(baseColor.B * (1 - ArtTintWeight) + c.B * ArtTintWeight))
-            : baseColor;
+    // ACCENT_ENABLE_ACRYLICBLURBEHIND — тот же режим, которым в своё время в Windows 10
+    // рисовался эффект Acrylic (блюр + шум + тонировка) до появления Mica в Windows 11;
+    // на Windows 11 он тоже работает, просто без специфичного для Mica "статичного" фона,
+    // завязанного на обои рабочего стола — здесь это ровно то, что нужно: чистый блюр.
+    private const int AccentEnableAcrylicBlurBehind = 4;
+    private const int WcaAccentPolicy = 19;
 
-        // Окно теперь рисует настоящий Mica-backdrop (см. комментарий в MiniPlayerWindow.xaml
-        // над <Grid>), поэтому "прозрачность мини-плеера" из настроек применяется не через
-        // Window.Opacity, а альфа-каналом именно этой подложки: 30% (минимум слайдера) даёт
-        // едва тонированный Mica, 100% — полностью непрозрачную панель, как раньше.
+    [DllImport("user32.dll")]
+    private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
+
+    // GradientColor у ACCENT_POLICY — это цвет тонировки поверх блюра в формате ABGR (а не
+    // привычном ARGB!), поэтому байты собираются вручную, а не через обычный Color.ToArgb().
+    // Альфа-канал по-прежнему берётся из настройки "прозрачность мини-плеера" — чем она ниже,
+    // тем прозрачнее сама тонировка и тем сильнее сквозь блюр виден рабочий стол/окна под
+    // мини-плеером.
+    private void ApplyBlurBehind()
+    {
+        if (_hwnd == IntPtr.Zero) return;
+
+        var baseColor = (FindResource("ControlFillColorDefaultBrush") as SolidColorBrush)?.Color ?? Colors.Black;
         byte alpha = (byte)Math.Round(Math.Clamp(_mainWindow.Settings.MiniPlayerOpacity, 0.0, 1.0) * 255);
-        targetColor = Color.FromArgb(alpha, targetColor.R, targetColor.G, targetColor.B);
 
-        var animation = new ColorAnimation
+        int abgr = (alpha << 24) | (baseColor.B << 16) | (baseColor.G << 8) | baseColor.R;
+
+        var accent = new AccentPolicy
         {
-            To = targetColor,
-            Duration = TimeSpan.FromMilliseconds(400),
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+            AccentState = AccentEnableAcrylicBlurBehind,
+            GradientColor = abgr
         };
-        AdaptiveBackgroundBrush.BeginAnimation(SolidColorBrush.ColorProperty, animation);
+
+        int accentSize = Marshal.SizeOf(accent);
+        IntPtr accentPtr = Marshal.AllocHGlobal(accentSize);
+        try
+        {
+            Marshal.StructureToPtr(accent, accentPtr, false);
+
+            var data = new WindowCompositionAttributeData
+            {
+                Attribute = WcaAccentPolicy,
+                SizeOfData = accentSize,
+                Data = accentPtr
+            };
+
+            SetWindowCompositionAttribute(_hwnd, ref data);
+        }
+        finally
+        {
+            Marshal.FreeHGlobal(accentPtr);
+        }
     }
 
     // Вызывается из MainWindow.ApplyMiniPlayerOpacityLive, когда пользователь двигает
-    // слайдер прозрачности в окне настроек, пока мини-плеер уже открыт — пересчитывает фон
-    // с текущим (уже известным) цветом обложки, но с новым значением альфы.
-    public void ApplyOpacityLive() => ApplyAdaptiveBackground(_lastArtColor);
-
-    // Средний цвет обложки — не самый строгий "доминантный цвет" (это потребовало бы
-    // кластеризации палитры), но для мягкой подсветки фона его вполне достаточно, а считается
-    // он на порядки быстрее. Обложка сначала уменьшается до совсем маленького размера — так
-    // обход пикселей остаётся дешёвым даже для тяжёлых, в несколько тысяч пикселей исходников.
-    private static Color? ExtractAverageColor(System.Windows.Media.Imaging.BitmapSource source)
-    {
-        try
-        {
-            const int sampleSize = 12;
-            if (source.PixelWidth <= 0 || source.PixelHeight <= 0) return null;
-
-            var scaled = new System.Windows.Media.Imaging.TransformedBitmap(source,
-                new ScaleTransform((double)sampleSize / source.PixelWidth, (double)sampleSize / source.PixelHeight));
-            var converted = new System.Windows.Media.Imaging.FormatConvertedBitmap(scaled, PixelFormats.Bgra32, null, 0);
-
-            int width = converted.PixelWidth;
-            int height = converted.PixelHeight;
-            if (width <= 0 || height <= 0) return null;
-
-            int stride = width * 4;
-            var pixels = new byte[stride * height];
-            converted.CopyPixels(pixels, stride, 0);
-
-            long sumB = 0, sumG = 0, sumR = 0;
-            int counted = 0;
-
-            for (int i = 0; i < pixels.Length; i += 4)
-            {
-                // Пропускаем почти прозрачные пиксели (края непрямоугольных обложек и т.п.) —
-                // иначе прозрачность (обычно чёрная в BGRA-буфере под ней) тянула бы средний
-                // цвет к чёрному, даже если сама видимая часть обложки светлая и яркая.
-                if (pixels[i + 3] < 16) continue;
-
-                sumB += pixels[i];
-                sumG += pixels[i + 1];
-                sumR += pixels[i + 2];
-                counted++;
-            }
-
-            if (counted == 0) return null;
-
-            var color = Color.FromRgb((byte)(sumR / counted), (byte)(sumG / counted), (byte)(sumB / counted));
-            return color;
-        }
-        catch
-        {
-            // Нестандартный формат пикселей, битая обложка и т.п. — просто не подсвечиваем фон
-            return null;
-        }
-    }
+    // слайдер прозрачности в окне настроек, пока мини-плеер уже открыт.
+    public void ApplyOpacityLive() => ApplyBlurBehind();
 
     // ---------- Бегущая строка названия трека ----------
     //
