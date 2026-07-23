@@ -1,5 +1,6 @@
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
 
@@ -25,6 +26,8 @@ public sealed class TrayIconManager : IDisposable
     private static readonly Color Accent = Color.FromArgb(96, 92, 255);
     private const int CornerRadius = 8;
     private const int ItemCornerRadius = 6;
+    private const int ArtThumbnailSize = 28;
+    private const int ArtCornerRadius = 8;
 
     private readonly NotifyIcon _notifyIcon;
     private readonly RoundedContextMenuStrip _menu;
@@ -37,6 +40,11 @@ public sealed class TrayIconManager : IDisposable
     private readonly ToolStripMenuItem _exitItem;
 
     private bool _isLight;
+
+    // Миниатюра обложки, показанная сейчас в пункте "сейчас играет" (см. SetNowPlaying) —
+    // хранится отдельно, чтобы её можно было корректно освободить (Bitmap — обёртка над GDI-
+    // хендлом, а не управляемая память) перед тем, как заменить на следующую при смене трека.
+    private Bitmap? _currentArtThumbnail;
 
     public event Action? OpenRequested;
     public event Action? ExitRequested;
@@ -128,13 +136,73 @@ public sealed class TrayIconManager : IDisposable
         _playPauseItem.Image = TrayIcons.PlayPause(isPlaying, ForegroundColor);
     }
 
-    /// <summary>Название текущего трека прямо в меню трея — обновляется из MainWindow при
-    /// каждой смене трека (см. TrackInfoChanged), чтобы не приходилось открывать окно плеера,
-    /// чтобы узнать, что сейчас играет.</summary>
-    public void SetNowPlayingText(string title, string artist)
+    /// <summary>Название/исполнитель текущего трека + миниатюра обложки прямо в меню трея —
+    /// так же, как в самом мини-плеере обложка показывается рядом с названием и исполнителем
+    /// (см. MiniPlayerWindow: HeaderPanel), а не голым текстом без картинки, как было раньше.
+    /// Вызывается из MainWindow при каждом TrackInfoChanged.</summary>
+    public void SetNowPlaying(string title, string artist, byte[]? artBytes)
     {
         var text = string.IsNullOrWhiteSpace(title) ? "Ничего не играет" : $"{title} — {artist}";
         _nowPlayingItem.Text = Truncate(text, 60);
+
+        var previousThumbnail = _currentArtThumbnail;
+        _currentArtThumbnail = BuildRoundedThumbnail(artBytes);
+        _nowPlayingItem.Image = _currentArtThumbnail;
+        _nowPlayingItem.ImageScaling = ToolStripItemImageScaling.None;
+
+        // Освобождаем СТАРУЮ миниатюру уже после того, как новая (или null) назначена пункту
+        // меню — если освободить раньше, а перерисовка пункта меню случится ровно в этот
+        // промежуток, WinForms попытается нарисовать уже освобождённый Bitmap.
+        previousThumbnail?.Dispose();
+    }
+
+    // Декодирование могло бы упасть на битых/незнакомых по формату тегах — сам плеер в этом
+    // случае и так показывает плейсхолдер вместо обложки в своём окне (см.
+    // MainWindow.ResetAlbumArtPlaceholder), поэтому здесь просто не показываем миниатюру
+    // вовсе, а не роняем меню трея из-за одного плохого файла с обложкой.
+    private static Bitmap? BuildRoundedThumbnail(byte[]? artBytes)
+    {
+        if (artBytes is null || artBytes.Length == 0) return null;
+
+        try
+        {
+            using var source = new Bitmap(new MemoryStream(artBytes));
+            var thumbnail = new Bitmap(ArtThumbnailSize, ArtThumbnailSize);
+
+            using (var g = Graphics.FromImage(thumbnail))
+            {
+                g.SmoothingMode = SmoothingMode.AntiAlias;
+                g.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+                // Скруглённые углы миниатюры — тот же приём (обрезка по GraphicsPath), что и у
+                // обложки в самом плеере (ArtBorder CornerRadius=8 в MiniPlayerWindow.xaml) и у
+                // самого выпадающего меню трея (см. RoundedContextMenuStrip ниже в этом файле).
+                var bounds = new Rectangle(0, 0, ArtThumbnailSize, ArtThumbnailSize);
+                using var path = RoundedPath(bounds, ArtCornerRadius);
+                g.SetClip(path);
+
+                g.DrawImage(source, bounds);
+            }
+
+            return thumbnail;
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    private static GraphicsPath RoundedPath(Rectangle bounds, int radius)
+    {
+        int d = radius * 2;
+        var path = new GraphicsPath();
+        path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+        path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+        path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+        path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+        path.CloseFigure();
+        return path;
     }
 
     private Color ForegroundColor => _isLight ? Color.Black : Color.White;
@@ -190,6 +258,7 @@ public sealed class TrayIconManager : IDisposable
     {
         _notifyIcon.Visible = false;
         _notifyIcon.Dispose();
+        _currentArtThumbnail?.Dispose();
     }
 
     /// <summary>Палитра для ToolStripProfessionalRenderer — тёмный вариант в стиле Fluent/Mica
