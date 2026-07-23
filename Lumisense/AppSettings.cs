@@ -146,6 +146,12 @@ public class AppSettings
     // версия новее. Ручная проверка кнопкой в настройках всегда показывает результат,
     // независимо от этого поля. См. UpdateChecker.
     public string? SkippedUpdateVersion { get; set; }
+
+    // Откуда качать сам установщик при обновлении — "GitHub" напрямую или одно из зеркал
+    // gh-proxy (см. UpdateChecker.DownloadSources/ApplyDownloadSource и переключатель в
+    // настройках "О плеере"). Влияет только на скачивание файла установщика — сама проверка
+    // версии (обращение к api.github.com) всегда идёт напрямую независимо от этой настройки.
+    public string UpdateDownloadSource { get; set; } = "GitHub";
 }
 
 /// <summary>
