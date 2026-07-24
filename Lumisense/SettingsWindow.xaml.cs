@@ -47,6 +47,7 @@ public partial class SettingsWindow : FluentWindow
             "About" => NavAbout,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
+            "Equalizer" => NavEqualizer,
             "MiniPlayer" => NavMiniPlayer,
             "Hotkeys" => NavHotkeys,
             "Experimental" => NavExperimental,
@@ -69,6 +70,14 @@ public partial class SettingsWindow : FluentWindow
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
+
+        EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+        {
+            double gain = _owner.GetEqualizerBandGain(band);
+            GetEqBandSlider(band).Value = gain;
+            GetEqBandValueText(band).Text = FormatEqGain(gain);
+        }
 
         (_settings.UpdateDownloadSource switch
         {
@@ -209,6 +218,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
+        Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
         Add("Закрепить положение (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniPinnedCheckBox, "закрепить перетаскивание pin мини плеер");
@@ -265,6 +275,7 @@ public partial class SettingsWindow : FluentWindow
             "Appearance" => NavAppearance,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
+            "Equalizer" => NavEqualizer,
             "MiniPlayer" => NavMiniPlayer,
             "Hotkeys" => NavHotkeys,
             "Experimental" => NavExperimental,
@@ -390,7 +401,73 @@ public partial class SettingsWindow : FluentWindow
         _settings.MiniPlayerPinned = MiniPinnedCheckBox.IsChecked == true;
     }
 
-    // ---------- Экспериментальное ----------
+    // ---------- Эквалайзер ----------
+
+    private void EqualizerEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _owner.SetEqualizerEnabled(EqualizerEnabledCheckBox.IsChecked == true);
+    }
+
+    // Общий обработчик для всех 10 слайдеров полос — номер полосы передаётся через Tag
+    // (см. SettingsWindow.xaml), а не десятью одинаковыми по сути методами.
+    private void EqualizerBandSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing) return;
+        if (sender is not System.Windows.Controls.Slider { Tag: string tagStr } slider) return;
+        if (!int.TryParse(tagStr, out int band)) return;
+
+        GetEqBandValueText(band).Text = FormatEqGain(slider.Value);
+        _owner.SetEqualizerBandGain(band, slider.Value);
+    }
+
+    private void EqualizerResetButton_Click(object sender, RoutedEventArgs e)
+    {
+        _owner.ResetEqualizer();
+
+        // _isInitializing глушит ValueChanged на время, пока слайдеры переставляются в 0 —
+        // иначе каждый из десяти сбросов по отдельности снова вызвал бы SetEqualizerBandGain,
+        // хотя ResetEqualizer выше уже сделал это разом одним махом.
+        _isInitializing = true;
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+        {
+            GetEqBandSlider(band).Value = 0;
+            GetEqBandValueText(band).Text = FormatEqGain(0);
+        }
+        _isInitializing = false;
+    }
+
+    private static string FormatEqGain(double gainDb) =>
+        gainDb == 0 ? "0 дБ" : $"{(gainDb > 0 ? "+" : "")}{gainDb:0.#} дБ";
+
+    private System.Windows.Controls.Slider GetEqBandSlider(int band) => band switch
+    {
+        0 => EqBand0Slider,
+        1 => EqBand1Slider,
+        2 => EqBand2Slider,
+        3 => EqBand3Slider,
+        4 => EqBand4Slider,
+        5 => EqBand5Slider,
+        6 => EqBand6Slider,
+        7 => EqBand7Slider,
+        8 => EqBand8Slider,
+        _ => EqBand9Slider
+    };
+
+    private System.Windows.Controls.TextBlock GetEqBandValueText(int band) => band switch
+    {
+        0 => EqBand0ValueText,
+        1 => EqBand1ValueText,
+        2 => EqBand2ValueText,
+        3 => EqBand3ValueText,
+        4 => EqBand4ValueText,
+        5 => EqBand5ValueText,
+        6 => EqBand6ValueText,
+        7 => EqBand7ValueText,
+        8 => EqBand8ValueText,
+        _ => EqBand9ValueText
+    };
 
     private void ImprovedShuffleCheckBox_Changed(object sender, RoutedEventArgs e)
     {
@@ -422,6 +499,7 @@ public partial class SettingsWindow : FluentWindow
         PageAppearance.Visibility = key == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
         PageWindow.Visibility = key == "Window" ? Visibility.Visible : Visibility.Collapsed;
         PagePlayback.Visibility = key == "Playback" ? Visibility.Visible : Visibility.Collapsed;
+        PageEqualizer.Visibility = key == "Equalizer" ? Visibility.Visible : Visibility.Collapsed;
         PageMiniPlayer.Visibility = key == "MiniPlayer" ? Visibility.Visible : Visibility.Collapsed;
         PageHotkeys.Visibility = key == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
         PageExperimental.Visibility = key == "Experimental" ? Visibility.Visible : Visibility.Collapsed;
