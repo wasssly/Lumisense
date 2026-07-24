@@ -32,6 +32,12 @@ public partial class MainWindow : FluentWindow
     private AudioFileReader? _audioFile;
     private WaveOutEvent? _outputDevice;
 
+    // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
+    // именно поэтому регулировка громкости (AudioFileReader.Volume) остаётся отдельной и не
+    // трогается эквалайзером: она применяется ДО него, эквалайзер только красит частоты уже
+    // готового по громкости сигнала.
+    private EqualizerSampleProvider? _equalizer;
+
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
 
     // Плейлист теперь хранится как список групп (папка целиком или отдельные файлы).
@@ -1853,8 +1859,12 @@ public partial class MainWindow : FluentWindow
         try
         {
             _audioFile = new AudioFileReader(filePath) { Volume = ToOutputVolume(VolumeSlider.Value) };
+
+            _equalizer = new EqualizerSampleProvider(_audioFile) { Enabled = _settings.EqualizerEnabled };
+            ApplyEqualizerGainsFromSettings();
+
             _outputDevice = new WaveOutEvent();
-            _outputDevice.Init(_audioFile);
+            _outputDevice.Init(_equalizer);
             _outputDevice.PlaybackStopped += OutputDevice_PlaybackStopped;
         }
         catch (Exception ex)
@@ -2213,6 +2223,7 @@ public partial class MainWindow : FluentWindow
         _audioFile?.Dispose();
         _outputDevice = null;
         _audioFile = null;
+        _equalizer = null;
         _isPlaying = false;
 
         if (!disposeOnly)
@@ -2579,6 +2590,65 @@ public partial class MainWindow : FluentWindow
     public void ApplyMiniPlayerTopmostLive(bool topmost)
     {
         if (_miniPlayerWindow != null) _miniPlayerWindow.Topmost = topmost;
+    }
+
+    // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
+    //
+    // Настройки читаются/пишутся здесь, а не прямо из SettingsWindow, по той же причине, что и
+    // у остальных "живых" настроек в этом файле: EqualizerSampleProvider существует только
+    // пока что-то играет (пересоздаётся в LoadAndPlay при каждой смене трека), а
+    // AppSettings.EqualizerEnabled/EqualizerBandGainsDb должны сохраняться и применяться даже
+    // если сейчас ничего не воспроизводится — окно настроек не обязано знать, есть ли сейчас
+    // активный _equalizer или нет.
+
+    // Заполняет только что созданный _equalizer сохранёнными настройками — вызывается из
+    // LoadAndPlay при каждой смене трека, потому что сам _equalizer живёт не дольше трека.
+    private void ApplyEqualizerGainsFromSettings()
+    {
+        if (_equalizer == null) return;
+
+        var saved = _settings.EqualizerBandGainsDb;
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            _equalizer.SetBandGain(band, band < saved.Length ? saved[band] : 0);
+    }
+
+    public bool IsEqualizerEnabled => _settings.EqualizerEnabled;
+
+    public void SetEqualizerEnabled(bool enabled)
+    {
+        _settings.EqualizerEnabled = enabled;
+        if (_equalizer != null) _equalizer.Enabled = enabled;
+    }
+
+    public double GetEqualizerBandGain(int band) =>
+        band >= 0 && band < _settings.EqualizerBandGainsDb.Length ? _settings.EqualizerBandGainsDb[band] : 0;
+
+    // Вызывается из SettingsWindow при каждом движении слайдера одной полосы — сразу и
+    // сохраняет значение в настройки, и (если сейчас что-то играет) применяет его к реальному
+    // фильтру, чтобы звук менялся вживую, а не только после следующего перезапуска трека.
+    public void SetEqualizerBandGain(int band, double gainDb)
+    {
+        if (band < 0 || band >= EqualizerSampleProvider.BandFrequencies.Length) return;
+
+        // EqualizerBandGainsDb у уже существующих settings.json мог быть сохранён с ДРУГИМ
+        // количеством полос более старой/новой версией плеера — расширяем массив, а не падаем
+        // с IndexOutOfRange, если он окажется короче текущего набора полос.
+        if (_settings.EqualizerBandGainsDb.Length <= band)
+        {
+            var resized = new double[EqualizerSampleProvider.BandFrequencies.Length];
+            Array.Copy(_settings.EqualizerBandGainsDb, resized, _settings.EqualizerBandGainsDb.Length);
+            _settings.EqualizerBandGainsDb = resized;
+        }
+
+        _settings.EqualizerBandGainsDb[band] = gainDb;
+        _equalizer?.SetBandGain(band, gainDb);
+    }
+
+    // Кнопка "Сбросить" в настройках — обнуляет все полосы разом.
+    public void ResetEqualizer()
+    {
+        _settings.EqualizerBandGainsDb = new double[EqualizerSampleProvider.BandFrequencies.Length];
+        ApplyEqualizerGainsFromSettings();
     }
 
     // Переключение "Закрепить" / "Поверх окон" прямо из контекстного меню мини-плеера
