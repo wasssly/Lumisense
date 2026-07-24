@@ -432,74 +432,93 @@
                                          посередине, частота полосы снизу. Все десять слайдеров используют
                                          ОДИН общий обработчик (EqualizerBandSlider_ValueChanged) — номер
                                          полосы передаётся через Tag, а не десятью отдельными методами. -->
+                                    <!-- Width="46" TextAlignment="Center" на EqBandXValueText (а не просто
+                                         HorizontalAlignment="Center" на тексте переменной длины) — иначе
+                                         во время перетаскивания слайдера, пока текст скачет между "0 дБ",
+                                         "-3.5 дБ", "+12 дБ" и т.п. (разная длина строки), StackPanel без
+                                         фиксированной ширины пересчитывал свою auto-ширину под самый
+                                         широкий момент — и слайдер, центрированный внутри той же StackPanel,
+                                         визуально дёргался влево-вправо вслед за этим пересчётом на каждом
+                                         кадре перетаскивания. Фиксированная ширина текста делает ширину
+                                         StackPanel постоянной, и дёргание пропадает. -->
                                     <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand0ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand0ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand0Slider" Tag="0" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="31" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand1ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand1ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand1Slider" Tag="1" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="62" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand2ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand2ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand2Slider" Tag="2" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="125" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="3" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand3ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand3ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand3Slider" Tag="3" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="250" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="4" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand4ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand4ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand4Slider" Tag="4" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="500" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="5" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand5ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand5ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand5Slider" Tag="5" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="1к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="6" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand6ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand6ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand6Slider" Tag="6" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="2к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="7" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand7ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand7ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand7Slider" Tag="7" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="4к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="8" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand8ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand8ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand8Slider" Tag="8" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="8к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                     <StackPanel Grid.Column="9" HorizontalAlignment="Center">
-                                        <TextBlock x:Name="EqBand9ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <TextBlock x:Name="EqBand9ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand9Slider" Tag="9" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
-                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                                ValueChanged="EqualizerBandSlider_ValueChanged"
+                                                MouseWheel="EqualizerBandSlider_MouseWheel" />
                                         <TextBlock Text="16к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </Grid>

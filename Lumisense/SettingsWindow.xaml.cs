@@ -472,6 +472,26 @@ public partial class SettingsWindow : FluentWindow
         _owner.SetEqualizerBandGain(band, slider.Value);
     }
 
+    // Прокрутка колесом мыши над любой полосой эквалайзера — на шаг SmallChange за одно
+    // деление колеса (та же величина шага, что и у стрелок клавиатуры на этом слайдере,
+    // сейчас 0.5 дБ, см. SmallChange в SettingsWindow.xaml). WPF не делает этого сам из
+    // коробки для Slider (в отличие, например, от ComboBox) — событие нужно перехватывать
+    // и переводить в изменение Value вручную; само присвоение Value ниже само поднимет уже
+    // существующий EqualizerBandSlider_ValueChanged, так что текст "N дБ" и звук обновятся
+    // тем же путём, что и при обычном перетаскивании — дублировать эту логику здесь не нужно.
+    // e.Handled = true — чтобы прокрутка не проваливалась дальше и не листала страницу
+    // настроек, если слайдер лежит внутри прокручиваемой области.
+    private void EqualizerBandSlider_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Slider slider) return;
+
+        double step = slider.SmallChange > 0 ? slider.SmallChange : 0.5;
+        double newValue = slider.Value + Math.Sign(e.Delta) * step;
+        slider.Value = Math.Clamp(newValue, slider.Minimum, slider.Maximum);
+
+        e.Handled = true;
+    }
+
     private void EqualizerResetButton_Click(object sender, RoutedEventArgs e)
     {
         _owner.ResetEqualizer();
