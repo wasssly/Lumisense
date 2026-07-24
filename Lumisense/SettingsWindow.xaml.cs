@@ -156,15 +156,17 @@ public partial class SettingsWindow : FluentWindow
         Top = top;
     }
 
-    // Вызывается извне (из контекстного меню мини-плеера), когда закрепление или "поверх окон"
-    // переключили не через это окно, а прямо на мини-плеере. Флаг _isInitializing глушит
-    // Changed-обработчики чекбоксов, чтобы не вызвать повторное, уже ненужное применение
-    // настройки и не уйти в цикл обновлений.
+    // Вызывается извне (из контекстного меню мини-плеера), когда закрепление, "поверх окон"
+    // или прозрачность переключили не через это окно, а прямо на мини-плеере. Флаг
+    // _isInitializing глушит Changed-обработчики чекбоксов/слайдера, чтобы не вызвать
+    // повторное, уже ненужное применение настройки и не уйти в цикл обновлений.
     public void RefreshMiniPlayerToggles()
     {
         _isInitializing = true;
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
+        MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
+        MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         _isInitializing = false;
     }
 

@@ -95,10 +95,10 @@
                  просто дефолт на первый кадр. -->
             <SolidColorBrush x:Name="MiniBackgroundBrush" Color="#F51C1C1E" />
         </Border.Background>
-        <!-- ПКМ по любому месту мини-плеера: закрепление (запрет перетаскивания) и
-             "поверх окон" — те же две настройки, что и в окне настроек, здесь просто
-             под рукой. MiniPlayerContextMenu_Opened каждый раз перед показом меню
-             подставляет актуальное состояние, так что галочки не могут разъехаться
+        <!-- ПКМ по любому месту мини-плеера: закрепление (запрет перетаскивания), "поверх
+             окон" и теперь ещё и прозрачность — те же три настройки, что и в окне настроек,
+             здесь просто под рукой. MiniPlayerContextMenu_Opened каждый раз перед показом меню
+             подставляет актуальное состояние, так что галочки/слайдер не могут разъехаться
              с реальными настройками, даже если их поменяли из другого места. -->
         <Border.ContextMenu>
             <ContextMenu Opened="MiniPlayerContextMenu_Opened">
@@ -106,6 +106,35 @@
                           Click="PinnedMenuItem_Click" />
                 <MenuItem x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
                           Click="TopmostMenuItem_Click" />
+                <Separator />
+                <!-- Та же настройка, что и ползунок "Прозрачность мини-плеера" в окне настроек
+                     (см. MainWindow.SetMiniPlayerOpacity) — синхронизирована в обе стороны:
+                     здесь подставляется актуальное значение при каждом открытии меню, а
+                     перетаскивание сразу же обновляет и сам мини-плеер, и слайдер в окне
+                     настроек, если оно сейчас открыто (см. SettingsWindow.RefreshMiniPlayerToggles).
+
+                     StaysOpenOnClick="True" — иначе меню закрылось бы от самого первого клика
+                     по слайдеру, не дав его толком перетащить. Focusable="False" — чтобы пункт
+                     не вёл себя как обычный кликабельный пункт меню с рамкой выделения: у него
+                     нет осмысленного "клика" самого по себе, только перетаскивание слайдера
+                     внутри. Диапазон 0.3–1.0 — тот же, что и у слайдера в окне настроек. -->
+                <MenuItem StaysOpenOnClick="True" Focusable="False">
+                    <MenuItem.Header>
+                        <Grid Width="220">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Прозрачность" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <Slider x:Name="MiniOpacityContextSlider" Grid.Column="1"
+                                    Minimum="0.3" Maximum="1.0" VerticalAlignment="Center"
+                                    ValueChanged="MiniOpacityContextSlider_ValueChanged" />
+                            <TextBlock x:Name="MiniOpacityContextValueText" Grid.Column="2" Text="100%"
+                                       Width="34" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        </Grid>
+                    </MenuItem.Header>
+                </MenuItem>
             </ContextMenu>
         </Border.ContextMenu>
         <Grid>

@@ -2686,6 +2686,18 @@ public partial class MainWindow : FluentWindow
         _settingsWindow?.RefreshMiniPlayerToggles();
     }
 
+    // Вызывается из контекстного меню мини-плеера (ПКМ → слайдер "Прозрачность"), когда её
+    // меняют прямо там, а не через окно настроек — та же роль, что и у SetMiniPlayerPinned/
+    // SetMiniPlayerTopmost выше: сохранить настройку, применить её вживую и подтянуть значение
+    // в окне настроек, если оно сейчас открыто, чтобы два места редактирования одной и той же
+    // настройки не разъезжались друг с другом.
+    public void SetMiniPlayerOpacity(double opacity)
+    {
+        _settings.MiniPlayerOpacity = opacity;
+        _miniPlayerWindow?.ApplyOpacityLive();
+        _settingsWindow?.RefreshMiniPlayerToggles();
+    }
+
     // Вызывается из окна настроек сразу после того, как пользователь записал новую
     // комбинацию клавиш (или очистил старую) — применяет её без перезапуска приложения
     public void ReapplyHotkeys() => _mediaHotKeys?.ApplyCustomHotkeys(_settings);

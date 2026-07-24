@@ -464,10 +464,21 @@ public partial class MiniPlayerWindow : Window
     // Подставляем актуальное состояние настроек прямо перед показом меню — на случай, если
     // закрепление/топмост поменяли в другом месте (например, в окне настроек) уже после
     // того, как это меню было создано.
+    // Пока true — MiniOpacityContextSlider.Value выставляется программно (см.
+    // MiniPlayerContextMenu_Opened), и ValueChanged должен промолчать, а не воспринять это как
+    // движение слайдера пользователем и не запустить повторное, уже ненужное применение
+    // настройки (и тем более не уйти в цикл обновлений с окном настроек).
+    private bool _isSyncingOpacitySlider;
+
     private void MiniPlayerContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         PinnedMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerPinned;
         TopmostMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerAlwaysOnTop;
+
+        _isSyncingOpacitySlider = true;
+        MiniOpacityContextSlider.Value = _mainWindow.Settings.MiniPlayerOpacity;
+        MiniOpacityContextValueText.Text = $"{(int)Math.Round(_mainWindow.Settings.MiniPlayerOpacity * 100)}%";
+        _isSyncingOpacitySlider = false;
     }
 
     private void PinnedMenuItem_Click(object sender, RoutedEventArgs e)
@@ -475,6 +486,14 @@ public partial class MiniPlayerWindow : Window
 
     private void TopmostMenuItem_Click(object sender, RoutedEventArgs e)
         => _mainWindow.SetMiniPlayerTopmost(TopmostMenuItem.IsChecked);
+
+    private void MiniOpacityContextSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isSyncingOpacitySlider) return;
+
+        MiniOpacityContextValueText.Text = $"{(int)Math.Round(e.NewValue * 100)}%";
+        _mainWindow.SetMiniPlayerOpacity(e.NewValue);
+    }
 
     private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {

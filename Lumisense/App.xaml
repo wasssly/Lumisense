@@ -34,17 +34,75 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
                             <Grid VerticalAlignment="Center" Background="Transparent">
-                                <!-- Фоновая полоса (весь трек) -->
-                                <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
-                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                <!-- Фоновая полоса (весь трек). Раньше была жёстко Height="4" с
+                                     шириной на всю ширину контейнера (VerticalAlignment=Center)
+                                     — то есть геометрия ТОЛЬКО горизонтального слайдера: у
+                                     10 вертикальных слайдеров эквалайзера (см. SettingsWindow.xaml)
+                                     это превращало полосу в приплюснутую по центру
+                                     горизонтальную чёрточку вместо вертикальной колонки на всю
+                                     высоту. Теперь размер переключается триггером по
+                                     Orientation, привязанным через RelativeSource — он достаёт
+                                     Slider.Orientation даже сквозь границу вложенного шаблона
+                                     RepeatButton ниже, где resolve по x:Name недоступен. -->
+                                <Border CornerRadius="2" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}">
+                                    <Border.Style>
+                                        <Style TargetType="Border">
+                                            <Setter Property="Height" Value="4" />
+                                            <Setter Property="Width" Value="Auto" />
+                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                            <Setter Property="VerticalAlignment" Value="Center" />
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Slider}, Path=Orientation}" Value="Vertical">
+                                                    <Setter Property="Height" Value="Auto" />
+                                                    <Setter Property="Width" Value="4" />
+                                                    <Setter Property="HorizontalAlignment" Value="Center" />
+                                                    <Setter Property="VerticalAlignment" Value="Stretch" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </Border.Style>
+                                </Border>
 
-                                <Track x:Name="PART_Track" VerticalAlignment="Center">
+                                <!-- Orientation="{TemplateBinding Orientation}" — вот собственно
+                                     сама причина, почему вертикальные слайдеры не тащились
+                                     мышью вообще: Track — отдельный класс со своим СОБСТВЕННЫМ
+                                     свойством Orientation (Horizontal по умолчанию), которое
+                                     WPF НЕ подхватывает из Slider автоматически просто по факту
+                                     родства в шаблоне. Без этой привязки Track всегда считал
+                                     себя горизонтальным и мапил перетаскивание мышью на X, а не
+                                     на Y — то есть на вертикальных слайдерах эквалайзера
+                                     вертикальное движение мыши в принципе ни на что не влияло. -->
+                                <Track x:Name="PART_Track" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                       Orientation="{TemplateBinding Orientation}">
                                     <Track.DecreaseRepeatButton>
                                         <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
-                                                    <Border Height="4" CornerRadius="2"
-                                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                                    <!-- Тот же приём, что и у фоновой полосы выше: заполненная
+                                                         акцентом часть трека "от начала до текущего значения"
+                                                         должна быть тонкой поперёк оси движения и растянутой
+                                                         вдоль неё — а вдоль какой оси это "вдоль", зависит от
+                                                         Orientation родительского Slider. -->
+                                                    <Border CornerRadius="2"
+                                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                                        <Border.Style>
+                                                            <Style TargetType="Border">
+                                                                <Setter Property="Height" Value="4" />
+                                                                <Setter Property="Width" Value="Auto" />
+                                                                <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                                                <Setter Property="VerticalAlignment" Value="Center" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Slider}, Path=Orientation}" Value="Vertical">
+                                                                        <Setter Property="Height" Value="Auto" />
+                                                                        <Setter Property="Width" Value="4" />
+                                                                        <Setter Property="HorizontalAlignment" Value="Center" />
+                                                                        <Setter Property="VerticalAlignment" Value="Stretch" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </Border.Style>
+                                                    </Border>
                                                 </ControlTemplate>
                                             </RepeatButton.Template>
                                         </RepeatButton>
@@ -54,6 +112,11 @@
                                         <RepeatButton Command="Slider.IncreaseLarge" Background="Transparent" BorderThickness="0">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
+                                                    <!-- Уже и так растягивается на всю выделенную Track'ом
+                                                         область в обе стороны (Height/Width не заданы —
+                                                         дефолт Stretch), поэтому для этой, "прозрачной для
+                                                         глаза" половины трека триггер по Orientation не
+                                                         нужен — она только ловит клики мимо бегунка. -->
                                                     <Border Background="Transparent" />
                                                 </ControlTemplate>
                                             </RepeatButton.Template>
