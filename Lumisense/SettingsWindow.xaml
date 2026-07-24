@@ -173,6 +173,14 @@
                         </StackPanel>
                     </RadioButton>
 
+                    <RadioButton x:Name="NavEqualizer" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Equalizer" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconSpeaker2" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Эквалайзер" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
                     <RadioButton x:Name="NavMiniPlayer" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="MiniPlayer" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -390,6 +398,114 @@
                                           Checked="LogarithmicVolumeCheckBox_Changed" Unchecked="LogarithmicVolumeCheckBox_Changed" />
                                 <TextBlock Text="Ползунок громкости меняет уровень так, как его воспринимает слух: заметный на глаз ход в начале и в конце шкалы звучит одинаково плавно, без резкого скачка на малой громкости."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Эквалайзер -->
+                    <StackPanel x:Name="PageEqualizer" Visibility="Collapsed">
+                        <TextBlock Text="Эквалайзер" Style="{StaticResource PageTitleStyle}" />
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="EqualizerEnabledCheckBox" Content="Включить эквалайзер"
+                                          Checked="EqualizerEnabledCheckBox_Changed" Unchecked="EqualizerEnabledCheckBox_Changed"
+                                          Margin="0,0,0,4" />
+                                <TextBlock Text="10 полос графического эквалайзера — регулировки применяются сразу же, без перезапуска трека."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,16" />
+
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <!-- 10 одинаковых колонок: значение в дБ сверху, вертикальный слайдер
+                                         посередине, частота полосы снизу. Все десять слайдеров используют
+                                         ОДИН общий обработчик (EqualizerBandSlider_ValueChanged) — номер
+                                         полосы передаётся через Tag, а не десятью отдельными методами. -->
+                                    <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand0ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand0Slider" Tag="0" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="31" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand1ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand1Slider" Tag="1" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="62" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand2ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand2Slider" Tag="2" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="125" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand3ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand3Slider" Tag="3" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="250" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="4" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand4ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand4Slider" Tag="4" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="500" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="5" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand5ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand5Slider" Tag="5" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="1к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="6" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand6ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand6Slider" Tag="6" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="2к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="7" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand7ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand7Slider" Tag="7" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="4к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="8" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand8ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand8Slider" Tag="8" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="8к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="9" HorizontalAlignment="Center">
+                                        <TextBlock x:Name="EqBand9ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,0,0,4" />
+                                        <Slider x:Name="EqBand9Slider" Tag="9" Orientation="Vertical" Height="140"
+                                                Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                                ValueChanged="EqualizerBandSlider_ValueChanged" />
+                                        <TextBlock Text="16к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Button x:Name="EqualizerResetButton" Content="Сбросить всё" HorizontalAlignment="Left"
+                                        Margin="0,16,0,0" Click="EqualizerResetButton_Click" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
