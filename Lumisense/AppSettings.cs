@@ -152,6 +152,15 @@ public class AppSettings
     // настройках "О плеере"). Влияет только на скачивание файла установщика — сама проверка
     // версии (обращение к api.github.com) всегда идёт напрямую независимо от этой настройки.
     public string UpdateDownloadSource { get; set; } = "GitHub";
+
+    // ---------- Эквалайзер ----------
+    // См. EqualizerSampleProvider — 10 классических ISO-полос графического EQ. Массив может
+    // быть короче/длиннее 10 элементов у настроек, сохранённых другой версией плеера (если
+    // список полос когда-нибудь изменится) — SettingsWindow и MainWindow при загрузке
+    // подстраиваются под фактическую длину EqualizerSampleProvider.BandFrequencies, а не
+    // слепо доверяют длине сохранённого массива.
+    public bool EqualizerEnabled { get; set; }
+    public double[] EqualizerBandGainsDb { get; set; } = new double[10];
 }
 
 /// <summary>
