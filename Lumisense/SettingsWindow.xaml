@@ -9,7 +9,7 @@
         MinHeight="520" MinWidth="680"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
-        WindowStartupLocation="CenterOwner"
+        WindowStartupLocation="Manual"
         ResizeMode="CanResize"
         PreviewKeyDown="SettingsWindow_PreviewKeyDown">
 

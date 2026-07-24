@@ -119,6 +119,31 @@ public class IsFavoriteMultiConverter : IMultiValueConverter
         => throw new NotSupportedException();
 }
 
+/// <summary>Видимость ListViewItem строки трека в поиске по плейлисту (см. PlaylistSearchBox
+/// в MainWindow.xaml, PlaylistSearchState.cs и SearchableTrackListViewItemStyle там же).
+/// values[0] — путь к файлу трека (DataContext строки, обычный Binding без Path), values[1] —
+/// PlaylistSearchState.Instance.Epoch: тот же приём, что и у IsFavoriteMultiConverter выше —
+/// путь к файлу сам по себе никогда не меняется, поэтому нужен второй "триггер" на биндинг,
+/// который меняется при каждом новом поисковом запросе.
+///
+/// Фильтрует именно ЭТИМ способом (Visibility контейнера строки), а не через ICollectionView.
+/// Filter на самой коллекции PlaylistFolder.Tracks — так поиск не трогает данные плейлиста
+/// вообще (ни то, что реально проигрывается по "Далее/Назад/Перемешать", ни нумерацию треков),
+/// работает одинаково что для вложенных ListView обычных папок, что для плоского
+/// FavoritesTrackListView, и не требует переприменять фильтр вручную каждый раз, когда
+/// ItemsSource какого-то списка полностью переприсваивается заново (как это происходит в
+/// RefreshFavoritesTrackList).</summary>
+public class TrackMatchesSearchMultiConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
+        => values.Length > 0 && values[0] is string path && PlaylistSearchState.Instance.Matches(path)
+            ? System.Windows.Visibility.Visible
+            : System.Windows.Visibility.Collapsed;
+
+    public object?[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 /// <summary>Шеврон для кнопки сворачивания/разворачивания списка треков группы.
 /// Возвращает ключ нужной иконки ("IconChevronDown" / "IconChevronRight", см. папку Icons/) —
 /// SvgPathIcon.Icon биндится сюда напрямую в MainWindow.xaml и сам подставляет нужную геометрию.</summary>

@@ -1426,6 +1426,16 @@ public partial class MainWindow : FluentWindow
 
     // ---------- Избранное ----------
 
+    // Просто прокидывает текст в PlaylistSearchState (см. PlaylistSearchState.cs) — вся
+    // фильтрация происходит декларативно через биндинги (ItemContainerStyle обоих ListView, см.
+    // MainWindow.xaml), поэтому здесь ничего руками пересобирать не нужно: строки, переставшие
+    // совпадать с запросом, скрываются/показываются сами, и в обычном плейлисте, и в
+    // "Избранном" — какой бы из двух видов ни был сейчас открыт.
+    private void PlaylistSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        PlaylistSearchState.Instance.Query = PlaylistSearchBox.Text;
+    }
+
     private void FavoritesButton_Click(object sender, RoutedEventArgs e) => SetFavoritesViewActive(!_isFavoritesView);
 
     // Переключает панель плейлиста между обычным видом (PlaylistFoldersControl, привязан к

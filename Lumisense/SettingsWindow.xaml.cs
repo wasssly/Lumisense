@@ -56,7 +56,28 @@ public partial class SettingsWindow : FluentWindow
 
         _settings = settings;
         _owner = owner;
-        Owner = owner;
+
+        // ВНИМАНИЕ: WPF-свойство Owner намеренно НЕ выставляется (раньше здесь было
+        // "Owner = owner;"). Owned-окна в Windows подчиняются жёсткому системному правилу:
+        // окно-владелец НИКОГДА не может оказаться в z-порядке выше своего owned-окна, пока то
+        // открыто — это поведение диспетчера окон, а не WPF, и его нельзя обойти ни
+        // Activate()'ом, ни ручным SetWindowPos(HWND_TOP) у владельца. Из-за этого клик по
+        // видимой части главного окна, когда оно частично перекрыто настройками, никогда не мог
+        // поднять его поверх окна настроек — оно оставалось активным (получало фокус ввода), но
+        // визуально так и оставалось позади.
+        //
+        // Без Owner оба окна становятся независимыми top-level-окнами — обычное поведение
+        // Windows ("клик по окну поднимает именно его") начинает работать само, без единой
+        // строчки специального кода. Единственное, чем раньше пользовались ради Owner:
+        //   1) WindowStartupLocation="CenterOwner" — теперь считаем позицию вручную ниже
+        //      (PositionOverOwner), с тем же визуальным результатом.
+        //   2) Закрытие настроек вместе с главным окном — это и раньше не полагалось на Owner,
+        //      а вызывалось явно (см. MainWindow.OnClosed: "_settingsWindow?.Close();"), так что
+        //      никакого "зависшего" окна настроек после закрытия плеера не появится.
+        //   3) Иконка в панели задач — теперь скрываем её явно через ShowInTaskbar (ниже), а не
+        //      полагаемся на побочный эффект owned-окна.
+        ShowInTaskbar = false;
+        PositionOverOwner(owner);
 
         LightThemeCheckBox.IsChecked = _settings.Theme == "Light";
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
@@ -107,6 +128,32 @@ public partial class SettingsWindow : FluentWindow
         RefreshAppVersionText();
 
         _isInitializing = false;
+    }
+
+    // Раньше центрирование над главным окном делал сам WPF через
+    // WindowStartupLocation="CenterOwner" — это требовало установленного Owner, от которого
+    // пришлось отказаться (см. комментарий в начале конструктора). Считаем то же самое вручную:
+    // центр этого окна = центр видимой области owner'а, зажатый в границах рабочей области
+    // экрана, на котором сейчас находится owner (чтобы окно настроек не могло случайно
+    // оказаться за пределами экрана, если владелец стоит у самого края монитора).
+    private void PositionOverOwner(Window owner)
+    {
+        double ownerWidth = owner.ActualWidth > 0 ? owner.ActualWidth : owner.Width;
+        double ownerHeight = owner.ActualHeight > 0 ? owner.ActualHeight : owner.Height;
+
+        double left = owner.Left + (ownerWidth - Width) / 2;
+        double top = owner.Top + (ownerHeight - Height) / 2;
+
+        var ownerBounds = new System.Drawing.Rectangle(
+            (int)owner.Left, (int)owner.Top,
+            (int)Math.Max(ownerWidth, 1), (int)Math.Max(ownerHeight, 1));
+        var workArea = System.Windows.Forms.Screen.FromRectangle(ownerBounds).WorkingArea;
+
+        left = Math.Clamp(left, workArea.Left, Math.Max(workArea.Left, workArea.Right - Width));
+        top = Math.Clamp(top, workArea.Top, Math.Max(workArea.Top, workArea.Bottom - Height));
+
+        Left = left;
+        Top = top;
     }
 
     // Вызывается извне (из контекстного меню мини-плеера), когда закрепление или "поверх окон"

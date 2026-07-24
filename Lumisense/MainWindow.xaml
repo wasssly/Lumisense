@@ -18,6 +18,7 @@
         <local:TrackNumberConverter x:Key="TrackNumberConverter" />
         <local:TrackNumberFromListConverter x:Key="TrackNumberFromListConverter" />
         <local:IsFavoriteMultiConverter x:Key="IsFavoriteMultiConverter" />
+        <local:TrackMatchesSearchMultiConverter x:Key="TrackMatchesSearchMultiConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
 
@@ -138,6 +139,28 @@
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+
+        <!-- Стиль ListViewItem для обоих списков треков (вложенный ListView внутри
+             PlaylistFoldersControl и плоский FavoritesTrackListView) — добавляет только
+             видимость по результату поиска (см. PlaylistSearchBox и PlaylistSearchState.cs)
+             поверх общего Style TargetType="ListViewItem" из App.xaml (отступы, ховер,
+             выделение, зебра — всё оттуда, через BasedOn).
+
+             Setter.Value с MultiBinding — Visibility строки ЦЕЛОГО ListViewItem-контейнера
+             (а не только его содержимого) означает, что несовпавшая строка не оставляет пустой
+             отступ/padding на своём месте: Collapsed убирает контейнер из раскладки целиком, а
+             не просто прячет то, что внутри. -->
+        <Style x:Key="SearchableTrackListViewItemStyle" TargetType="ListViewItem"
+               BasedOn="{StaticResource {x:Type ListViewItem}}">
+            <Setter Property="Visibility">
+                <Setter.Value>
+                    <MultiBinding Converter="{StaticResource TrackMatchesSearchMultiConverter}">
+                        <Binding />
+                        <Binding Source="{x:Static local:PlaylistSearchState.Instance}" Path="Epoch" />
+                    </MultiBinding>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid x:Name="RootGrid">
@@ -464,12 +487,33 @@
         <Border x:Name="PlaylistBorder" Grid.Row="6" Margin="16,0,16,16" CornerRadius="10"
                 Background="{DynamicResource ControlFillColorDefaultBrush}">
             <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="14" />
                 </Grid.ColumnDefinitions>
 
-                <ScrollViewer x:Name="PlaylistScrollViewer" Grid.Column="0" Margin="4"
+                <!-- Поиск по плейлисту — фильтрует по имени файла (без расширения), то есть по
+                     тому же тексту, что показан в самой строке трека (см. FileNameConverter).
+                     Сам фильтр — визуальный (см. PlaylistSearchState.cs и
+                     SearchableTrackListViewItemStyle выше): не трогает ни _folders, ни то, что
+                     реально играет по "Далее/Назад/Перемешать" — просто прячет несовпавшие
+                     строки в обоих списках (обычном и "Избранном") одновременно, что бы из них
+                     сейчас ни было открыто. -->
+                <ui:TextBox x:Name="PlaylistSearchBox" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
+                            Margin="8,8,8,4"
+                            PlaceholderText="Поиск по плейлисту"
+                            ClearButtonEnabled="True"
+                            TextChanged="PlaylistSearchBox_TextChanged">
+                    <ui:TextBox.Icon>
+                        <local:SvgPathIcon Icon="IconSearch" />
+                    </ui:TextBox.Icon>
+                </ui:TextBox>
+
+                <ScrollViewer x:Name="PlaylistScrollViewer" Grid.Row="1" Grid.Column="0" Margin="4"
                               VerticalScrollBarVisibility="Hidden"
                               HorizontalScrollBarVisibility="Disabled"
                               SizeChanged="PlaylistScrollViewer_SizeChanged"
@@ -586,6 +630,7 @@
                                                   Opacity="{Binding IsEnabled, Converter={StaticResource BoolToOpacityConverter}}"
                                                   MouseDoubleClick="PlaylistTrackList_MouseDoubleClick"
                                                   PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel"
+                                                  ItemContainerStyle="{StaticResource SearchableTrackListViewItemStyle}"
                                                   ItemTemplate="{StaticResource TrackItemTemplate}" />
                                     </StackPanel>
                                     </Border>
@@ -608,6 +653,7 @@
                                   ScrollViewer.VerticalScrollBarVisibility="Disabled"
                                   MouseDoubleClick="PlaylistTrackList_MouseDoubleClick"
                                   PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel"
+                                  ItemContainerStyle="{StaticResource SearchableTrackListViewItemStyle}"
                                   ItemTemplate="{StaticResource TrackItemTemplate}" />
                     </Grid>
                 </ScrollViewer>
@@ -626,7 +672,7 @@
                      ClipToBounds="True" — подстраховка на случай любых будущих округлений:
                      ползунок физически не может отрисоваться выше/ниже границ дорожки, даже
                      если Margin/Height на долю пикселя выйдут за расчётный диапазон. -->
-                <Grid x:Name="PlaylistScrollTrack" Grid.Column="1" Background="Transparent"
+                <Grid x:Name="PlaylistScrollTrack" Grid.Row="1" Grid.Column="1" Background="Transparent"
                       Margin="0,4,0,4" ClipToBounds="True"
                       SizeChanged="PlaylistScrollTrack_SizeChanged"
                       MouseLeftButtonDown="PlaylistScrollTrack_MouseLeftButtonDown">
