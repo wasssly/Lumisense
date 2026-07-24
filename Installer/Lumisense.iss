@@ -132,3 +132,42 @@ Filename: "{app}\Lumisense.exe"; Description: "Запустить Lumisense"; Fl
 
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
+
+; ============================================
+; УДАЛЕНИЕ ДАННЫХ НАСТРОЕК (%AppData%\Lumisense)
+; ============================================
+
+[Code]
+// [UninstallDelete] выше уже безусловно удаляет {app} (саму программу в Program Files) —
+// это просто файлы плеера, отслеживаемые самим Inno Setup, спрашивать тут нечего.
+//
+// А вот %AppData%\Lumisense (settings.json — настройки, плейлисты, избранное, все
+// пользовательские данные, см. SettingsManager в AppSettings.cs) Inno Setup сам по себе
+// никогда не трогает: не он их туда клал, это делает уже сам плеер во время работы,
+// и его штатный механизм удаления файлов про эту папку просто не знает.
+//
+// Спрашиваем явно, до начала удаления (InitializeUninstall — самая ранняя точка, до которой
+// процесс ещё можно отменить), а не удаляем её тихо и безусловно: пользователь может
+// деинсталлировать плеер, чтобы переустановить его заново (например, при обновлении вручную
+// или переносе на другой диск), и в этом случае удалять его настройки, плейлисты и избранное
+// заодно — было бы неожиданным и необратимым сюрпризом.
+var
+  ShouldDeleteSettings: Boolean;
+
+function InitializeUninstall(): Boolean;
+begin
+  Result := True;
+  ShouldDeleteSettings := (MsgBox(
+    'Удалить также файлы настроек и пользовательские данные Lumisense?' + #13#10 + #13#10 +
+    'Они хранятся отдельно от программы, в папке:' + #13#10 +
+    ExpandConstant('{userappdata}') + '\Lumisense' + #13#10 + #13#10 +
+    'Нажмите "Нет", если планируете переустановить Lumisense позже и хотите сохранить ' +
+    'текущие настройки, плейлисты и избранное.',
+    mbConfirmation, MB_YESNO) = IDYES);
+end;
+
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if (CurUninstallStep = usPostUninstall) and ShouldDeleteSettings then
+    DelTree(ExpandConstant('{userappdata}\Lumisense'), True, True, True);
+end;
