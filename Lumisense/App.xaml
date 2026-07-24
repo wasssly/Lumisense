@@ -33,23 +33,32 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
-                            <Grid VerticalAlignment="Center" Background="Transparent">
-                                <!-- Фоновая полоса (весь трек). Раньше была жёстко Height="4" с
-                                     шириной на всю ширину контейнера (VerticalAlignment=Center)
-                                     — то есть геометрия ТОЛЬКО горизонтального слайдера: у
-                                     10 вертикальных слайдеров эквалайзера (см. SettingsWindow.xaml)
-                                     это превращало полосу в приплюснутую по центру
-                                     горизонтальную чёрточку вместо вертикальной колонки на всю
-                                     высоту. Теперь размер переключается триггером по
-                                     Orientation, привязанным через RelativeSource — он достаёт
-                                     Slider.Orientation даже сквозь границу вложенного шаблона
-                                     RepeatButton ниже, где resolve по x:Name недоступен. -->
-                                <Border CornerRadius="2" VerticalAlignment="Center" HorizontalAlignment="Center"
-                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}">
+                            <!-- И Grid, и Track — ВСЕГДА Stretch по обеим осям (никакого
+                                 VerticalAlignment/HorizontalAlignment="Center" на них самих).
+                                 Это принципиально: у вертикальных слайдеров эквалайзера
+                                 (Height="140") Track обязан реально ЗАНИМАТЬ все 140px по
+                                 высоте, чтобы у него было где считать позицию бегунка при
+                                 перетаскивании — если центрировать Track по своему "естественному"
+                                 (сжатому) размеру вместо растягивания на всё доступное
+                                 пространство, диапазон перетаскивания схлопывается почти до
+                                 нуля, и слайдер визуально почти не двигается. Тонкая полоса
+                                 (4px) — это НЕ про сжатие Track/Grid, а только про декоративные
+                                 Border ниже, у которых размер вдоль поперечной оси зафиксирован
+                                 явно (Height/Width=4), а выравнивание по ней — Center, но не
+                                 локальным атрибутом на самом элементе (WPF отдаёт локальным
+                                 значениям приоритет строго ВЫШЕ, чем сеттерам стиля, включая
+                                 триггерные — задать и то, и другое на одном элементе означает,
+                                 что триггер не сможет переопределить локальное значение и
+                                 останется мёртвым кодом), а исключительно через Style ниже —
+                                 это и есть та ошибка, которая была здесь минуту назад. -->
+                            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent">
+                                <!-- Фоновая полоса (весь трек) — тонкая поперёк оси движения,
+                                     на всю длину вдоль неё. Какая ось "поперёк", а какая
+                                     "вдоль" — зависит от Slider.Orientation, отсюда триггер. -->
+                                <Border CornerRadius="2" Background="{DynamicResource ControlStrongFillColorDefaultBrush}">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Height" Value="4" />
-                                            <Setter Property="Width" Value="Auto" />
                                             <Setter Property="HorizontalAlignment" Value="Stretch" />
                                             <Setter Property="VerticalAlignment" Value="Center" />
                                             <Style.Triggers>
@@ -64,16 +73,15 @@
                                     </Border.Style>
                                 </Border>
 
-                                <!-- Orientation="{TemplateBinding Orientation}" — вот собственно
-                                     сама причина, почему вертикальные слайдеры не тащились
-                                     мышью вообще: Track — отдельный класс со своим СОБСТВЕННЫМ
-                                     свойством Orientation (Horizontal по умолчанию), которое
-                                     WPF НЕ подхватывает из Slider автоматически просто по факту
-                                     родства в шаблоне. Без этой привязки Track всегда считал
-                                     себя горизонтальным и мапил перетаскивание мышью на X, а не
-                                     на Y — то есть на вертикальных слайдерах эквалайзера
-                                     вертикальное движение мыши в принципе ни на что не влияло. -->
-                                <Track x:Name="PART_Track" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                <!-- Orientation="{TemplateBinding Orientation}" — Track это
+                                     отдельный класс со своим СОБСТВЕННЫМ свойством Orientation
+                                     (Horizontal по умолчанию), которое WPF не подхватывает из
+                                     Slider автоматически просто по факту родства в шаблоне: без
+                                     этой привязки Track всегда считал себя горизонтальным и
+                                     мапил перетаскивание мышью на X, а не на Y — то есть на
+                                     вертикальных слайдерах эквалайзера вертикальное движение
+                                     мыши в принципе ни на что не влияло. -->
+                                <Track x:Name="PART_Track" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                        Orientation="{TemplateBinding Orientation}">
                                     <Track.DecreaseRepeatButton>
                                         <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
@@ -82,14 +90,12 @@
                                                     <!-- Тот же приём, что и у фоновой полосы выше: заполненная
                                                          акцентом часть трека "от начала до текущего значения"
                                                          должна быть тонкой поперёк оси движения и растянутой
-                                                         вдоль неё — а вдоль какой оси это "вдоль", зависит от
-                                                         Orientation родительского Slider. -->
+                                                         вдоль неё. -->
                                                     <Border CornerRadius="2"
                                                             Background="{DynamicResource AccentFillColorDefaultBrush}">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
                                                                 <Setter Property="Height" Value="4" />
-                                                                <Setter Property="Width" Value="Auto" />
                                                                 <Setter Property="HorizontalAlignment" Value="Stretch" />
                                                                 <Setter Property="VerticalAlignment" Value="Center" />
                                                                 <Style.Triggers>
@@ -112,11 +118,12 @@
                                         <RepeatButton Command="Slider.IncreaseLarge" Background="Transparent" BorderThickness="0">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
-                                                    <!-- Уже и так растягивается на всю выделенную Track'ом
-                                                         область в обе стороны (Height/Width не заданы —
-                                                         дефолт Stretch), поэтому для этой, "прозрачной для
-                                                         глаза" половины трека триггер по Orientation не
-                                                         нужен — она только ловит клики мимо бегунка. -->
+                                                    <!-- Растягивается на всю выделенную Track'ом
+                                                         область в обе стороны (Height/Width не
+                                                         заданы — дефолт Stretch), поэтому для
+                                                         этой, "прозрачной для глаза" половины
+                                                         трека триггер по Orientation не нужен —
+                                                         она только ловит клики мимо бегунка. -->
                                                     <Border Background="Transparent" />
                                                 </ControlTemplate>
                                             </RepeatButton.Template>
@@ -140,6 +147,7 @@
                     </Setter.Value>
                 </Setter>
             </Style>
+
 
             <!-- Стилизация строк плейлиста: скруглённые карточки, ховер, акцентная подсветка выбранного трека.
 

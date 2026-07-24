@@ -489,6 +489,23 @@ public partial class MiniPlayerWindow : Window
 
     private void MiniOpacityContextSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
+        // КРИТИЧНО: этот обработчик может выстрелить ещё ВНУТРИ InitializeComponent(), до того,
+        // как конструктор вообще дошёл до "_mainWindow = mainWindow;" — вот почему приложение
+        // падало с NullReferenceException при каждом входе в мини-режим. Причина в самом WPF:
+        // как только XAML-парсер применяет к слайдеру Minimum="0.3", RangeBase.OnMinimumChanged
+        // тут же коэрсит Value (по умолчанию 0, то есть меньше нового минимума) до 0.3 и
+        // СИНХРОННО поднимает событие ValueChanged — прямо посреди разбора XAML, а не после его
+        // завершения. На этот момент ни _mainWindow, ни даже собственные поля этого окна дальше
+        // по дереву XAML (например MiniOpacityContextValueText, который в разметке идёт ПОСЛЕ
+        // самого слайдера) ещё не готовы.
+        //
+        // Флага _isSyncingOpacitySlider тут недостаточно — он объявлен как обычное поле без
+        // инициализатора, то есть равен false вплоть до первого явного присваивания, а значит
+        // в момент XAML-парсинга он ничего не гвардит. _mainWindow, наоборот, — надёжный маркер
+        // "конструктор точно уже отработал": он становится не-null СТРОГО ПОСЛЕ того, как
+        // InitializeComponent() полностью завершился (см. MiniPlayerWindow(MainWindow) выше),
+        // то есть ровно тогда, когда все именованные элементы XAML уже гарантированно связаны.
+        if (_mainWindow == null) return;
         if (_isSyncingOpacitySlider) return;
 
         MiniOpacityContextValueText.Text = $"{(int)Math.Round(e.NewValue * 100)}%";
