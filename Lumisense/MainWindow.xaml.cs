@@ -673,10 +673,9 @@ public partial class MainWindow : FluentWindow
     }
 
     // Экспериментальная настройка (Settings.HidePlaybackButtons, страница "Экспериментальное"
-    // в окне настроек) — скрывает пять из шести кнопок панели управления воспроизведением:
-    // "Перемешать", "Повтор", "Предыдущий", "Пуск/Пауза" и "Следующий". StopButton намеренно
-    // не входит в этот набор — пользователь просил скрыть именно эти пять, а не всю панель
-    // целиком. Вызывается один раз при запуске (см. конец конструктора выше) и повторно из
+    // в окне настроек) — скрывает кнопки панели управления воспроизведением: "Перемешать",
+    // "Повтор", "Предыдущий", "Пуск/Пауза", "Следующий", "Стоп" и переход в мини-плеер.
+    // Вызывается один раз при запуске (см. конец конструктора выше) и повторно из
     // SettingsWindow.HidePlaybackButtonsCheckBox_Changed, чтобы применяться сразу, без
     // перезапуска приложения.
     public void ApplyPlaybackButtonsVisibility()
@@ -688,6 +687,8 @@ public partial class MainWindow : FluentWindow
         PrevButton.Visibility = visibility;
         PlayPauseButton.Visibility = visibility;
         NextButton.Visibility = visibility;
+        StopButton.Visibility = visibility;
+        MiniModeButton.Visibility = visibility;
     }
 
     /// <summary>Перекрашивает меню трея под текущую тему — вызывается из SettingsWindow при
