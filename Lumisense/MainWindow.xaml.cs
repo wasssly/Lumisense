@@ -668,6 +668,26 @@ public partial class MainWindow : FluentWindow
         TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
         _trayIconManager.SetPlayingState(_isPlaying);
         _trayIconManager.ApplyTheme(isLight: _settings.Theme == "Light");
+
+        ApplyPlaybackButtonsVisibility();
+    }
+
+    // Экспериментальная настройка (Settings.HidePlaybackButtons, страница "Экспериментальное"
+    // в окне настроек) — скрывает пять из шести кнопок панели управления воспроизведением:
+    // "Перемешать", "Повтор", "Предыдущий", "Пуск/Пауза" и "Следующий". StopButton намеренно
+    // не входит в этот набор — пользователь просил скрыть именно эти пять, а не всю панель
+    // целиком. Вызывается один раз при запуске (см. конец конструктора выше) и повторно из
+    // SettingsWindow.HidePlaybackButtonsCheckBox_Changed, чтобы применяться сразу, без
+    // перезапуска приложения.
+    public void ApplyPlaybackButtonsVisibility()
+    {
+        var visibility = _settings.HidePlaybackButtons ? Visibility.Collapsed : Visibility.Visible;
+
+        ShuffleButton.Visibility = visibility;
+        RepeatButton.Visibility = visibility;
+        PrevButton.Visibility = visibility;
+        PlayPauseButton.Visibility = visibility;
+        NextButton.Visibility = visibility;
     }
 
     /// <summary>Перекрашивает меню трея под текущую тему — вызывается из SettingsWindow при

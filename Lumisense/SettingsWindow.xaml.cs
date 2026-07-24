@@ -91,6 +91,7 @@ public partial class SettingsWindow : FluentWindow
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
+        HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
@@ -282,6 +283,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Улучшенный шаффл", "Экспериментальное", "Experimental", ImprovedShuffleCheckBox, "шаффл перемешать shuffle экспериментальное bag колода");
+        Add("Скрыть кнопки управления воспроизведением", "Экспериментальное", "Experimental", HidePlaybackButtonsCheckBox, "скрыть кнопки перемешать повтор предыдущий следующий пуск пауза play pause next previous shuffle repeat экспериментальное");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
@@ -548,6 +550,14 @@ public partial class SettingsWindow : FluentWindow
         // Колода/история от предыдущего режима шаффла не имеет смысла в новом —
         // начинаем с чистого листа, а не пытаемся домешать её в новую логику.
         _owner.ResetShuffleState();
+    }
+
+    private void HidePlaybackButtonsCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.HidePlaybackButtons = HidePlaybackButtonsCheckBox.IsChecked == true;
+        _owner.ApplyPlaybackButtonsVisibility();
     }
 
     // ---------- Навигация по страницам настроек ----------

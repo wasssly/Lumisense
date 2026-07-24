@@ -763,6 +763,15 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="HidePlaybackButtonsCheckBox" Content="Скрыть кнопки управления воспроизведением"
+                                          Checked="HidePlaybackButtonsCheckBox_Changed" Unchecked="HidePlaybackButtonsCheckBox_Changed" />
+                                <TextBlock Text="Скрывает кнопки «Перемешать», «Повтор», «Предыдущий», «Пуск/Пауза» и «Следующий» в главном окне — управлять воспроизведением в этом случае можно горячими клавишами, из трея или через мини-плеер. Кнопка «Стоп» не скрывается."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- О плеере (+ Патчноуты) -->
