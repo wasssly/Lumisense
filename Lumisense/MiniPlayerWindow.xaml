@@ -113,11 +113,26 @@
                      перетаскивание сразу же обновляет и сам мини-плеер, и слайдер в окне
                      настроек, если оно сейчас открыто (см. SettingsWindow.RefreshMiniPlayerToggles).
 
+                     Перетаскивание сделано ТЕМ ЖЕ приёмом, что и у MiniOpacitySlider в
+                     SettingsWindow.xaml, а не нативным Thumb'ом слайдера: сам Slider —
+                     IsHitTestVisible="False", поверх него отдельный прозрачный Border ловит
+                     мышь и сам вычисляет значение по X-координате клика (см.
+                     MiniOpacityContextOverlay_* в code-behind). Нативное перетаскивание Thumb'а
+                     здесь не подошло бы — Slider живёт внутри ContextMenu (это отдельный Popup),
+                     где перехват и последующее удержание мыши самим Thumb'ом при разворачивании
+                     из MenuItem ведёт себя нестабильно; overlay-Border, захватывающий мышь сам
+                     явным CaptureMouse(), от этого не зависит и работает предсказуемо в любом
+                     контейнере, включая всплывающее меню.
+
                      StaysOpenOnClick="True" — иначе меню закрылось бы от самого первого клика
                      по слайдеру, не дав его толком перетащить. Focusable="False" — чтобы пункт
                      не вёл себя как обычный кликабельный пункт меню с рамкой выделения: у него
                      нет осмысленного "клика" самого по себе, только перетаскивание слайдера
-                     внутри. Диапазон 0.3–1.0 — тот же, что и у слайдера в окне настроек. -->
+                     внутри. Диапазон 0.3–1.0 — тот же, что и у слайдера в окне настроек;
+                     Value="1.0" — совпадает с Minimum по умолчанию не может, поэтому WPF никогда
+                     не подтягивает значение принудительно при разборе XAML (см. подробный
+                     комментарий у MiniOpacityContextSlider_ValueChanged в code-behind — там же
+                     объяснено, почему это в принципе важно). -->
                 <MenuItem StaysOpenOnClick="True" Focusable="False">
                     <MenuItem.Header>
                         <Grid Width="220">
@@ -127,9 +142,15 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Grid.Column="0" Text="Прозрачность" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <Slider x:Name="MiniOpacityContextSlider" Grid.Column="1"
-                                    Minimum="0.3" Maximum="1.0" VerticalAlignment="Center"
+
+                            <Slider x:Name="MiniOpacityContextSlider" Grid.Column="1" IsHitTestVisible="False"
+                                    Minimum="0.3" Maximum="1.0" Value="1.0" VerticalAlignment="Center"
                                     ValueChanged="MiniOpacityContextSlider_ValueChanged" />
+                            <Border Grid.Column="1" Background="Transparent" Height="24" VerticalAlignment="Center"
+                                    MouseLeftButtonDown="MiniOpacityContextOverlay_MouseLeftButtonDown"
+                                    MouseMove="MiniOpacityContextOverlay_MouseMove"
+                                    MouseLeftButtonUp="MiniOpacityContextOverlay_MouseLeftButtonUp" />
+
                             <TextBlock x:Name="MiniOpacityContextValueText" Grid.Column="2" Text="100%"
                                        Width="34" VerticalAlignment="Center" Margin="8,0,0,0" />
                         </Grid>
@@ -253,13 +274,14 @@
          см. CollapsedHeight/ExpandedHeight в MiniPlayerWindow.xaml.cs), и центр по всей высоте
          окна в развёрнутом состоянии попадал уже на полосу прогресса под заголовком — индикатор
          громкости налезал на неё вместо того, чтобы просто занять место погасшего заголовка.
+         Margin Top уменьшен с 15 до 7 — индикатор теперь чуть выше, ближе к верхнему краю окна.
          IsHitTestVisible="False", чтобы не мешать кликам/скроллу по мини-плееру, пока показан.
          Opacity="0" по умолчанию: без анимации полностью невидим, а не просто "пустой", чтобы
          не перехватывать события мыши даже на миллисекунду до первого запуска анимации. -->
     <Border x:Name="VolumeIndicator" CornerRadius="10" Padding="12,6"
             Background="{DynamicResource ControlFillColorDefaultBrush}"
             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
-            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,15,0,0"
+            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,7,0,0"
             Opacity="0" IsHitTestVisible="False">
         <StackPanel Orientation="Horizontal">
             <local:SvgPathIcon x:Name="VolumeIndicatorIcon" Icon="IconSpeaker" Size="14"

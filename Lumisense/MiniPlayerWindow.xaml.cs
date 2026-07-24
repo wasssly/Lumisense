@@ -470,6 +470,11 @@ public partial class MiniPlayerWindow : Window
     // настройки (и тем более не уйти в цикл обновлений с окном настроек).
     private bool _isSyncingOpacitySlider;
 
+    // Пока true — идёт перетаскивание прозрачным Border'ом поверх MiniOpacityContextSlider (см.
+    // MiniOpacityContextOverlay_MouseLeftButtonDown/Up ниже) — тот же приём, что и у
+    // _isDraggingOpacityOverlay в SettingsWindow.xaml.cs.
+    private bool _isDraggingOpacityOverlay;
+
     private void MiniPlayerContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         PinnedMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerPinned;
@@ -487,6 +492,44 @@ public partial class MiniPlayerWindow : Window
     private void TopmostMenuItem_Click(object sender, RoutedEventArgs e)
         => _mainWindow.SetMiniPlayerTopmost(TopmostMenuItem.IsChecked);
 
+    // Оверлей поверх MiniOpacityContextSlider (см. MiniPlayerWindow.xaml) — сам Slider
+    // IsHitTestVisible="False", мышь ловит этот прозрачный Border и сам вычисляет значение по
+    // X-координате клика/перетаскивания. Тот же приём, что и у MiniOpacitySlider в
+    // SettingsWindow.xaml (см. UpdateSliderValueFromMouse там) — здесь он нужен даже больше:
+    // Slider живёт внутри ContextMenu (отдельный Popup), где нативный захват мыши самим
+    // Thumb'ом при разворачивании из MenuItem ведёт себя нестабильно, а явный
+    // Border.CaptureMouse() от этого не зависит.
+    private void MiniOpacityContextOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var overlay = (FrameworkElement)sender;
+        overlay.CaptureMouse();
+        _isDraggingOpacityOverlay = true;
+        UpdateOpacitySliderFromMouse(e.GetPosition(overlay).X, overlay.ActualWidth);
+    }
+
+    private void MiniOpacityContextOverlay_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingOpacityOverlay) return;
+        var overlay = (FrameworkElement)sender;
+        UpdateOpacitySliderFromMouse(e.GetPosition(overlay).X, overlay.ActualWidth);
+    }
+
+    private void MiniOpacityContextOverlay_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var overlay = (FrameworkElement)sender;
+        overlay.ReleaseMouseCapture();
+        _isDraggingOpacityOverlay = false;
+    }
+
+    private void UpdateOpacitySliderFromMouse(double positionX, double width)
+    {
+        if (width <= 0) return;
+
+        double ratio = Math.Clamp(positionX / width, 0.0, 1.0);
+        MiniOpacityContextSlider.Value = MiniOpacityContextSlider.Minimum
+            + ratio * (MiniOpacityContextSlider.Maximum - MiniOpacityContextSlider.Minimum);
+    }
+
     private void MiniOpacityContextSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         // КРИТИЧНО: этот обработчик может выстрелить ещё ВНУТРИ InitializeComponent(), до того,
@@ -497,7 +540,9 @@ public partial class MiniPlayerWindow : Window
         // СИНХРОННО поднимает событие ValueChanged — прямо посреди разбора XAML, а не после его
         // завершения. На этот момент ни _mainWindow, ни даже собственные поля этого окна дальше
         // по дереву XAML (например MiniOpacityContextValueText, который в разметке идёт ПОСЛЕ
-        // самого слайдера) ещё не готовы.
+        // самого слайдера) ещё не готовы. Value="1.0" в XAML снимает саму причину коэрсии (1.0
+        // уже больше 0.3, WPF не нужно ничего подтягивать) — но проверка ниже оставлена как
+        // страховка на случай будущих правок разметки, а не только полагается на это.
         //
         // Флага _isSyncingOpacitySlider тут недостаточно — он объявлен как обычное поле без
         // инициализатора, то есть равен false вплоть до первого явного присваивания, а значит
