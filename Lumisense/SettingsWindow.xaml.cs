@@ -303,6 +303,7 @@ public partial class SettingsWindow : FluentWindow
         _settings.Theme = LightThemeCheckBox.IsChecked == true ? "Light" : "Dark";
         ApplicationThemeManager.Apply(_settings.Theme == "Light" ? ApplicationTheme.Light : ApplicationTheme.Dark);
         _owner.ApplyTrayTheme(_settings.Theme == "Light");
+        _owner.ApplyMiniPlayerThemeLive();
     }
 
     private void AlwaysOnTopCheckBox_Changed(object sender, RoutedEventArgs e)

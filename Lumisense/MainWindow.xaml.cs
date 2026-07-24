@@ -2592,6 +2592,14 @@ public partial class MainWindow : FluentWindow
         if (_miniPlayerWindow != null) _miniPlayerWindow.Topmost = topmost;
     }
 
+    // Позволяет окну настроек мгновенно применить смену светлой/тёмной темы к мини-плееру,
+    // если он сейчас открыт — иначе мини-плеер узнал бы о новой теме только при следующем
+    // открытии (пересоздании окна).
+    public void ApplyMiniPlayerThemeLive()
+    {
+        if (_miniPlayerWindow != null) _miniPlayerWindow.ApplyThemeLive();
+    }
+
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
     //
     // Настройки читаются/пишутся здесь, а не прямо из SettingsWindow, по той же причине, что и

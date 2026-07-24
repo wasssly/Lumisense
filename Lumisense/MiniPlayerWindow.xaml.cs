@@ -134,8 +134,8 @@ public partial class MiniPlayerWindow : Window
         {
             _hwnd = hwndSource.Handle;
             hwndSource.AddHook(WndProc);
+            ApplyTheme();
             ApplyBackground();
-            ApplyBlurBehind();
         }
     }
 
@@ -238,110 +238,82 @@ public partial class MiniPlayerWindow : Window
         UpdateTitleMarquee();
     }
 
-    // ---------- Фон мини-плеера ----------
+    // ---------- Фон и тема мини-плеера ----------
     //
     // Раньше фон подстраивался под усреднённый цвет текущей обложки, затем — пытался быть
     // Mica (нестабильно на этом маленьком безрамочном окне), затем — блюром через
-    // SetWindowCompositionAttribute с тонировкой, вычисленной из ресурса ТЕКУЩЕЙ темы
-    // приложения (ControlFillColorDefaultBrush). Именно последнее и давало блёклый светлый
-    // фон вместо тёмного: в светлой теме приложения этот ресурс — светлый почти-белый цвет, и
-    // он использовался как основа тонировки блюра напрямую, без учёта того, что мини-плеер
-    // должен выглядеть одинаково тёмным независимо от темы приложения.
+    // SetWindowCompositionAttribute (Win32 ACCENT_ENABLE_ACRYLICBLURBEHIND), а мини-плеер был
+    // ВСЕГДА тёмным независимо от темы приложения. От Win32-блюра отказались совсем — он
+    // конфликтовал с тем, что окно уже само по себе AllowsTransparency="True" (layered window
+    // со своим механизмом альфа-смешивания), и на части систем в итоге ползунок прозрачности
+    // переставал реально на что-либо влиять (см. подробный комментарий в MiniPlayerWindow.xaml
+    // у RootBorder).
     //
-    // Теперь два независимых слоя:
-    //  1) ApplyBackground — гарантированно тёмная заливка RootBorder ФИКСИРОВАННЫМ цветом (см.
-    //     MiniBackgroundBrush в MiniPlayerWindow.xaml), не зависящим ни от темы приложения, ни
-    //     от того, поддерживает ли текущая система блюр. Работает всегда, это основа.
-    //  2) ApplyBlurBehind — попытка добавить поверх настоящее размытие того, что находится
-    //     ЗА окном, через SetWindowCompositionAttribute (недокументированный, но давно и широко
-    //     используемый в WPF-приложениях способ получить эффект "матового стекла" на Windows
-    //     10/11). Это именно БОНУС, а не то, от чего зависит итоговый вид: если DWM его
-    //     поддерживает и в системе не отключены эффекты прозрачности (Параметры Windows →
-    //     Персонализация → Цвета), сквозь тёмную заливку станет виден размытый рабочий стол;
-    //     если нет — просто останется ровный тёмный фон без блюра, и это нормально.
+    // Теперь всё держится на одном простом и надёжном слое: RootBorder заливается сплошным
+    // SolidColorBrush (MiniBackgroundBrush), альфа-канал которого — это и есть настройка
+    // "прозрачность мини-плеера", а сам факт AllowsTransparency="True" у окна гарантирует, что
+    // WPF честно смешает этот цвет с тем, что реально на экране позади окна. Никакого Win32,
+    // никакой зависимости от системных настроек DWM — работает всегда одинаково.
+    //
+    // Базовый (RGB, без альфы) цвет фона и цвета текста/иконок/подложек элементов теперь
+    // зависят от темы приложения (см. ApplyTheme) — раньше мини-плеер игнорировал тему и был
+    // всегда тёмным.
+
+    // Базовые RGB для фона (без альфы — она добавляется отдельно в ApplyBackground). Тёмная
+    // тема — тот же графит, что был и раньше. Светлая — светло-серый, а не чистый белый: на
+    // полупрозрачном белом поверх произвольного рабочего стола почти всегда будет плохо
+    // читаться тёмный текст без хоть какой-то собственной плотности цвета.
+    private static readonly (byte R, byte G, byte B) DarkBackgroundRgb = (0x1C, 0x1C, 0x1E);
+    private static readonly (byte R, byte G, byte B) LightBackgroundRgb = (0xF2, 0xF2, 0xF2);
+
+    private bool _isLightTheme;
+
+    // Пересчитывает все цвета, зависящие от темы приложения (фон, текст, иконки, подложки
+    // кнопок) — вызывается один раз при открытии мини-плеера (см. OnSourceInitialized) и затем
+    // повторно, если пользователь переключил тему в настройках, пока мини-плеер уже открыт
+    // (см. ApplyThemeLive / MainWindow.ApplyMiniPlayerThemeLive).
+    private void ApplyTheme()
+    {
+        _isLightTheme = _mainWindow.Settings.Theme == "Light";
+
+        if (_isLightTheme)
+        {
+            MiniTextPrimaryBrush.Color = Color.FromArgb(0xFF, 0x1A, 0x1A, 0x1A);
+            MiniTextSecondaryBrush.Color = Color.FromArgb(0xB0, 0x1A, 0x1A, 0x1A);
+            MiniControlFillBrush.Color = Color.FromArgb(0x14, 0x00, 0x00, 0x00);
+            MiniControlFillSecondaryBrush.Color = Color.FromArgb(0x1A, 0x00, 0x00, 0x00);
+            MiniControlStrongFillBrush.Color = Color.FromArgb(0x30, 0x00, 0x00, 0x00);
+            MiniControlStrokeBrush.Color = Color.FromArgb(0x26, 0x00, 0x00, 0x00);
+        }
+        else
+        {
+            MiniTextPrimaryBrush.Color = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
+            MiniTextSecondaryBrush.Color = Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF);
+            MiniControlFillBrush.Color = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF);
+            MiniControlFillSecondaryBrush.Color = Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF);
+            MiniControlStrongFillBrush.Color = Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF);
+            MiniControlStrokeBrush.Color = Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF);
+        }
+
+        ApplyBackground();
+    }
+
+    // Альфа-канал фона — это и есть настройка "прозрачность мини-плеера" (0.3..1.0 в UI, см.
+    // MiniOpacitySlider), базовый RGB берётся из текущей темы (см. ApplyTheme).
     private void ApplyBackground()
     {
         byte alpha = (byte)Math.Round(Math.Clamp(_mainWindow.Settings.MiniPlayerOpacity, 0.0, 1.0) * 255);
-        MiniBackgroundBrush.Color = Color.FromArgb(alpha, 0x1C, 0x1C, 0x1E);
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct AccentPolicy
-    {
-        public int AccentState;
-        public int AccentFlags;
-        public int GradientColor;
-        public int AnimationId;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct WindowCompositionAttributeData
-    {
-        public int Attribute;
-        public IntPtr Data;
-        public int SizeOfData;
-    }
-
-    // ACCENT_ENABLE_ACRYLICBLURBEHIND — тот же режим, которым в своё время в Windows 10
-    // рисовался эффект Acrylic (блюр + шум + тонировка) до появления Mica в Windows 11;
-    // на Windows 11 он тоже работает, просто без специфичного для Mica "статичного" фона,
-    // завязанного на обои рабочего стола — здесь это ровно то, что нужно: чистый блюр.
-    private const int AccentEnableAcrylicBlurBehind = 4;
-    private const int WcaAccentPolicy = 19;
-
-    [DllImport("user32.dll")]
-    private static extern int SetWindowCompositionAttribute(IntPtr hwnd, ref WindowCompositionAttributeData data);
-
-    // GradientColor у ACCENT_POLICY — это цвет тонировки поверх блюра в формате ABGR (а не
-    // привычном ARGB!), поэтому байты собираются вручную, а не через обычный Color.ToArgb().
-    // Цвет тонировки — ТОТ ЖЕ фиксированный тёмный графит, что и у ApplyBackground выше (а не
-    // цвет из ресурса текущей темы приложения, как было раньше и что приводило к светлому
-    // блёклому виду в светлой теме) — блюр должен просто добавлять размытие поверх уже тёмного
-    // фона, а не менять его цвет. Альфа — та же настройка "прозрачность мини-плеера": чем
-    // ниже значение, тем прозрачнее тонировка и тем отчётливее видно размытый рабочий стол.
-    private void ApplyBlurBehind()
-    {
-        if (_hwnd == IntPtr.Zero) return;
-
-        byte alpha = (byte)Math.Round(Math.Clamp(_mainWindow.Settings.MiniPlayerOpacity, 0.0, 1.0) * 255);
-        const byte r = 0x1C, g = 0x1C, b = 0x1E;
-
-        int abgr = (alpha << 24) | (b << 16) | (g << 8) | r;
-
-        var accent = new AccentPolicy
-        {
-            AccentState = AccentEnableAcrylicBlurBehind,
-            GradientColor = abgr
-        };
-
-        int accentSize = Marshal.SizeOf(accent);
-        IntPtr accentPtr = Marshal.AllocHGlobal(accentSize);
-        try
-        {
-            Marshal.StructureToPtr(accent, accentPtr, false);
-
-            var data = new WindowCompositionAttributeData
-            {
-                Attribute = WcaAccentPolicy,
-                SizeOfData = accentSize,
-                Data = accentPtr
-            };
-
-            SetWindowCompositionAttribute(_hwnd, ref data);
-        }
-        finally
-        {
-            Marshal.FreeHGlobal(accentPtr);
-        }
+        var rgb = _isLightTheme ? LightBackgroundRgb : DarkBackgroundRgb;
+        MiniBackgroundBrush.Color = Color.FromArgb(alpha, rgb.R, rgb.G, rgb.B);
     }
 
     // Вызывается из MainWindow.ApplyMiniPlayerOpacityLive, когда пользователь двигает
-    // слайдер прозрачности в окне настроек, пока мини-плеер уже открыт — обновляет оба слоя.
-    public void ApplyOpacityLive()
-    {
-        ApplyBackground();
-        ApplyBlurBehind();
-    }
+    // слайдер прозрачности в окне настроек, пока мини-плеер уже открыт.
+    public void ApplyOpacityLive() => ApplyBackground();
+
+    // Вызывается из MainWindow.ApplyMiniPlayerThemeLive, когда пользователь переключает
+    // светлую/тёмную тему в настройках, пока мини-плеер уже открыт.
+    public void ApplyThemeLive() => ApplyTheme();
 
     // ---------- Бегущая строка названия трека ----------
     //
