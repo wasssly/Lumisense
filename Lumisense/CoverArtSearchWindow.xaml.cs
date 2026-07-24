@@ -180,15 +180,25 @@ public partial class CoverArtSearchWindow : FluentWindow
             var json = await response.Content.ReadAsStringAsync(token);
             return ParseItunesResults(json);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
+            // Настоящая отмена — либо пользователь нажал "Отмена", либо запущен новый поиск
+            // поверх этого (см. _searchCts?.Cancel() в начале RunSearch). Пробрасываем дальше,
+            // чтобы RunSearch мог сам корректно завершиться через ThrowIfCancellationRequested.
             throw;
         }
         catch
         {
-            // Сеть недоступна, iTunes вернул ошибку, JSON не распарсился и т.п. — второй
-            // источник (Deezer) всё ещё может найти результат, поэтому просто отдаём пустой
-            // список вместо того, чтобы обрушить весь поиск целиком.
+            // Сюда же попадает и TaskCanceledException от СОБСТВЕННОГО таймаута HttpClient
+            // (Http.Timeout = 15 секунд, см. поле выше) — она тоже наследуется от
+            // OperationCanceledException, но НЕ связана с нашим token: если ловить её как
+            // обычную отмену (как было раньше), исключение улетало бы вверх до RunSearch,
+            // который принял бы его за настоящую отмену пользователем и не обновил бы
+            // интерфейс вообще — экран так и оставался на "Ищем…" навсегда, хотя запрос давно
+            // не выполняется. Сеть недоступна, iTunes вернул ошибку, JSON не распарсился,
+            // истёк таймаут и т.п. — во всех этих случаях второй источник (Deezer) всё ещё
+            // может найти результат, поэтому просто отдаём пустой список вместо того, чтобы
+            // обрушить весь поиск целиком.
             return new List<ArtResult>();
         }
     }
@@ -236,12 +246,14 @@ public partial class CoverArtSearchWindow : FluentWindow
             var json = await response.Content.ReadAsStringAsync(token);
             return ParseDeezerResults(json);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             throw;
         }
         catch
         {
+            // См. подробный комментарий в SearchItunesAsync — сюда же попадает и таймаут
+            // самого HttpClient, а не только настоящая отмена.
             return new List<ArtResult>();
         }
     }
@@ -308,13 +320,13 @@ public partial class CoverArtSearchWindow : FluentWindow
         {
             thumbBytes = await Http.GetByteArrayAsync(entry.ThumbUrl, token);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             throw;
         }
         catch
         {
-            return; // пропускаем результат, у которого не загрузилась миниатюра
+            return; // пропускаем результат, у которого не загрузилась миниатюра (включая таймаут)
         }
 
         BitmapImage thumb;
