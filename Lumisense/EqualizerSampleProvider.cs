@@ -58,7 +58,7 @@ public sealed class EqualizerSampleProvider : ISampleProvider
     }
 
     private BiQuadFilter MakeFilter(int band, double gainDb) =>
-        BiQuadFilter.PeakingEQ(_source.WaveFormat.SampleRate, BandFrequencies[band], Bandwidth, gainDb);
+        BiQuadFilter.PeakingEQ(_source.WaveFormat.SampleRate, BandFrequencies[band], (float)Bandwidth, (float)gainDb);
 
     /// <summary>Меняет усиление одной полосы (в дБ, обрезается до [-12; 12]) — коэффициенты
     /// фильтра пересчитываются заново для каждого канала, поэтому слайдер в настройках можно
