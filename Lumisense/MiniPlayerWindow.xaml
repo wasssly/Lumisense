@@ -28,16 +28,17 @@
              TextBlock/Border с DynamicResource, и во ВСТРОЕННЫХ шаблонах ui:Button — без
              необходимости лезть и переопределять их шаблоны вручную.
 
-             Даём каждой кисти x:Name — цвета пересчитываются в code-behind (см. ApplyTheme) при
-             открытии мини-плеера и при живой смене темы приложения, пока мини-плеер уже открыт.
-             Значения ниже — это просто дефолт на случай самого первого кадра до первого вызова
-             ApplyTheme (тёмная тема, как было исторически). -->
-        <SolidColorBrush x:Key="TextFillColorPrimaryBrush" x:Name="MiniTextPrimaryBrush" Color="#FFFFFFFF" />
-        <SolidColorBrush x:Key="TextFillColorSecondaryBrush" x:Name="MiniTextSecondaryBrush" Color="#C5FFFFFF" />
-        <SolidColorBrush x:Key="ControlFillColorDefaultBrush" x:Name="MiniControlFillBrush" Color="#14FFFFFF" />
-        <SolidColorBrush x:Key="ControlFillColorSecondaryBrush" x:Name="MiniControlFillSecondaryBrush" Color="#1AFFFFFF" />
-        <SolidColorBrush x:Key="ControlStrongFillColorDefaultBrush" x:Name="MiniControlStrongFillBrush" Color="#4DFFFFFF" />
-        <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush" x:Name="MiniControlStrokeBrush" Color="#26FFFFFF" />
+             Ресурсы намеренно получаются в code-behind через FindResource(...) по x:Key (см.
+             ApplyTheme), а не через x:Name: WPF markup-компилятор не генерирует поле в
+             code-behind для элемента внутри ResourceDictionary, если у него уже задан x:Key —
+             x:Name в этом случае просто регистрируется в NameScope, но не создаёт поле класса,
+             из-за чего сборка падает с CS0103 "имя не существует в текущем контексте". -->
+        <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#FFFFFFFF" />
+        <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#C5FFFFFF" />
+        <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#14FFFFFF" />
+        <SolidColorBrush x:Key="ControlFillColorSecondaryBrush" Color="#1AFFFFFF" />
+        <SolidColorBrush x:Key="ControlStrongFillColorDefaultBrush" Color="#4DFFFFFF" />
+        <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush" Color="#26FFFFFF" />
 
         <!-- Индикатор громкости (см. VolumeIndicator ниже): плавно появляется и, спустя
              паузу, сам плавно исчезает. Запускается заново с нуля при каждом изменении

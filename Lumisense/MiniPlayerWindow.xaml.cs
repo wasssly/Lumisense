@@ -268,31 +268,48 @@ public partial class MiniPlayerWindow : Window
 
     private bool _isLightTheme;
 
+    // Кисти получаются через FindResource по x:Key (см. комментарий в MiniPlayerWindow.xaml у
+    // Window.Resources — почему не через автогенерируемые x:Name-поля) и кэшируются один раз,
+    // чтобы не искать их в дереве ресурсов при каждом обновлении темы/прозрачности.
+    private SolidColorBrush? _textPrimaryBrush;
+    private SolidColorBrush? _textSecondaryBrush;
+    private SolidColorBrush? _controlFillBrush;
+    private SolidColorBrush? _controlFillSecondaryBrush;
+    private SolidColorBrush? _controlStrongFillBrush;
+    private SolidColorBrush? _controlStrokeBrush;
+
     // Пересчитывает все цвета, зависящие от темы приложения (фон, текст, иконки, подложки
     // кнопок) — вызывается один раз при открытии мини-плеера (см. OnSourceInitialized) и затем
     // повторно, если пользователь переключил тему в настройках, пока мини-плеер уже открыт
     // (см. ApplyThemeLive / MainWindow.ApplyMiniPlayerThemeLive).
     private void ApplyTheme()
     {
+        _textPrimaryBrush ??= (SolidColorBrush)FindResource("TextFillColorPrimaryBrush");
+        _textSecondaryBrush ??= (SolidColorBrush)FindResource("TextFillColorSecondaryBrush");
+        _controlFillBrush ??= (SolidColorBrush)FindResource("ControlFillColorDefaultBrush");
+        _controlFillSecondaryBrush ??= (SolidColorBrush)FindResource("ControlFillColorSecondaryBrush");
+        _controlStrongFillBrush ??= (SolidColorBrush)FindResource("ControlStrongFillColorDefaultBrush");
+        _controlStrokeBrush ??= (SolidColorBrush)FindResource("ControlStrokeColorDefaultBrush");
+
         _isLightTheme = _mainWindow.Settings.Theme == "Light";
 
         if (_isLightTheme)
         {
-            MiniTextPrimaryBrush.Color = Color.FromArgb(0xFF, 0x1A, 0x1A, 0x1A);
-            MiniTextSecondaryBrush.Color = Color.FromArgb(0xB0, 0x1A, 0x1A, 0x1A);
-            MiniControlFillBrush.Color = Color.FromArgb(0x14, 0x00, 0x00, 0x00);
-            MiniControlFillSecondaryBrush.Color = Color.FromArgb(0x1A, 0x00, 0x00, 0x00);
-            MiniControlStrongFillBrush.Color = Color.FromArgb(0x30, 0x00, 0x00, 0x00);
-            MiniControlStrokeBrush.Color = Color.FromArgb(0x26, 0x00, 0x00, 0x00);
+            _textPrimaryBrush.Color = Color.FromArgb(0xFF, 0x1A, 0x1A, 0x1A);
+            _textSecondaryBrush.Color = Color.FromArgb(0xB0, 0x1A, 0x1A, 0x1A);
+            _controlFillBrush.Color = Color.FromArgb(0x14, 0x00, 0x00, 0x00);
+            _controlFillSecondaryBrush.Color = Color.FromArgb(0x1A, 0x00, 0x00, 0x00);
+            _controlStrongFillBrush.Color = Color.FromArgb(0x30, 0x00, 0x00, 0x00);
+            _controlStrokeBrush.Color = Color.FromArgb(0x26, 0x00, 0x00, 0x00);
         }
         else
         {
-            MiniTextPrimaryBrush.Color = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
-            MiniTextSecondaryBrush.Color = Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF);
-            MiniControlFillBrush.Color = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF);
-            MiniControlFillSecondaryBrush.Color = Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF);
-            MiniControlStrongFillBrush.Color = Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF);
-            MiniControlStrokeBrush.Color = Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF);
+            _textPrimaryBrush.Color = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
+            _textSecondaryBrush.Color = Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF);
+            _controlFillBrush.Color = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF);
+            _controlFillSecondaryBrush.Color = Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF);
+            _controlStrongFillBrush.Color = Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF);
+            _controlStrokeBrush.Color = Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF);
         }
 
         ApplyBackground();
