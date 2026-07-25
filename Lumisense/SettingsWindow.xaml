@@ -766,9 +766,9 @@
 
                         <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
                             <StackPanel>
-                                <CheckBox x:Name="HidePlaybackButtonsCheckBox" Content="Скрыть кнопки управления воспроизведением"
+                                <CheckBox x:Name="HidePlaybackButtonsCheckBox" Content="Убрать фон у кнопок управления воспроизведением"
                                           Checked="HidePlaybackButtonsCheckBox_Changed" Unchecked="HidePlaybackButtonsCheckBox_Changed" />
-                                <TextBlock Text="Скрывает кнопки «Перемешать», «Повтор», «Предыдущий», «Пуск/Пауза», «Следующий», «Стоп» и переход в мини-плеер в главном окне — управлять воспроизведением в этом случае можно горячими клавишами или из трея."
+                                <TextBlock Text="Убирает фон у кнопок «Перемешать», «Повтор», «Предыдущий», «Пуск/Пауза», «Следующий», «Стоп» и перехода в мини-плеер в главном окне — сами кнопки остаются на месте и работают как раньше, просто фон становится прозрачным и сливается с фоном плеера, видна только иконка."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>

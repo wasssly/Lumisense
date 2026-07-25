@@ -673,22 +673,52 @@ public partial class MainWindow : FluentWindow
     }
 
     // Экспериментальная настройка (Settings.HidePlaybackButtons, страница "Экспериментальное"
-    // в окне настроек) — скрывает кнопки панели управления воспроизведением: "Перемешать",
-    // "Повтор", "Предыдущий", "Пуск/Пауза", "Следующий", "Стоп" и переход в мини-плеер.
-    // Вызывается один раз при запуске (см. конец конструктора выше) и повторно из
-    // SettingsWindow.HidePlaybackButtonsCheckBox_Changed, чтобы применяться сразу, без
-    // перезапуска приложения.
+    // в окне настроек). Изначально она скрывала кнопки через Visibility, но по факту нужно
+    // было другое: кнопки остаются видимыми и кликабельными, просто у них убирается
+    // собственный фон (тот прямоугольник/скругление, что рисует ui:Button при Appearance=
+    // Secondary/Primary) — так что видна только иконка, сливающаяся с фоном плеера, без
+    // отдельно очерченной кнопки под ней.
+    //
+    // Background="Transparent" — простой локальный Setter, а не DependencyProperty.UnsetValue,
+    // ПОТОМУ ЧТО именно локальное значение имеет более высокий приоритет, чем сеттеры из
+    // стиля WPF-UI (Wpf.Ui.Controls.Button), и однозначно им управляет вне зависимости от
+    // деталей внутреннего шаблона библиотеки — тот же принцип разбирался и раньше в шаблоне
+    // Slider (App.xaml): локальное значение всегда побеждает сеттер стиля. При выключении
+    // настройки достаточно вернуть DependencyProperty.UnsetValue — это не значение "прозрачный
+    // фон", а именно "снять локальное значение и вернуть управление стилю", то есть кнопка
+    // снова получит свой обычный фон, каким бы он ни был в WPF-UI (жёстко его дублировать
+    // здесь не нужно и рискованно — вдруг в другой версии библиотеки он другой).
+    //
+    // Ховер/нажатие у ui:Button реализованы отдельным слоем поверх Background (типичный для
+    // Fluent 2 приём "state layer"), поэтому даже с прозрачным фоном в покое подсветка при
+    // наведении и нажатии продолжает работать как обычно — кнопки не становятся "немыми".
     public void ApplyPlaybackButtonsVisibility()
     {
-        var visibility = _settings.HidePlaybackButtons ? Visibility.Collapsed : Visibility.Visible;
-
-        ShuffleButton.Visibility = visibility;
-        RepeatButton.Visibility = visibility;
-        PrevButton.Visibility = visibility;
-        PlayPauseButton.Visibility = visibility;
-        NextButton.Visibility = visibility;
-        StopButton.Visibility = visibility;
-        MiniModeButton.Visibility = visibility;
+        if (_settings.HidePlaybackButtons)
+        {
+            ShuffleButton.Background = System.Windows.Media.Brushes.Transparent;
+            RepeatButton.Background = System.Windows.Media.Brushes.Transparent;
+            PrevButton.Background = System.Windows.Media.Brushes.Transparent;
+            PlayPauseButton.Background = System.Windows.Media.Brushes.Transparent;
+            NextButton.Background = System.Windows.Media.Brushes.Transparent;
+            StopButton.Background = System.Windows.Media.Brushes.Transparent;
+            MiniModeButton.Background = System.Windows.Media.Brushes.Transparent;
+        }
+        else
+        {
+            // ClearValue, а не присваивание какого-то "исходного" цвета — снимает именно
+            // локальное значение, установленное веткой выше, и возвращает управление фоном
+            // обратно стилю WPF-UI, каким бы он ни был. Не приходится дублировать/угадывать
+            // сам цвет по умолчанию у Wpf.Ui.Controls.Button — а значит и не сломается, если
+            // он вдруг изменится в другой версии библиотеки.
+            ShuffleButton.ClearValue(Button.BackgroundProperty);
+            RepeatButton.ClearValue(Button.BackgroundProperty);
+            PrevButton.ClearValue(Button.BackgroundProperty);
+            PlayPauseButton.ClearValue(Button.BackgroundProperty);
+            NextButton.ClearValue(Button.BackgroundProperty);
+            StopButton.ClearValue(Button.BackgroundProperty);
+            MiniModeButton.ClearValue(Button.BackgroundProperty);
+        }
     }
 
     /// <summary>Перекрашивает меню трея под текущую тему — вызывается из SettingsWindow при

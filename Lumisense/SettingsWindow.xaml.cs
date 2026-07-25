@@ -283,7 +283,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Улучшенный шаффл", "Экспериментальное", "Experimental", ImprovedShuffleCheckBox, "шаффл перемешать shuffle экспериментальное bag колода");
-        Add("Скрыть кнопки управления воспроизведением", "Экспериментальное", "Experimental", HidePlaybackButtonsCheckBox, "скрыть кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini экспериментальное");
+        Add("Убрать фон у кнопок управления воспроизведением", "Экспериментальное", "Experimental", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini экспериментальное");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
