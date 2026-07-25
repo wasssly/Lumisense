@@ -437,7 +437,10 @@ public partial class MainWindow : FluentWindow
 
     // Восстанавливает плейлист, сохранённый при прошлом закрытии приложения, а также
     // последний проигранный трек и позицию в нём (без автозапуска воспроизведения).
-    // Файлы, которые с тех пор были удалены/перемещены, просто пропускаются.
+    // Файлы, которые с тех пор были удалены/перемещены, тихо убираются из списка чуть позже,
+    // уже ПОСЛЕ того, как плейлист показан (см. VerifyTrackExistenceInBackgroundAsync ниже) —
+    // а не отфильтровываются ДО показа, как было раньше.
+    //
     // Раньше это делалось СИНХРОННО прямо в конструкторе, то есть ДО того, как окно вообще
     // успевало появиться на экране — а File.Exists по каждому треку сохранённого плейлиста
     // (это реальное обращение к диску на каждый файл) при плейлисте в сотни-тысячи треков,
@@ -445,9 +448,17 @@ public partial class MainWindow : FluentWindow
     // следом ещё и LoadAndPlay последнего трека — открытие аудиофайла, чтение тегов/обложки.
     // Именно это и было основной причиной долгого "чёрного экрана" при запуске плеера.
     //
-    // Теперь сканирование File.Exists уходит в пул потоков через Task.Run, а окно тем временем
-    // уже показано и отзывчиво — плейлист и последний трек просто появляются в нём чуть позже,
-    // как только фоновая проверка закончится (обычно доли секунды, редко больше).
+    // Следующий заход на эту же проблему увёл File.Exists в фоновый поток (Task.Run,
+    // AsParallel) — но список треков всё ещё ЖДАЛ результата этой проверки, прежде чем вообще
+    // появиться на экране: окно уже было отзывчиво, но сам плейлист ощутимо "досканировался"
+    // после запуска на каждой сессии, даже когда на диске ничего не менялось с прошлого раза.
+    //
+    // Теперь плейлист восстанавливается из settings.json КАК ЕСТЬ, без единого обращения к
+    // диску — тот самый "список треков, который был последний раз" появляется в UI сразу,
+    // без какой-либо проверки. Устаревшие записи (файл успели удалить/переименовать, пока
+    // плеер был закрыт) не пропадают мгновенно, а тихо исчезают из списка чуть позже, когда
+    // фоновая проверка их обнаружит — обычно доли секунды, но уже НЕ ценой задержки самого
+    // появления плейлиста на экране.
     // Сколько треков добавлять в Tracks одной порцией между Dispatcher.Yield (см.
     // AddTracksIncrementallyAsync) — компромисс: слишком маленькое число сильно замедлит
     // общую загрузку (каждый Yield сам по себе не бесплатен), слишком большое — вернёт тот же
@@ -458,51 +469,6 @@ public partial class MainWindow : FluentWindow
     {
         if (_settings.SavedPlaylistFolders.Count == 0) return;
 
-        // Здесь только читаем диск (File.Exists) и готовим "чертежи" будущих папок — сами
-        // объекты PlaylistFolder создаём с пустым Tracks и наполняем его уже на UI-потоке
-        // порциями чуть ниже (см. AddTracksIncrementallyAsync), а не одним разовым AddRange
-        // на несколько тысяч треков сразу.
-        var blueprints = await System.Threading.Tasks.Task.Run(() =>
-        {
-            var result = new List<(PlaylistFolder Folder, List<string> Tracks)>();
-
-            foreach (var saved in _settings.SavedPlaylistFolders)
-            {
-                // AsParallel().AsOrdered() — 1500 последовательных File.Exists (реальных обращений
-                // к диску, каждое с собственной задержкой ожидания ответа от файловой системы)
-                // даже в фоновом потоке всё равно суммарно складываются в заметное время,
-                // особенно на HDD или сетевом пути, где задержка одного запроса заметно больше
-                // самой полезной работы. File.Exists по разным путям независим и не пишет
-                // ничего общего — идеальный кандидат на реальный параллелизм, а не просто
-                // "не в UI-потоке": пока одна проверка ждёт ответа от диска, другие могут
-                // выполняться одновременно, а не по очереди. AsOrdered() обязателен — порядок
-                // треков в плейлисте важен (это порядок воспроизведения), а PLINQ по умолчанию
-                // может отдать результаты в произвольном порядке.
-                var existingTracks = saved.Tracks.AsParallel().AsOrdered().Where(File.Exists).ToList();
-
-                // Пропускаем группу, только если в ней ДЕЙСТВИТЕЛЬНО были файлы, а теперь их не
-                // осталось (все удалены/перемещены) — а не любую группу с нулём треков. Иначе
-                // ручная папка, созданная вручную и ещё не наполненная файлами до закрытия
-                // приложения, терялась бы при следующем запуске.
-                if (saved.Tracks.Count > 0 && existingTracks.Count == 0) continue;
-
-                var folder = new PlaylistFolder
-                {
-                    SourcePath = saved.SourcePath,
-                    DisplayName = saved.DisplayName,
-                    IsEnabled = saved.IsEnabled,
-                    IsLooseFilesBucket = saved.IsLooseFilesBucket,
-                    IsExpanded = saved.IsExpanded
-                };
-                result.Add((folder, existingTracks));
-            }
-
-            return result;
-        });
-
-        // Дальше — снова в UI-потоке (обычное поведение await в WPF): трогаем _folders,
-        // элементы окна и т.п.
-        //
         // _folders теперь ObservableCollection — если PlaylistFoldersControl ещё ни разу не
         // был привязан к ней (самый обычный случай на старте), привязываем сейчас, пока она
         // ещё пуста, чтобы вся дальнейшая загрузка сразу шла по "инкрементальному" пути: каждое
@@ -531,13 +497,37 @@ public partial class MainWindow : FluentWindow
         // отдельно, тоже небольшими порциями с Yield между ними (см.
         // AddTracksIncrementallyAsync) — так что даже одна огромная папка грузится плавно, а
         // не одним рывком.
-        foreach (var (folder, tracks) in blueprints)
+        // Папки, которые изначально (по сохранённому списку) были непустыми — если после
+        // фоновой проверки существования у такой ничего не останется (все файлы удалены с
+        // диска, пока плеер был закрыт), убираем её из плейлиста целиком, а не оставляем
+        // пустым заголовком. То же самое поведение, что было и раньше — просто теперь
+        // проверяется чуть позже, а не до показа. "Новую папку…", ещё не наполненную файлами
+        // до закрытия приложения, это не касается — у неё saved.Tracks.Count изначально 0, и
+        // после проверки она так и останется как есть, не исчезнет.
+        var foldersThatWereNonEmpty = new HashSet<PlaylistFolder>();
+
+        foreach (var saved in _settings.SavedPlaylistFolders)
         {
+            var folder = new PlaylistFolder
+            {
+                SourcePath = saved.SourcePath,
+                DisplayName = saved.DisplayName,
+                IsEnabled = saved.IsEnabled,
+                IsLooseFilesBucket = saved.IsLooseFilesBucket,
+                IsExpanded = saved.IsExpanded
+            };
+            if (saved.Tracks.Count > 0) foldersThatWereNonEmpty.Add(folder);
+
             _folders.Add(folder);
             await Dispatcher.Yield(DispatcherPriority.Background);
 
-            await AddTracksIncrementallyAsync(folder, tracks);
+            await AddTracksIncrementallyAsync(folder, saved.Tracks);
         }
+
+        // Запускаем и НЕ ждём (fire-and-forget) — удаление устаревших записей не должно
+        // задерживать ни появление плейлиста (он уже показан к этому моменту), ни загрузку
+        // последнего трека чуть ниже.
+        _ = VerifyTrackExistenceInBackgroundAsync(foldersThatWereNonEmpty);
 
         if (_folders.Count == 0) return;
 
@@ -545,9 +535,51 @@ public partial class MainWindow : FluentWindow
 
         var all = FlattenAll();
         if (!all.Contains(_settings.LastTrackPath)) return;
+        if (!File.Exists(_settings.LastTrackPath)) return; // единичная дешёвая проверка ОДНОГО файла — не массовое сканирование
 
         LoadAndPlay(_settings.LastTrackPath, autoPlay: false,
             startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)));
+    }
+
+    // Тихая фоновая проверка File.Exists по ВСЕМ трекам ВСЕХ папок плейлиста — единственное
+    // место, где восстановленный из кэша плейлист вообще трогает диск. Запускается уже ПОСЛЕ
+    // того, как весь плейлист показан (см. вызов в RestoreSavedPlaylistAsync), поэтому, сколько
+    // бы она ни выполнялась, это никак не влияет на то, как быстро список появляется на экране.
+    //
+    // AsParallel() — та же причина, что и раньше: File.Exists по разным путям независим, и
+    // реальный параллелизм заметно быстрее последовательного перебора, особенно на HDD/сетевых
+    // путях, где велика задержка каждого отдельного обращения. AsOrdered() здесь, в отличие от
+    // самого восстановления плейлиста, не нужен: порядок был важен для порядка воспроизведения
+    // при ДОБАВЛЕНИИ треков в список, а тут только собирается список путей на УДАЛЕНИЕ — то,
+    // в каком порядке они будут удалены из folder.Tracks, никак не влияет на итоговый результат.
+    // Устаревшие пути удаляются из folder.Tracks (это ObservableCollection) точечно, через
+    // Remove — так UI сам, без дополнительного кода, уберёт со экрана только реально
+    // исчезнувшие строки, не трогая ничего остального.
+    private async System.Threading.Tasks.Task VerifyTrackExistenceInBackgroundAsync(HashSet<PlaylistFolder> foldersThatWereNonEmpty)
+    {
+        var foldersToCheck = _folders.ToList();
+
+        foreach (var folder in foldersToCheck)
+        {
+            if (!_folders.Contains(folder)) continue; // папку могли успеть удалить, пока проверяли предыдущую
+
+            var tracksSnapshot = folder.Tracks.ToList();
+            if (tracksSnapshot.Count == 0) continue;
+
+            var missing = await System.Threading.Tasks.Task.Run(() =>
+                tracksSnapshot.AsParallel().Where(f => !File.Exists(f)).ToList());
+
+            if (missing.Count == 0 || !_folders.Contains(folder)) continue;
+
+            foreach (var path in missing)
+                folder.Tracks.Remove(path);
+
+            // Была непустой изначально, а теперь опустела целиком (все файлы удалены с диска) —
+            // убираем саму папку, а не оставляем пустой заголовок. См. комментарий у
+            // foldersThatWereNonEmpty в RestoreSavedPlaylistAsync.
+            if (folder.Tracks.Count == 0 && foldersThatWereNonEmpty.Contains(folder))
+                _folders.Remove(folder);
+        }
     }
 
     // См. комментарий в RestoreSavedPlaylistAsync — наполняет уже добавленную в _folders (и
