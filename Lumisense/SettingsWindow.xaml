@@ -796,11 +796,63 @@
                                     </StackPanel>
                                 </Grid>
 
-                                <TextBlock Text="Аудиоплеер в стиле Fluent Design для Windows 11: плейлисты по папкам и файлам, мини-плеер, глобальные горячие клавиши и интеграция с «Сейчас воспроизводится»."
+                                <TextBlock Text="Аудиоплеер в стиле Fluent Design для Windows 11: плейлисты по папкам с избранным и поиском, 10-полосный эквалайзер, три вида окна — включая мини-плеер с закреплением, прилипанием к краям экрана и настраиваемой прозрачностью, — светлая и тёмная тема, редактирование тегов и обложек, глобальные горячие клавиши и интеграция с «Сейчас воспроизводится»."
                                            TextWrapping="Wrap" Opacity="0.85" Margin="0,12,0,12" />
 
                                 <TextBlock Text="Собрано на .NET 8, WPF-UI и NAudio." TextWrapping="Wrap"
                                            FontSize="12" Opacity="0.6" />
+                            </StackPanel>
+                        </Border>
+
+                        <TextBlock Text="Разработчик" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <ui:Button x:Name="DeveloperGitHubButton" Appearance="Secondary"
+                                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                           Padding="16,14" Click="DeveloperGitHubButton_Click">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                                Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                                Margin="0,0,12,0">
+                                            <local:SvgPathIcon Icon="IconGitHub" Size="16"
+                                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="GitHub" FontWeight="SemiBold" />
+                                            <TextBlock Text="github.com/wasssly" FontSize="12" Opacity="0.6" />
+                                        </StackPanel>
+                                    </Grid>
+                                </ui:Button>
+
+                                <ui:Button x:Name="DeveloperTelegramButton" Appearance="Secondary"
+                                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                           Padding="16,14" Margin="0,8,0,0" Click="DeveloperTelegramButton_Click">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                                Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                                Margin="0,0,12,0">
+                                            <local:SvgPathIcon Icon="IconTelegram" Size="16"
+                                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="Telegram" FontWeight="SemiBold" />
+                                            <TextBlock Text="t.me/dontwritetoblame" FontSize="12" Opacity="0.6" />
+                                        </StackPanel>
+                                    </Grid>
+                                </ui:Button>
                             </StackPanel>
                         </Border>
 

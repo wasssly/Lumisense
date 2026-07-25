@@ -288,6 +288,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
+        Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты");
     }
 
     private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -592,6 +593,27 @@ public partial class SettingsWindow : FluentWindow
     // Само открытие/закрытие и переключение окон централизовано в MainWindow.ShowChangelogWindow
     // (симметрично ShowSettingsWindow) — оно же закроет это окно настроек.
     private void ChangelogButton_Click(object sender, RoutedEventArgs e) => _owner.ShowChangelogWindow();
+
+    // ---------- Карточка разработчика (страница "О плеере") ----------
+    // Тот же приём, что и у "Подробнее" в UpdateAvailableWindow.MoreButton_Click:
+    // Process.Start с UseShellExecute=true — с .NET Core Process.Start больше не открывает
+    // URL напрямую без этого флага. try/catch на случай отсутствия браузера по умолчанию —
+    // не критично, просто ничего не откроется.
+    private void DeveloperGitHubButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly");
+
+    private void DeveloperTelegramButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://t.me/dontwritetoblame");
+
+    private static void OpenUrl(string url)
+    {
+        try
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
+        }
+        catch
+        {
+            // Нет браузера по умолчанию и т.п. — не критично, просто ничего не открылось
+        }
+    }
 
     // ---------- Горячие клавиши: запись пользовательской комбинации ----------
     // Клик по кнопке комбинации переводит окно в режим "записи": следующее нажатие
