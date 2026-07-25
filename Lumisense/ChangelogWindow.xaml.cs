@@ -255,7 +255,7 @@ public partial class ChangelogWindow : FluentWindow
 
     private void ChangelogImage_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (sender is not Image { Source: System.Windows.Media.Imaging.BitmapImage bitmap }) return;
+        if (sender is not System.Windows.Controls.Image { Source: System.Windows.Media.Imaging.BitmapImage bitmap }) return;
 
         if (_coverArtWindow == null)
         {
