@@ -155,3 +155,27 @@ public class ExpandChevronConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+/// <summary>Собирает values[0]/values[1] (ширина/высота элемента) в Rect(0,0,ширина,высота) —
+/// нужен, чтобы скруглить углы у Image (см. ChangelogWindow.xaml, картинки версий/изменений):
+/// у Border есть CornerRadius, но ClipToBounds="True" на Border клипует дочерний контент
+/// ПРЯМОУГОЛЬНИКОМ, полностью игнорируя CornerRadius — это относится только к тому, как Border
+/// рисует СВОЙ СОБСТВЕННЫЙ Background/BorderBrush, а не к произвольным дочерним элементам
+/// внутри него. Единственный надёжный способ скруглить углы именно у Image — задать ему
+/// СОБСТВЕННЫЙ Clip: RectangleGeometry с RadiusX/RadiusY, размер которого равен фактическому
+/// размеру самой картинки. Geometry — Freezable, а не часть визуального дерева, поэтому
+/// RelativeSource-биндинг внутри неё недоступен (нет предка, до которого можно "дойти") — берём
+/// размер через ElementName-биндинг на сам Image (см. XAML), а MultiBinding с этим конвертером
+/// нужен потому, что Rect собирается из ДВУХ отдельных чисел (ширина и высота) разом.</summary>
+public class SizeToRectConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        double width = values.Length > 0 && values[0] is double w ? Math.Max(w, 0) : 0;
+        double height = values.Length > 1 && values[1] is double h ? Math.Max(h, 0) : 0;
+        return new System.Windows.Rect(0, 0, width, height);
+    }
+
+    public object?[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}

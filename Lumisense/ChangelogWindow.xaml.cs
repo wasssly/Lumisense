@@ -241,4 +241,45 @@ public partial class ChangelogWindow : FluentWindow
         }
         return false;
     }
+
+    // ---------- Просмотр картинки версии/изменения крупно ----------
+    //
+    // То же самое окно (CoverArtWindow), что открывается по клику на обложку трека в главном
+    // окне: приближение по клику, панорамирование зажатой левой кнопкой, сброс правой кнопкой.
+    // Единственная разница с MainWindow.AlbumArtBorder_MouseLeftButtonDown — там источник уже
+    // хранится готовым BitmapImage-полем, а здесь Image.Source достаём прямо из элемента,
+    // который кликнули: WPF сам, через встроенный конвертер типов, превратил строковый путь
+    // (ChangelogEntryViewModel.ImageSource) в BitmapImage при биндинге — доставать и
+    // перезагружать картинку заново не нужно.
+    private CoverArtWindow? _coverArtWindow;
+
+    private void ChangelogImage_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not Image { Source: System.Windows.Media.Imaging.BitmapImage bitmap }) return;
+
+        if (_coverArtWindow == null)
+        {
+            _coverArtWindow = new CoverArtWindow(bitmap, Title) { Owner = this };
+
+            // Та же причина, что и в MainWindow.AlbumArtBorder_MouseLeftButtonDown: явные
+            // координаты под рабочую область монитора вместо WindowState.Maximized — у окон
+            // с Mica-фоном и ExtendsContentIntoTitleBar нативный Maximize нередко даёт лишние
+            // отступы по краям.
+            var screen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(this).Handle);
+            var workArea = screen.WorkingArea;
+
+            _coverArtWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+            _coverArtWindow.Left = workArea.Left;
+            _coverArtWindow.Top = workArea.Top;
+            _coverArtWindow.Width = workArea.Width;
+            _coverArtWindow.Height = workArea.Height;
+
+            _coverArtWindow.Closed += (_, _) => _coverArtWindow = null;
+            _coverArtWindow.Show();
+        }
+        else
+        {
+            _coverArtWindow.Activate();
+        }
+    }
 }

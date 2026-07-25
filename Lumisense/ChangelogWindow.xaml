@@ -25,6 +25,7 @@
 
     <ui:FluentWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
+        <local:SizeToRectConverter x:Key="SizeToRectConverter" />
 
         <!-- Карточка версии в списке слева: скруглённый фон при наведении/выборе + тонкая
              акцентная полоска слева у выбранной версии -->
@@ -434,11 +435,30 @@
                         </Border>
 
                         <!-- Необязательная картинка версии (поле "image" в changelog.json) — скриншот,
-                             баннер релиза и т.п. Показывается только если она реально задана -->
-                        <Border Margin="36,18,36,0" CornerRadius="12" ClipToBounds="True"
+                             баннер релиза и т.п. Показывается только если она реально задана.
+                             Клик открывает её крупно в CoverArtWindow — то же самое окно (с
+                             приближением по клику, панорамированием и сбросом ПКМ), что и у
+                             обложки трека в главном окне, см. ChangelogImage_MouseLeftButtonDown. -->
+                        <Border Margin="36,18,36,0" CornerRadius="12"
                                 Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}">
-                            <Image Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="320"
-                                   HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality" />
+                            <Image x:Name="ChangelogEntryImage" Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="320"
+                                   HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"
+                                   Cursor="Hand" MouseLeftButtonDown="ChangelogImage_MouseLeftButtonDown">
+                                <!-- ClipToBounds="True" на родительском Border выше клипует дочерний
+                                     контент ПРЯМОУГОЛЬНИКОМ и полностью игнорирует CornerRadius — это
+                                     касается только того, как Border красит свой Background/BorderBrush.
+                                     Скругляем углы именно у Image через её собственный Clip. -->
+                                <Image.Clip>
+                                    <RectangleGeometry RadiusX="12" RadiusY="12">
+                                        <RectangleGeometry.Rect>
+                                            <MultiBinding Converter="{StaticResource SizeToRectConverter}">
+                                                <Binding ElementName="ChangelogEntryImage" Path="ActualWidth" />
+                                                <Binding ElementName="ChangelogEntryImage" Path="ActualHeight" />
+                                            </MultiBinding>
+                                        </RectangleGeometry.Rect>
+                                    </RectangleGeometry>
+                                </Image.Clip>
+                            </Image>
                         </Border>
 
                         <!-- Сами изменения — секциями по типу (Добавлено / Изменено / Исправлено / Удалено),
@@ -481,11 +501,24 @@
 
                                                             <!-- Необязательная картинка ИМЕННО этого пункта (поле "image" внутри
                                                                  конкретного изменения в changelog.json), отдельно от общей картинки
-                                                                 версии сверху — показывается только если реально задана -->
-                                                            <Border CornerRadius="8" ClipToBounds="True" Margin="0,10,0,0"
+                                                                 версии сверху — показывается только если реально задана. Клик
+                                                                 открывает крупно, см. комментарий у общей картинки версии выше. -->
+                                                            <Border CornerRadius="8" Margin="0,10,0,0"
                                                                     Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}">
-                                                                <Image Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="260"
-                                                                       HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality" />
+                                                                <Image x:Name="ChangelogItemImage" Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="260"
+                                                                       HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"
+                                                                       Cursor="Hand" MouseLeftButtonDown="ChangelogImage_MouseLeftButtonDown">
+                                                                    <Image.Clip>
+                                                                        <RectangleGeometry RadiusX="8" RadiusY="8">
+                                                                            <RectangleGeometry.Rect>
+                                                                                <MultiBinding Converter="{StaticResource SizeToRectConverter}">
+                                                                                    <Binding ElementName="ChangelogItemImage" Path="ActualWidth" />
+                                                                                    <Binding ElementName="ChangelogItemImage" Path="ActualHeight" />
+                                                                                </MultiBinding>
+                                                                            </RectangleGeometry.Rect>
+                                                                        </RectangleGeometry>
+                                                                    </Image.Clip>
+                                                                </Image>
                                                             </Border>
                                                         </StackPanel>
                                                     </Border>
