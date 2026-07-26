@@ -60,6 +60,14 @@ public class AppSettings
     public bool UseLogarithmicVolume { get; set; }
     public bool MinimizeToTrayOnClose { get; set; } = true; // Сворачивать в трей вместо закрытия
 
+    // Не показывать окно плеера (ни обычное, ни мини-плеер, независимо от того, каким был
+    // последний вид при закрытии) сразу после запуска — только значок в трее. Сам факт
+    // автозапуска вместе с Windows хранится не здесь, а прямо в реестре
+    // (HKCU\...\Run, см. SettingsWindow.IsLaunchOnStartupEnabled/SetLaunchOnStartup) — эти
+    // две настройки независимы друг от друга: можно запускаться с Windows и сразу показывать
+    // окно, а можно запускать вручную (например, ярлыком) и всегда стартовать свёрнутым.
+    public bool StartHiddenInTray { get; set; }
+
     // Запоминаем режим отображения плеера между запусками: был ли он свёрнут в мини-плеер
     // на момент закрытия, и была ли видна панель плейлиста в обычном окне.
     public bool WasMiniPlayerOnClose { get; set; }

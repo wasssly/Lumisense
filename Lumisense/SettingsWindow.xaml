@@ -383,6 +383,18 @@
                                           Checked="MinimizeToTrayCheckBox_Changed" Unchecked="MinimizeToTrayCheckBox_Changed" />
                             </StackPanel>
                         </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="LaunchOnStartupCheckBox" Content="Запускать вместе с Windows"
+                                          Checked="LaunchOnStartupCheckBox_Changed" Unchecked="LaunchOnStartupCheckBox_Changed"
+                                          Margin="0,0,0,8" />
+                                <CheckBox x:Name="StartHiddenInTrayCheckBox" Content="Запускать свёрнутым в трей"
+                                          Checked="StartHiddenInTrayCheckBox_Changed" Unchecked="StartHiddenInTrayCheckBox_Changed" />
+                                <TextBlock Text="Окно плеера не появляется при запуске — сразу только значок в трее. Работает и без автозапуска с Windows: например, вместе с ярлыком в папке автозагрузки, если предпочитаете такой способ."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Воспроизведение -->

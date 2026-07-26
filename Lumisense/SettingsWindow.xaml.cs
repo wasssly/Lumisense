@@ -85,6 +85,11 @@ public partial class SettingsWindow : FluentWindow
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
         MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
 
+        // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
+        // чекбокс всегда показывает то, что реально настроено, а не могло устареть.
+        LaunchOnStartupCheckBox.IsChecked = StartupManager.IsEnabled();
+        StartHiddenInTrayCheckBox.IsChecked = _settings.StartHiddenInTray;
+
         MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
@@ -266,6 +271,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
+        Add("Запускать вместе с Windows", "Окно", "Window", LaunchOnStartupCheckBox, "автозапуск запуск windows автозагрузка startup");
+        Add("Запускать свёрнутым в трей", "Окно", "Window", StartHiddenInTrayCheckBox, "запуск свёрнутым трей автозапуск скрыто hidden startup tray");
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
@@ -414,6 +421,20 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.MinimizeToTrayOnClose = MinimizeToTrayCheckBox.IsChecked == true;
+    }
+
+    private void LaunchOnStartupCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        StartupManager.SetEnabled(LaunchOnStartupCheckBox.IsChecked == true);
+    }
+
+    private void StartHiddenInTrayCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.StartHiddenInTray = StartHiddenInTrayCheckBox.IsChecked == true;
     }
 
     // ---------- Прозрачность мини-плеера — тот же приём, что и громкость в главном окне:
