@@ -45,28 +45,23 @@ public class PlaylistFolder : INotifyPropertyChanged
     // который можно было бы пересканировать.
     public bool CanRescan => SourcePath != null;
 
-    // Полные пути к файлам, в порядке добавления. ObservableCollection, а не обычный List — у
-    // вложенного ListView в MainWindow.xaml (ItemsSource="{Binding Tracks}") отключена
-    // собственная прокрутка, поэтому он не виртуализируется и при первом связывании реализует
-    // (создаёт визуальные контейнеры) КАЖДЫЙ трек сразу — на большой папке это заметно
-    // подвешивает интерфейс. С ObservableCollection можно наполнять список порциями через Add
-    // (см. MainWindow.AddTracksIncrementallyAsync) — тогда контейнеры создаются небольшими
-    // партиями с паузами между ними, а не всей папкой целиком за один присест. AddRange и
-    // RemoveAll (которых у ObservableCollection нет "из коробки" в отличие от List) добавлены
-    // как обычные методы-расширения ниже — специально для того, чтобы все существующие места,
-    // где Tracks.AddRange(...)/Tracks.RemoveAll(...) уже вызывались как на List, продолжили
-    // работать без изменений.
+    // Полные пути к файлам, в порядке добавления. ObservableCollection, а не обычный List —
+    // не ради самого списка треков (см. MainWindow.RefreshPlaylistView: он читается целиком за
+    // один проход при построении плоского отображаемого списка, а не напрямую служит
+    // ItemsSource для какого-либо элемента UI), а ради подписки чуть ниже: SubtitleText
+    // ("N треков · путь") вычисляется из Tracks.Count и должен обновляться сам, как только
+    // список меняется (пересканировали папку, удалили трек и т.п.) — с обычным List такой
+    // реакции не было бы, пришлось бы вручную дёргать OnPropertyChanged в каждом месте, где
+    // Tracks меняется. AddRange и RemoveAll (которых у ObservableCollection нет "из коробки" в
+    // отличие от List) добавлены как обычные методы-расширения ниже — специально для того,
+    // чтобы все существующие места, где Tracks.AddRange(...)/Tracks.RemoveAll(...) уже
+    // вызывались как на List, продолжили работать без изменений.
     public ObservableCollection<string> Tracks { get; } = new();
 
     public PlaylistFolder()
     {
-        // SubtitleText ("N треков · путь") вычисляется из Tracks.Count, но сам по себе не
-        // уведомляет об изменениях — WPF не узнает, что его нужно перечитать, просто потому
-        // что Tracks пополнился. Раньше это было не важно: Tracks заполнялся целиком ДО того,
-        // как папка попадала в UI, так что первое же чтение SubtitleText уже видело верное
-        // число. Теперь (см. MainWindow.AddTracksIncrementallyAsync) папка появляется в UI
-        // ПУСТОЙ и наполняется треками порциями уже после — без этой подписки подпись так и
-        // осталась бы "0 треков" до следующего не связанного с этим обновления.
+        // См. комментарий у Tracks выше — эта подписка и есть та самая причина, по которой
+        // Tracks остаётся ObservableCollection, а не обычным List.
         Tracks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(SubtitleText));
     }
 
@@ -132,8 +127,8 @@ public class PlaylistFolder : INotifyPropertyChanged
 // код, писавшийся под List<string>.AddRange/.RemoveAll, продолжил компилироваться и работать
 // без изменений после перехода Tracks на ObservableCollection<string>, у которой таких методов
 // нет "из коробки". Каждый Add/Remove здесь по-прежнему поднимает своё собственное событие
-// CollectionChanged (как и обычный ObservableCollection.Add/.Remove) — это осознанно: именно
-// на этом строится инкрементальное наполнение списка в MainWindow.AddTracksIncrementallyAsync.
+// CollectionChanged (как и обычный ObservableCollection.Add/.Remove) — это осознанно: именно на
+// нём держится реактивность SubtitleText (см. подписку в конструкторе PlaylistFolder выше).
 public static class ObservableCollectionExtensions
 {
     public static void AddRange<T>(this ObservableCollection<T> collection, IEnumerable<T> items)

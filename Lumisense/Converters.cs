@@ -48,58 +48,11 @@ public class IsOddIndexConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>Порядковый номер трека в списке (1-based), вычисляется из AlternationIndex
-/// строки ListView. Используется вместо старых линий-разделителей между треками: у каждой
-/// строки плейлиста теперь есть свой номер слева, который при наведении мыши на строку
-/// сменяется иконкой воспроизведения (см. DataTemplate.Triggers в MainWindow.xaml).
-///
-/// ВНИМАНИЕ: AlternationIndex ненадёжен при включённой UI-виртуализации ListView — при
-/// пересоздании/переиспользовании (recycling) контейнеров строк WPF не всегда пересчитывает
-/// это значение, из-за чего при повторном открытии/скролле плейлиста номера могли повторяться
-/// или "залипать" на одном значении. Оставлен только для zebra striping (IsOddIndexConverter),
-/// где неточность чисто косметическая. Для самого номера трека теперь используется
-/// TrackNumberFromListConverter — он не зависит от виртуализации.</summary>
-public class TrackNumberConverter : IValueConverter
-{
-    public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
-        => value is int index ? (index + 1).ToString(culture) : string.Empty;
-
-    public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture)
-        => throw new NotSupportedException();
-}
-
-/// <summary>Порядковый номер трека в списке (1-based), вычисляется напрямую из позиции
-/// элемента в коллекции ItemsSource (values[1]) — а не из визуального AlternationIndex
-/// ListViewItem. Из-за UI-виртуализации AlternationIndex может не обновляться корректно
-/// при переиспользовании (recycling) контейнеров строк, что приводило к повторяющимся или
-/// "залипшим" номерам после перезахода в плейлист/скролла. Этот конвертер всегда даёт
-/// правильный номер независимо от виртуализации и переиспользования контейнеров.
-/// values[0] — текущий трек (путь к файлу), values[1] — вся коллекция Tracks ListView'а.</summary>
-public class TrackNumberFromListConverter : IMultiValueConverter
-{
-    public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (values.Length == 2 && values[1] is System.Collections.IEnumerable items)
-        {
-            int i = 0;
-            foreach (var item in items)
-            {
-                i++;
-                if (Equals(item, values[0]))
-                    return i.ToString(culture);
-            }
-        }
-        return string.Empty;
-    }
-
-    public object?[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture)
-        => throw new NotSupportedException();
-}
-
-/// <summary>true, если трек (values[0] — путь к файлу, обычный Binding без Path на DataContext
-/// строки ListView в плейлисте) сейчас в избранном. Используется в DataTrigger сердечка строки
-/// трека (см. TrackItemTemplate в MainWindow.xaml) — по умолчанию показан контур сердечка
-/// приглушённым цветом, а при true шаблон переключает его на закрашенное красное сердечко.
+/// <summary>true, если трек (values[0] — путь к файлу, Binding Path="FilePath" на DataContext
+/// строки — PlaylistTrackRow, см. PlaylistTrackRow.cs) сейчас в избранном. Используется в
+/// DataTrigger сердечка строки трека (см. TrackItemTemplate в MainWindow.xaml) — по умолчанию
+/// показан контур сердечка приглушённым цветом, а при true шаблон переключает его на
+/// закрашенное красное сердечко.
 ///
 /// MultiBinding, а не обычный однозначный Binding — второе плечо (values[1]) привязано к
 /// FavoritesChangeNotifier.Instance.Epoch и само по себе не используется, но благодаря ему у
@@ -121,18 +74,19 @@ public class IsFavoriteMultiConverter : IMultiValueConverter
 
 /// <summary>Видимость ListViewItem строки трека в поиске по плейлисту (см. PlaylistSearchBox
 /// в MainWindow.xaml, PlaylistSearchState.cs и SearchableTrackListViewItemStyle там же).
-/// values[0] — путь к файлу трека (DataContext строки, обычный Binding без Path), values[1] —
-/// PlaylistSearchState.Instance.Epoch: тот же приём, что и у IsFavoriteMultiConverter выше —
-/// путь к файлу сам по себе никогда не меняется, поэтому нужен второй "триггер" на биндинг,
-/// который меняется при каждом новом поисковом запросе.
+/// values[0] — путь к файлу трека (Binding Path="FilePath" на DataContext строки —
+/// PlaylistTrackRow, см. PlaylistTrackRow.cs), values[1] — PlaylistSearchState.Instance.Epoch:
+/// тот же приём, что и у IsFavoriteMultiConverter выше — путь к файлу сам по себе никогда не
+/// меняется, поэтому нужен второй "триггер" на биндинг, который меняется при каждом новом
+/// поисковом запросе.
 ///
 /// Фильтрует именно ЭТИМ способом (Visibility контейнера строки), а не через ICollectionView.
 /// Filter на самой коллекции PlaylistFolder.Tracks — так поиск не трогает данные плейлиста
 /// вообще (ни то, что реально проигрывается по "Далее/Назад/Перемешать", ни нумерацию треков),
-/// работает одинаково что для вложенных ListView обычных папок, что для плоского
-/// FavoritesTrackListView, и не требует переприменять фильтр вручную каждый раз, когда
-/// ItemsSource какого-то списка полностью переприсваивается заново (как это происходит в
-/// RefreshFavoritesTrackList).</summary>
+/// работает одинаково что для строк единого плоского PlaylistFoldersControl (см.
+/// MainWindow.RefreshPlaylistView), что для плоского FavoritesTrackListView, и не требует
+/// переприменять фильтр вручную каждый раз, когда ItemsSource какого-то списка полностью
+/// переприсваивается заново (как это происходит в RefreshFavoritesTrackList).</summary>
 public class TrackMatchesSearchMultiConverter : IMultiValueConverter
 {
     public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)

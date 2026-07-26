@@ -180,14 +180,6 @@ public partial class MainWindow : FluentWindow
         IconResources.SetOnAccent(PlayPauseIcon, true);
         FavoritesManager.Initialize(_settings.FavoriteTracks);
 
-        // FavoritesTrackListView — самостоятельный ListView вне PlaylistFoldersControl (см.
-        // MainWindow.xaml), поэтому DataContext ему никто не проставит через биндинг сам —
-        // выставляем один раз вручную на _favoritesFolder, чтобы весь код контекстного
-        // меню/двойного клика по треку, ожидающий DataContext=PlaylistFolder (см.
-        // PlaylistTrackList_MouseDoubleClick, RemoveTrackMenuItem_Click и т.д.), работал для
-        // него точно так же, как и для обычных папок плейлиста.
-        FavoritesTrackListView.DataContext = _favoritesFolder;
-
         _progressTimer.Tick += ProgressTimer_Tick;
         ApplySettingsOnStartup();
 
@@ -459,60 +451,24 @@ public partial class MainWindow : FluentWindow
     // плеер был закрыт) не пропадают мгновенно, а тихо исчезают из списка чуть позже, когда
     // фоновая проверка их обнаружит — обычно доли секунды, но уже НЕ ценой задержки самого
     // появления плейлиста на экране.
-    // Сколько треков добавлять в Tracks одной порцией между Dispatcher.Yield (см.
-    // AddTracksIncrementallyAsync) — компромисс: слишком маленькое число даёт много мелких,
-    // визуально заметных "рывков" появления треков на экране (порций тем больше, чем меньше
-    // само число — при 1500 треках и 40 в порции это ~38 отдельных partial-обновлений UI
-    // подряд), да ещё и накладные расходы каждого отдельного Dispatcher.Yield складываются в
-    // заметное суммарное время; слишком большое — вернёт куда более заметный при добавлении
-    // одной порции "рывок" (создание сразу многих визуальных элементов списка за один проход
-    // без единой возможности для UI-потока обработать ввод/перерисовку). Общее время не
-    // меняется от размера порции сколь-нибудь значительно — виртуализация списка отключена
-    // (см. комментарий у RestoreSavedPlaylistAsync про общий кастомный скроллбар), поэтому
-    // визуальные элементы для ВСЕХ строк так или иначе создаются целиком, просто раньше или
-    // позже; порция регулирует не суммарную работу, а то, насколько крупными или мелкими
-    // "порциями" эта работа видна на экране.
-    private const int TrackBatchSize = 200;
-
     private async System.Threading.Tasks.Task RestoreSavedPlaylistAsync()
     {
         if (_settings.SavedPlaylistFolders.Count == 0) return;
 
-        // _folders теперь ObservableCollection — если PlaylistFoldersControl ещё ни разу не
-        // был привязан к ней (самый обычный случай на старте), привязываем сейчас, пока она
-        // ещё пуста, чтобы вся дальнейшая загрузка сразу шла по "инкрементальному" пути: каждое
-        // добавление ниже само уведомит ItemsControl и породит контейнеры только для ОДНОЙ
-        // новой папки, а не для всех сразу через полный сброс ItemsSource (как раньше делал
-        // RefreshPlaylistView для этого случая).
-        if (PlaylistFoldersControl.ItemsSource == null)
-            PlaylistFoldersControl.ItemsSource = _folders;
-
-        // Раньше все папки добавлялись в _folders одним foreach, УЖЕ полностью наполненные
-        // треками, после чего RefreshPlaylistView() одним махом пересоздавал контейнеры для
-        // ВСЕХ папок и ВСЕХ треков внутри них сразу. У вложенных ListView (см. MainWindow.xaml)
-        // отключена собственная прокрутка — ScrollViewer.VerticalScrollBarVisibility="Disabled",
-        // весь скролл общий, снаружи — из-за этого они не виртуализируются и вынуждены за один
-        // проход реализовать (создать визуальные контейнеры) КАЖДУЮ строку трека целиком, а не
-        // только видимые. На большой библиотеке это был один долгий блокирующий проход layout,
-        // во время которого окно вообще не отвечало на ввод и перерисовку — то есть попросту
-        // "зависало" на всё это время.
+        // Раньше здесь была порционная догрузка треков с Dispatcher.Yield между каждой порцией
+        // (см. историю AddTracksIncrementallyAsync/TrackBatchSize) — то есть создание визуальных
+        // элементов для КАЖДОЙ строки распределялось по времени небольшими "порциями", чтобы не
+        // заморозить UI-поток одним долгим проходом. Это было нужно только потому, что у списка
+        // не было настоящей виртуализации: контейнер для каждой строки создавался в момент
+        // добавления трека в коллекцию, независимо от того, видна ли эта строка на экране.
         //
-        // Первый заход на эту проблему (добавлять папки по одной, с Dispatcher.Yield между
-        // каждой) помогал только когда библиотека разбита на много некрупных папок — если же
-        // одна-две папки сами по себе огромные, вся их куча треков всё равно реализовывалась
-        // за один присест В МОМЕНТ добавления такой папки в _folders (Tracks на тот момент уже
-        // был полностью заполнен разом через AddRange). Теперь папка добавляется в _folders
-        // ПУСТОЙ (дёшево — контейнер только для заголовка папки), а её треки дозаполняются
-        // отдельно, тоже небольшими порциями с Yield между ними (см.
-        // AddTracksIncrementallyAsync) — так что даже одна огромная папка грузится плавно, а
-        // не одним рывком.
-        // Папки, которые изначально (по сохранённому списку) были непустыми — если после
-        // фоновой проверки существования у такой ничего не останется (все файлы удалены с
-        // диска, пока плеер был закрыт), убираем её из плейлиста целиком, а не оставляем
-        // пустым заголовком. То же самое поведение, что было и раньше — просто теперь
-        // проверяется чуть позже, а не до показа. "Новую папку…", ещё не наполненную файлами
-        // до закрытия приложения, это не касается — у неё saved.Tracks.Count изначально 0, и
-        // после проверки она так и останется как есть, не исчезнет.
+        // Теперь PlaylistFoldersControl — настоящий виртуализирующий ListView (см. подробный
+        // комментарий у него в MainWindow.xaml): визуальные контейнеры реализуются только для
+        // реально видимых строк, сколько бы всего треков ни было в плейлисте. Реассайн его
+        // ItemsSource (см. RefreshPlaylistView) при этом дешёвая операция независимо от размера
+        // плейлиста — поэтому порционная догрузка с Yield больше не нужна вообще: сама подготовка
+        // данных (создание PlaylistFolder и заполнение Tracks) — это чистая работа с
+        // коллекциями, без единого визуального элемента, и не требует уступать UI-потоку.
         var foldersThatWereNonEmpty = new HashSet<PlaylistFolder>();
 
         foreach (var saved in _settings.SavedPlaylistFolders)
@@ -527,11 +483,14 @@ public partial class MainWindow : FluentWindow
             };
             if (saved.Tracks.Count > 0) foldersThatWereNonEmpty.Add(folder);
 
+            folder.Tracks.AddRange(saved.Tracks);
             _folders.Add(folder);
-            await Dispatcher.Yield(DispatcherPriority.Background);
-
-            await AddTracksIncrementallyAsync(folder, saved.Tracks);
         }
+
+        // Единственный реассайн ItemsSource на весь запуск — раньше выполнялся неявно через
+        // добавление папок по одной в ObservableCollection; теперь один явный вызов после того,
+        // как все папки и треки уже готовы в памяти.
+        RefreshPlaylistView();
 
         // Запускаем и НЕ ждём (fire-and-forget) — удаление устаревших записей не должно
         // задерживать ни появление плейлиста (он уже показан к этому моменту), ни загрузку
@@ -561,12 +520,10 @@ public partial class MainWindow : FluentWindow
     // самого восстановления плейлиста, не нужен: порядок был важен для порядка воспроизведения
     // при ДОБАВЛЕНИИ треков в список, а тут только собирается список путей на УДАЛЕНИЕ — то,
     // в каком порядке они будут удалены из folder.Tracks, никак не влияет на итоговый результат.
-    // Устаревшие пути удаляются из folder.Tracks (это ObservableCollection) точечно, через
-    // Remove — так UI сам, без дополнительного кода, уберёт со экрана только реально
-    // исчезнувшие строки, не трогая ничего остального.
     private async System.Threading.Tasks.Task VerifyTrackExistenceInBackgroundAsync(HashSet<PlaylistFolder> foldersThatWereNonEmpty)
     {
         var foldersToCheck = _folders.ToList();
+        bool anyChanged = false;
 
         foreach (var folder in foldersToCheck)
         {
@@ -582,6 +539,7 @@ public partial class MainWindow : FluentWindow
 
             foreach (var path in missing)
                 folder.Tracks.Remove(path);
+            anyChanged = true;
 
             // Была непустой изначально, а теперь опустела целиком (все файлы удалены с диска) —
             // убираем саму папку, а не оставляем пустой заголовок. См. комментарий у
@@ -589,21 +547,12 @@ public partial class MainWindow : FluentWindow
             if (folder.Tracks.Count == 0 && foldersThatWereNonEmpty.Contains(folder))
                 _folders.Remove(folder);
         }
-    }
 
-    // См. комментарий в RestoreSavedPlaylistAsync — наполняет уже добавленную в _folders (и
-    // потому уже привязанную к UI) папку небольшими порциями треков, уступая диспетчеру между
-    // каждой порцией, вместо одного разового AddRange на весь список сразу.
-    private async System.Threading.Tasks.Task AddTracksIncrementallyAsync(PlaylistFolder folder, List<string> tracks)
-    {
-        for (int i = 0; i < tracks.Count; i += TrackBatchSize)
-        {
-            int count = Math.Min(TrackBatchSize, tracks.Count - i);
-            for (int j = 0; j < count; j++)
-                folder.Tracks.Add(tracks[i + j]);
-
-            await Dispatcher.Yield(DispatcherPriority.Background);
-        }
+        // folder.Tracks — ObservableCollection<string>, а не элемент плоского отображаемого
+        // списка PlaylistFoldersControl.ItemsSource напрямую (см. PlaylistTrackRow) — точечные
+        // изменения в ней сами по себе не отражаются на уже построенном плоском списке. Нужен
+        // один пересбор в конце, и только если реально что-то изменилось.
+        if (anyChanged) RefreshPlaylistView();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -1466,12 +1415,42 @@ public partial class MainWindow : FluentWindow
     // ItemsControl то к _folders, то к списку избранного — а значит вызывался и на каждый клик
     // по сердечку тоже, пересобирая контейнеры вообще всех папок и треков обычного плейлиста
     // целиком ради одной иконки. Теперь он вызывается только когда реально меняется сам список
-    // _folders (добавили/убрали трек или папку, пересканировали и т.п.) — то есть ровно тогда,
-    // когда полный пересбор действительно нужен.
+    // _folders (добавили/убрали трек или папку, пересканировали, свернули/развернули папку и
+    // т.п.) — то есть ровно тогда, когда полный пересбор действительно нужен.
+    //
+    // PlaylistFoldersControl.ItemsSource — ПЛОСКИЙ список из PlaylistFolder (заголовки папок) и
+    // PlaylistTrackRow (строки треков) вперемешку, в нужном порядке — какой DataTemplate/Style
+    // контейнера показать для каждого элемента, решают PlaylistDisplayItemTemplateSelector/
+    // PlaylistDisplayItemContainerStyleSelector по CLR-типу самого элемента (см. MainWindow.xaml
+    // и PlaylistDisplaySelectors.cs). Свёрнутые папки (IsExpanded == false) по-прежнему
+    // добавляют СВОЙ заголовок в список (иначе не по чему было бы кликнуть, чтобы развернуть
+    // обратно), но НЕ добавляют ни одной своей строки трека — не просто скрывают их
+    // (Visibility=Collapsed), а физически не кладут в ItemsSource, иначе реально
+    // виртуализирующий список всё равно тратил бы время на то, чтобы "перешагнуть" через
+    // множество скрытых строк большой свёрнутой папки в поисках следующей видимой.
+    //
+    // Полный пересбор списка (а не точечное добавление/удаление элементов) при КАЖДОМ изменении
+    // — это нормально и дёшево именно благодаря настоящей виртуализации: реассайн ItemsSource
+    // у виртуализирующего ListView не создаёт визуальные контейнеры для всех элементов заново,
+    // только для тех, что реально попадают в текущую видимую область.
     private void RefreshPlaylistView()
     {
-        PlaylistFoldersControl.ItemsSource = null;
-        PlaylistFoldersControl.ItemsSource = _folders;
+        var items = new List<object>();
+
+        foreach (var folder in _folders)
+        {
+            items.Add(folder);
+            if (!folder.IsExpanded) continue;
+
+            int index = 1;
+            foreach (var path in folder.Tracks)
+            {
+                items.Add(new PlaylistTrackRow { Folder = folder, FilePath = path, IndexInFolder = index });
+                index++;
+            }
+        }
+
+        PlaylistFoldersControl.ItemsSource = items;
     }
 
     // ---------- Избранное ----------
@@ -1530,23 +1509,32 @@ public partial class MainWindow : FluentWindow
         _favoritesFolder.Tracks.Clear();
         _favoritesFolder.Tracks.AddRange(favorites);
 
-        FavoritesTrackListView.ItemsSource = favorites;
+        // Тот же PlaylistTrackRow, что и у обычного плейлиста (см. TrackItemTemplate в
+        // MainWindow.xaml — общий шаблон для обоих списков) — Folder указывает на
+        // _favoritesFolder для всех строк, группировки тут нет, просто плоский список без
+        // заголовков.
+        var items = new List<object>(favorites.Count);
+        for (int i = 0; i < favorites.Count; i++)
+            items.Add(new PlaylistTrackRow { Folder = _favoritesFolder, FilePath = favorites[i], IndexInFolder = i + 1 });
+
+        FavoritesTrackListView.ItemsSource = items;
     }
 
     // Сердечко на строке трека (см. TrackFavoriteButton в MainWindow.xaml) и одноимённый пункт
     // контекстного меню приводят сюда же — оба просто переключают избранное для того же трека,
     // единственная разница в том, откуда берётся путь к файлу (DataContext кнопки против
-    // DataContext пункта меню).
+    // DataContext пункта меню — в обоих случаях это унаследованный DataContext строки, то есть
+    // PlaylistTrackRow, см. подробный комментарий у TrackItemTemplate в MainWindow.xaml).
     private void FavoriteButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: string filePath }) return;
-        ToggleFavoriteAndRefresh(filePath);
+        if (sender is not FrameworkElement { DataContext: PlaylistTrackRow row }) return;
+        ToggleFavoriteAndRefresh(row.FilePath);
     }
 
     private void FavoriteMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
-        ToggleFavoriteAndRefresh(filePath);
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        ToggleFavoriteAndRefresh(row.FilePath);
     }
 
     // Переключает избранное и обновляет UI МИНИМАЛЬНО необходимым способом. Сердечки во всех
@@ -1570,15 +1558,46 @@ public partial class MainWindow : FluentWindow
     {
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
         folder.IsExpanded = !folder.IsExpanded;
+
+        // Раньше сворачивание/разворачивание работало само, через обычный WPF-биндинг
+        // Visibility вложенного ListView треков на IsExpanded. Теперь треки папки — это
+        // отдельные элементы ПЛОСКОГО списка (PlaylistTrackRow, см. RefreshPlaylistView), а не
+        // содержимое своего вложенного контрола — сворачивание/разворачивание должно физически
+        // добавить или убрать эти элементы из ItemsSource, поэтому нужен явный пересбор.
+        RefreshPlaylistView();
     }
 
-    // Внутренние ListView треков имеют свой ScrollViewer, который перехватывает колесо мыши
-    // и не даёт событию дойти до общего скролла плейлиста. Перехватываем его тут (пока оно
-    // ещё не обработано самим ListView — PreviewMouseWheel идёт "сверху вниз") и вручную
-    // прокручиваем общий ScrollViewer, чтобы колесо мыши работало над списком треков так же,
-    // как и над остальной частью плейлиста.
+    // Раньше был один именованный PlaylistScrollViewer — обычный ScrollViewer, ОБЁРНУТЫЙ снаружи
+    // вокруг ItemsControl папок, дававший единый скролл на весь плейлист. Именно эта обёртка и
+    // была причиной невозможности виртуализации (см. подробный комментарий у PlaylistFoldersControl
+    // в MainWindow.xaml: ScrollViewer всегда измеряет содержимое с бесконечной доступной высотой).
+    //
+    // Теперь PlaylistFoldersControl/FavoritesTrackListView — самостоятельные, по-настоящему
+    // скроллящиеся ListView (ScrollViewer.VerticalScrollBarVisibility="Hidden", а не "Disabled" —
+    // список скроллится сам, просто без родного скроллбара), а "общий скролл" визуально
+    // сохраняется просто тем, что оба списка показывают один и тот же кастомный
+    // PlaylistScrollTrack/PlaylistScrollThumb, подключённый к ScrollViewer ТЕКУЩЕГО видимого
+    // списка. Сам ScrollViewer у каждого из них — не именованный элемент XAML, а внутренняя
+    // часть их стандартного шаблона; достаём его один раз через обход визуального дерева и
+    // кэшируем — он не меняется, пока окно живо.
+    private System.Windows.Controls.ScrollViewer? _playlistFoldersScrollViewer;
+    private System.Windows.Controls.ScrollViewer? _favoritesScrollViewer;
+
+    private System.Windows.Controls.ScrollViewer? GetActivePlaylistScrollViewer()
+        => _isFavoritesView
+            ? _favoritesScrollViewer ??= FindVisualChild<System.Windows.Controls.ScrollViewer>(FavoritesTrackListView)
+            : _playlistFoldersScrollViewer ??= FindVisualChild<System.Windows.Controls.ScrollViewer>(PlaylistFoldersControl);
+
+    // PreviewMouseWheel виснет прямо на самом ListView (PlaylistFoldersControl/
+    // FavoritesTrackListView) и идёт "сверху вниз" по дереву РАНЬШЕ, чем обычное (bubbling)
+    // MouseWheel, на которое реагирует встроенный скролл внутреннего ScrollViewer — e.Handled
+    // здесь не даёт этому встроенному, более резкому (~3 строки за деление) скроллу сработать
+    // ВДОБАВОК к нашему, и прокрутка колесом остаётся плавной и предсказуемой.
     private void PlaylistTrackList_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
+        var scrollViewer = GetActivePlaylistScrollViewer();
+        if (scrollViewer == null) return;
+
         e.Handled = true;
 
         // e.Delta приходит ~120 за одно деление колеса — если использовать его как есть,
@@ -1588,7 +1607,7 @@ public partial class MainWindow : FluentWindow
         // как перетаскивание слайдера громкости, а не резкими скачками.
         const double pixelsPerNotch = 48.0;
         double offsetDelta = e.Delta / 120.0 * pixelsPerNotch;
-        PlaylistScrollViewer.ScrollToVerticalOffset(PlaylistScrollViewer.VerticalOffset - offsetDelta);
+        scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - offsetDelta);
     }
 
     // ---------- Свой скроллбар плейлиста (с нуля, без ScrollBar/Track) ----------
@@ -1603,6 +1622,9 @@ public partial class MainWindow : FluentWindow
     private double _playlistThumbDragStartMouseY;
     private double _playlistThumbDragStartOffset;
 
+    // ScrollChanged — routed (bubbling) событие: достаточно повесить его на сам ListView в
+    // XAML (ScrollViewer.ScrollChanged="..."), оно долетит от внутреннего ScrollViewer наружу
+    // само, без явной подписки в коде.
     private void PlaylistScrollViewer_ScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
     {
         UpdatePlaylistScrollThumb();
@@ -1622,15 +1644,20 @@ public partial class MainWindow : FluentWindow
     // ScrollViewer на 4px (Margin), так что при таком же радиусе скругление визуально не
     // концентрично внешнему и слегка режет edge-case по углам; 8 ближе к своим внутренним
     // соседям и не создаёт заметного разнобоя на глаз.
+    //
+    // Общий обработчик на оба ListView (PlaylistFoldersControl и FavoritesTrackListView) —
+    // клипует ЦЕЛЕВОЙ элемент (sender), а не какой-то один именованный, раз их теперь два.
     private void PlaylistScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        if (sender is not FrameworkElement element) return;
+
         if (e.NewSize.Width <= 0 || e.NewSize.Height <= 0)
         {
-            PlaylistScrollViewer.Clip = null;
+            element.Clip = null;
             return;
         }
 
-        PlaylistScrollViewer.Clip = new RectangleGeometry(new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 8, 8);
+        element.Clip = new RectangleGeometry(new Rect(0, 0, e.NewSize.Width, e.NewSize.Height), 8, 8);
     }
 
     private void PlaylistScrollTrack_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -1640,10 +1667,17 @@ public partial class MainWindow : FluentWindow
 
     private void UpdatePlaylistScrollThumb()
     {
+        var scrollViewer = GetActivePlaylistScrollViewer();
+        if (scrollViewer == null)
+        {
+            PlaylistScrollThumb.Visibility = Visibility.Collapsed;
+            return;
+        }
+
         double trackHeight = PlaylistScrollTrack.ActualHeight;
-        double extent = PlaylistScrollViewer.ExtentHeight;
-        double viewport = PlaylistScrollViewer.ViewportHeight;
-        double offset = PlaylistScrollViewer.VerticalOffset;
+        double extent = scrollViewer.ExtentHeight;
+        double viewport = scrollViewer.ViewportHeight;
+        double offset = scrollViewer.VerticalOffset;
 
         // Весь плейлист помещается на экран — прятать ползунок, скроллить нечего
         if (trackHeight <= 0 || extent <= viewport || extent <= 0)
@@ -1671,9 +1705,12 @@ public partial class MainWindow : FluentWindow
         if (e.OriginalSource is DependencyObject source && IsDescendantOf(source, PlaylistScrollThumb)) return;
         if (PlaylistScrollThumb.Visibility != Visibility.Visible) return;
 
+        var scrollViewer = GetActivePlaylistScrollViewer();
+        if (scrollViewer == null) return;
+
         double trackHeight = PlaylistScrollTrack.ActualHeight;
-        double extent = PlaylistScrollViewer.ExtentHeight;
-        double viewport = PlaylistScrollViewer.ViewportHeight;
+        double extent = scrollViewer.ExtentHeight;
+        double viewport = scrollViewer.ViewportHeight;
         double thumbHeight = PlaylistScrollThumb.ActualHeight;
         double maxThumbTop = Math.Max(0, trackHeight - thumbHeight);
         double maxOffset = Math.Max(0, extent - viewport);
@@ -1683,14 +1720,17 @@ public partial class MainWindow : FluentWindow
         double targetThumbTop = Math.Clamp(clickY - thumbHeight / 2, 0, maxThumbTop);
         double newOffset = targetThumbTop / maxThumbTop * maxOffset;
 
-        PlaylistScrollViewer.ScrollToVerticalOffset(newOffset);
+        scrollViewer.ScrollToVerticalOffset(newOffset);
     }
 
     private void PlaylistScrollThumb_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
+        var scrollViewer = GetActivePlaylistScrollViewer();
+        if (scrollViewer == null) return;
+
         _isDraggingPlaylistThumb = true;
         _playlistThumbDragStartMouseY = e.GetPosition(PlaylistScrollTrack).Y;
-        _playlistThumbDragStartOffset = PlaylistScrollViewer.VerticalOffset;
+        _playlistThumbDragStartOffset = scrollViewer.VerticalOffset;
         PlaylistScrollThumb.CaptureMouse();
         e.Handled = true;
     }
@@ -1699,9 +1739,12 @@ public partial class MainWindow : FluentWindow
     {
         if (!_isDraggingPlaylistThumb) return;
 
+        var scrollViewer = GetActivePlaylistScrollViewer();
+        if (scrollViewer == null) return;
+
         double trackHeight = PlaylistScrollTrack.ActualHeight;
-        double extent = PlaylistScrollViewer.ExtentHeight;
-        double viewport = PlaylistScrollViewer.ViewportHeight;
+        double extent = scrollViewer.ExtentHeight;
+        double viewport = scrollViewer.ViewportHeight;
         double thumbHeight = PlaylistScrollThumb.ActualHeight;
         double maxThumbTop = Math.Max(0, trackHeight - thumbHeight);
         double maxOffset = Math.Max(0, extent - viewport);
@@ -1710,7 +1753,7 @@ public partial class MainWindow : FluentWindow
         double currentY = e.GetPosition(PlaylistScrollTrack).Y;
         double deltaOffset = (currentY - _playlistThumbDragStartMouseY) / maxThumbTop * maxOffset;
 
-        PlaylistScrollViewer.ScrollToVerticalOffset(Math.Clamp(_playlistThumbDragStartOffset + deltaOffset, 0, maxOffset));
+        scrollViewer.ScrollToVerticalOffset(Math.Clamp(_playlistThumbDragStartOffset + deltaOffset, 0, maxOffset));
     }
 
     private void PlaylistScrollThumb_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -1732,51 +1775,55 @@ public partial class MainWindow : FluentWindow
 
     private void PlaylistTrackList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (sender is not System.Windows.Controls.ListView { DataContext: PlaylistFolder folder } listView) return;
-        if (listView.SelectedIndex < 0 || listView.SelectedIndex >= folder.Tracks.Count) return;
+        if (sender is not System.Windows.Controls.ListView listView) return;
+        if (listView.SelectedItem is not PlaylistTrackRow row) return;
 
-        var filePath = folder.Tracks[listView.SelectedIndex];
-        LoadAndPlay(filePath);
+        LoadAndPlay(row.FilePath);
     }
 
     // ---------- Контекстное меню трека (правый клик по строке в плейлисте) ----------
     //
-    // У каждого пункта меню: DataContext унаследован от ContextMenu.PlacementTarget
-    // (StackPanel — корень ItemTemplate) и равен пути к файлу трека; CommandParameter
-    // привязан к PlacementTarget.Tag, который, в свою очередь, привязан в XAML к
-    // DataContext охватывающего ListView — то есть к PlaylistFolder, которому
-    // принадлежит трек. Так получаем оба нужных значения без лишнего кода.
+    // У каждого пункта меню DataContext унаследован от ContextMenu.PlacementTarget (Grid —
+    // корень TrackItemTemplate) — это обычное наследование DataContext по логическому дереву,
+    // которое WPF пробрасывает и через границу Popup, которым фактически является ContextMenu
+    // (в отличие от RelativeSource/поиска предков по визуальному дереву, который через эту
+    // границу не проходит). DataContext строки — сам PlaylistTrackRow (см. PlaylistTrackRow.cs
+    // и подробный комментарий у TrackItemTemplate в MainWindow.xaml), то есть путь к файлу
+    // (row.FilePath) и его папка (row.Folder) приходят вместе, одним объектом — без Tag/
+    // PlacementTarget/CommandParameter-трюков, которые раньше были нужны только чтобы отдельно
+    // дотянуться до DataContext охватывающего ListView (пока у каждой папки был свой отдельный
+    // ListView).
 
     private void PlayTrackMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
-        LoadAndPlay(filePath);
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        LoadAndPlay(row.FilePath);
     }
 
     private void ShowInExplorerMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
-        if (!File.Exists(filePath)) return;
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        if (!File.Exists(row.FilePath)) return;
 
         // /select, выделяет сам файл в открывшемся окне проводника, а не просто открывает папку
-        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{filePath}\"");
+        System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{row.FilePath}\"");
     }
 
     private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
-        System.Windows.Clipboard.SetText(filePath);
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        System.Windows.Clipboard.SetText(row.FilePath);
     }
 
     private void CopyFileMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
-        if (!File.Exists(filePath)) return;
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        if (!File.Exists(row.FilePath)) return;
 
         // Кладём в буфер обмена сам файл (а не просто его путь текстом), чтобы можно было
         // вставить (Ctrl+V) прямо в проводник или другую папку — как при обычном Ctrl+C по файлу.
         var files = new System.Collections.Specialized.StringCollection();
-        files.Add(filePath);
+        files.Add(row.FilePath);
         System.Windows.Clipboard.SetFileDropList(files);
     }
 
@@ -1787,10 +1834,10 @@ public partial class MainWindow : FluentWindow
     // от того, что там зарегистрировано в реестре для .mp3/.flac/.wav у конкретного пользователя.
     private void TrackPropertiesMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
-        if (!File.Exists(filePath)) return;
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        if (!File.Exists(row.FilePath)) return;
 
-        new TrackPropertiesWindow(filePath) { Owner = this }.ShowDialog();
+        new TrackPropertiesWindow(row.FilePath) { Owner = this }.ShowDialog();
     }
 
     // Отдельное окно редактирования тегов (название/исполнитель/альбом/год/трек/жанр/
@@ -1799,7 +1846,8 @@ public partial class MainWindow : FluentWindow
     // сразу же, не дожидаясь следующего переключения трека.
     private void EditTagsMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: string filePath }) return;
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        string filePath = row.FilePath;
         if (!File.Exists(filePath)) return;
 
         var tagsWindow = new TrackTagsWindow(filePath) { Owner = this };
@@ -1815,24 +1863,22 @@ public partial class MainWindow : FluentWindow
 
     private void RemoveTrackMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem menuItem) return;
-        if (menuItem.DataContext is not string filePath) return;
-        if (menuItem.CommandParameter is not PlaylistFolder folder) return;
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
 
         // В виртуальной группе "Избранное" своего списка треков по сути нет — она каждый раз
         // пересобирается из FavoritesManager (см. RefreshFavoritesTrackList), поэтому "убрать
         // из плейлиста" здесь означает "снять сердечко", а не удаление из folder.Tracks — иначе
         // трек тут же вернулся бы в список при следующем обновлении.
-        if (folder.IsFavoritesGroup)
+        if (row.Folder.IsFavoritesGroup)
         {
-            FavoritesManager.SetFavorite(filePath, false);
+            FavoritesManager.SetFavorite(row.FilePath, false);
             if (_isFavoritesView) RefreshFavoritesTrackList();
             return;
         }
 
         // Если убираемый трек сейчас играет — не прерываем воспроизведение (он уже
         // загружен в память и от списка не зависит), просто убираем строку из плейлиста.
-        folder.Tracks.Remove(filePath);
+        row.Folder.Tracks.Remove(row.FilePath);
         RefreshPlaylistView();
     }
 
@@ -1842,10 +1888,9 @@ public partial class MainWindow : FluentWindow
     // чтобы у пользователя оставался шанс восстановить файл в случае ошибки.
     private void DeleteTrackFromDiskMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not System.Windows.Controls.MenuItem menuItem) return;
-        if (menuItem.DataContext is not string filePath) return;
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
 
-        DeleteTrackFromDisk(filePath);
+        DeleteTrackFromDisk(row.FilePath);
     }
 
     // Хоткей "Удалить трек с диска" (см. AppSettings.HotkeyDeleteTrack и GlobalMediaHotKeys) —
@@ -1990,13 +2035,13 @@ public partial class MainWindow : FluentWindow
     // IsSelected), что появляется при обычном клике мышью по треку в плейлисте (см. общий
     // Style TargetType="ListViewItem" в App.xaml). Никакой отдельной "подсветки играющего
     // трека" нет — вместо этого при каждой смене трека (см. вызов в конце LoadAndPlay) просто
-    // выставляем SelectedItem нужной строки в её ListView, а во всех остальных группах
-    // выделение снимаем, чтобы подсвеченной оставалась только строка реально играющего сейчас
-    // трека. Заодно разворачиваем содержащую его группу, если она была свёрнута, и
-    // прокручиваем общий ScrollViewer плейлиста так, чтобы эта строка была видна — так же, как
-    // если бы пользователь сам туда докликал. Раньше это работало только при запуске трека
-    // кликом по строке; теперь работает при любом переключении — кнопками "Далее"/"Назад",
-    // шафлом, по окончании трека и т.д.
+    // выставляем SelectedItem нужной строки, а SelectedIndex у списка ОДИН на весь плейлист
+    // (раньше, когда у каждой папки был свой ListView, приходилось ещё и вручную снимать
+    // выделение в остальных группах — теперь в этом просто нет нужды: список один, второго
+    // выделенного элемента физически быть не может). Заодно разворачиваем содержащую его
+    // группу, если она была свёрнута, и прокручиваем список так, чтобы эта строка была видна —
+    // так же, как если бы пользователь сам туда докликал. Работает при любом переключении трека
+    // — кнопками "Далее"/"Назад", шафлом, по окончании трека и т.д., не только по клику.
 
     private void ScrollPlaylistToCurrentTrack()
     {
@@ -2008,82 +2053,60 @@ public partial class MainWindow : FluentWindow
                 : _folders.FirstOrDefault(f => f.Tracks.Contains(path));
 
         if (folder != null && !folder.IsExpanded)
+        {
             folder.IsExpanded = true;
 
-        // Разворачивание группы (если она была свёрнута) применяется к раскладке не сразу —
-        // ждём завершения текущего цикла раскладки/рендера, прежде чем искать визуальный
-        // контейнер строки трека, иначе ListView внутри группы ещё не успеет её создать.
+            // Строка трека появится в плоском отображаемом списке (PlaylistTrackRow, см.
+            // RefreshPlaylistView) только ПОСЛЕ пересборки — раньше разворачивание работало
+            // само, через обычный WPF-биндинг Visibility вложенного ListView на IsExpanded;
+            // теперь список плоский, и нужен явный пересбор.
+            RefreshPlaylistView();
+        }
+
+        // Пересборка ItemsSource выше применяется к раскладке не сразу — ждём завершения
+        // текущего цикла раскладки/рендера, прежде чем искать строку трека в списке.
         Dispatcher.BeginInvoke(new Action(() => HighlightAndScrollToTrack(folder, path)),
             DispatcherPriority.Loaded);
     }
 
     private void HighlightAndScrollToTrack(PlaylistFolder? folder, string? trackPath)
     {
-        System.Windows.Controls.ListView? activeListView = null;
+        var listView = _isFavoritesView ? FavoritesTrackListView : PlaylistFoldersControl;
 
-        if (_isFavoritesView)
+        if (folder == null || trackPath == null)
         {
-            // FavoritesTrackListView — самостоятельный ListView, не вложенный в
-            // PlaylistFoldersControl (см. MainWindow.xaml) — его не нужно искать через
-            // ItemContainerGenerator какой-то ещё папки, он у нас уже есть напрямую.
-            if (folder != null && trackPath != null)
-            {
-                FavoritesTrackListView.UpdateLayout();
-                FavoritesTrackListView.SelectedItem = trackPath;
-                activeListView = FavoritesTrackListView;
-            }
-            else
-            {
-                FavoritesTrackListView.SelectedIndex = -1;
-            }
-        }
-        else
-        {
-            if (folder != null && trackPath != null &&
-                PlaylistFoldersControl.ItemContainerGenerator.ContainerFromItem(folder) is FrameworkElement folderContainer &&
-                FindVisualChild<System.Windows.Controls.ListView>(folderContainer) is { } listView)
-            {
-                listView.UpdateLayout();
-                listView.SelectedItem = trackPath;
-                activeListView = listView;
-            }
-
-            // Снимаем выделение во всех остальных группах — иначе там осталась бы висеть
-            // подсветка от предыдущего трека или от случайного клика пользователя по другой
-            // группе.
-            foreach (var otherFolder in _folders)
-            {
-                if (PlaylistFoldersControl.ItemContainerGenerator.ContainerFromItem(otherFolder) is not FrameworkElement otherContainer)
-                    continue;
-                if (FindVisualChild<System.Windows.Controls.ListView>(otherContainer) is not { } otherListView)
-                    continue;
-                if (!ReferenceEquals(otherListView, activeListView))
-                    otherListView.SelectedIndex = -1;
-            }
-        }
-
-        if (activeListView == null || trackPath == null) return;
-        if (PlaylistScrollViewer.ActualHeight <= 0) return;
-
-        if (activeListView.ItemContainerGenerator.ContainerFromItem(trackPath) is not FrameworkElement trackContainer)
+            listView.SelectedIndex = -1;
             return;
+        }
 
-        // Координаты строки трека в системе координат общего ScrollViewer плейлиста, с учётом
-        // уже накопленного вертикального смещения — чтобы получить абсолютную позицию внутри
-        // всего прокручиваемого содержимого, а не только видимой сейчас его части.
-        var topLeft = trackContainer.TransformToVisual(PlaylistScrollViewer).Transform(new Point(0, 0));
-        double top = topLeft.Y + PlaylistScrollViewer.VerticalOffset;
-        double bottom = top + trackContainer.ActualHeight;
+        PlaylistTrackRow? row = null;
+        foreach (var item in listView.Items)
+        {
+            if (item is PlaylistTrackRow candidate && ReferenceEquals(candidate.Folder, folder) && candidate.FilePath == trackPath)
+            {
+                row = candidate;
+                break;
+            }
+        }
 
-        double viewTop = PlaylistScrollViewer.VerticalOffset;
-        double viewBottom = viewTop + PlaylistScrollViewer.ViewportHeight;
+        if (row == null)
+        {
+            listView.SelectedIndex = -1;
+            return;
+        }
 
-        const double edgePadding = 8;
-
-        if (top < viewTop)
-            PlaylistScrollViewer.ScrollToVerticalOffset(Math.Max(0, top - edgePadding));
-        else if (bottom > viewBottom)
-            PlaylistScrollViewer.ScrollToVerticalOffset(bottom - PlaylistScrollViewer.ViewportHeight + edgePadding);
+        // ScrollIntoView — встроенный, специально предназначенный для виртуализированных
+        // списков способ и прокрутить к элементу, и заставить WPF реализовать его визуальный
+        // контейнер: для элемента вне текущей видимой области ItemContainerGenerator.
+        // ContainerFromItem иначе просто вернул бы null — контейнера ещё физически не
+        // существует, пока список не виртуализирует именно эту область экрана. Раньше, когда
+        // каждая папка была отдельным НЕ виртуализированным ListView, все контейнеры
+        // существовали всегда, и нужную прокрутку приходилось считать вручную через координаты
+        // (TransformToVisual + сравнение с VerticalOffset/ViewportHeight общего ScrollViewer) —
+        // теперь в этом нет нужды: ScrollIntoView сам корректно работает и для
+        // виртуализированного списка, без единой строчки ручной геометрии.
+        listView.ScrollIntoView(row);
+        listView.SelectedItem = row;
     }
 
     private static T? FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
