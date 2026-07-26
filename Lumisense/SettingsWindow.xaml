@@ -778,6 +778,7 @@
                     <StackPanel x:Name="PageAbout" Visibility="Collapsed">
                         <TextBlock Text="О плеере" Style="{StaticResource PageTitleStyle}" />
 
+                        <!-- 1. Описание приложения — без изменений -->
                         <Border Style="{StaticResource SettingsCardStyle}" x:Name="AboutInfoCard">
                             <StackPanel>
                                 <Grid Margin="0,0,0,4">
@@ -804,9 +805,69 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="Разработчик" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
+                        <!-- 2. "Проверить обновления" — сразу после описания (раньше была ниже, под
+                             отдельным заголовком "Обновления"; сам заголовок убран за ненадобностью —
+                             кнопка теперь и так стоит на видном месте прямо под описанием) -->
+                        <ui:Button x:Name="CheckUpdatesButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Margin="0,20,0,0" Click="CheckUpdatesButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
 
-                        <Border Style="{StaticResource SettingsCardStyle}">
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconCheckmark" Size="16"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock x:Name="CheckUpdatesButtonTitle" Text="Проверить обновления" FontWeight="SemiBold" />
+                                    <TextBlock x:Name="CheckUpdatesButtonSubtitle" Text="Сверить версию с GitHub" FontSize="12" Opacity="0.6" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
+
+                        <!-- 3. "Источник загрузки обновлений" — теперь аккордеон, свёрнут по
+                             умолчанию (IsExpanded не задан → false): выбор зеркала — не то, что
+                             нужно видеть/трогать большинству, кому GitHub и так доступен напрямую. -->
+                        <Expander Style="{StaticResource FluentExpanderStyle}" Margin="0,20,0,0">
+                            <Expander.Header>
+                                <TextBlock Text="Источник загрузки обновлений" FontSize="14" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel>
+                                <TextBlock Text="Откуда скачивать сам файл установщика при обновлении. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из зеркал gh-proxy. На саму проверку версии эта настройка не влияет."
+                                           TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
+
+                                <RadioButton x:Name="UpdateSourceGitHubRadio" GroupName="UpdateSource" Tag="GitHub"
+                                             Content="GitHub (напрямую)" Margin="0,0,0,8"
+                                             Checked="UpdateSourceRadio_Checked" />
+                                <RadioButton x:Name="UpdateSourceGhProxyRadio" GroupName="UpdateSource" Tag="GhProxy"
+                                             Content="gh-proxy.org (зеркало)" Margin="0,0,0,8"
+                                             Checked="UpdateSourceRadio_Checked" />
+                                <RadioButton x:Name="UpdateSourceGhProxyV4Radio" GroupName="UpdateSource" Tag="GhProxyV4"
+                                             Content="v4.gh-proxy.org (зеркало, только IPv4)" Margin="0,0,0,8"
+                                             Checked="UpdateSourceRadio_Checked" />
+                                <RadioButton x:Name="UpdateSourceGhProxyV6Radio" GroupName="UpdateSource" Tag="GhProxyV6"
+                                             Content="v6.gh-proxy.org (зеркало, только IPv6)" Margin="0,0,0,8"
+                                             Checked="UpdateSourceRadio_Checked" />
+                                <RadioButton x:Name="UpdateSourceGhProxyCdnRadio" GroupName="UpdateSource" Tag="GhProxyCdn"
+                                             Content="cdn.gh-proxy.org (зеркало, через CDN)"
+                                             Checked="UpdateSourceRadio_Checked" />
+                            </StackPanel>
+                        </Expander>
+
+                        <!-- 4. "Разработчик" — тоже аккордеон, тоже свёрнут по умолчанию: ссылки на
+                             автора любопытны, но далеко не первое, что человек ищет в настройках
+                             плеера — прятать их за один клик логичнее, чем держать всегда на виду
+                             сразу под описанием и обновлениями. -->
+                        <Expander Style="{StaticResource FluentExpanderStyle}" Margin="0,12,0,0">
+                            <Expander.Header>
+                                <TextBlock Text="Разработчик" FontSize="14" FontWeight="SemiBold" />
+                            </Expander.Header>
                             <StackPanel>
                                 <ui:Button x:Name="DeveloperGitHubButton" Appearance="Secondary"
                                            HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
@@ -854,58 +915,9 @@
                                     </Grid>
                                 </ui:Button>
                             </StackPanel>
-                        </Border>
+                        </Expander>
 
-                        <TextBlock Text="Обновления" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
-
-                        <ui:Button x:Name="CheckUpdatesButton" Appearance="Secondary"
-                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                   Padding="16,14" Click="CheckUpdatesButton_Click">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
-                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
-                                        Margin="0,0,12,0">
-                                    <local:SvgPathIcon Icon="IconCheckmark" Size="16"
-                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock x:Name="CheckUpdatesButtonTitle" Text="Проверить обновления" FontWeight="SemiBold" />
-                                    <TextBlock x:Name="CheckUpdatesButtonSubtitle" Text="Сверить версию с GitHub" FontSize="12" Opacity="0.6" />
-                                </StackPanel>
-                            </Grid>
-                        </ui:Button>
-
-                        <TextBlock Text="Источник загрузки обновлений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
-
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Откуда скачивать сам файл установщика при обновлении. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из зеркал gh-proxy. На саму проверку версии эта настройка не влияет."
-                                           TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
-
-                                <RadioButton x:Name="UpdateSourceGitHubRadio" GroupName="UpdateSource" Tag="GitHub"
-                                             Content="GitHub (напрямую)" Margin="0,0,0,8"
-                                             Checked="UpdateSourceRadio_Checked" />
-                                <RadioButton x:Name="UpdateSourceGhProxyRadio" GroupName="UpdateSource" Tag="GhProxy"
-                                             Content="gh-proxy.org (зеркало)" Margin="0,0,0,8"
-                                             Checked="UpdateSourceRadio_Checked" />
-                                <RadioButton x:Name="UpdateSourceGhProxyV4Radio" GroupName="UpdateSource" Tag="GhProxyV4"
-                                             Content="v4.gh-proxy.org (зеркало, только IPv4)" Margin="0,0,0,8"
-                                             Checked="UpdateSourceRadio_Checked" />
-                                <RadioButton x:Name="UpdateSourceGhProxyV6Radio" GroupName="UpdateSource" Tag="GhProxyV6"
-                                             Content="v6.gh-proxy.org (зеркало, только IPv6)" Margin="0,0,0,8"
-                                             Checked="UpdateSourceRadio_Checked" />
-                                <RadioButton x:Name="UpdateSourceGhProxyCdnRadio" GroupName="UpdateSource" Tag="GhProxyCdn"
-                                             Content="cdn.gh-proxy.org (зеркало, через CDN)"
-                                             Checked="UpdateSourceRadio_Checked" />
-                            </StackPanel>
-                        </Border>
-
+                        <!-- 5. "Список изменений" — перенесён в самый низ страницы -->
                         <TextBlock Text="Список изменений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
 
                         <ui:Button x:Name="ChangelogButton" Appearance="Secondary"

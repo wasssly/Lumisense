@@ -205,6 +205,102 @@
                     </DataTrigger>
                 </Style.Triggers>
             </Style>
+
+            <!-- Fluent-аккордеон для сворачиваемых секций (см. "Разработчик" и "Источник
+                 загрузки обновлений" на странице "О плеере" в SettingsWindow.xaml) — по клику
+                 на заголовок раскрывает/скрывает содержимое, шеврон плавно поворачивается на
+                 180°. Построен на штатном WPF Expander (а не на чём-то из WPF-UI) с полностью
+                 своим ControlTemplate — так надёжнее: не завязано на конкретный набор свойств
+                 стороннего Fluent-контрола, который здесь негде проверить компиляцией.
+
+                 Раскрытие/скрытие содержимого — мгновенное (обычная Visibility, как и у
+                 стандартного Expander), а не через анимацию высоты: WPF не умеет анимировать
+                 GridLength/Auto-высоту напрямую, а трюки с этим (ScaleTransform по Y,
+                 покадровый пересчёт естественной высоты через Measure) — то самое место, где
+                 несложно словить тонкий, трудноотловимый без сборки на Windows баг. Плавный тут
+                 только сам поворот шеврона (Angle 0→180 через DoubleAnimation) — этого обычно
+                 достаточно, чтобы раскрытие ощущалось отзывчивым, а не "рычажным". -->
+            <Style x:Key="FluentExpanderStyle" TargetType="Expander">
+                <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Expander">
+                            <Border CornerRadius="10" Background="{TemplateBinding Background}">
+                                <StackPanel>
+                                    <!-- Сам заголовок — ToggleButton, а не что-то с ручной обработкой
+                                         клика: IsChecked двусторонне привязан к Expander.IsExpanded,
+                                         поэтому клик по заголовку и программное изменение IsExpanded
+                                         (если понадобится где-то ещё) всегда остаются согласованы
+                                         сами по себе, без лишнего кода в code-behind. -->
+                                    <ToggleButton x:Name="HeaderToggle"
+                                                  IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
+                                                  Content="{TemplateBinding Header}"
+                                                  Cursor="Hand" Background="Transparent" BorderThickness="0"
+                                                  HorizontalContentAlignment="Stretch" Padding="16,14">
+                                        <ToggleButton.Template>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <ContentPresenter Grid.Column="0" VerticalAlignment="Center"
+                                                                          Content="{TemplateBinding Content}" />
+
+                                                        <local:SvgPathIcon x:Name="Chevron" Grid.Column="1"
+                                                                            Icon="IconChevronDown" Size="14"
+                                                                            VerticalAlignment="Center" Opacity="0.6"
+                                                                            RenderTransformOrigin="0.5,0.5">
+                                                            <local:SvgPathIcon.RenderTransform>
+                                                                <RotateTransform x:Name="ChevronRotate" Angle="0" />
+                                                            </local:SvgPathIcon.RenderTransform>
+                                                        </local:SvgPathIcon>
+                                                    </Grid>
+                                                </Border>
+                                                <ControlTemplate.Triggers>
+                                                    <Trigger Property="IsChecked" Value="True">
+                                                        <Trigger.EnterActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="ChevronRotate"
+                                                                                     Storyboard.TargetProperty="Angle"
+                                                                                     To="180" Duration="0:0:0.15" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.EnterActions>
+                                                        <Trigger.ExitActions>
+                                                            <BeginStoryboard>
+                                                                <Storyboard>
+                                                                    <DoubleAnimation Storyboard.TargetName="ChevronRotate"
+                                                                                     Storyboard.TargetProperty="Angle"
+                                                                                     To="0" Duration="0:0:0.15" />
+                                                                </Storyboard>
+                                                            </BeginStoryboard>
+                                                        </Trigger.ExitActions>
+                                                    </Trigger>
+                                                </ControlTemplate.Triggers>
+                                            </ControlTemplate>
+                                        </ToggleButton.Template>
+                                    </ToggleButton>
+
+                                    <ContentPresenter x:Name="ContentHost" Content="{TemplateBinding Content}"
+                                                      Visibility="Collapsed" Margin="16,0,16,14" />
+                                </StackPanel>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsExpanded" Value="True">
+                                    <Setter TargetName="ContentHost" Property="Visibility" Value="Visible" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

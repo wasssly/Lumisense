@@ -343,9 +343,33 @@ public partial class SettingsWindow : FluentWindow
         // прокручиваем к нужному элементу и подсвечиваем его
         Dispatcher.InvokeAsync(() =>
         {
-            entry.Target.BringIntoView();
-            SearchHighlightAdorner.Flash(entry.Target);
+            // Некоторые результаты поиска (см. "Разработчик" и "Источник загрузки обновлений")
+            // лежат внутри Expander (см. FluentExpanderStyle в App.xaml), свёрнутого по
+            // умолчанию — BringIntoView и подсветка элемента, который сейчас физически скрыт
+            // (Visibility=Collapsed у содержимого свёрнутого аккордеона), ничего не покажут
+            // пользователю. Разворачиваем все Expander-предки найденного элемента заранее.
+            ExpandAncestorExpanders(entry.Target);
+
+            // Раскрытие аккордеона меняет раскладку страницы (появляется скрытое раньше
+            // содержимое) — ждём ещё один цикл, пока это отразится на макете, и только потом
+            // считаем прокрутку/позицию для подсветки, иначе используем ещё не обновлённые
+            // координаты.
+            Dispatcher.InvokeAsync(() =>
+            {
+                entry.Target.BringIntoView();
+                SearchHighlightAdorner.Flash(entry.Target);
+            }, DispatcherPriority.Loaded);
         }, DispatcherPriority.Loaded);
+    }
+
+    private static void ExpandAncestorExpanders(DependencyObject element)
+    {
+        var current = System.Windows.Media.VisualTreeHelper.GetParent(element);
+        while (current != null)
+        {
+            if (current is System.Windows.Controls.Expander expander) expander.IsExpanded = true;
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+        }
     }
 
     private void ThemeCheckBox_Changed(object sender, RoutedEventArgs e)
