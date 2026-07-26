@@ -220,6 +220,13 @@
             <Setter Property="IsHitTestVisible" Value="True" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0" />
+            <!-- Без BasedOn на глобальный Style TargetType="ListViewItem" (сделано намеренно —
+                 не нужны его отступы/ховер-подсветка на заголовке), но вместе с этим по
+                 умолчанию терялся и Foreground, который в оригинале тоже задаётся тем самым
+                 глобальным стилем: без явного Setter здесь TextBlock/иконки внутри заголовка
+                 падали на дефолтный чёрный цвет вместо темизированного — на тёмном фоне
+                 карточки текст был почти нечитаем. -->
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListViewItem">
@@ -632,7 +639,24 @@
                      по-прежнему честно скроллится (программно и колесом мыши), просто не показывает
                      родной скроллбар — вместо него отрисован свой (PlaylistScrollTrack ниже),
                      подключённый к тому же внутреннему ScrollViewer через SizeChanged/ScrollChanged
-                     и GetActivePlaylistScrollViewer() в code-behind. -->
+                     и GetActivePlaylistScrollViewer() в code-behind.
+
+                     VirtualizationMode="Standard", а НЕ "Recycling" — здесь это важно: список
+                     показывает вперемешку РАЗНОРОДНЫЕ элементы (PlaylistFolder-заголовки и
+                     PlaylistTrackRow-строки), выбор шаблона под конкретный элемент решает
+                     ItemTemplateSelector. У Recycling есть известная особенность WPF: при
+                     переиспользовании уже отрисованного контейнера под НОВЫЙ элемент другого типа
+                     (например, был трек — стал заголовок папки, после пересборки списка при
+                     сворачивании/разворачивании других папок) шаблон контейнера иногда не
+                     пересчитывается заново под новый DataContext и остаётся от предыдущего
+                     элемента — на практике это выглядело как "у папки вдруг пропало название"
+                     (внутри неверно оставался TrackItemTemplate, у которого просто нет свойства
+                     DisplayName). Standard всё ещё полноценно виртуализирует (контейнеры для
+                     невидимых строк не создаются вовсе) — просто не переиспользует старые
+                     контейнеры под новые элементы, а создаёт для них новые, что стоит немного
+                     памяти/GC-нагрузки, но не воспроизводимо ломает выбор шаблона. FavoritesTrackListView
+                     ниже (без селектора, только один тип элемента — PlaylistTrackRow) от этой
+                     проблемы не страдает, там Recycling оставлен как есть. -->
                 <ListView x:Name="PlaylistFoldersControl" Grid.Row="1" Grid.Column="0" Margin="4"
                           Background="Transparent" BorderThickness="0"
                           AlternationCount="100000"
@@ -642,7 +666,7 @@
                           ScrollViewer.VerticalScrollBarVisibility="Hidden"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                           VirtualizingPanel.IsVirtualizing="True"
-                          VirtualizingPanel.VirtualizationMode="Recycling"
+                          VirtualizingPanel.VirtualizationMode="Standard"
                           VirtualizingPanel.ScrollUnit="Pixel"
                           SizeChanged="PlaylistScrollViewer_SizeChanged"
                           ScrollViewer.ScrollChanged="PlaylistScrollViewer_ScrollChanged"
