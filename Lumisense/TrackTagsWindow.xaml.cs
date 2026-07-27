@@ -9,24 +9,20 @@ using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Окно редактирования тегов (ID3/Vorbis/MP4 — какой формат поддерживает сам файл, через
-/// TagLib#) — название, исполнитель, альбом, год, номер трека, жанр, комментарий.
-/// </summary>
+// Окно редактирования тегов (ID3/Vorbis/MP4 — через TagLib#) — название, исполнитель,
+// альбом, год, номер трека, жанр, комментарий
 public partial class TrackTagsWindow : FluentWindow
 {
     private readonly string _filePath;
 
-    // Новая обложка, выбранная пользователем в этом окне (ещё не записана в файл — это
-    // происходит только при нажатии "Сохранить"). null означает "обложка не менялась",
-    // если только _coverArtChanged не true — тогда null означает "обложку удалили".
+    // Новая обложка, выбранная в этом окне (в файл ещё не записана — только по "Сохранить").
+    // null — обложка не менялась, если только _coverArtChanged не true — тогда null значит "удалили"
     private byte[]? _pendingCoverBytes;
     private string? _pendingCoverMimeType;
     private bool _coverArtChanged;
 
-    /// <summary>true, если пользователь нажал "Сохранить" и запись в файл прошла успешно —
-    /// по этому флагу вызывающая сторона (MainWindow) решает, нужно ли обновить название/
-    /// исполнителя в самом плеере, если редактировался именно сейчас играющий трек.</summary>
+    // true после успешного сохранения — по этому флагу MainWindow решает, обновлять ли
+    // название/исполнителя в плеере, если редактировался именно текущий трек
     public bool Saved { get; private set; }
 
     public TrackTagsWindow(string filePath)
