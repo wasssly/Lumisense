@@ -1788,11 +1788,10 @@ public partial class MainWindow : FluentWindow
         System.Windows.Clipboard.SetFileDropList(files);
     }
 
-    // Раньше здесь запускался системный shell-диалог "Свойства" через ShellExecute (verb
-    // "properties") — но для многих типов аудиофайлов Windows не регистрирует обработчик
-    // этого verb-а, и вызов просто молча ничего не делал. Вместо системного — своё окно
-    // в стиле самого плеера (см. TrackPropertiesWindow), которое всегда доступно и не зависит
-    // от того, что там зарегистрировано в реестре для .mp3/.flac/.wav у конкретного пользователя.
+    // Раньше здесь был системный shell-диалог "Свойства" через ShellExecute — но для многих
+    // типов аудиофайлов Windows не регистрирует обработчик этого verb-а, и вызов молча ничего
+    // не делал. Вместо системного — своё окно в стиле плеера (TrackPropertiesWindow),
+    // не зависящее от того, что зарегистрировано в реестре у конкретного пользователя.
     private void TrackPropertiesMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -1949,10 +1948,9 @@ public partial class MainWindow : FluentWindow
 
         LoadAlbumArt(filePath);
 
-        // Позиция, с которой стартуем: либо восстановленная (сохранённая между запусками),
-        // либо начало трека. Раньше при переключении трека на паузе слайдер и текст времени
-        // просто не трогались и продолжали показывать позицию ПРЕЖНЕГО трека — сбрасываем
-        // их явно на каждую загрузку, а не только когда есть startPosition.
+        // Позиция старта: восстановленная (сохранённая между запусками) либо начало трека.
+        // Раньше при переключении трека на паузе слайдер и время не сбрасывались и
+        // показывали позицию прежнего трека — сбрасываем явно на каждую загрузку.
         var position = startPosition.HasValue && startPosition.Value < _audioFile.TotalTime
             ? startPosition.Value
             : TimeSpan.Zero;
