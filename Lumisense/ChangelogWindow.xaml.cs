@@ -7,12 +7,9 @@ using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Окно "Список изменений" — список версий слева (поиск + фильтр по типу + сортировка),
-/// подробности выбранной версии справа. Правая панель верстается декларативно в XAML через
-/// ElementName-биндинг на VersionsListBox.SelectedItem, так что этому коду остаётся только:
-/// загрузить записи и пересчитывать видимый (отфильтрованный и отсортированный) список.
-/// </summary>
+// Окно "Список изменений": список версий слева (поиск + фильтр + сортировка), детали
+// справа — верстаются декларативно через ElementName-биндинг на VersionsListBox.SelectedItem,
+// так что этому коду остаётся только загрузить записи и пересчитывать видимый список.
 public partial class ChangelogWindow : FluentWindow
 {
     private readonly List<ChangelogEntryViewModel> _allEntries;

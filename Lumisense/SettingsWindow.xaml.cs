@@ -136,12 +136,9 @@ public partial class SettingsWindow : FluentWindow
         _isInitializing = false;
     }
 
-    // Раньше центрирование над главным окном делал сам WPF через
-    // WindowStartupLocation="CenterOwner" — это требовало установленного Owner, от которого
-    // пришлось отказаться (см. комментарий в начале конструктора). Считаем то же самое вручную:
-    // центр этого окна = центр видимой области owner'а, зажатый в границах рабочей области
-    // экрана, на котором сейчас находится owner (чтобы окно настроек не могло случайно
-    // оказаться за пределами экрана, если владелец стоит у самого края монитора).
+    // WindowStartupLocation="CenterOwner" тут не подходит — пришлось отказаться от Owner
+    // (см. начало конструктора), поэтому центрируем вручную: центр этого окна = центр owner'а,
+    // зажатый в границах рабочей области экрана, на котором сейчас находится owner
     private void PositionOverOwner(Window owner)
     {
         double ownerWidth = owner.ActualWidth > 0 ? owner.ActualWidth : owner.Width;

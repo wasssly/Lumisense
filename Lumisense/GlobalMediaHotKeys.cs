@@ -5,13 +5,10 @@ using System.Windows.Interop;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Регистрирует системные мультимедийные клавиши клавиатуры (Play/Pause, Next, Previous, Stop)
-/// как глобальные хоткеи через WinAPI RegisterHotKey — плеер реагирует на них, даже когда
-/// окно свёрнуто или не в фокусе (как и положено медиаклавишам). Плюс к этому поддерживает
-/// настраиваемые пользователем комбинации (например, Ctrl+Alt+P) — они задаются в настройках
-/// и применяются через <see cref="ApplyCustomHotkeys"/>, без необходимости перезапускать приложение.
-/// </summary>
+// Регистрирует мультимедийные клавиши (Play/Pause, Next, Previous, Stop) как глобальные
+// хоткеи через WinAPI RegisterHotKey — плеер реагирует, даже когда окно свёрнуто или не
+// в фокусе. Плюс настраиваемые пользователем комбинации (см. ApplyCustomHotkeys),
+// применяются без перезапуска приложения.
 public sealed class GlobalMediaHotKeys : IDisposable
 {
     private const int WM_HOTKEY = 0x0312;
