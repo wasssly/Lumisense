@@ -1,22 +1,13 @@
 namespace AudioPlayer;
 
-/// <summary>
-/// Глобальный список избранных треков (сердечко на строке трека в плейлисте) — общий для всего
-/// приложения, а не часть какой-то одной группы плейлиста (<see cref="PlaylistFolder"/>). Один
-/// и тот же трек остаётся избранным независимо от того, в какой группе плейлиста он показан;
-/// виртуальная группа "Избранное" (см. MainWindow._favoritesFolder) на лету собирается именно
-/// из этого списка.
-///
-/// Хранится только в памяти на время сессии: заполняется из AppSettings.FavoriteTracks при
-/// запуске (см. конструктор MainWindow) и записывается обратно туда же при закрытии окна
-/// (см. MainWindow.OnClosed) — той же схемой, что и остальной плейлист (SavedPlaylistFolders).
-/// </summary>
+// Глобальный список избранного (сердечко у трека), общий для всего приложения, а не для
+// какой-то одной группы PlaylistFolder. Виртуальная группа "Избранное" (MainWindow._favoritesFolder)
+// собирается на лету из этого списка. Живёт только в памяти сессии, читается/пишется
+// через AppSettings.FavoriteTracks в конструкторе и в OnClosed MainWindow.
 public static class FavoritesManager
 {
-    // Порядок важен для показа в виртуальном плейлисте "Избранное" — свежедобавленные треки
-    // должны оказываться внизу списка (как при обычном добавлении файлов), а не в произвольном
-    // порядке, который дал бы один только HashSet. _lookup нужен только для быстрой проверки
-    // "избранное ли это" на каждой строке плейлиста, реальный порядок хранит _order.
+    // Порядок важен — свежедобавленные треки должны быть внизу списка "Избранное", а не
+    // в произвольном порядке из одного HashSet. _lookup — для быстрой проверки IsFavorite.
     private static readonly List<string> _order = new();
     private static readonly HashSet<string> _lookup = new();
 
@@ -24,9 +15,8 @@ public static class FavoritesManager
 
     public static int Count => _order.Count;
 
-    // Вызывается один раз при старте приложения — заполняет список сохранёнными путями
-    // (AppSettings.FavoriteTracks). Пропускает дубликаты и пути-пустышки на случай ручной
-    // правки settings.json.
+    // Вызывается один раз при старте, дубликаты и пустые пути пропускает (мало ли что
+    // накорябали руками в settings.json)
     public static void Initialize(IEnumerable<string> savedPaths)
     {
         _order.Clear();
@@ -55,15 +45,11 @@ public static class FavoritesManager
             if (changed) _order.Remove(path);
         }
 
-        // Уведомляем только когда состояние реально поменялось — а не на каждый вызов (Toggle
-        // всегда меняет, но SetFavorite сама по себе могла быть вызвана и "впустую", например
-        // повторным снятием сердечка с уже не избранного трека).
+        // уведомляем, только если состояние реально поменялось, а не на каждый вызов
         if (changed) FavoritesChangeNotifier.Instance.Bump();
     }
 
-    // Переключает состояние "избранное" для трека и возвращает новое состояние — удобно для
-    // обработчика клика по сердечку, которому нужно и поменять состояние, и узнать, каким оно
-    // стало (например, чтобы выбрать иконку без лишнего похода в IsFavorite сразу после).
+    // Меняет состояние и сразу возвращает новое — удобно для клика по сердечку
     public static bool Toggle(string path)
     {
         bool newState = !_lookup.Contains(path);
@@ -71,23 +57,14 @@ public static class FavoritesManager
         return newState;
     }
 
-    // Копия текущего порядка избранных треков — используется и для построения виртуальной
-    // группы "Избранное" в UI, и для сохранения в AppSettings.FavoriteTracks при закрытии.
-    // Возвращает копию, а не сам список, чтобы вызывающий код не мог случайно испортить
-    // внутреннее состояние менеджера.
+    // Копия, а не сам список — чтобы вызывающий код не мог испортить внутреннее состояние
     public static List<string> GetAll() => new(_order);
 }
 
-/// <summary>
-/// Лёгкий bindable-объект, единственная задача которого — дать XAML-биндингам сердечка трека
-/// (см. TrackItemTemplate в MainWindow.xaml, IsFavoriteMultiConverter в Converters.cs) повод
-/// перевычислиться, когда где-то поменялось избранное. Сам путь к файлу трека, на который
-/// завязан основной Binding, никогда не меняется — то есть без этого объекта WPF попросту не
-/// узнал бы, что результат конвертера мог измениться, и единственным способом обновить
-/// сердечки был бы полный пересбор ItemsSource всего плейлиста при КАЖДОМ переключении
-/// избранного. На плейлистах с большим числом треков это было главной причиной подвисания
-/// интерфейса при добавлении трека в избранное.
-/// </summary>
+// Лёгкий bindable-объект, единственная задача которого — дать сердечку трека (TrackItemTemplate,
+// IsFavoriteMultiConverter) повод перевычислиться, когда где-то поменялось избранное. Путь к файлу
+// в основном Binding не меняется, так что без Epoch WPF не узнал бы, что конвертер надо перевызвать,
+// и единственным способом обновить сердечки был бы пересбор всего ItemsSource на каждый клик.
 public sealed class FavoritesChangeNotifier : System.ComponentModel.INotifyPropertyChanged
 {
     public static readonly FavoritesChangeNotifier Instance = new();
@@ -96,7 +73,7 @@ public sealed class FavoritesChangeNotifier : System.ComponentModel.INotifyPrope
 
     private int _epoch;
 
-    // Значение само по себе смысла не несёт — важен сам факт PropertyChanged на нём.
+    // значение неважно, важен сам факт PropertyChanged
     public int Epoch => _epoch;
 
     public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
