@@ -31,20 +31,15 @@ public sealed class UpdateCheckResult
     public string? ErrorMessage { get; init; }
 }
 
-/// <summary>
-/// Проверка обновлений через GitHub Releases API (без токена — обычные публичные запросы,
-/// которых заведомо мало для лимита в 60/час на IP). Используется и при тихой проверке на
-/// старте (см. MainWindow), и по кнопке "Проверить обновления" в настройках.
-///
-/// Ожидает, что релиз на GitHub содержит один .exe-ассет — тот самый установщик
-/// Lumisense_Setup.exe, собранный Installer/Lumisense.iss. Пользователю предлагается
-/// скачать и запустить именно его: Inno Setup сам обнаружит уже установленную копию (тот же
-/// AppId) и обновит её на месте, а не поставит рядом вторую — так что никакого отдельного
-/// "автообновляльщика" не нужно, достаточно переиспользовать обычный установщик.
-///
-/// ВАЖНО: RepoOwner/RepoName нужно подставить под реальный репозиторий на GitHub, где будут
-/// публиковаться релизы (Release → тег вида "v1.5.0" + прикреплённый Lumisense_Setup.exe).
-/// </summary>
+// Проверка обновлений через GitHub Releases API без токена — публичных запросов заведомо
+// мало для лимита 60/час на IP. Используется и при тихой проверке на старте, и по кнопке
+// в настройках.
+//
+// Ожидает, что релиз содержит один .exe-ассет — установщик Lumisense_Setup.exe (Installer/
+// Lumisense.iss). Inno Setup сам обнаружит уже установленную копию и обновит её на месте,
+// отдельный "автообновляльщик" не нужен.
+//
+// ВАЖНО: RepoOwner/RepoName должны указывать на реальный репозиторий с релизами.
 public static class UpdateChecker
 {
     private const string RepoOwner = "wasssly";
@@ -166,13 +161,9 @@ public static class UpdateChecker
         };
     }
 
-    /// <summary>Возможные источники загрузки установщика — см. AppSettings.UpdateDownloadSource
-    /// и переключатель в настройках ("О плеере" → "Источник загрузки обновлений"). gh-proxy —
-    /// сторонний бесплатный прокси-сервис для github.com/githubusercontent.com, полезен там,
-    /// где сам GitHub недоступен напрямую или скачивается очень медленно; несколько доменов —
-    /// это разные точки входа одного и того же сервиса (обычная/только IPv4/только IPv6/через
-    /// CDN), какая из них быстрее — зависит от провайдера и региона пользователя, поэтому
-    /// даём выбрать самому, а не решаем один вариант "правильным" за всех.</summary>
+    // gh-proxy — сторонний прокси для github.com/githubusercontent.com на случай, если сам
+    // GitHub недоступен напрямую или скачивается медленно. Домены — разные точки входа одного
+    // сервиса, какая быстрее зависит от провайдера и региона, поэтому даём выбрать самому.
     public static readonly (string Key, string DisplayName)[] DownloadSources =
     {
         ("GitHub", "GitHub (напрямую)"),
@@ -182,12 +173,8 @@ public static class UpdateChecker
         ("GhProxyCdn", "cdn.gh-proxy.org (зеркало, CDN)"),
     };
 
-    /// <summary>Оборачивает прямую ссылку на GitHub-ассет в выбранное зеркало. Саму ссылку от
-    /// GitHub API (browser_download_url) подменяем на зеркало только непосредственно перед
-    /// скачиванием — CheckAsync (обращение к api.github.com) всегда идёт напрямую: у
-    /// gh-proxy-подобных сервисов проксирование, как правило, рассчитано на
-    /// github.com/githubusercontent.com/codeload.github.com, а не на поддомен api.*, так что
-    /// незачем рисковать самой проверкой версии ради экономии на маленьком JSON-ответе.</summary>
+    // Подменяем ссылку на зеркало только перед скачиванием — CheckAsync (api.github.com) всегда
+    // идёт напрямую, эти прокси обычно рассчитаны на github.com/codeload, а не на api.*
     public static string ApplyDownloadSource(string githubUrl, string source) => source switch
     {
         "GhProxy" => $"https://gh-proxy.org/{githubUrl}",
@@ -225,12 +212,8 @@ public static class UpdateChecker
         return tempPath;
     }
 
-    /// <summary>
-    /// Запускает скачанный установщик (через оболочку — Inno Setup сам запросит права
-    /// администратора, см. PrivilegesRequired=admin в Lumisense.iss) и завершает текущий
-    /// процесс плеера, чтобы установщик мог перезаписать файлы, которые сейчас использует
-    /// запущенный Lumisense.exe.
-    /// </summary>
+    // Запускает установщик через оболочку (Inno Setup сам запросит права администратора)
+    // и завершает текущий процесс, чтобы установщик мог перезаписать используемые им файлы
     public static void LaunchInstallerAndExit(string installerPath)
     {
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
