@@ -11,32 +11,17 @@ using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Векторная SVG-иконка: рисует настоящий .svg-файл из папки Icons/svg (через SharpVectors),
-/// а не геометрию, "зашитую" в код или в XAML. Чтобы поменять иконку — просто замени файл
-/// Icons/svg/{Icon}.svg на другой (экспортированный из Figma/Illustrator/Inkscape и т.п.) и
-/// пересобери проект. Цвет заливки всегда берётся из Foreground этой же иконки (в т.ч. когда
-/// шаблон кнопки меняет его при наведении/нажатии) — исходный fill/color внутри самого .svg
-/// для этого не важен, SharpVectors подменяет его.
-///
-/// У SvgPathIcon только одно обязательное свойство — <see cref="Icon"/> (имя файла в Icons/svg
-/// без расширения, например "IconPlay"):
-///     &lt;local:SvgPathIcon Icon="IconPlay" /&gt;
-/// Размер по умолчанию берётся из атрибута data-default-size на корневом &lt;svg&gt; в самом файле
-/// иконки (см. Icons/svg/README.md). Явно задать Size в конкретном месте использования по-прежнему
-/// можно — это исключение, а не правило.
-/// </summary>
+// Векторная SVG-иконка: рисует .svg из Icons/svg через SharpVectors, а не геометрию,
+// зашитую в код/XAML. Чтобы поменять иконку — заменить файл и пересобрать. Цвет заливки
+// всегда берётся из Foreground, исходный fill в самом .svg не важен, SharpVectors его подменяет.
+// Размер по умолчанию — из атрибута data-default-size на корневом <svg> (Icons/svg/README.md),
+// но Size можно задать и явно.
 public sealed class SvgPathIcon : IconElement
 {
-    /// <summary>Имя файла иконки в папке Icons/svg/ без расширения (например "IconPlay").
-    /// Можно задать как обычной строкой, так и через привязку (см. ExpandChevronConverter — он
-    /// в зависимости от состояния возвращает то один ключ, то другой, и иконка сама перерисуется).</summary>
     public static readonly DependencyProperty IconProperty = DependencyProperty.Register(
         nameof(Icon), typeof(string), typeof(SvgPathIcon),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    /// <summary>Размер стороны квадрата, в который вписывается иконка. Если не задан (NaN, значение
-    /// по умолчанию) — берётся из атрибута data-default-size корневого &lt;svg&gt; файла иконки.</summary>
     public static readonly DependencyProperty SizeProperty = DependencyProperty.Register(
         nameof(Size), typeof(double), typeof(SvgPathIcon),
         new FrameworkPropertyMetadata(double.NaN, FrameworkPropertyMetadataOptions.AffectsMeasure));
@@ -72,7 +57,7 @@ public sealed class SvgPathIcon : IconElement
         return icon;
     }
 
-    /// <summary>"IconPlay" → pack-URI файла Icons/svg/IconPlay.svg.</summary>
+    // "IconPlay" → pack-URI файла Icons/svg/IconPlay.svg
     private sealed class IconKeyToUriConverter : IValueConverter
     {
         public static readonly IconKeyToUriConverter Instance = new();
@@ -84,8 +69,7 @@ public sealed class SvgPathIcon : IconElement
             throw new NotSupportedException();
     }
 
-    /// <summary>Если Size не задан явно (NaN) — читает атрибут data-default-size из самого .svg-файла
-    /// иконки (кэшируя результат: файл на диске за время работы программы не меняется).</summary>
+    // Если Size не задан (NaN) — читает data-default-size из .svg-файла, кэширует результат
     private sealed class IconSizeConverter : IMultiValueConverter
     {
         public static readonly IconSizeConverter Instance = new();
