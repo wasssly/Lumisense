@@ -4,23 +4,14 @@ using System.IO;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Текущий поисковый запрос по плейлисту (см. PlaylistSearchBox в MainWindow.xaml) и лёгкий
-/// bindable-объект вокруг него — по тому же принципу, что и FavoritesChangeNotifier (см.
-/// Favorites.cs): сам путь к файлу трека, на который завязан основной Binding строки плейлиста,
-/// никогда не меняется, поэтому обычный однозначный Binding никогда не перевычислился бы
-/// заново сам по себе при изменении текста поиска. MultiBinding в
-/// MainWindow.xaml (ItemContainerStyle вложенных ListView) держит второе плечо на Epoch —
-/// он и даёт WPF повод перевызвать конвертер видимости заново для уже показанных строк, когда
-/// запрос действительно поменялся.
-///
-/// Фильтрация — чисто визуальная: скрывает несовпавшие строки через Visibility их
-/// ListViewItem-контейнеров (см. SearchableTrackListViewItemStyle), а не трогает сами
-/// коллекции PlaylistFolder.Tracks. Список "Далее/Назад/Перемешать" и порядок треков при
-/// воспроизведении по-прежнему видят ВСЕ треки независимо от того, что сейчас введено в поиск —
-/// это осознанно: поиск помогает найти и кликнуть трек глазами, а не превращается в отдельный
-/// временный плейлист.
-/// </summary>
+// Текущий поисковый запрос по плейлисту, bindable-объект по тому же принципу, что и
+// FavoritesChangeNotifier: путь к файлу трека в Binding никогда не меняется, поэтому WPF
+// сам не перевычислит видимость строки при смене запроса — MultiBinding в MainWindow.xaml
+// держит второе плечо на Epoch, он и даёт повод перевызвать конвертер.
+//
+// Фильтрация чисто визуальная (Visibility ListViewItem, см. SearchableTrackListViewItemStyle),
+// коллекции PlaylistFolder.Tracks не трогает. "Далее/Назад/Перемешать" видят все треки
+// независимо от поиска — это осознанно, поиск не превращается в отдельный временный плейлист.
 public sealed class PlaylistSearchState : INotifyPropertyChanged
 {
     public static readonly PlaylistSearchState Instance = new();
@@ -29,8 +20,7 @@ public sealed class PlaylistSearchState : INotifyPropertyChanged
 
     private string _query = string.Empty;
 
-    // Нормализованный (без пробелов по краям) поисковый запрос. Пустая строка — поиск не
-    // активен, показаны все треки. Само сравнение с именем файла ниже (Matches) регистронезависимое.
+    // Пустая строка — поиск не активен. Сравнение в Matches регистронезависимое.
     public string Query
     {
         get => _query;
@@ -44,18 +34,14 @@ public sealed class PlaylistSearchState : INotifyPropertyChanged
         }
     }
 
-    // Значение само по себе смысла не несёт — важен сам факт PropertyChanged на нём (см.
-    // комментарий у FavoritesChangeNotifier.Epoch — тот же приём).
+    // Значение неважно, важен сам факт PropertyChanged (тот же приём, что и в FavoritesChangeNotifier)
     public int Epoch { get; private set; }
 
     public event PropertyChangedEventHandler? PropertyChanged;
 
-    // true, если трек нужно показывать при текущем запросе. Сравнивается с именем файла БЕЗ
-    // расширения и без пути к папке — то есть ровно с тем текстом, который пользователь видит
-    // в строке трека (см. FileNameConverter в Converters.cs и TextBlock в TrackItemTemplate).
-    // Не читаем ID3-теги (исполнитель/название) — они нигде не кэшируются заранее для всего
-    // плейлиста целиком, а читать их с диска на каждый трек при каждом нажатии клавиши в
-    // поиске было бы заметно медленно на большой библиотеке.
+    // Сравниваем с именем файла без расширения и пути — тем, что видит пользователь в строке
+    // трека. ID3-теги не читаем: они нигде не кэшируются заранее, а читать с диска на каждое
+    // нажатие клавиши было бы заметно медленно на большой библиотеке.
     public bool Matches(string? filePath)
     {
         if (string.IsNullOrEmpty(_query)) return true;
