@@ -238,12 +238,14 @@
                                                   IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                                   Content="{TemplateBinding Header}"
                                                   Cursor="Hand" Background="Transparent" BorderThickness="0"
-                                                  HorizontalContentAlignment="Stretch" Padding="16,14">
+                                                  HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch"
+                                                  Padding="16,14">
                                         <ToggleButton.Template>
                                             <ControlTemplate TargetType="ToggleButton">
                                                 <Border Background="{TemplateBinding Background}"
-                                                        Padding="{TemplateBinding Padding}">
-                                                    <Grid>
+                                                        Padding="{TemplateBinding Padding}"
+                                                        HorizontalAlignment="Stretch">
+                                                    <Grid HorizontalAlignment="Stretch">
                                                         <Grid.ColumnDefinitions>
                                                             <ColumnDefinition Width="*" />
                                                             <ColumnDefinition Width="Auto" />
