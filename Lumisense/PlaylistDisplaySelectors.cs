@@ -3,16 +3,8 @@ using System.Windows.Controls;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Выбирает DataTemplate для элемента единого плоского PlaylistFoldersControl.ItemsSource (см.
-/// MainWindow.RefreshPlaylistView) — там вперемешку, в одном списке, лежат PlaylistFolder
-/// (заголовок папки) и PlaylistTrackRow (строка трека). Раньше папки и их треки были в
-/// РАЗНЫХ ItemsControl/ListView (заголовок — в ItemsControl.ItemTemplate, треки — во вложенном
-/// ListView.ItemTemplate папки), и каждая папка порождала свой собственный ListView, поэтому
-/// виртуализация была невозможна (см. подробный комментарий в MainWindow.xaml у
-/// PlaylistFoldersControl). Один плоский список с селектором шаблона — стандартный, надёжный
-/// способ показать разнородные элементы в одном настоящем виртуализирующем ListView.
-/// </summary>
+// PlaylistFoldersControl.ItemsSource — плоский список, где вперемешку лежат PlaylistFolder
+// (заголовок папки) и PlaylistTrackRow (строка трека). Селектор выбирает шаблон по типу.
 public sealed class PlaylistDisplayItemTemplateSelector : DataTemplateSelector
 {
     public override DataTemplate? SelectTemplate(object? item, DependencyObject container)
@@ -28,12 +20,8 @@ public sealed class PlaylistDisplayItemTemplateSelector : DataTemplateSelector
     }
 }
 
-/// <summary>
-/// Тот же выбор, что и у PlaylistDisplayItemTemplateSelector выше, но для Style самого
-/// ListViewItem-контейнера — заголовку папки не нужны ни ховер/выделение (это не выбираемая
-/// строка списка), ни фильтрация по поиску (см. PlaylistFolderHeaderContainerStyle /
-/// SearchableTrackListViewItemStyle в MainWindow.xaml).
-/// </summary>
+// То же самое, но для Style контейнера ListViewItem: заголовку папки не нужны ни ховер/выделение,
+// ни фильтрация по поиску, в отличие от строки трека
 public sealed class PlaylistDisplayItemContainerStyleSelector : StyleSelector
 {
     public override Style? SelectStyle(object? item, DependencyObject container)

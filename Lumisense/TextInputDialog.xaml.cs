@@ -4,20 +4,11 @@ using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Небольшое модальное окно "введите текст" — переиспользуемо для любого места, где нужно
-/// спросить у пользователя короткую строку (сейчас используется только для названия новой
-/// ручной папки плейлиста — см. MainWindow.CreateFolderMenuItem_Click).
-///
-/// Использование:
-///     var dialog = new TextInputDialog("Новая папка", "Название папки:", "Моя папка") { Owner = this };
-///     if (dialog.ShowDialog() == true)
-///         MessageBox.Show(dialog.ResultText);
-/// </summary>
+// Модальный диалог "введите текст" — сейчас нужен только для названия новой ручной папки
+// плейлиста (MainWindow.CreateFolderMenuItem_Click)
 public partial class TextInputDialog : FluentWindow
 {
-    /// <summary>Введённый пользователем текст (уже обрезан от пробелов по краям).
-    /// Заполнен только когда ShowDialog() вернул true.</summary>
+    // заполнено только если ShowDialog() вернул true
     public string ResultText { get; private set; } = "";
 
     public TextInputDialog(string title, string prompt, string defaultText = "")

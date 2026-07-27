@@ -6,12 +6,9 @@ using System.Windows.Media.Animation;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Временная подсветка вокруг элемента настройки, к которому переходят из результатов
-/// поиска (см. SettingsWindow.SearchResultItem_Click) — полупрозрачный скруглённый
-/// прямоугольник поверх элемента, который плавно исчезает сам. Рисуется через
-/// AdornerLayer, поэтому не требует никаких изменений в разметке самого элемента.
-/// </summary>
+// Временная подсветка вокруг элемента настройки, к которому переходят из результатов поиска
+// (SettingsWindow.SearchResultItem_Click). Полупрозрачный скруглённый прямоугольник,
+// рисуется через AdornerLayer, разметку самого элемента не трогает.
 public sealed class SearchHighlightAdorner : Adorner
 {
     private readonly Border _visual;
@@ -45,9 +42,8 @@ public sealed class SearchHighlightAdorner : Adorner
         return finalSize;
     }
 
-    /// <summary>Показывает подсветку поверх <paramref name="target"/> и плавно убирает её
-    /// примерно через секунду. Ничего не делает, если у элемента ещё нет AdornerLayer
-    /// (например, он не отображён на экране) — тогда просто нет визуального эффекта.</summary>
+    // Подсвечивает target и плавно убирает подсветку через ~секунду.
+    // Если у элемента ещё нет AdornerLayer (не отображён на экране) — просто ничего не делает.
     public static void Flash(FrameworkElement target)
     {
         var layer = AdornerLayer.GetAdornerLayer(target);
