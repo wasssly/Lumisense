@@ -4,12 +4,9 @@ using System.Runtime.CompilerServices;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Группа треков в плейлисте — либо папка, добавленная целиком (с рекурсивным сканированием),
-/// либо набор отдельных файлов ("Отдельные файлы"). Группу можно выключить целиком —
-/// тогда её треки остаются видны в списке, но пропускаются при "Далее/Назад/Перемешать"
-/// и при автопереходе к следующему треку.
-/// </summary>
+// Группа треков в плейлисте — либо папка, добавленная целиком (рекурсивное сканирование),
+// либо набор отдельных файлов ("Отдельные файлы"). Группу можно выключить целиком — треки
+// остаются видны в списке, но пропускаются при "Далее/Назад/Перемешать" и автопереходе.
 public class PlaylistFolder : INotifyPropertyChanged
 {
     // Стабильный идентификатор — не зависит от порядка, используется только внутри сессии
@@ -45,23 +42,13 @@ public class PlaylistFolder : INotifyPropertyChanged
     // который можно было бы пересканировать.
     public bool CanRescan => SourcePath != null;
 
-    // Полные пути к файлам, в порядке добавления. ObservableCollection, а не обычный List —
-    // не ради самого списка треков (см. MainWindow.RefreshPlaylistView: он читается целиком за
-    // один проход при построении плоского отображаемого списка, а не напрямую служит
-    // ItemsSource для какого-либо элемента UI), а ради подписки чуть ниже: SubtitleText
-    // ("N треков · путь") вычисляется из Tracks.Count и должен обновляться сам, как только
-    // список меняется (пересканировали папку, удалили трек и т.п.) — с обычным List такой
-    // реакции не было бы, пришлось бы вручную дёргать OnPropertyChanged в каждом месте, где
-    // Tracks меняется. AddRange и RemoveAll (которых у ObservableCollection нет "из коробки" в
-    // отличие от List) добавлены как обычные методы-расширения ниже — специально для того,
-    // чтобы все существующие места, где Tracks.AddRange(...)/Tracks.RemoveAll(...) уже
-    // вызывались как на List, продолжили работать без изменений.
+    // ObservableCollection, а не List — SubtitleText ("N треков · путь") зависит от Tracks.Count
+    // и должен обновляться сам при любом изменении списка. AddRange/RemoveAll добавлены ниже
+    // как extension-методы, которых у ObservableCollection нет из коробки.
     public ObservableCollection<string> Tracks { get; } = new();
 
     public PlaylistFolder()
     {
-        // См. комментарий у Tracks выше — эта подписка и есть та самая причина, по которой
-        // Tracks остаётся ObservableCollection, а не обычным List.
         Tracks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(SubtitleText));
     }
 
@@ -123,12 +110,9 @@ public class PlaylistFolder : INotifyPropertyChanged
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
-// См. комментарий у PlaylistFolder.Tracks — эти два метода существуют только для того, чтобы
-// код, писавшийся под List<string>.AddRange/.RemoveAll, продолжил компилироваться и работать
-// без изменений после перехода Tracks на ObservableCollection<string>, у которой таких методов
-// нет "из коробки". Каждый Add/Remove здесь по-прежнему поднимает своё собственное событие
-// CollectionChanged (как и обычный ObservableCollection.Add/.Remove) — это осознанно: именно на
-// нём держится реактивность SubtitleText (см. подписку в конструкторе PlaylistFolder выше).
+// Чтобы код, писавшийся под List<string>.AddRange/.RemoveAll, продолжил работать после
+// перехода Tracks на ObservableCollection<string>. Каждый Add/Remove поднимает своё
+// CollectionChanged — на нём держится реактивность SubtitleText.
 public static class ObservableCollectionExtensions
 {
     public static void AddRange<T>(this ObservableCollection<T> collection, IEnumerable<T> items)
