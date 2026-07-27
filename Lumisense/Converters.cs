@@ -4,7 +4,7 @@ using System.Windows.Data;
 
 namespace AudioPlayer;
 
-/// <summary>Показывает только имя файла без расширения и без пути к папке.</summary>
+// Только имя файла, без расширения и пути
 public class FileNameConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
@@ -14,7 +14,7 @@ public class FileNameConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>Приглушает визуально выключенные группы плейлиста (IsEnabled = false).</summary>
+// Приглушает визуально выключенные группы плейлиста (IsEnabled = false)
 public class BoolToOpacityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
@@ -24,9 +24,8 @@ public class BoolToOpacityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>Обратный BooleanToVisibilityConverter: true → Collapsed, false → Visible.
-/// Нужен там, где два блока переключаются по одному и тому же булеву свойству
-/// (например, "свёрнутое" и "развёрнутое" содержимое карточки в списке изменений).</summary>
+// Обратный BooleanToVisibilityConverter — для мест, где два блока переключаются одним и тем же
+// булевым свойством (например, свёрнутое/развёрнутое содержимое карточки в списке изменений)
 public class InverseBooleanToVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
@@ -36,9 +35,7 @@ public class InverseBooleanToVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>true, если позиция строки в списке (AlternationIndex ListView) нечётная —
-/// используется для чередующейся подсветки строк плейлиста (zebra striping), см. Style
-/// TargetType="ListViewItem" в App.xaml.</summary>
+// Нечётность позиции строки (AlternationIndex) — для чередующейся подсветки плейлиста (zebra striping)
 public class IsOddIndexConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
@@ -48,21 +45,11 @@ public class IsOddIndexConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>true, если трек (values[0] — путь к файлу, Binding Path="FilePath" на DataContext
-/// строки — PlaylistTrackRow, см. PlaylistTrackRow.cs) сейчас в избранном. Используется в
-/// DataTrigger сердечка строки трека (см. TrackItemTemplate в MainWindow.xaml) — по умолчанию
-/// показан контур сердечка приглушённым цветом, а при true шаблон переключает его на
-/// закрашенное красное сердечко.
-///
-/// MultiBinding, а не обычный однозначный Binding — второе плечо (values[1]) привязано к
-/// FavoritesChangeNotifier.Instance.Epoch и само по себе не используется, но благодаря ему у
-/// WPF есть повод перевызвать этот конвертер заново, когда избранное где-то поменялось: путь к
-/// файлу трека (values[0]) никогда не меняется сам по себе, поэтому обычный Binding никогда не
-/// перевычислился бы автоматически. Раньше вместо этого приходилось целиком пересобирать
-/// ItemsSource всего плейлиста при каждом клике по сердечку (см. старую версию
-/// MainWindow.RefreshPlaylistView) — на плейлистах с большим числом треков это заметно подвешивало
-/// интерфейс. Теперь обновляются только реально показанные на экране строки, и то только когда
-/// избранное действительно изменилось.</summary>
+// true, если трек (values[0] — FilePath строки PlaylistTrackRow) сейчас в избранном.
+// values[1] — FavoritesChangeNotifier.Instance.Epoch, сам не используется, но даёт WPF повод
+// перевызвать конвертер, когда избранное поменялось (путь к файлу сам по себе не меняется).
+// Раньше при каждом клике по сердечку пересобирался весь ItemsSource плейлиста — тормозило
+// на больших списках. Теперь обновляются только реально показанные строки.
 public class IsFavoriteMultiConverter : IMultiValueConverter
 {
     public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
@@ -72,21 +59,10 @@ public class IsFavoriteMultiConverter : IMultiValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>Видимость ListViewItem строки трека в поиске по плейлисту (см. PlaylistSearchBox
-/// в MainWindow.xaml, PlaylistSearchState.cs и SearchableTrackListViewItemStyle там же).
-/// values[0] — путь к файлу трека (Binding Path="FilePath" на DataContext строки —
-/// PlaylistTrackRow, см. PlaylistTrackRow.cs), values[1] — PlaylistSearchState.Instance.Epoch:
-/// тот же приём, что и у IsFavoriteMultiConverter выше — путь к файлу сам по себе никогда не
-/// меняется, поэтому нужен второй "триггер" на биндинг, который меняется при каждом новом
-/// поисковом запросе.
-///
-/// Фильтрует именно ЭТИМ способом (Visibility контейнера строки), а не через ICollectionView.
-/// Filter на самой коллекции PlaylistFolder.Tracks — так поиск не трогает данные плейлиста
-/// вообще (ни то, что реально проигрывается по "Далее/Назад/Перемешать", ни нумерацию треков),
-/// работает одинаково что для строк единого плоского PlaylistFoldersControl (см.
-/// MainWindow.RefreshPlaylistView), что для плоского FavoritesTrackListView, и не требует
-/// переприменять фильтр вручную каждый раз, когда ItemsSource какого-то списка полностью
-/// переприсваивается заново (как это происходит в RefreshFavoritesTrackList).</summary>
+// Видимость строки трека при поиске по плейлисту. values[0] — FilePath, values[1] —
+// PlaylistSearchState.Instance.Epoch (тот же приём, что в IsFavoriteMultiConverter).
+// Фильтрует через Visibility контейнера, а не ICollectionView.Filter на самой коллекции —
+// так поиск не трогает данные плейлиста (ни порядок в "Далее/Назад", ни нумерацию треков).
 public class TrackMatchesSearchMultiConverter : IMultiValueConverter
 {
     public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
@@ -98,9 +74,7 @@ public class TrackMatchesSearchMultiConverter : IMultiValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>Шеврон для кнопки сворачивания/разворачивания списка треков группы.
-/// Возвращает ключ нужной иконки ("IconChevronDown" / "IconChevronRight", см. папку Icons/) —
-/// SvgPathIcon.Icon биндится сюда напрямую в MainWindow.xaml и сам подставляет нужную геометрию.</summary>
+// Ключ иконки шеврона для кнопки сворачивания списка треков группы
 public class ExpandChevronConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
@@ -110,17 +84,10 @@ public class ExpandChevronConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-/// <summary>Собирает values[0]/values[1] (ширина/высота элемента) в Rect(0,0,ширина,высота) —
-/// нужен, чтобы скруглить углы у Image (см. ChangelogWindow.xaml, картинки версий/изменений):
-/// у Border есть CornerRadius, но ClipToBounds="True" на Border клипует дочерний контент
-/// ПРЯМОУГОЛЬНИКОМ, полностью игнорируя CornerRadius — это относится только к тому, как Border
-/// рисует СВОЙ СОБСТВЕННЫЙ Background/BorderBrush, а не к произвольным дочерним элементам
-/// внутри него. Единственный надёжный способ скруглить углы именно у Image — задать ему
-/// СОБСТВЕННЫЙ Clip: RectangleGeometry с RadiusX/RadiusY, размер которого равен фактическому
-/// размеру самой картинки. Geometry — Freezable, а не часть визуального дерева, поэтому
-/// RelativeSource-биндинг внутри неё недоступен (нет предка, до которого можно "дойти") — берём
-/// размер через ElementName-биндинг на сам Image (см. XAML), а MultiBinding с этим конвертером
-/// нужен потому, что Rect собирается из ДВУХ отдельных чисел (ширина и высота) разом.</summary>
+// Собирает ширину/высоту в Rect(0,0,w,h) — нужен для скругления углов у Image (ChangelogWindow.xaml).
+// Border с ClipToBounds клипует дочерний контент прямоугольником, игнорируя CornerRadius —
+// приходится задавать Image собственный Clip (RectangleGeometry). Geometry не часть визуального
+// дерева, RelativeSource внутри неё не работает, поэтому размер берём через ElementName на Image.
 public class SizeToRectConverter : IMultiValueConverter
 {
     public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
