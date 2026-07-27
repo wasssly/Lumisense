@@ -1435,18 +1435,15 @@ public partial class MainWindow : FluentWindow
 
     private void FavoritesButton_Click(object sender, RoutedEventArgs e) => SetFavoritesViewActive(!_isFavoritesView);
 
-    // Переключает панель плейлиста между обычным видом (PlaylistFoldersControl, привязан к
-    // _folders) и виртуальным плейлистом "Избранное" (FavoritesTrackListView) — оба уже лежат в
-    // разметке друг на друге (см. MainWindow.xaml), переключается только Visibility, а
-    // PlaylistFoldersControl вообще не трогается. Раньше здесь стоял единственный общий
-    // ItemsControl, который при каждом переходе перепривязывался то к _folders, то к списку
-    // избранного — то есть WPF пересоздавал контейнеры ВСЕХ папок и треков обычного плейлиста
-    // заново, даже если сам он не менялся ни на волос. На большой библиотеке это было заметно и
-    // подвешивало интерфейс на каждый переход туда и обратно.
+    // Переключает панель между обычным плейлистом (PlaylistFoldersControl, привязан к _folders)
+    // и "Избранным" (FavoritesTrackListView) — оба лежат в разметке друг на друге, переключается
+    // только Visibility, PlaylistFoldersControl не трогается. Раньше был один общий ItemsControl,
+    // который при каждом переходе перепривязывался то к _folders, то к избранному — WPF
+    // пересоздавал контейнеры всех папок и треков заново, на большой библиотеке заметно подвешивая
+    // интерфейс на каждый переход.
     //
     // Кнопки "Добавить"/"Очистить" в режиме избранного скрыты — в виртуальную группу нельзя
-    // добавлять файлы напрямую и нечего "очищать" (это не настоящая группа, а производная от
-    // сердечек на треках, см. PlaylistFolder.IsFavoritesGroup).
+    // добавлять файлы напрямую и нечего "очищать" (это производная от сердечек, а не своя группа)
     private void SetFavoritesViewActive(bool active)
     {
         _isFavoritesView = active;
@@ -1527,27 +1524,23 @@ public partial class MainWindow : FluentWindow
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
         folder.IsExpanded = !folder.IsExpanded;
 
-        // Раньше сворачивание/разворачивание работало само, через обычный WPF-биндинг
-        // Visibility вложенного ListView треков на IsExpanded. Теперь треки папки — это
-        // отдельные элементы ПЛОСКОГО списка (PlaylistTrackRow, см. RefreshPlaylistView), а не
-        // содержимое своего вложенного контрола — сворачивание/разворачивание должно физически
-        // добавить или убрать эти элементы из ItemsSource, поэтому нужен явный пересбор.
+        // Раньше сворачивание работало через обычный биндинг Visibility вложенного ListView
+        // на IsExpanded. Теперь треки папки — отдельные элементы плоского списка (PlaylistTrackRow),
+        // а не содержимое своего вложенного контрола — нужно физически добавить/убрать их
+        // из ItemsSource, отсюда явный пересбор.
         RefreshPlaylistView();
     }
 
-    // Раньше был один именованный PlaylistScrollViewer — обычный ScrollViewer, ОБЁРНУТЫЙ снаружи
-    // вокруг ItemsControl папок, дававший единый скролл на весь плейлист. Именно эта обёртка и
-    // была причиной невозможности виртуализации (см. подробный комментарий у PlaylistFoldersControl
-    // в MainWindow.xaml: ScrollViewer всегда измеряет содержимое с бесконечной доступной высотой).
+    // Раньше был один PlaylistScrollViewer, обёрнутый снаружи вокруг ItemsControl папок —
+    // именно эта обёртка мешала виртуализации (ScrollViewer всегда измеряет содержимое
+    // с бесконечной доступной высотой).
     //
-    // Теперь PlaylistFoldersControl/FavoritesTrackListView — самостоятельные, по-настоящему
-    // скроллящиеся ListView (ScrollViewer.VerticalScrollBarVisibility="Hidden", а не "Disabled" —
-    // список скроллится сам, просто без родного скроллбара), а "общий скролл" визуально
-    // сохраняется просто тем, что оба списка показывают один и тот же кастомный
-    // PlaylistScrollTrack/PlaylistScrollThumb, подключённый к ScrollViewer ТЕКУЩЕГО видимого
-    // списка. Сам ScrollViewer у каждого из них — не именованный элемент XAML, а внутренняя
-    // часть их стандартного шаблона; достаём его один раз через обход визуального дерева и
-    // кэшируем — он не меняется, пока окно живо.
+    // Теперь PlaylistFoldersControl/FavoritesTrackListView — самостоятельные скроллящиеся
+    // ListView (VerticalScrollBarVisibility="Hidden", а не "Disabled" — список скроллится сам,
+    // просто без родного скроллбара), а "общий скролл" визуально сохраняется тем, что оба списка
+    // показывают один и тот же кастомный PlaylistScrollTrack/PlaylistScrollThumb, подключённый
+    // к ScrollViewer текущего видимого списка. Сам ScrollViewer не именованный элемент XAML,
+    // а часть стандартного шаблона — достаём через обход визуального дерева и кэшируем.
     private System.Windows.Controls.ScrollViewer? _playlistFoldersScrollViewer;
     private System.Windows.Controls.ScrollViewer? _favoritesScrollViewer;
 
