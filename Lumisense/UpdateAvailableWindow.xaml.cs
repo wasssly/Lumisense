@@ -7,16 +7,9 @@ using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Модальный диалог "доступно обновление". Использование:
-///
-///     var result = await UpdateChecker.CheckAsync();
-///     if (result.Status == UpdateCheckStatus.UpdateAvailable)
-///         new UpdateAvailableWindow(result, settings) { Owner = this }.ShowDialog();
-///
-/// Сам ничего не решает о том, когда его показывать (тихо на старте только для новой версии,
-/// или всегда по кнопке в настройках) — это остаётся на вызывающей стороне.
-/// </summary>
+// Модальный диалог "доступно обновление". Когда его показывать (тихо на старте только для
+// новой версии или всегда по кнопке в настройках) — решает вызывающая сторона, сам он ничего
+// не решает про это.
 public partial class UpdateAvailableWindow : FluentWindow
 {
     private readonly UpdateCheckResult _result;
