@@ -117,6 +117,12 @@ public partial class ChangelogWindow : FluentWindow
         bool hasSelection = VersionsListBox.SelectedItem != null;
         DetailsScroll.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         NoSelectionState.Visibility = hasSelection ? Visibility.Collapsed : Visibility.Visible;
+
+        // При переключении версии правая панель раньше сохраняла позицию прокрутки
+        // от предыдущей выбранной версии (например, "внизу"), из-за чего новая версия
+        // открывалась не с начала. Сбрасываем скролл наверх при каждой смене выбора.
+        if (hasSelection)
+            DetailsScroll.ScrollToHome();
     }
 
     // ---------- Свой скроллбар списка версий (с нуля, без ScrollBar/Track) ----------
