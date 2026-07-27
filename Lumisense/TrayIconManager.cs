@@ -6,20 +6,13 @@ using System.Windows.Forms;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Обёртка над System.Windows.Forms.NotifyIcon — показывает значок в системном трее,
-/// когда окно свёрнуто, с контекстным меню (воспроизведение и открытие/выход).
-/// Вынесено в отдельный класс, чтобы не тащить using System.Windows.Forms в MainWindow
-/// (там уже есть свои Button/MessageBox из WPF, а из WinForms — тёзки с теми же именами).
-///
-/// Меню оформлено вручную под фирменный стиль Lumisense (см. остальной WPF-UI/Fluent
-/// интерфейс приложения): скруглённые углы самого выпадающего меню и подсветки пунктов
-/// (тот же радиус 6-8px, что и в плейлисте/карточках), акцентный цвет приложения
-/// (#605CFF) на подсветке выбранного пункта и на "иконке-логотипе" в шапке, минималистичные
-/// векторные иконки пунктов (нарисованы вручную GDI+, в духе Segoe Fluent icons, которыми
-/// пользуется остальной плеер), и фирменная шапка с названием приложения вместо сухого
-/// системного пункта "Открыть Lumisense".
-/// </summary>
+// Обёртка над System.Windows.Forms.NotifyIcon — значок в трее при свёрнутом окне,
+// с контекстным меню (воспроизведение, открытие/выход). Отдельный класс, чтобы не тащить
+// using System.Windows.Forms в MainWindow — там уже есть WPF-тёзки вроде Button/MessageBox.
+//
+// Меню оформлено вручную под фирменный стиль: скруглённые углы, акцент #605CFF на подсветке
+// и на иконке-логотипе в шапке, свои векторные иконки пунктов (GDI+, в духе Segoe Fluent),
+// шапка с названием приложения вместо системного "Открыть Lumisense".
 public sealed class TrayIconManager : IDisposable
 {
     // Тот же акцент, что и в остальном приложении (см. AccentFillColorDefaultBrush/App.xaml)
@@ -127,19 +120,16 @@ public sealed class TrayIconManager : IDisposable
         return SystemIcons.Application;
     }
 
-    /// <summary>Подпись текущего трека под кнопкой "Пауза"/"Продолжить" в меню — вызывается
-    /// из MainWindow при каждом PlaybackStateChanged, чтобы пункт всегда отражал реальное
-    /// состояние воспроизведения, а не просто оставался статичной надписью "Пауза".</summary>
+    // Вызывается из MainWindow на каждый PlaybackStateChanged, чтобы пункт меню всегда
+    // отражал реальное состояние, а не оставался статичной надписью "Пауза"
     public void SetPlayingState(bool isPlaying)
     {
         _playPauseItem.Text = isPlaying ? "Пауза" : "Продолжить";
         _playPauseItem.Image = TrayIcons.PlayPause(isPlaying, ForegroundColor);
     }
 
-    /// <summary>Название/исполнитель текущего трека + миниатюра обложки прямо в меню трея —
-    /// так же, как в самом мини-плеере обложка показывается рядом с названием и исполнителем
-    /// (см. MiniPlayerWindow: HeaderPanel), а не голым текстом без картинки, как было раньше.
-    /// Вызывается из MainWindow при каждом TrackInfoChanged.</summary>
+    // Название/исполнитель + миниатюра обложки прямо в меню трея, как в мини-плеере.
+    // Вызывается из MainWindow на каждый TrackInfoChanged.
     public void SetNowPlaying(string title, string artist, byte[]? artBytes)
     {
         var text = string.IsNullOrWhiteSpace(title) ? "Ничего не играет" : $"{title} — {artist}";
@@ -261,10 +251,8 @@ public sealed class TrayIconManager : IDisposable
         _currentArtThumbnail?.Dispose();
     }
 
-    /// <summary>Палитра для ToolStripProfessionalRenderer — тёмный вариант в стиле Fluent/Mica
-    /// остального приложения (нейтральные тёмно-серые фоны, акцентная подсветка выбранного
-    /// пункта), светлый — простой нейтральный светлый набор для тех, кто выбрал светлую тему
-    /// в настройках плеера.</summary>
+    // Тёмный вариант в стиле Fluent/Mica (тёмно-серые фоны, акцентная подсветка),
+    // светлый — нейтральный набор для тех, кто выбрал светлую тему
     private sealed class TrayColorTable : ProfessionalColorTable
     {
         private readonly bool _isLight;
@@ -272,9 +260,8 @@ public sealed class TrayIconManager : IDisposable
 
         private Color Background => _isLight ? Color.FromArgb(252, 252, 252) : Color.FromArgb(32, 32, 32);
 
-        // Подсветка наведённого/выбранного пункта — полупрозрачный акцент поверх фона (а не
-        // нейтральный серый, как в стандартном системном меню), чтобы выделение сразу читалось
-        // как часть фирменного стиля Lumisense, а не как обычный Windows-контрол.
+        // полупрозрачный акцент поверх фона, а не нейтральный серый — чтобы выделение читалось
+        // как часть фирменного стиля, а не как стандартный Windows-контрол
         public Color Hover => Blend(Background, Accent, _isLight ? 0.16 : 0.24);
         private Color Border => _isLight ? Color.FromArgb(218, 218, 218) : Color.FromArgb(58, 58, 61);
 
@@ -298,10 +285,8 @@ public sealed class TrayIconManager : IDisposable
             (int)(background.B + (accent.B - background.B) * amount));
     }
 
-    /// <summary>Рендерер поверх ToolStripProfessionalRenderer: рисует подсветку наведённого
-    /// пункта и разделители со скруглёнными углами (тот же приём скругления, что используется
-    /// по всему остальному интерфейсу плеера — карточки плейлиста, кнопки и т.п.), вместо
-    /// стандартных прямоугольных полос WinForms-меню.</summary>
+    // Подсветка наведённого пункта и разделители со скруглёнными углами — тот же приём,
+    // что и по всему остальному интерфейсу плеера, вместо прямоугольных полос WinForms-меню
     private sealed class RoundedMenuRenderer : ToolStripProfessionalRenderer
     {
         private readonly int _radius;
@@ -353,10 +338,8 @@ public sealed class TrayIconManager : IDisposable
         }
     }
 
-    /// <summary>ContextMenuStrip со скруглёнными углами самого выпадающего окна — фирменная
-    /// деталь оформления, которой в стандартном WinForms-меню нет из коробки. Форма окна
-    /// задаётся через Region (GDI-приём: у окна нет CornerRadius, но можно вручную обрезать
-    /// его по скруглённому пути), пересчитывается при каждом изменении размера меню.</summary>
+    // Скруглённые углы выпадающего окна меню — форма задаётся через Region (GDI-приём: у
+    // окна нет CornerRadius, обрезаем по скруглённому пути), пересчитывается при ресайзе
     private sealed class RoundedContextMenuStrip : ContextMenuStrip
     {
         private readonly int _radius;
@@ -387,10 +370,9 @@ public sealed class TrayIconManager : IDisposable
         }
     }
 
-    /// <summary>Маленькие (16x16) векторные иконки пунктов меню, нарисованные вручную через
-    /// GDI+ в духе минималистичных Segoe Fluent icons, которыми пользуется остальной плеер
-    /// (см. Icons/svg) — не растровые ассеты, а геометрия, поэтому всегда идеально ровные
-    /// на любом DPI и перекрашиваются под тему одной заменой цвета.</summary>
+    // Маленькие (16x16) векторные иконки пунктов меню, нарисованные вручную через GDI+
+    // в духе Segoe Fluent icons — геометрия, а не растровые ассеты, поэтому ровные на любом
+    // DPI и перекрашиваются под тему одной заменой цвета
     private static class TrayIcons
     {
         private const int Size = 16;
@@ -463,7 +445,7 @@ public sealed class TrayIconManager : IDisposable
     }
 }
 
-/// <summary>Небольшой хелпер поверх GDI+ Graphics — DrawRoundedRectangle отсутствует в System.Drawing "из коробки".</summary>
+// Хелпер поверх GDI+ Graphics — DrawRoundedRectangle отсутствует в System.Drawing из коробки
 internal static class GraphicsExtensions
 {
     public static void DrawRoundedRectangle(this Graphics g, Pen pen, RectangleF bounds, float radius)
