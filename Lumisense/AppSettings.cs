@@ -3,10 +3,8 @@ using System.Text.Json;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Одна сохранённая группа плейлиста (папка целиком или набор отдельных файлов) —
-/// то, что пишется в settings.json и восстанавливается при следующем запуске.
-/// </summary>
+// Одна сохранённая группа плейлиста (папка целиком или набор отдельных файлов) —
+// то, что пишется в settings.json и восстанавливается при следующем запуске
 public class SavedPlaylistFolder
 {
     public string DisplayName { get; set; } = "";
@@ -20,12 +18,9 @@ public class SavedPlaylistFolder
     public bool IsLooseFilesBucket { get; set; }
 }
 
-/// <summary>
-/// Одна настраиваемая глобальная комбинация клавиш (например, Ctrl+Alt+P).
-/// Работает через WinAPI RegisterHotKey — срабатывает даже когда окно не в фокусе.
-/// Поддерживаются модификаторы Ctrl/Alt/Shift/Win (клавиша Win отслеживается отдельно
-/// через Keyboard.IsKeyDown, т.к. Keyboard.Modifiers её не учитывает).
-/// </summary>
+// Одна настраиваемая глобальная комбинация клавиш (например, Ctrl+Alt+P), через WinAPI
+// RegisterHotKey — срабатывает даже когда окно не в фокусе. Клавиша Win отслеживается
+// отдельно через Keyboard.IsKeyDown, т.к. Keyboard.Modifiers её не учитывает.
 public class HotkeyBinding
 {
     public bool Ctrl { get; set; }
@@ -40,9 +35,7 @@ public class HotkeyBinding
     public bool IsEmpty => string.IsNullOrEmpty(Key);
 }
 
-/// <summary>
-/// Настройки приложения, сохраняемые между запусками.
-/// </summary>
+// Настройки приложения, сохраняемые между запусками
 public class AppSettings
 {
     public string Theme { get; set; } = "Dark";           // "Dark" или "Light"
@@ -162,9 +155,7 @@ public class AppSettings
     public double[] EqualizerBandGainsDb { get; set; } = new double[10];
 }
 
-/// <summary>
-/// Загрузка и сохранение настроек в %AppData%\Lumisense\settings.json
-/// </summary>
+// Загрузка и сохранение настроек в %AppData%\Lumisense\settings.json
 public static class SettingsManager
 {
     private static readonly string SettingsFilePath = Path.Combine(

@@ -2,8 +2,8 @@ using System.Windows.Media;
 
 namespace AudioPlayer;
 
-/// <summary>Обёртка над ChangeItem для UI: помимо текста сразу несёт готовые для биндинга
-/// подпись типа, ключ иконки и цвет — see ChangeTypeCatalog.</summary>
+// Обёртка над ChangeItem для UI: помимо текста сразу несёт готовые для биндинга
+// подпись типа, ключ иконки и цвет — см. ChangeTypeCatalog
 public sealed class ChangeItemViewModel
 {
     public string Text { get; }
@@ -12,8 +12,7 @@ public sealed class ChangeItemViewModel
     public string IconKey { get; }
     public SolidColorBrush TypeBrush { get; }
 
-    /// <summary>Необязательная картинка этого конкретного пункта (не всей версии) — см.
-    /// ChangeItem.Image / ChangelogImageResolver.Resolve.</summary>
+    // картинка этого конкретного пункта, не всей версии — см. ChangeItem.Image
     public string? ImageSource { get; }
 
     public bool HasImage => !string.IsNullOrWhiteSpace(ImageSource);

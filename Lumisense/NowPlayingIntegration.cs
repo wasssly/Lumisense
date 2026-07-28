@@ -4,11 +4,9 @@ using Windows.Media;
 
 namespace AudioPlayer;
 
-/// <summary>
-/// Интеграция с "Now Playing" в Windows 11 (медиа-виджет на панели задач, блокировка экрана,
-/// беспроводные наушники с кнопками) через System Media Transport Controls.
-/// Требует TargetFramework вида net8.0-windows10.0.xxxxx.0, чтобы WinRT-типы были доступны.
-/// </summary>
+// Интеграция с "Now Playing" в Windows 11 (медиа-виджет на панели задач, блокировка экрана,
+// беспроводные наушники с кнопками) через System Media Transport Controls.
+// Требует TargetFramework вида net8.0-windows10.0.xxxxx.0, чтобы WinRT-типы были доступны.
 public sealed class NowPlayingIntegration
 {
     private readonly SystemMediaTransportControls _controls;

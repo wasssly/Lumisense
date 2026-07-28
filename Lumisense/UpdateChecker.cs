@@ -10,7 +10,7 @@ namespace AudioPlayer;
 
 public enum UpdateCheckStatus { UpdateAvailable, UpToDate, Error }
 
-/// <summary>Результат обращения к GitHub — см. UpdateChecker.CheckAsync.</summary>
+// Результат обращения к GitHub — см. UpdateChecker.CheckAsync
 public sealed class UpdateCheckResult
 {
     public UpdateCheckStatus Status { get; init; }
@@ -184,7 +184,7 @@ public static class UpdateChecker
         _ => githubUrl
     };
 
-    /// <summary>Скачивает установщик во временную папку, докладывая прогресс от 0 до 1.</summary>
+    // Скачивает установщик во временную папку, докладывая прогресс от 0 до 1
     public static async Task<string> DownloadInstallerAsync(string downloadUrl, System.IProgress<double>? progress, CancellationToken ct)
     {
         string tempPath = Path.Combine(Path.GetTempPath(), "Lumisense_Setup.exe");
