@@ -105,6 +105,7 @@ public partial class SettingsWindow : FluentWindow
             GetEqBandSlider(band).Value = gain;
             GetEqBandValueText(band).Text = FormatEqGain(gain);
         }
+        RefreshEqualizerPresetsList();
 
         (_settings.UpdateDownloadSource switch
         {
@@ -555,6 +556,131 @@ public partial class SettingsWindow : FluentWindow
 
     private static string FormatEqGain(double gainDb) =>
         gainDb == 0 ? "0 дБ" : $"{(gainDb > 0 ? "+" : "")}{gainDb:0.#} дБ";
+
+    // ---------- Пресеты эквалайзера ----------
+
+    private void RefreshEqualizerPresetsList()
+    {
+        string? previouslySelected = (EqualizerPresetComboBox.SelectedItem as EqualizerPreset)?.Name;
+
+        EqualizerPresetComboBox.ItemsSource = null;
+        EqualizerPresetComboBox.ItemsSource = _owner.EqualizerPresets;
+
+        if (previouslySelected != null)
+            EqualizerPresetComboBox.SelectedItem = _owner.EqualizerPresets.FirstOrDefault(p => p.Name == previouslySelected);
+
+        UpdateEqualizerPresetButtonsState();
+    }
+
+    private void UpdateEqualizerPresetButtonsState()
+    {
+        bool hasSelection = EqualizerPresetComboBox.SelectedItem != null;
+        EqualizerApplyPresetButton.IsEnabled = hasSelection;
+        EqualizerDeletePresetButton.IsEnabled = hasSelection;
+        EqualizerExportPresetButton.IsEnabled = hasSelection;
+    }
+
+    private void EqualizerPresetComboBox_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+        => UpdateEqualizerPresetButtonsState();
+
+    private void EqualizerSavePresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedName = (EqualizerPresetComboBox.SelectedItem as EqualizerPreset)?.Name ?? "";
+        var dialog = new TextInputDialog("Сохранить пресет", "Название пресета:", selectedName) { Owner = this };
+        if (dialog.ShowDialog() != true || dialog.ResultText.Length == 0) return;
+
+        _owner.SaveEqualizerPreset(dialog.ResultText);
+        RefreshEqualizerPresetsList();
+        EqualizerPresetComboBox.SelectedItem = _owner.EqualizerPresets.FirstOrDefault(p => p.Name == dialog.ResultText.Trim());
+    }
+
+    private void EqualizerApplyPresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (EqualizerPresetComboBox.SelectedItem is not EqualizerPreset preset) return;
+
+        _owner.ApplyEqualizerPreset(preset);
+
+        // Пресет применился в MainWindow — подтягиваем актуальные значения обратно в слайдеры,
+        // так же как при обычном открытии окна (см. _isInitializing выше).
+        _isInitializing = true;
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+        {
+            double gain = _owner.GetEqualizerBandGain(band);
+            GetEqBandSlider(band).Value = gain;
+            GetEqBandValueText(band).Text = FormatEqGain(gain);
+        }
+        _isInitializing = false;
+
+        if (EqualizerEnabledCheckBox.IsChecked != true)
+        {
+            EqualizerEnabledCheckBox.IsChecked = true;
+            _owner.SetEqualizerEnabled(true);
+        }
+    }
+
+    private void EqualizerDeletePresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (EqualizerPresetComboBox.SelectedItem is not EqualizerPreset preset) return;
+
+        var confirm = System.Windows.MessageBox.Show(
+            this,
+            $"Удалить пресет \"{preset.Name}\"?",
+            "Удаление пресета",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning,
+            System.Windows.MessageBoxResult.No);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        _owner.DeleteEqualizerPreset(preset);
+        RefreshEqualizerPresetsList();
+    }
+
+    // "Поделиться" — сохраняет выбранный пресет в отдельный .json-файл, который можно переслать
+    // как обычный файл (мессенджер, почта, флешка); получатель добавляет его через "Импортировать".
+    private void EqualizerExportPresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (EqualizerPresetComboBox.SelectedItem is not EqualizerPreset preset) return;
+
+        var dialog = new Microsoft.Win32.SaveFileDialog
+        {
+            Title = "Поделиться пресетом эквалайзера",
+            Filter = "Пресет эквалайзера (*.json)|*.json",
+            FileName = $"{preset.Name}.json"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        try
+        {
+            _owner.ExportEqualizerPreset(preset, dialog.FileName);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(this, $"Не удалось сохранить пресет:\n{ex.Message}", "Ошибка",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
+    private void EqualizerImportPresetButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = "Импортировать пресет эквалайзера",
+            Filter = "Пресет эквалайзера (*.json)|*.json|Все файлы (*.*)|*.*"
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        var imported = _owner.ImportEqualizerPresetFromFile(dialog.FileName);
+        if (imported == null)
+        {
+            System.Windows.MessageBox.Show(this, "Не удалось прочитать пресет — файл повреждён или это не пресет Lumisense.",
+                "Ошибка", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            return;
+        }
+
+        RefreshEqualizerPresetsList();
+        EqualizerPresetComboBox.SelectedItem = imported;
+    }
 
     private System.Windows.Controls.Slider GetEqBandSlider(int band) => band switch
     {

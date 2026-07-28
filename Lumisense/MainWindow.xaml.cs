@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -2704,6 +2705,86 @@ public partial class MainWindow : FluentWindow
     {
         _settings.EqualizerBandGainsDb = new double[EqualizerSampleProvider.BandFrequencies.Length];
         ApplyEqualizerGainsFromSettings();
+    }
+
+    // ---------- Пресеты эквалайзера ----------
+
+    public IReadOnlyList<EqualizerPreset> EqualizerPresets => _settings.EqualizerPresets;
+
+    // Сохраняет ТЕКУЩИЕ значения полос (EqualizerBandGainsDb) как пресет с этим именем.
+    // Имя уже занято — тихо перезаписывает существующий пресет, а не плодит дубликаты:
+    // пользователь чаще всего "пересохраняет" под тем же названием, донастроив что-то,
+    // а не специально хочет несколько пресетов с одинаковым именем.
+    public void SaveEqualizerPreset(string name)
+    {
+        name = name.Trim();
+        if (name.Length == 0) return;
+
+        var gains = (double[])_settings.EqualizerBandGainsDb.Clone();
+        var existing = _settings.EqualizerPresets.FirstOrDefault(p => p.Name == name);
+        if (existing != null)
+            existing.GainsDb = gains;
+        else
+            _settings.EqualizerPresets.Add(new EqualizerPreset { Name = name, GainsDb = gains });
+
+        SettingsManager.Save(_settings);
+    }
+
+    // Применяет пресет к текущим настройкам эквалайзера — через SetEqualizerBandGain
+    // по каждой полосе, чтобы (если сейчас что-то играет) звук изменился сразу же, живьём.
+    public void ApplyEqualizerPreset(EqualizerPreset preset)
+    {
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            SetEqualizerBandGain(band, band < preset.GainsDb.Length ? preset.GainsDb[band] : 0);
+
+        SettingsManager.Save(_settings);
+    }
+
+    public void DeleteEqualizerPreset(EqualizerPreset preset)
+    {
+        _settings.EqualizerPresets.Remove(preset);
+        SettingsManager.Save(_settings);
+    }
+
+    // Экспорт пресета в отдельный .json-файл — тот же формат, что и сам пресет в settings.json
+    // (см. EqualizerPreset в AppSettings.cs), поэтому файл можно просто переслать кому-то ещё
+    // и импортировать обратно тем же методом ниже, без специального протокола обмена.
+    public void ExportEqualizerPreset(EqualizerPreset preset, string filePath)
+    {
+        string json = JsonSerializer.Serialize(preset, new JsonSerializerOptions { WriteIndented = true });
+        File.WriteAllText(filePath, json);
+    }
+
+    // Импортирует пресет из файла, ранее сохранённого через ExportEqualizerPreset (в том числе
+    // присланного кем-то другим). Имя уже занято среди существующих пресетов — добавляет
+    // суффикс " (2)", " (3)" и т.д., а не молча перезаписывает чужую настройку.
+    // Возвращает null, если файл повреждён или не похож на пресет.
+    public EqualizerPreset? ImportEqualizerPresetFromFile(string filePath)
+    {
+        EqualizerPreset? preset;
+        try
+        {
+            string json = File.ReadAllText(filePath);
+            preset = JsonSerializer.Deserialize<EqualizerPreset>(json);
+        }
+        catch
+        {
+            return null;
+        }
+
+        if (preset == null || string.IsNullOrWhiteSpace(preset.Name) || preset.GainsDb.Length == 0)
+            return null;
+
+        string baseName = preset.Name.Trim();
+        string name = baseName;
+        int suffix = 2;
+        while (_settings.EqualizerPresets.Any(p => p.Name == name))
+            name = $"{baseName} ({suffix++})";
+        preset.Name = name;
+
+        _settings.EqualizerPresets.Add(preset);
+        SettingsManager.Save(_settings);
+        return preset;
     }
 
     // Переключение "Закрепить" / "Поверх окон" прямо из контекстного меню мини-плеера

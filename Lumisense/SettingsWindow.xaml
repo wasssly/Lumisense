@@ -539,6 +539,39 @@
                                         Margin="0,16,0,0" Click="EqualizerResetButton_Click" />
                             </StackPanel>
                         </Border>
+
+                        <TextBlock Text="Пресеты" FontSize="12" FontWeight="SemiBold" Opacity="0.55" Margin="0,4,0,8" />
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Сохрани текущие настройки полос как пресет, переключайся между ними или поделись файлом пресета с кем-то ещё."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
+
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="EqualizerPresetComboBox" Grid.Column="0"
+                                              DisplayMemberPath="Name" Margin="0,0,8,0"
+                                              SelectionChanged="EqualizerPresetComboBox_SelectionChanged" />
+                                    <Button x:Name="EqualizerApplyPresetButton" Grid.Column="1" Content="Применить"
+                                            Click="EqualizerApplyPresetButton_Click" />
+                                </Grid>
+
+                                <WrapPanel>
+                                    <Button x:Name="EqualizerSavePresetButton" Content="Сохранить как пресет…"
+                                            Margin="0,0,8,8" Click="EqualizerSavePresetButton_Click" />
+                                    <Button x:Name="EqualizerDeletePresetButton" Content="Удалить"
+                                            Margin="0,0,8,8" Click="EqualizerDeletePresetButton_Click" />
+                                    <Button x:Name="EqualizerExportPresetButton" Content="Поделиться…"
+                                            ToolTip="Сохранить выбранный пресет в файл, чтобы переслать его кому-то ещё"
+                                            Margin="0,0,8,8" Click="EqualizerExportPresetButton_Click" />
+                                    <Button x:Name="EqualizerImportPresetButton" Content="Импортировать…"
+                                            ToolTip="Добавить пресет из файла, полученного от кого-то ещё"
+                                            Margin="0,0,8,8" Click="EqualizerImportPresetButton_Click" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Мини-плеер -->
