@@ -390,7 +390,8 @@
                 <Border Background="Transparent" Height="24"
                         MouseLeftButtonDown="ProgressOverlay_MouseLeftButtonDown"
                         MouseMove="ProgressOverlay_MouseMove"
-                        MouseLeftButtonUp="ProgressOverlay_MouseLeftButtonUp" />
+                        MouseLeftButtonUp="ProgressOverlay_MouseLeftButtonUp"
+                        MouseWheel="ProgressOverlay_MouseWheel" />
             </Grid>
 
             <Grid Grid.Row="1" Margin="0,2,0,0">

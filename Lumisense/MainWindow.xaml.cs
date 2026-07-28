@@ -8,6 +8,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using NAudio.Wave;
+using NAudio.Wave.SampleProviders;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
@@ -1928,8 +1929,18 @@ public partial class MainWindow : FluentWindow
             _equalizer = new EqualizerSampleProvider(_audioFile) { Enabled = _settings.EqualizerEnabled };
             ApplyEqualizerGainsFromSettings();
 
+            // Короткий (15 мс, не на слух) fade-in на старте каждого трека — маскирует щелчок,
+            // который иначе слышен в первые миллисекунды воспроизведения. Источник щелчка —
+            // "холодный старт" BiQuad-фильтров эквалайзера: их внутреннее состояние начинается
+            // с нуля, а не с реального значения сигнала, из-за чего первые несколько сэмплов
+            // дают короткий переходный процесс (тем заметнее, чем сильнее настроен эквалайзер).
+            // Фильтр включён или нет — не важно: fade-in ничего не стоит и на всякий случай
+            // сглаживает и любой другой источник щелчка при инициализации устройства вывода.
+            var fadeIn = new FadeInOutSampleProvider(_equalizer, initiallySilent: true);
+            fadeIn.BeginFadeIn(15);
+
             _outputDevice = new WaveOutEvent();
-            _outputDevice.Init(_equalizer);
+            _outputDevice.Init(fadeIn);
             _outputDevice.PlaybackStopped += OutputDevice_PlaybackStopped;
         }
         catch (Exception ex)
@@ -2781,6 +2792,25 @@ public partial class MainWindow : FluentWindow
         overlay.ReleaseMouseCapture();
         _isDraggingProgressOverlay = false;
         _isUserInteractingWithProgress = false;
+    }
+
+    // Прокрутка колесом мыши над прогресс-баром — перемотка с тем же шагом, что и хоткеи
+    // "вперёд"/"назад" (5 секунд за одно деление). e.Delta положителен при прокрутке "от себя"
+    // (вверх) — это и есть перемотка вперёд, по аналогии с VolumeRow_MouseWheel.
+    private void ProgressOverlay_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (_audioFile == null) return;
+
+        var newTime = _audioFile.CurrentTime + TimeSpan.FromSeconds(Math.Sign(e.Delta) * 5);
+        if (newTime < TimeSpan.Zero) newTime = TimeSpan.Zero;
+        if (newTime > _audioFile.TotalTime) newTime = _audioFile.TotalTime;
+
+        _audioFile.CurrentTime = newTime;
+        ProgressSlider.Value = newTime.TotalSeconds;
+        CurrentTimeText.Text = newTime.ToString(@"mm\:ss");
+        ProgressChanged?.Invoke(newTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+
+        e.Handled = true;
     }
 
     private void VolumeOverlay_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
