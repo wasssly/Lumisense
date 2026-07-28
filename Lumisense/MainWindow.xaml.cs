@@ -180,6 +180,7 @@ public partial class MainWindow : FluentWindow
         InitializeComponent();
         IconResources.SetOnAccent(PlayPauseIcon, true);
         FavoritesManager.Initialize(_settings.FavoriteTracks);
+        PlayCountManager.Initialize(_settings.PlayCounts);
 
         _progressTimer.Tick += ProgressTimer_Tick;
         ApplySettingsOnStartup();
@@ -1986,6 +1987,7 @@ public partial class MainWindow : FluentWindow
             _progressTimer.Start();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
             PlaybackStateChanged?.Invoke(true);
+            PlayCountManager.Increment(filePath);
         }
         else
         {
@@ -3025,6 +3027,7 @@ public partial class MainWindow : FluentWindow
         _settings.IsShuffleEnabled = _isShuffleEnabled;
         _settings.RepeatMode = _repeatMode.ToString();
         _settings.FavoriteTracks = FavoritesManager.GetAll();
+        _settings.PlayCounts = PlayCountManager.GetAll();
 
         SettingsManager.Save(_settings);
     }

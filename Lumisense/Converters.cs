@@ -35,6 +35,25 @@ public class InverseBooleanToVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
+// Число прослушиваний трека (values[0] — FilePath строки PlaylistTrackRow) в готовую для
+// показа строку. values[1] — PlayCountChangeNotifier.Instance.Epoch, тот же приём, что и в
+// IsFavoriteMultiConverter: путь к файлу сам по себе не меняется, Epoch даёт WPF повод
+// перевызвать конвертер, когда счётчик где-то обновился. 0 прослушиваний не показываем —
+// пустая строка вместо "0" не загромождает строки ещё не проигранных треков.
+public class PlayCountMultiConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (values.Length == 0 || values[0] is not string path) return string.Empty;
+
+        int count = PlayCountManager.GetCount(path);
+        return count > 0 ? count.ToString(culture) : string.Empty;
+    }
+
+    public object?[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 // Нечётность позиции строки (AlternationIndex) — для чередующейся подсветки плейлиста (zebra striping)
 public class IsOddIndexConverter : IValueConverter
 {

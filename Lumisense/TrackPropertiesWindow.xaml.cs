@@ -87,6 +87,9 @@ public partial class TrackPropertiesWindow : FluentWindow
         SizeValue.Text = FormatFileSize(fileInfo.Length);
         FormatValue.Text = formatText;
 
+        int playCount = PlayCountManager.GetCount(filePath);
+        PlayCountValue.Text = playCount == 0 ? "ещё не проигрывался" : playCount.ToString();
+
         DurationValue.Text = durationText;
         BitrateValue.Text = bitrateText;
         SampleRateValue.Text = sampleRateText;

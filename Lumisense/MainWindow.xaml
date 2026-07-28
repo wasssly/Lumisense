@@ -16,6 +16,7 @@
         <local:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
         <local:ExpandChevronConverter x:Key="ExpandChevronConverter" />
         <local:IsFavoriteMultiConverter x:Key="IsFavoriteMultiConverter" />
+        <local:PlayCountMultiConverter x:Key="PlayCountMultiConverter" />
         <local:TrackMatchesSearchMultiConverter x:Key="TrackMatchesSearchMultiConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
@@ -42,6 +43,7 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="30" />
                     <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Grid.ContextMenu>
@@ -96,10 +98,29 @@
                            VerticalAlignment="Center"
                            TextTrimming="CharacterEllipsis" />
 
+                <!-- Счётчик прослушиваний — MultiBinding по тому же принципу, что и сердечко
+                     ниже (см. IsFavoriteMultiConverter): путь к файлу сам по себе не меняется,
+                     PlayCountChangeNotifier.Epoch даёт WPF повод перечитать значение, когда
+                     счётчик где-то обновился. Пустая строка при 0 прослушиваний просто не рисует
+                     иконку/текст — свойство Visibility завязано на тот же текст ниже. -->
+                <StackPanel x:Name="TrackPlayCountPanel" Grid.Column="2" Orientation="Horizontal"
+                            VerticalAlignment="Center" Margin="6,0,0,0" Opacity="0.45"
+                            ToolTip="Сколько раз прослушан этот трек">
+                    <local:SvgPathIcon Icon="IconRepeat" Size="11" Margin="0,0,3,0" />
+                    <TextBlock x:Name="TrackPlayCountText" FontSize="11" VerticalAlignment="Center">
+                        <TextBlock.Text>
+                            <MultiBinding Converter="{StaticResource PlayCountMultiConverter}">
+                                <Binding Path="FilePath" />
+                                <Binding Source="{x:Static local:PlayCountChangeNotifier.Instance}" Path="Epoch" />
+                            </MultiBinding>
+                        </TextBlock.Text>
+                    </TextBlock>
+                </StackPanel>
+
                 <!-- Сердечко "добавить/убрать из избранного" на строке трека. Контур,
                      приглушённый — трек не избранный; закрашенное красное — избранный
                      (переключается DataTrigger-ом ниже по IsFavoriteMultiConverter). -->
-                <ui:Button x:Name="TrackFavoriteButton" Grid.Column="2" Appearance="Transparent"
+                <ui:Button x:Name="TrackFavoriteButton" Grid.Column="3" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="4,0,0,0"
                            Click="FavoriteButton_Click"
                            ToolTip="Добавить/убрать из избранного">
@@ -112,6 +133,11 @@
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsMouseOver}" Value="True">
                     <Setter TargetName="TrackIndexText" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="TrackPlayIcon" Property="Visibility" Value="Visible" />
+                </DataTrigger>
+                <!-- Пустая строка (0 прослушиваний) — не рисуем ни иконку, ни текст, вместо
+                     показа "0" на каждом ещё не проигранном треке. -->
+                <DataTrigger Binding="{Binding Text, ElementName=TrackPlayCountText}" Value="">
+                    <Setter TargetName="TrackPlayCountPanel" Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
                 <!-- MultiBinding, а не обычный Binding по одному только пути к файлу — путь у
                      трека никогда не меняется, поэтому обычный Binding никогда бы не

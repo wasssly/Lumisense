@@ -18,6 +18,16 @@ public class SavedPlaylistFolder
     public bool IsLooseFilesBucket { get; set; }
 }
 
+// Один сохранённый пресет эквалайзера — имя и 10 значений гейна по полосам, тот же
+// набор, что и AppSettings.EqualizerBandGainsDb. Отдельный класс (а не просто
+// Dictionary<string, double[]>), чтобы формат совпадал что при хранении в settings.json,
+// что при экспорте/импорте в отдельный .json-файл для "поделиться пресетом".
+public class EqualizerPreset
+{
+    public string Name { get; set; } = "";
+    public double[] GainsDb { get; set; } = new double[10];
+}
+
 // Одна настраиваемая глобальная комбинация клавиш (например, Ctrl+Alt+P), через WinAPI
 // RegisterHotKey — срабатывает даже когда окно не в фокусе. Клавиша Win отслеживается
 // отдельно через Keyboard.IsKeyDown, т.к. Keyboard.Modifiers её не учитывает.
@@ -153,6 +163,20 @@ public class AppSettings
     // слепо доверяют длине сохранённого массива.
     public bool EqualizerEnabled { get; set; }
     public double[] EqualizerBandGainsDb { get; set; } = new double[10];
+
+    // Именованные наборы значений эквалайзера, сохранённые пользователем — переключаются
+    // и, при необходимости, экспортируются/импортируются как отдельный .json-файл (см.
+    // MainWindow.ExportEqualizerPreset/ImportEqualizerPresetFromFile), чтобы поделиться
+    // настройкой EQ с кем-то ещё.
+    public List<EqualizerPreset> EqualizerPresets { get; set; } = new();
+
+    // ---------- Счётчик прослушиваний ----------
+    // Путь к файлу → сколько раз трек реально запускался на воспроизведение (см.
+    // PlayCountManager.Increment, вызывается из MainWindow.LoadAndPlay). Не переживший
+    // переименование/перемещение файла счётчик просто "теряется" вместе с самим ключом —
+    // это тот же компромисс, что и у остального плейлиста, который тоже хранится по
+    // абсолютным путям.
+    public Dictionary<string, int> PlayCounts { get; set; } = new();
 }
 
 // Загрузка и сохранение настроек в %AppData%\Lumisense\settings.json
