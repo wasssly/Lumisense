@@ -39,7 +39,7 @@ public partial class CoverArtWindow : FluentWindow
     // MouseDown именно в этом окне.
     private bool _receivedMouseDownHere;
 
-    public CoverArtWindow(BitmapImage art, string trackTitle)
+    public CoverArtWindow(BitmapSource art, string trackTitle)
     {
         InitializeComponent();
 

@@ -252,13 +252,17 @@ public partial class ChangelogWindow : FluentWindow
     // Единственная разница с MainWindow.AlbumArtBorder_MouseLeftButtonDown — там источник уже
     // хранится готовым BitmapImage-полем, а здесь Image.Source достаём прямо из элемента,
     // который кликнули: WPF сам, через встроенный конвертер типов, превратил строковый путь
-    // (ChangelogEntryViewModel.ImageSource) в BitmapImage при биндинге — доставать и
+    // (ChangelogEntryViewModel.ImageSource) в BitmapSource при биндинге — доставать и
     // перезагружать картинку заново не нужно.
     private CoverArtWindow? _coverArtWindow;
 
     private void ChangelogImage_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        if (sender is not System.Windows.Controls.Image { Source: System.Windows.Media.Imaging.BitmapImage bitmap }) return;
+        // WPF конвертирует строку в Image.Source через ImageSourceConverter, который отдаёт
+        // BitmapFrame, а не BitmapImage — сравнение строго на BitmapImage здесь никогда не
+        // срабатывало, поэтому клик по картинке ничего не делал. BitmapSource — общий
+        // базовый класс для обоих, CoverArtWindow принимает именно его.
+        if (sender is not System.Windows.Controls.Image { Source: System.Windows.Media.Imaging.BitmapSource bitmap }) return;
 
         if (_coverArtWindow == null)
         {

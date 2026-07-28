@@ -404,6 +404,7 @@ public partial class MiniPlayerWindow : Window
     private void PrevButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPrev();
     private void RepeatButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalToggleRepeat();
     private void RestoreButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExitMiniMode();
+    private void SettingsMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowSettingsWindow();
 
     // Синхронизирует вид кнопки повтора с фактическим режимом в основном окне — тот же набор
     // иконок/акцента, что и у RepeatButton там (см. MainWindow.SetRepeatMode), просто в
@@ -417,17 +418,14 @@ public partial class MiniPlayerWindow : Window
             case "All":
                 RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatAll", size: 12);
                 RepeatButton.Appearance = ControlAppearance.Primary;
-                RepeatButton.ToolTip = "Повтор: весь плейлист";
                 break;
             case "One":
                 RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatOne", size: 12);
                 RepeatButton.Appearance = ControlAppearance.Primary;
-                RepeatButton.ToolTip = "Повтор: один трек";
                 break;
             default:
                 RepeatButton.Icon = IconResources.Make("IconRepeatAll", size: 12);
                 RepeatButton.Appearance = ControlAppearance.Secondary;
-                RepeatButton.ToolTip = "Повтор: выключен";
                 break;
         }
     }

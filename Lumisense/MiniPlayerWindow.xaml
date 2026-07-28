@@ -102,6 +102,8 @@
              с реальными настройками, даже если их поменяли из другого места. -->
         <Border.ContextMenu>
             <ContextMenu Opened="MiniPlayerContextMenu_Opened">
+                <MenuItem Header="Настройки" Click="SettingsMenuItem_Click" />
+                <Separator />
                 <MenuItem x:Name="PinnedMenuItem" Header="Закрепить" IsCheckable="True"
                           Click="PinnedMenuItem_Click" />
                 <MenuItem x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
@@ -229,35 +231,35 @@
                         HorizontalAlignment="Center" Margin="0,8,0,10" Visibility="Collapsed">
                 <ui:Button x:Name="RepeatButton" Appearance="Secondary"
                            Width="26" Height="26" Padding="0" Margin="3,0"
-                           Click="RepeatButton_Click" ToolTip="Повтор: выключен">
+                           Click="RepeatButton_Click">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconRepeatAll" Size="12" />
                     </ui:Button.Icon>
                 </ui:Button>
                 <ui:Button x:Name="PrevButton" Appearance="Secondary"
                            Width="30" Height="30" Padding="0" Margin="3,0"
-                           Click="PrevButton_Click" ToolTip="Предыдущий">
+                           Click="PrevButton_Click">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconPrevious" />
                     </ui:Button.Icon>
                 </ui:Button>
                 <ui:Button x:Name="PlayPauseButton" Appearance="Primary"
                            Width="36" Height="36" Padding="0" Margin="3,0"
-                           Click="PlayPauseButton_Click" ToolTip="Пуск/Пауза">
+                           Click="PlayPauseButton_Click">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconPlay" />
                     </ui:Button.Icon>
                 </ui:Button>
                 <ui:Button x:Name="NextButton" Appearance="Secondary"
                            Width="30" Height="30" Padding="0" Margin="3,0"
-                           Click="NextButton_Click" ToolTip="Следующий">
+                           Click="NextButton_Click">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconNext" />
                     </ui:Button.Icon>
                 </ui:Button>
                 <ui:Button x:Name="RestoreButton" Appearance="Secondary"
                            Width="28" Height="28" Padding="0" Margin="3,0"
-                           Click="RestoreButton_Click" ToolTip="Развернуть плеер">
+                           Click="RestoreButton_Click">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconExpand" />
                     </ui:Button.Icon>
