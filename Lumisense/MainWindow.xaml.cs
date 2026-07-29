@@ -42,6 +42,13 @@ public partial class MainWindow : FluentWindow
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
 
+    // Прослушивание засчитывается не в момент старта трека, а только когда реально
+    // воспроизведена (не просто перемотана) как минимум половина композиции — см.
+    // ProgressTimer_Tick. Флаг сбрасывается на каждую новую загрузку трека в LoadAndPlay,
+    // в том числе при повторе того же трека (RepeatMode.One), чтобы каждый цикл повтора
+    // тоже мог засчитаться как отдельное прослушивание.
+    private bool _halfPlayCounted;
+
     // Плейлист теперь хранится как список групп (папка целиком или отдельные файлы).
     // Каждую группу можно включать/выключать — выключенные пропускаются при воспроизведении.
     // ObservableCollection, а не обычный List — так PlaylistFoldersControl (см.
@@ -1931,15 +1938,26 @@ public partial class MainWindow : FluentWindow
             _equalizer = new EqualizerSampleProvider(_audioFile) { Enabled = _settings.EqualizerEnabled };
             ApplyEqualizerGainsFromSettings();
 
-            // Короткий (15 мс, не на слух) fade-in на старте каждого трека — маскирует щелчок,
-            // который иначе слышен в первые миллисекунды воспроизведения. Источник щелчка —
-            // "холодный старт" BiQuad-фильтров эквалайзера: их внутреннее состояние начинается
-            // с нуля, а не с реального значения сигнала, из-за чего первые несколько сэмплов
-            // дают короткий переходный процесс (тем заметнее, чем сильнее настроен эквалайзер).
+            // Fade-in на старте каждого трека — маскирует щелчок, который иначе слышен в первые
+            // миллисекунды воспроизведения. Источник щелчка — "холодный старт" BiQuad-фильтров
+            // эквалайзера: их внутреннее состояние (память предыдущих сэмплов) начинается с
+            // нуля, а не с реального значения сигнала, из-за чего первые сэмплы дают короткий
+            // переходный процесс, пока фильтр не "устаканится" на реальном сигнале.
+            //
+            // Длительность переходного процесса зависит от частоты полосы: чем она ниже, тем
+            // дольше фильтр успокаивается (для самой нижней полосы, 31 Гц, при Q=0.9 это около
+            // 40-50 мс — на порядок дольше, чем у верхних полос). 15 мс, которые стояли здесь
+            // раньше, с запасом хватало для середины и верха спектра, но не для низких частот:
+            // громкость успевала выйти на 100% до того, как фильтр низкой полосы доигрывал свой
+            // переходный процесс, и остаток был слышен как щелчок поверх уже небезшумного
+            // сигнала — особенно заметно при сильно поднятых низких частотах. 70 мс перекрывают
+            // и этот худший случай с запасом, оставаясь короче, чем ухо воспринимает как
+            // отдельный "нарастающий" звук, а не мгновенный старт.
+            //
             // Фильтр включён или нет — не важно: fade-in ничего не стоит и на всякий случай
             // сглаживает и любой другой источник щелчка при инициализации устройства вывода.
             var fadeIn = new FadeInOutSampleProvider(_equalizer, initiallySilent: true);
-            fadeIn.BeginFadeIn(15);
+            fadeIn.BeginFadeIn(70);
 
             _outputDevice = new WaveOutEvent();
             _outputDevice.Init(fadeIn);
@@ -1958,6 +1976,7 @@ public partial class MainWindow : FluentWindow
         ProgressSlider.Maximum = Math.Max(_audioFile.TotalTime.TotalSeconds, 0.01);
 
         _currentTrackPath = filePath;
+        _halfPlayCounted = false;
 
         LoadAlbumArt(filePath);
 
@@ -1988,7 +2007,6 @@ public partial class MainWindow : FluentWindow
             _progressTimer.Start();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
             PlaybackStateChanged?.Invoke(true);
-            PlayCountManager.Increment(filePath);
         }
         else
         {
@@ -2948,6 +2966,20 @@ public partial class MainWindow : FluentWindow
 
         CurrentTimeText.Text = _audioFile.CurrentTime.ToString(@"mm\:ss");
         ProgressChanged?.Invoke(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+
+        // Прослушивание засчитывается не при старте трека, а только когда реально
+        // воспроизведена как минимум половина композиции — иначе быстрое переключение между
+        // треками (превью, случайный клик не по тому треку и т.п.) накручивало бы счётчик
+        // прослушиваний ровно так же, как и полноценное прослушивание. Флаг на трек
+        // выставляется один раз (см. сброс в LoadAndPlay) — дальнейшая перемотка туда-сюда
+        // после набора половины повторный инкремент не даёт.
+        if (!_halfPlayCounted && _audioFile.TotalTime.TotalSeconds > 0
+            && _audioFile.CurrentTime.TotalSeconds >= _audioFile.TotalTime.TotalSeconds / 2.0)
+        {
+            _halfPlayCounted = true;
+            if (_currentTrackPath != null)
+                PlayCountManager.Increment(_currentTrackPath);
+        }
 
         if (++_ticksSinceLastAutoSave >= AutoSaveEveryNTicks)
         {

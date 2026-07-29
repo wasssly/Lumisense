@@ -21,8 +21,10 @@ public static class PlayCountManager
 
     public static int GetCount(string path) => _counts.TryGetValue(path, out int count) ? count : 0;
 
-    // Вызывается при каждом реальном старте воспроизведения трека (см. MainWindow.LoadAndPlay,
-    // ветка autoPlay) — не при простом восстановлении последнего трека на паузе при запуске.
+    // Вызывается не при старте трека, а когда реально воспроизведена как минимум половина
+    // композиции (см. MainWindow.ProgressTimer_Tick и флаг _halfPlayCounted) — простой старт
+    // или короткое переключение трека прослушиванием не считается, как и восстановление
+    // последнего трека на паузе при запуске.
     public static void Increment(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return;
