@@ -603,17 +603,22 @@ public partial class MiniPlayerWindow : Window
     //
     // "Overlay" (новый): ControlsPanel переносится в ТУ ЖЕ строку Grid.Row="0", что и
     // HeaderPanel (обложка+название+исполнитель) — при наведении не окно растёт, а сама
-    // HeaderPanel прячется и её место в той же самой строке занимают кнопки; Margin у
-    // ControlsPanel специально не трогаем — при разработке разметки оказалось, что "0,12,0,6"
-    // (подобранное для строки под прогресс-баром) даёт ту же итоговую высоту содержимого
-    // (36 + 12 + 6 = 54), что и HeaderPanel (42 обложка + 10 + 2 отступов = 54) — то есть
-    // визуально кнопки в overlay-режиме встают ровно на то же место, что и обложка с
-    // текстом, без каких-либо дополнительных подгонок отступов.
+    // HeaderPanel прячется и её место в той же самой строке занимают кнопки. Margin у
+    // ControlsPanel в этом режиме сдвинут чуть ниже относительно "Below" (по отдельной
+    // просьбе — в "Below" всё осталось как было, тут запросили именно "новый вид"), но
+    // сумма отступов та же 18px ("0,12,0,6" вместо "0,8,0,10"), поэтому итоговая высота
+    // содержимого строки не меняется (36 + 12 + 6 = 54) и по-прежнему совпадает с
+    // HeaderPanel (42 обложка + 10 + 2 отступов = 54) — кнопки в overlay-режиме встают
+    // ровно на то же место, что и обложка с текстом, без каких-либо дополнительных подгонок.
+    private static readonly Thickness ControlsPanelMarginBelow = new(0, 8, 0, 10);
+    private static readonly Thickness ControlsPanelMarginOverlay = new(0, 12, 0, 6);
+
     public void ApplyButtonsLayoutMode()
     {
         _buttonsOverlayMode = _mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay";
 
         Grid.SetRow(ControlsPanel, _buttonsOverlayMode ? 0 : 2);
+        ControlsPanel.Margin = _buttonsOverlayMode ? ControlsPanelMarginOverlay : ControlsPanelMarginBelow;
 
         // Сбрасываем в состояние "курсор снаружи" — даже если мышь на самом деле сейчас
         // висит над окном (маловероятно ровно в момент переключения настройки, но не

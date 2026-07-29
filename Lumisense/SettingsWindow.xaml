@@ -121,28 +121,32 @@
 
         <!-- Заголовок окна настроек. ui:TitleBar перехватывает клики в СВОИХ границах на
              уровне Win32 (WM_NCHITTEST → HTCAPTION) ещё до того, как они доходят до обычных
-             WPF-элементов — тот же приём, что и у TitleClickArea в MainWindow.xaml: кнопка
-             "Развернуть" вынесена в отдельную колонку СЛЕВА от TitleBar, а не наложена поверх
-             него, иначе клики по ней просто не доходили бы.
+             WPF-элементов — тот же приём, что и у TitleClickArea в MainWindow.xaml, здесь
+             просто зеркально: кнопка "Развернуть" вынесена в отдельную колонку СПРАВА от
+             TitleBar, а не наложена поверх него, иначе клики по ней просто не доходили бы.
+             TitleBar при этом сам рисует свои кнопки (свернуть/закрыть) у правого края СВОЕЙ
+             колонки — а раз его колонка теперь заканчивается перед колонкой "Развернуть", то
+             и его кнопки естественным образом оказываются вплотную к ней, то есть кнопка
+             "Развернуть" встаёт прямо рядом с кнопками управления окном, как и просили.
              Видна, только когда сейчас реально открыт мини-плеер (см. ExpandMiniPlayerButton_Click
              и его инициализацию в InitializeSettings) — разворачивать нечего, если и так открыто
              основное окно. -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <ui:Button Grid.Column="0" x:Name="ExpandMiniPlayerButton" Appearance="Transparent"
-                       Width="34" Height="34" Padding="0" Margin="10,0,0,0"
+            <ui:TitleBar Grid.Column="0" Title="Настройки" ShowMaximize="False" />
+
+            <ui:Button Grid.Column="1" x:Name="ExpandMiniPlayerButton" Appearance="Transparent"
+                       Width="34" Height="34" Padding="0" Margin="0,0,4,0"
                        VerticalAlignment="Center" ToolTip="Развернуть в обычное окно"
                        Click="ExpandMiniPlayerButton_Click" Visibility="Collapsed">
                 <ui:Button.Icon>
                     <local:SvgPathIcon Icon="IconExpand" Size="15" />
                 </ui:Button.Icon>
             </ui:Button>
-
-            <ui:TitleBar Grid.Column="1" Title="Настройки" ShowMaximize="False" />
         </Grid>
 
         <Grid Grid.Row="1">
