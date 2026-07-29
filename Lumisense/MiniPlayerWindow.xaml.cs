@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -76,6 +77,10 @@ public partial class MiniPlayerWindow : Window
     private POINT _dragStartCursor;
     private RECT _dragStartRect;
 
+    // См. ApplyButtonsLayoutMode — true, когда в настройках выбран режим "кнопки на месте
+    // обложки" (AppSettings.MiniPlayerButtonsLayout == "Overlay") вместо прежнего "снизу".
+    private bool _buttonsOverlayMode;
+
     public MiniPlayerWindow(MainWindow mainWindow)
     {
         InitializeComponent();
@@ -89,6 +94,7 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.ShuffleStateChanged += OnShuffleStateChanged;
 
         Height = CollapsedHeight;
+        ApplyButtonsLayoutMode();
 
         // Сразу отображаем текущее состояние плеера
         OnTrackInfoChanged(_mainWindow.CurrentTitle, _mainWindow.CurrentArtist, _mainWindow.CurrentArtBrush);
@@ -585,16 +591,59 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.SaveMiniPlayerPosition(Left, Top);
     }
 
+    // Применяет выбранный в настройках режим расположения кнопок управления (см.
+    // AppSettings.MiniPlayerButtonsLayout). Вызывается при открытии мини-плеера и повторно,
+    // если пользователь переключил настройку прямо сейчас, пока мини-плеер открыт (см.
+    // MainWindow.ApplyMiniPlayerButtonsLayoutLive) — по той же схеме, что и
+    // UpdateSecondaryButton для кнопки повтора/шафла.
+    //
+    // "Below" (по умолчанию, как было всегда): ControlsPanel — отдельная строка Grid.Row="2"
+    // под прогресс-баром, скрытая по умолчанию; при наведении окно физически подрастает
+    // (CollapsedHeight → ExpandedHeight), чтобы освободить под неё место.
+    //
+    // "Overlay" (новый): ControlsPanel переносится в ТУ ЖЕ строку Grid.Row="0", что и
+    // HeaderPanel (обложка+название+исполнитель) — при наведении не окно растёт, а сама
+    // HeaderPanel прячется и её место в той же самой строке занимают кнопки; Margin у
+    // ControlsPanel специально не трогаем — при разработке разметки оказалось, что "0,8,0,10"
+    // (подобранное для строки под прогресс-баром) даёт ту же итоговую высоту содержимого
+    // (36 + 8 + 10 = 54), что и HeaderPanel (42 обложка + 10 + 2 отступов = 54) — то есть
+    // визуально кнопки в overlay-режиме встают ровно на то же место, что и обложка с
+    // текстом, без каких-либо дополнительных подгонок отступов.
+    public void ApplyButtonsLayoutMode()
+    {
+        _buttonsOverlayMode = _mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay";
+
+        Grid.SetRow(ControlsPanel, _buttonsOverlayMode ? 0 : 2);
+
+        // Сбрасываем в состояние "курсор снаружи" — даже если мышь на самом деле сейчас
+        // висит над окном (маловероятно ровно в момент переключения настройки, но не
+        // невозможно): следующий RootBorder_MouseEnter/Leave сам всё поправит, а начинать
+        // с заведомо согласованного состояния (обложка видна, кнопки скрыты, окно свёрнуто)
+        // надёжнее, чем пытаться угадать, в каком из двух РАЗНЫХ по смыслу "развёрнутых"
+        // состояний старого и нового режима мы сейчас находимся.
+        HeaderPanel.Visibility = Visibility.Visible;
+        ControlsPanel.Visibility = Visibility.Collapsed;
+        Height = CollapsedHeight;
+    }
+
     private void RootBorder_MouseEnter(object sender, MouseEventArgs e)
     {
         ControlsPanel.Visibility = Visibility.Visible;
-        Height = ExpandedHeight;
+
+        if (_buttonsOverlayMode)
+            HeaderPanel.Visibility = Visibility.Collapsed;
+        else
+            Height = ExpandedHeight;
     }
 
     private void RootBorder_MouseLeave(object sender, MouseEventArgs e)
     {
         ControlsPanel.Visibility = Visibility.Collapsed;
-        Height = CollapsedHeight;
+
+        if (_buttonsOverlayMode)
+            HeaderPanel.Visibility = Visibility.Visible;
+        else
+            Height = CollapsedHeight;
     }
 
     // Прокрутка колесом мыши в любом месте мини-плеера крутит громкость — тот же шаг

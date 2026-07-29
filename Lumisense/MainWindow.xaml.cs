@@ -2746,6 +2746,13 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.UpdateSecondaryButton();
     }
 
+    // Аналог ApplyMiniPlayerSecondaryButtonLive для настройки "расположение кнопок" (снизу /
+    // на месте обложки, см. AppSettings.MiniPlayerButtonsLayout).
+    public void ApplyMiniPlayerButtonsLayoutLive()
+    {
+        _miniPlayerWindow?.ApplyButtonsLayoutMode();
+    }
+
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
     //
     // Настройки читаются/пишутся здесь, а не прямо из SettingsWindow, по той же причине, что и

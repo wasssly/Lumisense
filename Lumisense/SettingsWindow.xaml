@@ -578,7 +578,27 @@
                     <StackPanel x:Name="PageMiniPlayer" Visibility="Collapsed">
                         <TextBlock Text="Мини-плеер" Style="{StaticResource PageTitleStyle}" />
 
+                        <!-- Быстрый выход из мини-режима прямо отсюда — удобно, если сейчас открыт
+                             именно мини-плеер и до основного окна тянуться неохота (та же кнопка,
+                             что и RestoreButton в самом мини-плеере, просто продублирована сюда).
+                             Активна, только пока мини-плеер действительно открыт (см.
+                             ExpandMiniPlayerButton_Click и его инициализацию в InitializeSettings) —
+                             разворачивать нечего, если сейчас и так открыто основное окно. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Grid.Column="0" Text="Свернуть мини-плеер обратно в обычное окно"
+                                           VerticalAlignment="Center" TextWrapping="Wrap" />
+                                <ui:Button Grid.Column="1" x:Name="ExpandMiniPlayerButton" Appearance="Secondary"
+                                           Content="Развернуть" Padding="14,8" Margin="12,0,0,0"
+                                           Click="ExpandMiniPlayerButton_Click" />
+                            </Grid>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
                             <StackPanel>
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
@@ -624,6 +644,21 @@
                                              Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,8" />
                                 <RadioButton x:Name="MiniSecondaryShuffleRadio" Content="Перемешать" GroupName="MiniSecondaryButton"
                                              Checked="MiniSecondaryButtonRadio_Changed" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. AppSettings.MiniPlayerButtonsLayout и MiniPlayerWindow.ApplyButtonsLayoutMode
+                             за подробностями, чем отличаются режимы. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Расположение кнопок управления" Margin="0,0,0,8" />
+                                <RadioButton x:Name="MiniButtonsBelowRadio"
+                                             Content="Снизу (окно немного подрастает при наведении)"
+                                             GroupName="MiniButtonsLayout" Checked="MiniButtonsLayoutRadio_Changed"
+                                             Margin="0,0,0,8" />
+                                <RadioButton x:Name="MiniButtonsOverlayRadio"
+                                             Content="На месте обложки и названия (размер окна не меняется)"
+                                             GroupName="MiniButtonsLayout" Checked="MiniButtonsLayoutRadio_Changed" />
                             </StackPanel>
                         </Border>
                     </StackPanel>

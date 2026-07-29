@@ -96,6 +96,15 @@ public partial class SettingsWindow : FluentWindow
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
         MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
         MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault();
+        MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
+        MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
+
+        // "Развернуть" имеет смысл, только пока мини-плеер реально открыт — раскрывать
+        // тогда нечего. Состояние снимается один раз при открытии окна настроек (см.
+        // комментарий у самой кнопки в XAML) — не отслеживаем live, потому что закрыть
+        // мини-плеер, не закрывая при этом заодно и окно настроек, обычным путём
+        // (кнопками интерфейса) невозможно.
+        ExpandMiniPlayerButton.IsEnabled = _owner.IsMiniMode;
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
@@ -505,6 +514,20 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.MiniPlayerSecondaryButton = MiniSecondaryShuffleRadio.IsChecked == true ? "Shuffle" : "Repeat";
         _owner.ApplyMiniPlayerSecondaryButtonLive();
+    }
+
+    private void MiniButtonsLayoutRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerButtonsLayout = MiniButtonsOverlayRadio.IsChecked == true ? "Overlay" : "Below";
+        _owner.ApplyMiniPlayerButtonsLayoutLive();
+    }
+
+    private void ExpandMiniPlayerButton_Click(object sender, RoutedEventArgs e)
+    {
+        _owner.ExitMiniMode();
+        ExpandMiniPlayerButton.IsEnabled = false;
     }
 
     // ---------- Эквалайзер ----------
