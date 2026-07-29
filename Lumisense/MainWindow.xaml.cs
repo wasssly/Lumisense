@@ -576,6 +576,8 @@ public partial class MainWindow : FluentWindow
         _mediaHotKeys.ShufflePressed += () => Dispatcher.Invoke(() => ShuffleButton_Click(this, new RoutedEventArgs()));
         _mediaHotKeys.RepeatPressed += () => Dispatcher.Invoke(() => RepeatButton_Click(this, new RoutedEventArgs()));
         _mediaHotKeys.DeleteTrackPressed += () => Dispatcher.Invoke(DeleteCurrentTrackFromDiskHotkey);
+        _mediaHotKeys.SeekForwardPressed += () => Dispatcher.Invoke(() => SeekBy(5));
+        _mediaHotKeys.SeekBackwardPressed += () => Dispatcher.Invoke(() => SeekBy(-5));
         _mediaHotKeys.ApplyCustomHotkeys(_settings);
 
         // Интеграция с Now Playing Windows 11 (панель задач, блокировка экрана, наушники с кнопками)
@@ -2983,14 +2985,14 @@ public partial class MainWindow : FluentWindow
         _isUserInteractingWithProgress = false;
     }
 
-    // Прокрутка колесом мыши над прогресс-баром — перемотка с тем же шагом, что и хоткеи
-    // "вперёд"/"назад" (5 секунд за одно деление). e.Delta положителен при прокрутке "от себя"
-    // (вверх) — это и есть перемотка вперёд, по аналогии с VolumeRow_MouseWheel.
-    private void ProgressOverlay_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    // Перемотка колесом мыши над прогресс-баром и хоткеями "перемотка вперёд"/"назад" (см.
+    // подписку на _mediaHotKeys.SeekForwardPressed/SeekBackwardPressed) — общий шаг в 5 секунд,
+    // общий код клампинга по границам трека и обновления UI.
+    private void SeekBy(double seconds)
     {
         if (_audioFile == null) return;
 
-        var newTime = _audioFile.CurrentTime + TimeSpan.FromSeconds(Math.Sign(e.Delta) * 5);
+        var newTime = _audioFile.CurrentTime + TimeSpan.FromSeconds(seconds);
         if (newTime < TimeSpan.Zero) newTime = TimeSpan.Zero;
         if (newTime > _audioFile.TotalTime) newTime = _audioFile.TotalTime;
 
@@ -2998,7 +3000,16 @@ public partial class MainWindow : FluentWindow
         ProgressSlider.Value = newTime.TotalSeconds;
         CurrentTimeText.Text = newTime.ToString(@"mm\:ss");
         ProgressChanged?.Invoke(newTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+    }
 
+    // Прокрутка колесом мыши над прогресс-баром — перемотка с тем же шагом, что и хоткеи
+    // "вперёд"/"назад" (5 секунд за одно деление). e.Delta положителен при прокрутке "от себя"
+    // (вверх) — это и есть перемотка вперёд, по аналогии с VolumeRow_MouseWheel.
+    private void ProgressOverlay_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (_audioFile == null) return;
+
+        SeekBy(Math.Sign(e.Delta) * 5);
         e.Handled = true;
     }
 

@@ -226,9 +226,15 @@
                         MouseLeftButtonUp="Progress_MouseLeftButtonUp" />
             </Grid>
 
-            <!-- Кнопки — показываются только при наведении курсора на окно -->
+            <!-- Кнопки — показываются только при наведении курсора на окно. Верхний/нижний
+                 отступы специально подобраны так, чтобы их сумма не менялась (12+6=18, как и
+                 было 8+10=18) — общая высота содержимого строки остаётся 54px (36 высота
+                 кнопки + 18 отступов), просто сдвинута чуть ниже внутри этих же 54px. Это
+                 важно для overlay-режима (см. ApplyButtonsLayoutMode в code-behind): кнопки
+                 там встают на место строки с обложкой, и высота обеих строк должна совпадать
+                 без дополнительных подгонок. -->
             <StackPanel x:Name="ControlsPanel" Grid.Row="2" Orientation="Horizontal"
-                        HorizontalAlignment="Center" Margin="0,8,0,10" Visibility="Collapsed">
+                        HorizontalAlignment="Center" Margin="0,12,0,6" Visibility="Collapsed">
                 <ui:Button x:Name="SecondaryButton" Appearance="Secondary"
                            Width="26" Height="26" Padding="0" Margin="3,0"
                            Click="SecondaryButton_Click">

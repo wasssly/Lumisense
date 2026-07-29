@@ -12,7 +12,7 @@ namespace AudioPlayer;
 
 public partial class SettingsWindow : FluentWindow
 {
-    private enum HotkeyTarget { None, PlayPause, Next, Previous, Stop, VolumeUp, VolumeDown, Mute, Shuffle, Repeat, DeleteTrack }
+    private enum HotkeyTarget { None, PlayPause, Next, Previous, Stop, VolumeUp, VolumeDown, Mute, Shuffle, Repeat, DeleteTrack, SeekForward, SeekBackward }
 
     private readonly AppSettings _settings;
     private readonly MainWindow _owner;
@@ -99,12 +99,12 @@ public partial class SettingsWindow : FluentWindow
         MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
         MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
 
-        // "Развернуть" имеет смысл, только пока мини-плеер реально открыт — раскрывать
-        // тогда нечего. Состояние снимается один раз при открытии окна настроек (см.
-        // комментарий у самой кнопки в XAML) — не отслеживаем live, потому что закрыть
-        // мини-плеер, не закрывая при этом заодно и окно настроек, обычным путём
+        // "Развернуть" в заголовке имеет смысл, только пока мини-плеер реально открыт —
+        // разворачивать тогда нечего. Состояние снимается один раз при открытии окна
+        // настроек (см. комментарий у самой кнопки в XAML) — не отслеживаем live, потому что
+        // закрыть мини-плеер, не закрывая при этом заодно и окно настроек, обычным путём
         // (кнопками интерфейса) невозможно.
-        ExpandMiniPlayerButton.IsEnabled = _owner.IsMiniMode;
+        ExpandMiniPlayerButton.Visibility = _owner.IsMiniMode ? Visibility.Visible : Visibility.Collapsed;
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
@@ -139,6 +139,8 @@ public partial class SettingsWindow : FluentWindow
         RefreshHotkeyButtonText(HotkeyTarget.Shuffle);
         RefreshHotkeyButtonText(HotkeyTarget.Repeat);
         RefreshHotkeyButtonText(HotkeyTarget.DeleteTrack);
+        RefreshHotkeyButtonText(HotkeyTarget.SeekForward);
+        RefreshHotkeyButtonText(HotkeyTarget.SeekBackward);
 
         SearchResultsList.ItemsSource = _searchResults;
         BuildSearchIndex();
@@ -527,7 +529,7 @@ public partial class SettingsWindow : FluentWindow
     private void ExpandMiniPlayerButton_Click(object sender, RoutedEventArgs e)
     {
         _owner.ExitMiniMode();
-        ExpandMiniPlayerButton.IsEnabled = false;
+        ExpandMiniPlayerButton.Visibility = Visibility.Collapsed;
     }
 
     // ---------- Эквалайзер ----------
@@ -831,6 +833,8 @@ public partial class SettingsWindow : FluentWindow
     private void HotkeyShuffleButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Shuffle);
     private void HotkeyRepeatButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Repeat);
     private void HotkeyDeleteTrackButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.DeleteTrack);
+    private void HotkeySeekForwardButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.SeekForward);
+    private void HotkeySeekBackwardButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.SeekBackward);
 
     private void HotkeyPlayPauseClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.PlayPause);
     private void HotkeyNextClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Next);
@@ -842,6 +846,8 @@ public partial class SettingsWindow : FluentWindow
     private void HotkeyShuffleClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Shuffle);
     private void HotkeyRepeatClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Repeat);
     private void HotkeyDeleteTrackClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.DeleteTrack);
+    private void HotkeySeekForwardClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.SeekForward);
+    private void HotkeySeekBackwardClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.SeekBackward);
 
     private void BeginRecording(HotkeyTarget target)
     {
@@ -942,6 +948,8 @@ public partial class SettingsWindow : FluentWindow
             case HotkeyTarget.Shuffle: _settings.HotkeyShuffle = binding; break;
             case HotkeyTarget.Repeat: _settings.HotkeyRepeat = binding; break;
             case HotkeyTarget.DeleteTrack: _settings.HotkeyDeleteTrack = binding; break;
+            case HotkeyTarget.SeekForward: _settings.HotkeySeekForward = binding; break;
+            case HotkeyTarget.SeekBackward: _settings.HotkeySeekBackward = binding; break;
         }
     }
 
@@ -957,6 +965,8 @@ public partial class SettingsWindow : FluentWindow
         HotkeyTarget.Shuffle => _settings.HotkeyShuffle,
         HotkeyTarget.Repeat => _settings.HotkeyRepeat,
         HotkeyTarget.DeleteTrack => _settings.HotkeyDeleteTrack,
+        HotkeyTarget.SeekForward => _settings.HotkeySeekForward,
+        HotkeyTarget.SeekBackward => _settings.HotkeySeekBackward,
         _ => new HotkeyBinding()
     };
 
@@ -972,6 +982,8 @@ public partial class SettingsWindow : FluentWindow
         HotkeyTarget.Shuffle => HotkeyShuffleButton,
         HotkeyTarget.Repeat => HotkeyRepeatButton,
         HotkeyTarget.DeleteTrack => HotkeyDeleteTrackButton,
+        HotkeyTarget.SeekForward => HotkeySeekForwardButton,
+        HotkeyTarget.SeekBackward => HotkeySeekBackwardButton,
         _ => throw new ArgumentOutOfRangeException(nameof(target))
     };
 

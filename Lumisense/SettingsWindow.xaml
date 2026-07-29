@@ -119,7 +119,31 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="Настройки" ShowMaximize="False" />
+        <!-- Заголовок окна настроек. ui:TitleBar перехватывает клики в СВОИХ границах на
+             уровне Win32 (WM_NCHITTEST → HTCAPTION) ещё до того, как они доходят до обычных
+             WPF-элементов — тот же приём, что и у TitleClickArea в MainWindow.xaml: кнопка
+             "Развернуть" вынесена в отдельную колонку СЛЕВА от TitleBar, а не наложена поверх
+             него, иначе клики по ней просто не доходили бы.
+             Видна, только когда сейчас реально открыт мини-плеер (см. ExpandMiniPlayerButton_Click
+             и его инициализацию в InitializeSettings) — разворачивать нечего, если и так открыто
+             основное окно. -->
+        <Grid Grid.Row="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <ui:Button Grid.Column="0" x:Name="ExpandMiniPlayerButton" Appearance="Transparent"
+                       Width="34" Height="34" Padding="0" Margin="10,0,0,0"
+                       VerticalAlignment="Center" ToolTip="Развернуть в обычное окно"
+                       Click="ExpandMiniPlayerButton_Click" Visibility="Collapsed">
+                <ui:Button.Icon>
+                    <local:SvgPathIcon Icon="IconExpand" Size="15" />
+                </ui:Button.Icon>
+            </ui:Button>
+
+            <ui:TitleBar Grid.Column="1" Title="Настройки" ShowMaximize="False" />
+        </Grid>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -578,27 +602,7 @@
                     <StackPanel x:Name="PageMiniPlayer" Visibility="Collapsed">
                         <TextBlock Text="Мини-плеер" Style="{StaticResource PageTitleStyle}" />
 
-                        <!-- Быстрый выход из мини-режима прямо отсюда — удобно, если сейчас открыт
-                             именно мини-плеер и до основного окна тянуться неохота (та же кнопка,
-                             что и RestoreButton в самом мини-плеере, просто продублирована сюда).
-                             Активна, только пока мини-плеер действительно открыт (см.
-                             ExpandMiniPlayerButton_Click и его инициализацию в InitializeSettings) —
-                             разворачивать нечего, если сейчас и так открыто основное окно. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Grid.Column="0" Text="Свернуть мини-плеер обратно в обычное окно"
-                                           VerticalAlignment="Center" TextWrapping="Wrap" />
-                                <ui:Button Grid.Column="1" x:Name="ExpandMiniPlayerButton" Appearance="Secondary"
-                                           Content="Развернуть" Padding="14,8" Margin="12,0,0,0"
-                                           Click="ExpandMiniPlayerButton_Click" />
-                            </Grid>
-                        </Border>
-
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
                             <StackPanel>
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
@@ -819,6 +823,40 @@
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyRepeatButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
                                                Click="HotkeyRepeatClearButton_Click" ToolTip="Очистить">
+                                               <ui:Button.Icon>
+                                                   <local:SvgPathIcon Icon="IconDismiss" />
+                                               </ui:Button.Icon>
+                                           </ui:Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Перемотка вперёд (5 сек)" VerticalAlignment="Center" />
+                                    <ui:Button Grid.Column="1" x:Name="HotkeySeekForwardButton" Appearance="Secondary"
+                                               MinWidth="140" Margin="8,0,4,0" Click="HotkeySeekForwardButton_Click" />
+                                    <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                               Click="HotkeySeekForwardClearButton_Click" ToolTip="Очистить">
+                                               <ui:Button.Icon>
+                                                   <local:SvgPathIcon Icon="IconDismiss" />
+                                               </ui:Button.Icon>
+                                           </ui:Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Перемотка назад (5 сек)" VerticalAlignment="Center" />
+                                    <ui:Button Grid.Column="1" x:Name="HotkeySeekBackwardButton" Appearance="Secondary"
+                                               MinWidth="140" Margin="8,0,4,0" Click="HotkeySeekBackwardButton_Click" />
+                                    <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                               Click="HotkeySeekBackwardClearButton_Click" ToolTip="Очистить">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>

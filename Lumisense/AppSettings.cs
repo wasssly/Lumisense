@@ -137,6 +137,13 @@ public class AppSettings
     public HotkeyBinding HotkeyShuffle { get; set; } = new() { Ctrl = true, Alt = true, Key = "U" };
     public HotkeyBinding HotkeyRepeat { get; set; } = new() { Ctrl = true, Alt = true, Key = "R" };
 
+    // Перемотка на несколько секунд вперёд/назад — тот же шаг (5 секунд), что и колесо мыши
+    // над прогресс-баром (см. MainWindow.SeekBy). По умолчанию — та же схема Ctrl+Alt, что и
+    // у остальных хоткеев, плюс Shift, чтобы не совпасть с уже занятыми Ctrl+Alt+Right/Left
+    // (следующий/предыдущий трек).
+    public HotkeyBinding HotkeySeekForward { get; set; } = new() { Ctrl = true, Alt = true, Shift = true, Key = "Right" };
+    public HotkeyBinding HotkeySeekBackward { get; set; } = new() { Ctrl = true, Alt = true, Shift = true, Key = "Left" };
+
     // Без Flags: default (пустая) — намеренно не включена по умолчанию, в отличие от остальных
     // хоткеев. Необратимое действие (хоть и через корзину), пользователь должен назначить
     // комбинацию сам, а не рисковать случайно удалить трек хоткеем по умолчанию.
