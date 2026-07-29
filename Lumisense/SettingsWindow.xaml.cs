@@ -94,6 +94,8 @@ public partial class SettingsWindow : FluentWindow
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
+        MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
+        MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault();
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
@@ -495,6 +497,14 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.MiniPlayerPinned = MiniPinnedCheckBox.IsChecked == true;
+    }
+
+    private void MiniSecondaryButtonRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerSecondaryButton = MiniSecondaryShuffleRadio.IsChecked == true ? "Shuffle" : "Repeat";
+        _owner.ApplyMiniPlayerSecondaryButtonLive();
     }
 
     // ---------- Эквалайзер ----------

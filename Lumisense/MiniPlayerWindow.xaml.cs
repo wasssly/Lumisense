@@ -86,13 +86,14 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.PlaybackStateChanged += OnPlaybackStateChanged;
         _mainWindow.VolumeChanged += OnVolumeChanged;
         _mainWindow.RepeatModeChanged += OnRepeatModeChanged;
+        _mainWindow.ShuffleStateChanged += OnShuffleStateChanged;
 
         Height = CollapsedHeight;
 
         // Сразу отображаем текущее состояние плеера
         OnTrackInfoChanged(_mainWindow.CurrentTitle, _mainWindow.CurrentArtist, _mainWindow.CurrentArtBrush);
         OnPlaybackStateChanged(_mainWindow.IsPlayingNow);
-        OnRepeatModeChanged(_mainWindow.CurrentRepeatModeName);
+        UpdateSecondaryButton();
 
         // Название могло быть длинным ещё до открытия мини-плеера — пересчитываем бегущую
         // строку после первого прохода layout, когда TitleClipBorder.ActualWidth уже известен.
@@ -402,32 +403,75 @@ public partial class MiniPlayerWindow : Window
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPlayPause();
     private void NextButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalNext();
     private void PrevButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPrev();
-    private void RepeatButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalToggleRepeat();
     private void RestoreButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExitMiniMode();
     private void SettingsMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowSettingsWindow();
 
+    // Компактное окно мини-плеера — под кнопку повтора и кнопку "перемешать" одновременно
+    // места нет (в отличие от основного окна, где показаны обе), поэтому здесь всего одна
+    // "вторая" кнопка, а какую из двух функций она выполняет, выбирается в настройках (см.
+    // AppSettings.MiniPlayerSecondaryButton и SettingsWindow, страница "Мини-плеер").
+    // SecondaryButton в разметке — один и тот же элемент под обе функции, она либо повтор,
+    // либо шафл, никогда не обе сразу.
+    private bool ShowsShuffleButton => _mainWindow.Settings.MiniPlayerSecondaryButton == "Shuffle";
+
+    private void SecondaryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (ShowsShuffleButton)
+            _mainWindow.ExternalToggleShuffle();
+        else
+            _mainWindow.ExternalToggleRepeat();
+    }
+
     // Синхронизирует вид кнопки повтора с фактическим режимом в основном окне — тот же набор
     // иконок/акцента, что и у RepeatButton там (см. MainWindow.SetRepeatMode), просто в
-    // уменьшенном размере под мини-плеер. Вызывается и при открытии мини-плеера (текущее
-    // состояние на момент создания — см. конструктор), и при каждой смене режима откуда
-    // угодно (эта же кнопка, кнопка в основном окне или хоткей).
+    // уменьшенном размере под мини-плеер. Применяется только если сейчас выбрана функция
+    // "Повтор" (см. ShowsShuffleButton) — иначе кнопка сейчас показывает шафл, и трогать её
+    // вид отсюда не нужно (когда пользователь переключит настройку обратно, UpdateSecondaryButton
+    // сама подставит актуальный режим повтора).
     private void OnRepeatModeChanged(string modeName)
     {
+        if (ShowsShuffleButton) return;
+
         switch (modeName)
         {
             case "All":
-                RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatAll", size: 12);
-                RepeatButton.Appearance = ControlAppearance.Primary;
+                SecondaryButton.Icon = IconResources.MakeOnAccent("IconRepeatAll", size: 12);
+                SecondaryButton.Appearance = ControlAppearance.Primary;
                 break;
             case "One":
-                RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatOne", size: 12);
-                RepeatButton.Appearance = ControlAppearance.Primary;
+                SecondaryButton.Icon = IconResources.MakeOnAccent("IconRepeatOne", size: 12);
+                SecondaryButton.Appearance = ControlAppearance.Primary;
                 break;
             default:
-                RepeatButton.Icon = IconResources.Make("IconRepeatAll", size: 12);
-                RepeatButton.Appearance = ControlAppearance.Secondary;
+                SecondaryButton.Icon = IconResources.Make("IconRepeatAll", size: 12);
+                SecondaryButton.Appearance = ControlAppearance.Secondary;
                 break;
         }
+    }
+
+    // Зеркальный аналог OnRepeatModeChanged для перемешивания — применяется, только если
+    // сейчас выбрана функция "Перемешать" (см. ShowsShuffleButton), по той же причине.
+    private void OnShuffleStateChanged(bool enabled)
+    {
+        if (!ShowsShuffleButton) return;
+
+        SecondaryButton.Icon = enabled
+            ? IconResources.MakeOnAccent("IconShuffle", size: 12)
+            : IconResources.Make("IconShuffle", size: 12);
+        SecondaryButton.Appearance = enabled ? ControlAppearance.Primary : ControlAppearance.Secondary;
+    }
+
+    // Вызывается при открытии мини-плеера (см. конструктор) и сразу же, если пользователь
+    // переключил настройку "какую функцию показывать" в окне настроек прямо сейчас, пока
+    // мини-плеер открыт (см. MainWindow.ApplyMiniPlayerSecondaryButtonLive) — перерисовывает
+    // SecondaryButton под актуально выбранную функцию, используя уже известное из основного
+    // окна текущее состояние (так же, как конструктор поступает с play/pause при открытии).
+    public void UpdateSecondaryButton()
+    {
+        if (ShowsShuffleButton)
+            OnShuffleStateChanged(_mainWindow.CurrentIsShuffleEnabled);
+        else
+            OnRepeatModeChanged(_mainWindow.CurrentRepeatModeName);
     }
 
     // Подставляем актуальное состояние настроек прямо перед показом меню — на случай, если
@@ -602,6 +646,7 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.PlaybackStateChanged -= OnPlaybackStateChanged;
         _mainWindow.VolumeChanged -= OnVolumeChanged;
         _mainWindow.RepeatModeChanged -= OnRepeatModeChanged;
+        _mainWindow.ShuffleStateChanged -= OnShuffleStateChanged;
         base.OnClosed(e);
     }
 }

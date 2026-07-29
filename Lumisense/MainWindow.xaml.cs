@@ -147,6 +147,12 @@ public partial class MainWindow : FluentWindow
     // окном, чем бы режим ни переключили: этой кнопкой, кнопкой в основном окне или хоткеем.
     public event Action<string>? RepeatModeChanged;
 
+    // Зеркальный аналог RepeatModeChanged для кнопки "Перемешать" — тоже нужен мини-плееру
+    // (см. AppSettings.MiniPlayerSecondaryButton: он может показывать либо повтор, либо
+    // перемешать), и по той же причине: состояние может поменяться откуда угодно — кнопкой
+    // в основном окне, кнопкой в мини-плеере или хоткеем.
+    public event Action<bool>? ShuffleStateChanged;
+
     // Отдельно от VolumeSlider_ValueChanged (который дёргается и при загрузке сохранённой
     // громкости на старте) — только для мини-плеера, который показывает всплывающий
     // индикатор процентов при изменении громкости хоткеями/скроллом. Аргумент — итоговая
@@ -171,6 +177,9 @@ public partial class MainWindow : FluentWindow
     // воспроизведения при своём создании — см. конструктор MiniPlayerWindow).
     public string CurrentRepeatModeName => _repeatMode.ToString();
 
+    // Зеркальный аналог CurrentRepeatModeName для перемешивания — см. ShuffleStateChanged.
+    public bool CurrentIsShuffleEnabled => _isShuffleEnabled;
+
     // Полноразмерная обложка текущего трека (или null, если у трека нет обложки/тегов).
     // Хранится отдельно от ImageBrush, которым залит AlbumArtBorder, потому что окну
     // просмотра обложки (CoverArtWindow) нужен именно исходный BitmapImage, а не Brush.
@@ -191,6 +200,7 @@ public partial class MainWindow : FluentWindow
         PlayCountManager.Initialize(_settings.PlayCounts);
 
         _progressTimer.Tick += ProgressTimer_Tick;
+        _hotkeyTrackStepTimer.Tick += (_, _) => CommitPendingHotkeyTrackStep();
         ApplySettingsOnStartup();
 
         // Не await — намеренно "запустили и забыли": файловая проверка треков и загрузка
@@ -557,8 +567,8 @@ public partial class MainWindow : FluentWindow
         // Глобальные медиаклавиши (Play/Pause, Next, Prev, Stop) — работают даже без фокуса на окне
         _mediaHotKeys = new GlobalMediaHotKeys(this);
         _mediaHotKeys.PlayPausePressed += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
-        _mediaHotKeys.NextPressed += () => Dispatcher.Invoke(PlayNextTrack);
-        _mediaHotKeys.PreviousPressed += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
+        _mediaHotKeys.NextPressed += () => Dispatcher.Invoke(HandleHotkeyNext);
+        _mediaHotKeys.PreviousPressed += () => Dispatcher.Invoke(HandleHotkeyPrevious);
         _mediaHotKeys.StopPressed += () => Dispatcher.Invoke(() => StopButton_Click(this, new RoutedEventArgs()));
         _mediaHotKeys.VolumeUpPressed += () => Dispatcher.Invoke(() => ChangeVolumeBy(0.02));
         _mediaHotKeys.VolumeDownPressed += () => Dispatcher.Invoke(() => ChangeVolumeBy(-0.02));
@@ -2304,11 +2314,49 @@ public partial class MainWindow : FluentWindow
 
     private void PrevButton_Click(object sender, RoutedEventArgs e)
     {
-        var active = FlattenActive();
-        if (active.Count == 0) return;
+        if (ComputePreviousTrackPath(GetCurrentTrackPath()) is { } prevPath)
+            LoadAndPlay(prevPath, autoPlay: _isPlaying);
+    }
 
-        string? currentPath = GetCurrentTrackPath();
-        string prevPath;
+    private void NextButton_Click(object sender, RoutedEventArgs e) => PlayNextTrack();
+
+    private void PlayNextTrack()
+    {
+        if (ComputeNextTrackPath(GetCurrentTrackPath()) is { } nextPath)
+            LoadAndPlay(nextPath, autoPlay: _isPlaying);
+    }
+
+    // Чистое вычисление пути к следующему/предыдущему треку — без загрузки и воспроизведения.
+    // Вынесено из PlayNextTrack/PrevButton_Click, чтобы им же можно было "прокрутить" несколько
+    // шагов вперёд/назад подряд (см. HandleHotkeyNext/HandleHotkeyPrevious) не запуская
+    // декодирование аудио на каждый промежуточный шаг — сама эта функция ничего не декодирует,
+    // только двигает индекс по активному плейлисту либо по истории шафла (см. комментарий
+    // над GetShuffleHistoryTrack — там же и мутация истории, она достаточно дешёвая, чтобы
+    // звать её хоть на каждое сообщение WM_HOTKEY при зажатой клавише).
+    private string? ComputeNextTrackPath(string? currentPath)
+    {
+        var active = FlattenActive();
+        if (active.Count == 0) return null;
+
+        if (_isShuffleEnabled)
+        {
+            // Если перед этим переключались назад по истории шафла, "вперёд" сначала
+            // возвращает туда, откуда уходили назад, а не сразу к новому случайному треку —
+            // и только когда история исчерпана, генерируем новый случайный трек и дописываем
+            // его в конец.
+            return GetShuffleHistoryTrack(+1, active, currentPath)
+                   ?? AppendNewShuffleTrack(active, currentPath);
+        }
+
+        int posInActive = currentPath != null ? active.IndexOf(currentPath) : -1;
+        int nextPos = posInActive < 0 ? 0 : (posInActive + 1) % active.Count;
+        return active[nextPos];
+    }
+
+    private string? ComputePreviousTrackPath(string? currentPath)
+    {
+        var active = FlattenActive();
+        if (active.Count == 0) return null;
 
         if (_isShuffleEnabled)
         {
@@ -2317,45 +2365,68 @@ public partial class MainWindow : FluentWindow
             // "назад", раньше которого история не заходит), подбираем случайный трек и
             // дописываем его в начало истории, чтобы дальнейшие "вперёд"/"назад" оставались
             // последовательными.
-            prevPath = GetShuffleHistoryTrack(-1, active, currentPath) ?? PrependNewShuffleTrack(active, currentPath);
-        }
-        else
-        {
-            int posInActive = currentPath != null ? active.IndexOf(currentPath) : -1;
-            int prevPos = posInActive <= 0 ? active.Count - 1 : posInActive - 1;
-            prevPath = active[prevPos];
+            return GetShuffleHistoryTrack(-1, active, currentPath)
+                   ?? PrependNewShuffleTrack(active, currentPath);
         }
 
-        LoadAndPlay(prevPath, autoPlay: _isPlaying);
+        int posInActive = currentPath != null ? active.IndexOf(currentPath) : -1;
+        int prevPos = posInActive <= 0 ? active.Count - 1 : posInActive - 1;
+        return active[prevPos];
     }
 
-    private void NextButton_Click(object sender, RoutedEventArgs e) => PlayNextTrack();
+    // ---------- Быстрое переключение треков зажатой хоткей-клавишей ----------
+    //
+    // У Next/Previous в GlobalMediaHotKeys намеренно снят MOD_NOREPEAT (см. её комментарий) —
+    // пока клавиша зажата, Windows шлёт WM_HOTKEY на той же частоте, что и обычный повтор
+    // клавиатуры (обычно 20-30 раз в секунду). Раньше каждое такое сообщение напрямую дёргало
+    // PlayNextTrack()/PrevButton_Click(), а это тяжёлая операция: пересоздание AudioFileReader,
+    // эквалайзера, устройства вывода, чтение тегов и обложки — на один трек уходит заметно
+    // больше времени, чем 30-50 мс между повторами. Сообщения WM_HOTKEY копились в очереди
+    // быстрее, чем успевали обрабатываться, и мини-плеер (получающий обновления только через
+    // события типа TrackInfoChanged/ProgressChanged) "подвисал" и показывал название трека
+    // с задержкой — фактически донагоняя обработку уже отпущенной клавиши.
+    //
+    // Вместо загрузки каждого промежуточного трека по очереди: первое нажатие в серии
+    // применяется сразу (обычный однократный тап остаётся мгновенным), а если следующее
+    // нажатие пришло раньше HotkeyTrackStepThrottleMs — это, скорее всего, автоповтор зажатой
+    // клавиши, и вместо немедленной загрузки мы просто продвигаем "отложенную" целевую
+    // позицию (дёшево, без декодирования) и откладываем реальную загрузку на
+    // _hotkeyTrackStepTimer. Итог: пока клавиша зажата, реально грузится только конечный
+    // трек, один раз, вскоре после того как нажатия прекратились.
+    private const int HotkeyTrackStepThrottleMs = 200;
+    private readonly DispatcherTimer _hotkeyTrackStepTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
+    private string? _pendingHotkeyTrackStepPath;
+    private DateTime _lastHotkeyTrackStepCommit = DateTime.MinValue;
 
-    private void PlayNextTrack()
+    private void HandleHotkeyNext() => HandleHotkeyTrackStep(ComputeNextTrackPath);
+
+    private void HandleHotkeyPrevious() => HandleHotkeyTrackStep(ComputePreviousTrackPath);
+
+    private void HandleHotkeyTrackStep(Func<string?, string?> computeNext)
     {
-        var active = FlattenActive();
-        if (active.Count == 0) return;
+        string? fromPath = _pendingHotkeyTrackStepPath ?? GetCurrentTrackPath();
+        if (computeNext(fromPath) is not { } targetPath) return;
 
-        string? currentPath = GetCurrentTrackPath();
-        string nextPath;
+        _pendingHotkeyTrackStepPath = targetPath;
+        _hotkeyTrackStepTimer.Stop();
 
-        if (_isShuffleEnabled)
-        {
-            // Если перед этим переключались назад по истории шафла, "вперёд" сначала
-            // возвращает туда, откуда уходили назад, а не сразу к новому случайному треку —
-            // и только когда история исчерпана, генерируем новый случайный трек и дописываем
-            // его в конец.
-            nextPath = GetShuffleHistoryTrack(+1, active, currentPath)
-                       ?? AppendNewShuffleTrack(active, currentPath);
-        }
+        bool looksLikeHeldKeyRepeat =
+            (DateTime.UtcNow - _lastHotkeyTrackStepCommit).TotalMilliseconds < HotkeyTrackStepThrottleMs;
+
+        if (looksLikeHeldKeyRepeat)
+            _hotkeyTrackStepTimer.Start();
         else
-        {
-            int posInActive = currentPath != null ? active.IndexOf(currentPath) : -1;
-            int nextPos = posInActive < 0 ? 0 : (posInActive + 1) % active.Count;
-            nextPath = active[nextPos];
-        }
+            CommitPendingHotkeyTrackStep();
+    }
 
-        LoadAndPlay(nextPath, autoPlay: _isPlaying);
+    private void CommitPendingHotkeyTrackStep()
+    {
+        _hotkeyTrackStepTimer.Stop();
+        _lastHotkeyTrackStepCommit = DateTime.UtcNow;
+
+        if (_pendingHotkeyTrackStepPath is not { } path) return;
+        _pendingHotkeyTrackStepPath = null;
+        LoadAndPlay(path, autoPlay: _isPlaying);
     }
 
     private string GetRandomTrack(List<string> activeTracks, string? excludePath)
@@ -2505,6 +2576,7 @@ public partial class MainWindow : FluentWindow
         _isShuffleEnabled = enabled;
         ShuffleButton.Appearance = _isShuffleEnabled ? ControlAppearance.Primary : ControlAppearance.Secondary;
         IconResources.SetOnAccent(ShuffleIcon, _isShuffleEnabled);
+        ShuffleStateChanged?.Invoke(_isShuffleEnabled);
 
         // Старая история шафла относится к предыдущему "заезду" по плейлисту — начинаем
         // её заново, чтобы "назад" не утаскивал в состояние из совсем другого включения.
@@ -2664,6 +2736,14 @@ public partial class MainWindow : FluentWindow
     public void ApplyMiniPlayerThemeLive()
     {
         if (_miniPlayerWindow != null) _miniPlayerWindow.ApplyThemeLive();
+    }
+
+    // Позволяет окну настроек мгновенно переключить, какую функцию выполняет вторая кнопка
+    // мини-плеера (повтор/перемешать — см. AppSettings.MiniPlayerSecondaryButton), если он
+    // сейчас открыт, не дожидаясь его переоткрытия.
+    public void ApplyMiniPlayerSecondaryButtonLive()
+    {
+        _miniPlayerWindow?.UpdateSecondaryButton();
     }
 
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
@@ -2844,6 +2924,7 @@ public partial class MainWindow : FluentWindow
     public void ExternalNext() => PlayNextTrack();
     public void ExternalPrev() => PrevButton_Click(this, new RoutedEventArgs());
     public void ExternalToggleRepeat() => RepeatButton_Click(this, new RoutedEventArgs());
+    public void ExternalToggleShuffle() => ShuffleButton_Click(this, new RoutedEventArgs());
 
     // Используется и колесом мыши над ползунком громкости в главном окне (см.
     // VolumeOverlay_MouseWheel), и колесом мыши над мини-плеером целиком

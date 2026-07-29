@@ -104,6 +104,12 @@ public class AppSettings
     public bool MiniPlayerAlwaysOnTop { get; set; } = true;
     public bool MiniPlayerPinned { get; set; }               // Запрещает перетаскивание окна мышью
 
+    // Какая из двух кнопок (повтор/перемешать) показывается в компактном мини-плеере — там
+    // места хватает только под одну "вторую" кнопку рядом с play/pause и next/prev (в отличие
+    // от основного окна, где показаны обе). "Repeat" или "Shuffle", по умолчанию "Repeat" —
+    // так сохраняется прежнее поведение мини-плеера для тех, кто уже им пользуется.
+    public string MiniPlayerSecondaryButton { get; set; } = "Repeat";
+
     // Место на экране, куда пользователь перетащил мини-плеер в последний раз.
     // null означает "ещё ни разу не задавалось" — тогда используется положение по умолчанию.
     public double? MiniPlayerLeft { get; set; }
