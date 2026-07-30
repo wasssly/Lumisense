@@ -1818,6 +1818,16 @@ public partial class MainWindow : FluentWindow
         System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{row.FilePath}\"");
     }
 
+    private void CopyTrackNameMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+
+        // То же самое имя, что видно строкой в плейлисте — просто имя файла без расширения и
+        // пути (см. FileNameConverter), а не название/исполнитель из тегов: плейлист их не
+        // показывает, так что и тут копируем ровно то, что человек видит на экране.
+        System.Windows.Clipboard.SetText(Path.GetFileNameWithoutExtension(row.FilePath));
+    }
+
     private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;

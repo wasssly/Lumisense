@@ -35,6 +35,16 @@ public static class PlayCountManager
 
     // Копия, а не сам словарь — чтобы вызывающий код не мог испортить внутреннее состояние
     public static Dictionary<string, int> GetAll() => new(_counts);
+
+    // Полный сброс — используется окном статистики (см. StatisticsWindow.ResetStatsButton_Click)
+    // после подтверждения пользователем. Bump() уведомляет все привязанные к счётчику строки
+    // плейлиста (см. PlayCountChangeNotifier) — их бейджики с числом прослушиваний исчезнут
+    // сразу, без необходимости перестраивать весь список.
+    public static void Reset()
+    {
+        _counts.Clear();
+        PlayCountChangeNotifier.Instance.Bump();
+    }
 }
 
 // Лёгкий bindable-объект по тому же принципу, что и FavoritesChangeNotifier: путь к файлу

@@ -60,6 +60,7 @@
                         </MenuItem>
                         <Separator />
                         <MenuItem Header="Показать в проводнике" Click="ShowInExplorerMenuItem_Click" />
+                        <MenuItem Header="Копировать имя трека" Click="CopyTrackNameMenuItem_Click" />
                         <MenuItem Header="Копировать путь к файлу" Click="CopyPathMenuItem_Click" />
                         <MenuItem Header="Копировать файл" Click="CopyFileMenuItem_Click" />
                         <Separator />

@@ -162,6 +162,14 @@
 
                     <TextBlock x:Name="StatsSinceText" FontSize="11" Opacity="0.45" TextWrapping="Wrap"
                                HorizontalAlignment="Center" TextAlignment="Center" Visibility="Collapsed" />
+
+                    <ui:Button x:Name="ResetStatsButton" Appearance="Secondary" Content="Сбросить статистику"
+                               HorizontalAlignment="Center" Margin="0,16,0,0" Padding="14,8"
+                               Click="ResetStatsButton_Click">
+                        <ui:Button.Icon>
+                            <local:SvgPathIcon Icon="IconDelete" Size="14" />
+                        </ui:Button.Icon>
+                    </ui:Button>
                 </StackPanel>
             </ScrollViewer>
 

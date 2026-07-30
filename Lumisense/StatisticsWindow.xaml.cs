@@ -26,6 +26,14 @@ public partial class StatisticsWindow : FluentWindow
 
     private async Task LoadAsync()
     {
+        // На повторный вызов (см. ResetStatsButton_Click) состояние с прошлой загрузки могло
+        // остаться "показан контент" или "показано пустое состояние" — приводим к единому
+        // стартовому виду, как при самом первом открытии окна.
+        LoadingState.Visibility = Visibility.Visible;
+        EmptyState.Visibility = Visibility.Collapsed;
+        ContentScroll.Visibility = Visibility.Collapsed;
+        StatsSinceText.Visibility = Visibility.Collapsed;
+
         var played = PlayCountManager.GetAll().Where(kv => kv.Value > 0).ToList();
 
         if (played.Count == 0)
@@ -112,14 +120,21 @@ public partial class StatisticsWindow : FluentWindow
         ContentScroll.Visibility = Visibility.Visible;
     }
 
+    // Секунды видны на всех масштабах, вплоть до "0 сек" — чтобы пара секунд прослушивания
+    // была видна в статистике сразу же, а не терялась за обобщённым "меньше минуты": сумма
+    // копится в MainWindow.ProgressTimer_Tick на каждый тик таймера прогресса (250 мс), а не
+    // только после какого-то порога прослушанности трека — в отличие от PlayCountManager
+    // (который считает "прослушивания" только при достижении половины трека, чтобы не
+    // накручивать счётчик от короткого предпросмотра), суммарное время должно отражать
+    // ровно то время, что реально играло, вплоть до пары секунд.
     private static string FormatListenDuration(double totalSeconds)
     {
         var span = TimeSpan.FromSeconds(totalSeconds);
 
         if (span.TotalDays >= 1) return $"{(int)span.TotalDays} дн {span.Hours} ч";
         if (span.TotalHours >= 1) return $"{(int)span.TotalHours} ч {span.Minutes} мин";
-        if (span.TotalMinutes >= 1) return $"{(int)span.TotalMinutes} мин";
-        return "меньше минуты";
+        if (span.TotalMinutes >= 1) return $"{(int)span.TotalMinutes} мин {span.Seconds} сек";
+        return $"{(int)span.TotalSeconds} сек";
     }
 
     // Русское склонение "прослушивание/прослушивания/прослушиваний" по числу — те же три
@@ -135,6 +150,33 @@ public partial class StatisticsWindow : FluentWindow
             : "прослушиваний";
 
         return $"{count} {word}";
+    }
+
+    // Сброс необратим (счётчики прослушиваний по трекам и суммарное время теряются
+    // безвозвратно), поэтому — MessageBox с YesNo и предупреждающей иконкой, тот же паттерн
+    // подтверждения, что и у MainWindow.ClearPlaylistButton_Click/DeleteTrackFromDiskMenuItem_Click,
+    // с той же осторожностью: результат по умолчанию — No, чтобы случайный Enter не сработал
+    // как согласие.
+    private void ResetStatsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = System.Windows.MessageBox.Show(
+            this,
+            "Сбросить всю статистику прослушивания?\n\nСчётчики прослушиваний по всем трекам и суммарное " +
+            "время обнулятся. Сами файлы и плейлист не затрагиваются. Отменить это действие нельзя.",
+            "Сброс статистики",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning,
+            System.Windows.MessageBoxResult.No);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        PlayCountManager.Reset();
+        _settings.TotalListenSeconds = 0;
+        _settings.StatsStartedAt = null;
+        _settings.PlayCounts = PlayCountManager.GetAll();
+        SettingsManager.Save(_settings);
+
+        _ = LoadAsync();
     }
 
     private sealed class TopArtistRow
