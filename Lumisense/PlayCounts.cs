@@ -36,7 +36,8 @@ public static class PlayCountManager
     // Копия, а не сам словарь — чтобы вызывающий код не мог испортить внутреннее состояние
     public static Dictionary<string, int> GetAll() => new(_counts);
 
-    // Сброс одного трека — контекстное меню плейлиста (см. MainWindow.ResetTrackPlayCountMenuItem_Click).
+    // Сброс одного трека — кнопка у строки в топ-треках окна статистики (см.
+    // StatisticsWindow.ResetTrackPlayCountButton_Click).
     // В отличие от Reset() ниже (сбрасывает вообще всё, из окна статистики), тут удаляем
     // только один ключ, если он вообще есть — если трек ни разу не прослушивался, тихо
     // ничего не делаем.

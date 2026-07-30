@@ -70,7 +70,6 @@
                                 <local:SvgPathIcon Icon="IconEdit" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Сбросить прослушивания" Click="ResetTrackPlayCountMenuItem_Click" />
                         <Separator />
                         <MenuItem Header="Убрать из плейлиста" Click="RemoveTrackMenuItem_Click">
                             <MenuItem.Icon>

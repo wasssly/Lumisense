@@ -415,6 +415,17 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- См. AppSettings.ShowTrackChangeToast и TrackChangeToastWindow. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="TrackChangeToastCheckBox" Content="Уведомление о смене трека"
+                                          Checked="TrackChangeToastCheckBox_Changed" Unchecked="TrackChangeToastCheckBox_Changed"
+                                          Margin="0,0,0,4" />
+                                <TextBlock Text="Маленькая карточка с обложкой и названием в углу экрана — появляется на пару секунд при каждом переключении трека и пропадает сама."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Эквалайзер -->

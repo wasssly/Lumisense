@@ -82,6 +82,7 @@ public partial class StatisticsWindow : FluentWindow
             .Select((t, i) => new TopTrackRow
             {
                 Rank = i + 1,
+                Path = t.Path,
                 Title = t.Title,
                 Artist = t.Artist,
                 CountText = PluralizeListens(t.Count)
@@ -157,6 +158,21 @@ public partial class StatisticsWindow : FluentWindow
     // подтверждения, что и у MainWindow.ClearPlaylistButton_Click/DeleteTrackFromDiskMenuItem_Click,
     // с той же осторожностью: результат по умолчанию — No, чтобы случайный Enter не сработал
     // как согласие.
+    // Сброс одного трека из топ-списка — без подтверждения (в отличие от полного сброса
+    // выше): откатывается одним повторным прослушиванием, ничего не удаляет безвозвратно,
+    // тот же уровень серьёзности, что раньше был у аналогичного пункта в контекстном меню
+    // плейлиста (перенесён сюда).
+    private void ResetTrackPlayCountButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: TopTrackRow row }) return;
+
+        PlayCountManager.ResetTrack(row.Path);
+        _settings.PlayCounts = PlayCountManager.GetAll();
+        SettingsManager.Save(_settings);
+
+        _ = LoadAsync();
+    }
+
     private void ResetStatsButton_Click(object sender, RoutedEventArgs e)
     {
         var confirm = System.Windows.MessageBox.Show(
@@ -189,6 +205,7 @@ public partial class StatisticsWindow : FluentWindow
     private sealed class TopTrackRow
     {
         public int Rank { get; init; }
+        public string Path { get; init; } = "";
         public string Title { get; init; } = "";
         public string Artist { get; init; } = "";
         public string CountText { get; init; } = "";

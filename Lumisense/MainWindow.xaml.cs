@@ -123,6 +123,7 @@ public partial class MainWindow : FluentWindow
     private MiniPlayerWindow? _miniPlayerWindow;
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
+    private TrackChangeToastWindow? _trackChangeToastWindow;
     private CoverArtWindow? _coverArtWindow;
     private bool _isExiting;
 
@@ -1828,15 +1829,6 @@ public partial class MainWindow : FluentWindow
         System.Windows.Clipboard.SetText(Path.GetFileNameWithoutExtension(row.FilePath));
     }
 
-    // Не спрашиваем подтверждения (в отличие от полного сброса в StatisticsWindow или удаления
-    // файла с диска) — это откатывается одним повторным прослушиванием и ничего не удаляет
-    // безвозвратно, тот же уровень серьёзности, что и у "Убрать из плейлиста" рядом.
-    private void ResetTrackPlayCountMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
-        PlayCountManager.ResetTrack(row.FilePath);
-    }
-
     private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -2064,6 +2056,7 @@ public partial class MainWindow : FluentWindow
             _progressTimer.Start();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
             PlaybackStateChanged?.Invoke(true);
+            ShowTrackChangeToast();
         }
         else
         {
@@ -2807,6 +2800,20 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.ApplyInfoModeLive();
     }
 
+    // Всплывающее уведомление о смене трека (см. AppSettings.ShowTrackChangeToast и
+    // TrackChangeToastWindow) — вызывается только из ветки autoPlay в LoadAndPlay, то есть
+    // на реальный старт воспроизведения нового трека, а не на обычное возобновление после
+    // паузы (PlayPauseButton_Click не вызывает LoadAndPlay вовсе) и не на восстановление
+    // последнего трека на паузе при запуске приложения (autoPlay=false).
+    private void ShowTrackChangeToast()
+    {
+        if (!_settings.ShowTrackChangeToast) return;
+
+        _trackChangeToastWindow ??= new TrackChangeToastWindow();
+        _trackChangeToastWindow.ShowToast(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
+            _settings.Theme == "Light");
+    }
+
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
     //
     // Настройки читаются/пишутся здесь, а не прямо из SettingsWindow, по той же причине, что и
@@ -3322,6 +3329,7 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.Close();
         _settingsWindow?.Close();
         _statisticsWindow?.Close();
+        _trackChangeToastWindow?.Close();
         _changelogWindow?.Close();
         _coverArtWindow?.Close();
 

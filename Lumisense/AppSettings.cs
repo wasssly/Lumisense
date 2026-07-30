@@ -117,6 +117,10 @@ public class AppSettings
     // прогресс-баром (см. MiniPlayerWindow.OnProgressChanged/UpdateSecondaryLine).
     public string MiniPlayerInfoMode { get; set; } = "TitleArtist";
 
+    // Всплывающее уведомление в углу экрана при смене трека (обложка + название, исчезает
+    // само через пару секунд) — см. TrackChangeToastWindow и MainWindow.ShowTrackChangeToast.
+    public bool ShowTrackChangeToast { get; set; } = true;
+
     // Расположение кнопок управления в мини-плеере при наведении курсора. "Below" (по
     // умолчанию) — прежнее поведение: окно подрастает вниз и кнопки появляются отдельной
     // строкой под прогресс-баром. "Overlay" — новый вариант для тех, кому не нужен рост

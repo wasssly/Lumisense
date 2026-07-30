@@ -93,6 +93,7 @@ public partial class SettingsWindow : FluentWindow
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
+        TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
         MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
 
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
@@ -432,6 +433,13 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.UseLogarithmicVolume = LogarithmicVolumeCheckBox.IsChecked == true;
         _owner.RefreshVolumeCurve();
+    }
+
+    private void TrackChangeToastCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ShowTrackChangeToast = TrackChangeToastCheckBox.IsChecked == true;
     }
 
     private void MinimizeToTrayCheckBox_Changed(object sender, RoutedEventArgs e)
