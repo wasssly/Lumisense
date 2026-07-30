@@ -122,6 +122,7 @@ public partial class MainWindow : FluentWindow
     private NowPlayingIntegration? _nowPlaying;
     private MiniPlayerWindow? _miniPlayerWindow;
     private SettingsWindow? _settingsWindow;
+    private StatisticsWindow? _statisticsWindow;
     private CoverArtWindow? _coverArtWindow;
     private bool _isExiting;
 
@@ -774,6 +775,26 @@ public partial class MainWindow : FluentWindow
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettingsWindow();
+
+    private void StatisticsButton_Click(object sender, RoutedEventArgs e) => ShowStatisticsWindow();
+
+    // Открывает окно статистики (или активирует уже открытое, по тому же принципу, что и
+    // у ShowSettingsWindow) — своё окно, а не страница внутри настроек: данные там строятся
+    // асинхронно (чтение тегов, см. StatisticsWindow.LoadAsync) и логически не привязаны
+    // к настройкам приложения, это именно просмотр накопленной статистики.
+    public void ShowStatisticsWindow()
+    {
+        if (_statisticsWindow == null)
+        {
+            _statisticsWindow = new StatisticsWindow(_settings) { Owner = this };
+            _statisticsWindow.Closed += (_, _) => _statisticsWindow = null;
+            _statisticsWindow.Show();
+        }
+        else
+        {
+            _statisticsWindow.Activate();
+        }
+    }
 
     // Открывает окно настроек (или активирует уже открытое). Вынесено из SettingsButton_Click
     // в отдельный публичный метод, чтобы то же самое можно было вызвать и не по клику на
@@ -3071,6 +3092,14 @@ public partial class MainWindow : FluentWindow
         CurrentTimeText.Text = _audioFile.CurrentTime.ToString(@"mm\:ss");
         ProgressChanged?.Invoke(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
 
+        // Статистика (см. StatisticsWindow) — суммарное время реального воспроизведения.
+        // Таймер тикает только пока трек действительно играет (см. _progressTimer.Start/Stop
+        // вокруг пауз), поэтому просто прибавляем длину тика — надёжнее, чем пытаться
+        // вычислить это позже из длительностей файлов и счётчиков (перемотка/повторы и так
+        // никак не искажают эту сумму, ведь она набирается по факту реального проигрывания).
+        _settings.TotalListenSeconds += _progressTimer.Interval.TotalSeconds;
+        _settings.StatsStartedAt ??= DateTime.Now.ToString("O");
+
         // Прослушивание засчитывается не при старте трека, а только когда реально
         // воспроизведена как минимум половина композиции — иначе быстрое переключение между
         // треками (превью, случайный клик не по тому треку и т.п.) накручивало бы счётчик
@@ -3266,6 +3295,7 @@ public partial class MainWindow : FluentWindow
         _trayIconManager?.Dispose();
         _miniPlayerWindow?.Close();
         _settingsWindow?.Close();
+        _statisticsWindow?.Close();
         _changelogWindow?.Close();
         _coverArtWindow?.Close();
 

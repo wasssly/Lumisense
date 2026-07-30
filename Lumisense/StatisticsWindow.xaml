@@ -1,0 +1,190 @@
+<ui:FluentWindow x:Class="AudioPlayer.StatisticsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:AudioPlayer"
+        Title="Статистика"
+        Icon="/Icons/app/lumisense.ico"
+        Height="620" Width="440"
+        MinHeight="440" MinWidth="360"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <!-- ============================================================================
+         Окно "Статистика": три карточки-сводки сверху (всего прослушиваний, разных
+         треков, суммарное время), затем топ-5 исполнителей и топ-5 треков по числу
+         прослушиваний. Все данные берутся из PlayCountManager (число прослушиваний по
+         пути файла) + AppSettings.TotalListenSeconds (накопленное время реального
+         воспроизведения, см. MainWindow.ProgressTimer_Tick) — исполнитель/название
+         для топ-списков дочитываются из тегов файлов асинхронно в code-behind
+         (см. StatisticsWindow.LoadAsync), поэтому окно сначала показывает индикатор
+         загрузки.
+         ============================================================================ -->
+
+    <ui:FluentWindow.Resources>
+        <Style x:Key="StatCardStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+            <Setter Property="Padding" Value="12,12" />
+        </Style>
+        <Style x:Key="StatValueStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="19" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="StatLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.6" />
+            <Setter Property="Margin" Value="0,4,0,0" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="SectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <!-- Общий вид строки топ-5: круглый бейдж с номером места + содержимое + счётчик
+             прослушиваний справа. У исполнителей и треков разное содержимое в середине
+             (просто имя vs название+исполнитель в две строки), поэтому не один общий
+             DataTemplate на оба ItemsControl, а два похожих, но раздельных. -->
+        <Style x:Key="TopRankBadgeStyle" TargetType="Border">
+            <Setter Property="Width" Value="22" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="CornerRadius" Value="11" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            <Setter Property="Margin" Value="0,0,10,0" />
+        </Style>
+        <Style x:Key="TopRankTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.7" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="TopCountTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Opacity" Value="0.55" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Margin" Value="10,0,0,0" />
+        </Style>
+
+        <DataTemplate x:Key="TopArtistRowTemplate">
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource TopRankBadgeStyle}">
+                    <TextBlock Text="{Binding Rank}" Style="{StaticResource TopRankTextStyle}" />
+                </Border>
+                <TextBlock Grid.Column="1" Text="{Binding Name}" FontSize="13" VerticalAlignment="Center"
+                           TextTrimming="CharacterEllipsis" />
+                <TextBlock Grid.Column="2" Text="{Binding CountText}" Style="{StaticResource TopCountTextStyle}" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="TopTrackRowTemplate">
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Style="{StaticResource TopRankBadgeStyle}" VerticalAlignment="Top" Margin="0,1,10,0">
+                    <TextBlock Text="{Binding Rank}" Style="{StaticResource TopRankTextStyle}" />
+                </Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" FontSize="13" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Text="{Binding Artist}" FontSize="11" Opacity="0.5" Margin="0,1,0,0"
+                               TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <TextBlock Grid.Column="2" Text="{Binding CountText}" Style="{StaticResource TopCountTextStyle}"
+                           VerticalAlignment="Top" Margin="10,1,0,0" />
+            </Grid>
+        </DataTemplate>
+    </ui:FluentWindow.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Статистика" ShowMaximize="False" />
+
+        <Grid Grid.Row="1">
+            <ScrollViewer x:Name="ContentScroll" VerticalScrollBarVisibility="Auto" Padding="20,4,20,18"
+                          Visibility="Collapsed">
+                <StackPanel>
+                    <Grid Margin="0,4,0,20">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <Border Grid.Column="0" Style="{StaticResource StatCardStyle}" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock x:Name="TotalPlaysValue" Text="0" Style="{StaticResource StatValueStyle}" />
+                                <TextBlock Text="прослушиваний всего" Style="{StaticResource StatLabelStyle}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="1" Style="{StaticResource StatCardStyle}" Margin="6,0,6,0">
+                            <StackPanel>
+                                <TextBlock x:Name="DistinctTracksValue" Text="0" Style="{StaticResource StatValueStyle}" />
+                                <TextBlock Text="разных треков" Style="{StaticResource StatLabelStyle}" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource StatCardStyle}" Margin="6,0,0,0">
+                            <StackPanel>
+                                <TextBlock x:Name="HoursValue" Text="0" Style="{StaticResource StatValueStyle}" />
+                                <TextBlock Text="прослушано" Style="{StaticResource StatLabelStyle}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <TextBlock Text="Топ исполнителей" Style="{StaticResource SectionTitleStyle}" />
+                    <Border CornerRadius="8" Background="{DynamicResource ControlFillColorDefaultBrush}"
+                            Padding="14,12,14,2" Margin="0,0,0,20">
+                        <ItemsControl x:Name="TopArtistsList" ItemTemplate="{StaticResource TopArtistRowTemplate}" />
+                    </Border>
+
+                    <TextBlock Text="Топ треков" Style="{StaticResource SectionTitleStyle}" />
+                    <Border CornerRadius="8" Background="{DynamicResource ControlFillColorDefaultBrush}"
+                            Padding="14,12,14,2" Margin="0,0,0,14">
+                        <ItemsControl x:Name="TopTracksList" ItemTemplate="{StaticResource TopTrackRowTemplate}" />
+                    </Border>
+
+                    <TextBlock x:Name="StatsSinceText" FontSize="11" Opacity="0.45" TextWrapping="Wrap"
+                               HorizontalAlignment="Center" TextAlignment="Center" Visibility="Collapsed" />
+                </StackPanel>
+            </ScrollViewer>
+
+            <!-- Пока в фоне читаются теги прослушанных треков (см. StatisticsWindow.LoadAsync) —
+                 сами счётчики прослушиваний уже есть мгновенно (это просто числа в памяти), но
+                 топ-5 исполнителей/треков строится по названиям из тегов, а на большой истории
+                 прослушиваний это может занять заметное время, если делать это на UI-потоке. -->
+            <StackPanel x:Name="LoadingState" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <ProgressBar IsIndeterminate="True" Width="140" Height="3" />
+                <TextBlock Text="Считаем статистику…" Opacity="0.6" FontSize="13" Margin="0,12,0,0"
+                           HorizontalAlignment="Center" />
+            </StackPanel>
+
+            <!-- Ни один трек ещё не досмотрен хотя бы до половины — считать нечего -->
+            <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
+                        Visibility="Collapsed">
+                <local:SvgPathIcon Icon="IconMusicNote" Size="30" Opacity="0.3" HorizontalAlignment="Center" />
+                <TextBlock Text="Пока нет прослушанных треков" Opacity="0.5" FontSize="13" Margin="0,12,0,0"
+                           HorizontalAlignment="Center" />
+                <TextBlock Text="Статистика появится, как только что-нибудь будет дослушано хотя бы до половины"
+                           Opacity="0.4" FontSize="12" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="260"
+                           Margin="0,6,0,0" HorizontalAlignment="Center" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>

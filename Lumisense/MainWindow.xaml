@@ -528,6 +528,7 @@
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <!-- Скрывает/показывает весь блок плейлиста целиком (не путать с шевроном
@@ -595,7 +596,15 @@
                 </ui:Button.Icon>
             </ui:Button>
 
-            <ui:Button Grid.Column="5" x:Name="SettingsButton" Appearance="Secondary"
+            <ui:Button Grid.Column="5" x:Name="StatisticsButton" Appearance="Secondary"
+                       Width="32" Height="32" Padding="0" Margin="4,0,0,0"
+                       Click="StatisticsButton_Click" ToolTip="Статистика">
+                <ui:Button.Icon>
+                    <local:SvgPathIcon Icon="IconMusicNote" Size="15" />
+                </ui:Button.Icon>
+            </ui:Button>
+
+            <ui:Button Grid.Column="6" x:Name="SettingsButton" Appearance="Secondary"
                        Width="32" Height="32" Padding="0" Margin="4,0,0,0"
                        Click="SettingsButton_Click" ToolTip="Настройки">
                 <ui:Button.Icon>
