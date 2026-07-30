@@ -516,7 +516,7 @@
             </Grid>
 
             <TextBlock x:Name="VolumeValueText" Grid.Column="2" Text="30%"
-                       FontSize="11" Opacity="0.6" Width="34"
+                       FontSize="11" Opacity="0.6" Width="34" Margin="8,0,0,0"
                        VerticalAlignment="Center" HorizontalAlignment="Right" />
         </Grid>
 

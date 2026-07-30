@@ -228,10 +228,23 @@ public partial class MainWindow : FluentWindow
     private void MainWindow_StateChanged(object? sender, EventArgs e)
     {
         var fullscreen = WindowState == WindowState.Maximized;
-        if (fullscreen == _isFullscreenLayout) return;
+        if (fullscreen != _isFullscreenLayout)
+        {
+            _isFullscreenLayout = fullscreen;
+            ApplyFullscreenLayout(fullscreen);
+        }
 
-        _isFullscreenLayout = fullscreen;
-        ApplyFullscreenLayout(fullscreen);
+        // Обычное сворачивание (кнопка "свернуть" в заголовке, Win+D/Win+M, или клик по
+        // значку в панели задач — для уже активного окна это для Windows штатное действие
+        // "свернуть", то же самое, что нажать кнопку сворачивания) в этом плеере ведёт не в
+        // обычный свёрнутый вид, а сразу в мини-плеер — тут для этого уже есть отдельная,
+        // куда более полезная "свёрнутая" форма (см. MiniModeButton_Click). Без этой ветки
+        // второй клик по значку в панели задач, пока основное окно открыто и в фокусе, просто
+        // сворачивал бы его в обычном Windows-смысле — оно пропадало бы из виду безо всякого
+        // перехода в мини-плеер, хотя первый клик (через ToggleMiniOrMainFromExternalActivation,
+        // когда мини-плеер уже был активен) корректно открывал именно основное окно.
+        if (WindowState == WindowState.Minimized && !_isMiniMode)
+            SetPlayerViewMode(PlayerViewMode.Mini);
     }
 
     // Монитор пользователя может быть любого размера — пересчитываем ширину ContentHost и
