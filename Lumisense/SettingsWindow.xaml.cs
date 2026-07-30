@@ -30,6 +30,26 @@ public partial class SettingsWindow : FluentWindow
     private readonly List<SettingsSearchEntry> _searchIndex = new();
     private readonly ObservableCollection<SettingsSearchEntry> _searchResults = new();
 
+    // Переключает страницу настроек по строковому ключу — используется и при первом открытии
+    // окна (initialPage в конструкторе), и когда окно настроек открывают повторно, пока оно
+    // уже висит открытым на какой-то другой странице (см. MainWindow.ShowSettingsWindow) —
+    // например, кнопка "Настройки" в контекстном меню мини-плеера должна вести на страницу
+    // "Мини-плеер", даже если окно настроек уже было открыто на другой вкладке.
+    public void NavigateToPage(string? pageKey)
+    {
+        (pageKey switch
+        {
+            "About" => NavAbout,
+            "Window" => NavWindow,
+            "Playback" => NavPlayback,
+            "Equalizer" => NavEqualizer,
+            "MiniPlayer" => NavMiniPlayer,
+            "Hotkeys" => NavHotkeys,
+            "Experimental" => NavExperimental,
+            _ => NavAppearance
+        }).IsChecked = true;
+    }
+
     public SettingsWindow(AppSettings settings, MainWindow owner, string? initialPage = null)
     {
         InitializeComponent();
@@ -42,17 +62,7 @@ public partial class SettingsWindow : FluentWindow
         // умолчанию — используется, когда настройки открываются автоматически после закрытия
         // окна списка изменений: тогда логично сразу оказаться на "О плеере", а не снова
         // листать до неё вручную.
-        (initialPage switch
-        {
-            "About" => NavAbout,
-            "Window" => NavWindow,
-            "Playback" => NavPlayback,
-            "Equalizer" => NavEqualizer,
-            "MiniPlayer" => NavMiniPlayer,
-            "Hotkeys" => NavHotkeys,
-            "Experimental" => NavExperimental,
-            _ => NavAppearance
-        }).IsChecked = true;
+        NavigateToPage(initialPage);
 
         _settings = settings;
         _owner = owner;
@@ -98,13 +108,6 @@ public partial class SettingsWindow : FluentWindow
         MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault();
         MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
         MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
-
-        // "Развернуть" в заголовке имеет смысл, только пока мини-плеер реально открыт —
-        // разворачивать тогда нечего. Состояние снимается один раз при открытии окна
-        // настроек (см. комментарий у самой кнопки в XAML) — не отслеживаем live, потому что
-        // закрыть мини-плеер, не закрывая при этом заодно и окно настроек, обычным путём
-        // (кнопками интерфейса) невозможно.
-        ExpandMiniPlayerButton.Visibility = _owner.IsMiniMode ? Visibility.Visible : Visibility.Collapsed;
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
@@ -524,12 +527,6 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.MiniPlayerButtonsLayout = MiniButtonsOverlayRadio.IsChecked == true ? "Overlay" : "Below";
         _owner.ApplyMiniPlayerButtonsLayoutLive();
-    }
-
-    private void ExpandMiniPlayerButton_Click(object sender, RoutedEventArgs e)
-    {
-        _owner.ExitMiniMode();
-        ExpandMiniPlayerButton.Visibility = Visibility.Collapsed;
     }
 
     // ---------- Эквалайзер ----------

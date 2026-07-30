@@ -410,7 +410,7 @@ public partial class MiniPlayerWindow : Window
     private void NextButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalNext();
     private void PrevButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPrev();
     private void RestoreButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExitMiniMode();
-    private void SettingsMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowSettingsWindow();
+    private void SettingsMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowSettingsWindow("MiniPlayer");
 
     // Компактное окно мини-плеера — под кнопку повтора и кнопку "перемешать" одновременно
     // места нет (в отличие от основного окна, где показаны обе), поэтому здесь всего одна
