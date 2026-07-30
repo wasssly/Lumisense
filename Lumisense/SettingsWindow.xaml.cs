@@ -108,6 +108,10 @@ public partial class SettingsWindow : FluentWindow
         MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault();
         MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
         MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
+        MiniInfoOnlyTitleRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleOnly";
+        MiniInfoRemainingRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleRemaining";
+        MiniInfoArtistRadio.IsChecked = !MiniInfoOnlyTitleRadio.IsChecked.GetValueOrDefault()
+                                         && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
@@ -527,6 +531,16 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.MiniPlayerButtonsLayout = MiniButtonsOverlayRadio.IsChecked == true ? "Overlay" : "Below";
         _owner.ApplyMiniPlayerButtonsLayoutLive();
+    }
+
+    private void MiniInfoModeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerInfoMode = MiniInfoOnlyTitleRadio.IsChecked == true ? "TitleOnly"
+            : MiniInfoRemainingRadio.IsChecked == true ? "TitleRemaining"
+            : "TitleArtist";
+        _owner.ApplyMiniPlayerInfoModeLive();
     }
 
     // ---------- Эквалайзер ----------

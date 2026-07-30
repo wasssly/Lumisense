@@ -217,10 +217,19 @@ public partial class MiniPlayerWindow : Window
         }
     }
 
+    // Сырые значения с последнего OnTrackInfoChanged/OnProgressChanged — нужны, чтобы
+    // UpdateSecondaryLine могла перерисовать вторую строку по актуальным данным в любой
+    // момент, а не только когда придёт следующее событие (например, сразу после того как
+    // пользователь переключил AppSettings.MiniPlayerInfoMode в настройках, см. ApplyInfoModeLive).
+    private string _lastArtist = "";
+    private double _lastCurrentSeconds;
+    private double _lastTotalSeconds;
+
     private void OnTrackInfoChanged(string title, string artist, Brush? art)
     {
         TitleText.Text = title;
-        ArtistText.Text = artist;
+        _lastArtist = artist;
+        UpdateSecondaryLine();
 
         if (art != null)
         {
@@ -235,6 +244,43 @@ public partial class MiniPlayerWindow : Window
 
         UpdateTitleMarquee();
     }
+
+    // Вторая строка заголовка (под названием трека, которое видно всегда независимо от
+    // режима) — что именно в ней показывать, выбирается в настройках (см.
+    // AppSettings.MiniPlayerInfoMode и страницу настроек "Мини-плеер"). Вызывается и на
+    // каждое обновление трека/прогресса, и сразу же при переключении самой настройки, пока
+    // мини-плеер уже открыт (см. ApplyInfoModeLive) — по той же схеме, что и
+    // UpdateSecondaryButton/ApplyButtonsLayoutMode для остального содержимого мини-плеера.
+    private void UpdateSecondaryLine()
+    {
+        switch (_mainWindow.Settings.MiniPlayerInfoMode)
+        {
+            case "TitleOnly":
+                ArtistText.Visibility = Visibility.Collapsed;
+                break;
+
+            case "TitleRemaining":
+                ArtistText.Visibility = Visibility.Visible;
+                ArtistText.Text = FormatRemaining(_lastCurrentSeconds, _lastTotalSeconds);
+                break;
+
+            default: // "TitleArtist"
+                ArtistText.Visibility = Visibility.Visible;
+                ArtistText.Text = _lastArtist;
+                break;
+        }
+    }
+
+    private static string FormatRemaining(double currentSeconds, double totalSeconds)
+    {
+        if (totalSeconds <= 0) return "—";
+
+        var remaining = TimeSpan.FromSeconds(Math.Max(totalSeconds - currentSeconds, 0));
+        return $"-{remaining:mm\\:ss} осталось";
+    }
+
+    // См. UpdateSecondaryLine — публичный вызов для MainWindow.ApplyMiniPlayerInfoModeLive.
+    public void ApplyInfoModeLive() => UpdateSecondaryLine();
 
     // ---------- Фон и тема мини-плеера ----------
     //
@@ -394,6 +440,10 @@ public partial class MiniPlayerWindow : Window
 
     private void OnProgressChanged(double currentSeconds, double totalSeconds)
     {
+        _lastCurrentSeconds = currentSeconds;
+        _lastTotalSeconds = totalSeconds;
+        if (_mainWindow.Settings.MiniPlayerInfoMode == "TitleRemaining") UpdateSecondaryLine();
+
         if (_isDraggingProgress || totalSeconds <= 0) return;
 
         double ratio = Math.Clamp(currentSeconds / totalSeconds, 0.0, 1.0);

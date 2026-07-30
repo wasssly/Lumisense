@@ -1828,6 +1828,15 @@ public partial class MainWindow : FluentWindow
         System.Windows.Clipboard.SetText(Path.GetFileNameWithoutExtension(row.FilePath));
     }
 
+    // Не спрашиваем подтверждения (в отличие от полного сброса в StatisticsWindow или удаления
+    // файла с диска) — это откатывается одним повторным прослушиванием и ничего не удаляет
+    // безвозвратно, тот же уровень серьёзности, что и у "Убрать из плейлиста" рядом.
+    private void ResetTrackPlayCountMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        PlayCountManager.ResetTrack(row.FilePath);
+    }
+
     private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -2789,6 +2798,13 @@ public partial class MainWindow : FluentWindow
     public void ApplyMiniPlayerButtonsLayoutLive()
     {
         _miniPlayerWindow?.ApplyButtonsLayoutMode();
+    }
+
+    // Аналог ApplyMiniPlayerSecondaryButtonLive для настройки "что показывать во второй
+    // строке" (исполнитель / ничего / оставшееся время, см. AppSettings.MiniPlayerInfoMode).
+    public void ApplyMiniPlayerInfoModeLive()
+    {
+        _miniPlayerWindow?.ApplyInfoModeLive();
     }
 
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
