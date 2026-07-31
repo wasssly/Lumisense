@@ -628,7 +628,7 @@ public partial class MainWindow : FluentWindow
         PlaybackStateChanged += isPlaying => _trayIconManager?.SetPlayingState(isPlaying);
         TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
         _trayIconManager.SetPlayingState(_isPlaying);
-        _trayIconManager.ApplyTheme(isLight: _settings.Theme == "Light");
+        _trayIconManager.ApplyTheme(isLight: _settings.IsLightThemeResolved());
 
         ApplyPlaybackButtonsVisibility();
     }
@@ -774,7 +774,8 @@ public partial class MainWindow : FluentWindow
 
     private void ApplySettingsOnStartup()
     {
-        ApplicationThemeManager.Apply(_settings.Theme == "Light" ? ApplicationTheme.Light : ApplicationTheme.Dark);
+        ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
+        ApplyAccentColor();
 
         if (_settings.AlwaysOnTop)
             Topmost = true;
@@ -786,6 +787,33 @@ public partial class MainWindow : FluentWindow
         SetRepeatMode(Enum.TryParse<RepeatMode>(_settings.RepeatMode, out var savedRepeatMode)
             ? savedRepeatMode
             : RepeatMode.Off);
+    }
+
+    // Применяет акцентный цвет из настроек (см. AppSettings.AccentColorMode/AccentColorHex) —
+    // вызывается при старте (ApplySettingsOnStartup) и заново при каждой смене этой настройки
+    // или темы (см. SettingsWindow.AccentColorMode/ThemeRadio_Changed) — Apply() учитывает
+    // текущую тему, чтобы подобрать светлые/тёмные варианты акцента (SystemAccentColorLight1
+    // и т.п.), поэтому пересчитывать нужно и при переключении темы, не только цвета.
+    public void ApplyAccentColor()
+    {
+        if (_settings.AccentColorMode != "Manual")
+        {
+            ApplicationAccentColorManager.ApplySystemAccent();
+            return;
+        }
+
+        try
+        {
+            var color = (Color)ColorConverter.ConvertFromString(_settings.AccentColorHex);
+            ApplicationAccentColorManager.Apply(color,
+                _settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
+        }
+        catch
+        {
+            // Некорректный/повреждённый hex (например, вручную подправленный settings.json) —
+            // тихо остаёмся на системном акценте вместо падения.
+            ApplicationAccentColorManager.ApplySystemAccent();
+        }
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettingsWindow();
@@ -2824,7 +2852,7 @@ public partial class MainWindow : FluentWindow
 
         _trackChangeToastWindow ??= new TrackChangeToastWindow();
         _trackChangeToastWindow.ShowToast(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
-            _settings.Theme == "Light");
+            _settings.IsLightThemeResolved());
     }
 
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------

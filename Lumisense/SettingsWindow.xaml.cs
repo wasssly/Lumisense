@@ -4,6 +4,7 @@ using System.Collections.ObjectModel;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
@@ -89,7 +90,16 @@ public partial class SettingsWindow : FluentWindow
         ShowInTaskbar = false;
         PositionOverOwner(owner);
 
-        LightThemeCheckBox.IsChecked = _settings.Theme == "Light";
+        ThemeLightRadio.IsChecked = _settings.Theme == "Light";
+        ThemeSystemRadio.IsChecked = _settings.Theme == "System";
+        ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault()
+                                    && !ThemeSystemRadio.IsChecked.GetValueOrDefault();
+
+        AccentManualRadio.IsChecked = _settings.AccentColorMode == "Manual";
+        AccentSystemRadio.IsChecked = !AccentManualRadio.IsChecked.GetValueOrDefault();
+        AccentSwatchesPanel.Visibility = AccentManualRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        RefreshAccentSwatchSelection();
+
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
@@ -286,7 +296,8 @@ public partial class SettingsWindow : FluentWindow
         void Add(string label, string pageTitle, string pageKey, FrameworkElement target, string extraKeywords = "")
             => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey, $"{label} {extraKeywords}".ToLowerInvariant(), target));
 
-        Add("Светлая тема", "Оформление", "Appearance", LightThemeCheckBox, "тёмная светлая цвет тема оформление");
+        Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая системная цвет тема оформление dark light system");
+        Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
@@ -398,14 +409,96 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    private void ThemeCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void ThemeRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
 
-        _settings.Theme = LightThemeCheckBox.IsChecked == true ? "Light" : "Dark";
-        ApplicationThemeManager.Apply(_settings.Theme == "Light" ? ApplicationTheme.Light : ApplicationTheme.Dark);
-        _owner.ApplyTrayTheme(_settings.Theme == "Light");
+        _settings.Theme = ThemeLightRadio.IsChecked == true ? "Light"
+            : ThemeSystemRadio.IsChecked == true ? "System"
+            : "Dark";
+
+        ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
+        _owner.ApplyAccentColor(); // акцент пересчитывает светлые/тёмные варианты под новую тему
+        _owner.ApplyTrayTheme(_settings.IsLightThemeResolved());
         _owner.ApplyMiniPlayerThemeLive();
+    }
+
+    private void AccentModeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        AccentSwatchesPanel.Visibility = AccentManualRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
+        if (_isInitializing) return;
+
+        _settings.AccentColorMode = AccentManualRadio.IsChecked == true ? "Manual" : "System";
+        _owner.ApplyAccentColor();
+    }
+
+    private static readonly string[] AccentPresetHexes =
+    {
+        "#0078D4", "#8764B8", "#E3008C", "#E81123", "#FF8C00", "#FFB900", "#107C10", "#00B7C3"
+    };
+
+    private void AccentSwatch_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Border { Background: SolidColorBrush brush }) return;
+
+        // brush.Color.ToString() дал бы 8-значный "#AARRGGBB" (WPF всегда включает альфа-канал
+        // в ToString()), а пресеты в AccentPresetHexes и формат из ColorDialog ниже — 6-значные
+        // "#RRGGBB". Несовпадение форматов не сломало бы применение цвета (ColorConverter
+        // одинаково понимает оба), но тихо сломало бы подсветку выбранного пресета в
+        // RefreshAccentSwatchSelection — она сравнивает строки как есть.
+        var c = brush.Color;
+        ApplyAccentHex($"#{c.R:X2}{c.G:X2}{c.B:X2}");
+    }
+
+    private void AccentCustomButton_Click(object sender, RoutedEventArgs e)
+    {
+        using var dialog = new System.Windows.Forms.ColorDialog
+        {
+            Color = System.Drawing.ColorTranslator.FromHtml(_settings.AccentColorHex),
+            FullOpen = true
+        };
+
+        // WinForms-диалог — модальный поверх этого же (WPF) окна настроек; хендл окна нужен
+        // явно, иначе диалог мог бы открыться за плеером вместо поверх него.
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (dialog.ShowDialog(new Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
+
+        var c = dialog.Color;
+        ApplyAccentHex($"#{c.R:X2}{c.G:X2}{c.B:X2}");
+    }
+
+    private void ApplyAccentHex(string hex)
+    {
+        _settings.AccentColorHex = hex;
+        RefreshAccentSwatchSelection();
+        if (!_isInitializing) _owner.ApplyAccentColor();
+    }
+
+    // Подсвечивает рамкой тот пресет-квадратик, который совпадает с текущим AccentColorHex —
+    // если сейчас выбран цвет через палитру (не совпадающий ни с одним пресетом), рамки не
+    // будет ни у одного квадратика, это ожидаемо.
+    private void RefreshAccentSwatchSelection()
+    {
+        System.Windows.Controls.Border[] swatches = { AccentSwatch0, AccentSwatch1, AccentSwatch2, AccentSwatch3,
+                               AccentSwatch4, AccentSwatch5, AccentSwatch6, AccentSwatch7 };
+
+        for (int i = 0; i < swatches.Length; i++)
+        {
+            bool selected = string.Equals(AccentPresetHexes[i], _settings.AccentColorHex,
+                StringComparison.OrdinalIgnoreCase);
+            swatches[i].BorderBrush = selected
+                ? (Brush)FindResource("TextFillColorPrimaryBrush")
+                : Brushes.Transparent;
+        }
+    }
+
+    // Обёртка над HWND для System.Windows.Forms.IWin32Window — ColorDialog просит именно
+    // этот интерфейс в качестве owner, а не голый IntPtr.
+    private sealed class Wpf32Window : System.Windows.Forms.IWin32Window
+    {
+        public Wpf32Window(nint handle) => Handle = handle;
+        public nint Handle { get; }
     }
 
     private void AlwaysOnTopCheckBox_Changed(object sender, RoutedEventArgs e)

@@ -323,7 +323,7 @@ public partial class MiniPlayerWindow : Window
         _controlStrongFillBrush ??= (SolidColorBrush)FindResource("ControlStrongFillColorDefaultBrush");
         _controlStrokeBrush ??= (SolidColorBrush)FindResource("ControlStrokeColorDefaultBrush");
 
-        _isLightTheme = _mainWindow.Settings.Theme == "Light";
+        _isLightTheme = _mainWindow.Settings.IsLightThemeResolved();
 
         if (_isLightTheme)
         {

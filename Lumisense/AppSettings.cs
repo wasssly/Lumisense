@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using Microsoft.Win32;
 
 namespace AudioPlayer;
 
@@ -48,7 +49,47 @@ public class HotkeyBinding
 // Настройки приложения, сохраняемые между запусками
 public class AppSettings
 {
-    public string Theme { get; set; } = "Dark";           // "Dark" или "Light"
+    // "Dark" / "Light" / "System" — при "System" фактический светлая/тёмная берётся из
+    // Windows один раз на момент применения темы (запуск приложения, открытие/смена этой
+    // настройки) — см. IsLightThemeResolved. Живое отслеживание смены системной темы прямо
+    // во время работы плеера не реализовано (это не WM_SETTINGCHANGE-подписка, а разовое
+    // чтение реестра) — люди меняют системную тему нечасто, а перезапустить плеер или
+    // заново открыть настройки, чтобы подхватить смену, не то чтобы обременительно.
+    public string Theme { get; set; } = "Dark";
+
+    // Разрешает "System" в фактическую светлую/тёмную по значению из реестра Windows —
+    // тот же самый флаг (AppsUseLightTheme), которым сама Windows определяет, в каком виде
+    // рисовать свои приложения. "Dark"/"Light" возвращают сами себя без обращения к реестру.
+    public bool IsLightThemeResolved() => Theme switch
+    {
+        "Light" => true,
+        "Dark" => false,
+        _ => IsSystemThemeLight()
+    };
+
+    private static bool IsSystemThemeLight()
+    {
+        try
+        {
+            using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(
+                @"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
+            return key?.GetValue("AppsUseLightTheme") is int value && value != 0;
+        }
+        catch
+        {
+            // Ключа может не быть на совсем старых сборках Windows — тогда просто остаёмся
+            // на тёмной, это и так дефолт приложения.
+            return false;
+        }
+    }
+
+    // Акцентный цвет интерфейса (кнопки/переключатели/выделения — всё, что рисуется через
+    // Wpf.Ui.Appearance.ApplicationAccentColorManager). "System" — берём акцент из настроек
+    // персонализации Windows (тот самый цвет, которым подсвечены системные "Пуск"/плитки).
+    // "Manual" — используем AccentColorHex, независимо от того, выбран ли он одним из
+    // пресетов в настройках или через палитру: результат в обоих случаях — обычный hex-цвет.
+    public string AccentColorMode { get; set; } = "System";
+    public string AccentColorHex { get; set; } = "#0078D4";
     public bool AlwaysOnTop { get; set; }                  // Держать окно поверх остальных
     public bool RememberVolume { get; set; } = true;       // Запоминать громкость между запусками
     public double SavedVolume { get; set; } = 0.3;

@@ -256,8 +256,70 @@
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <CheckBox x:Name="LightThemeCheckBox" Content="Светлая тема"
-                                          Checked="ThemeCheckBox_Changed" Unchecked="ThemeCheckBox_Changed" />
+                                <TextBlock Text="Тема" Margin="0,0,0,8" />
+                                <RadioButton x:Name="ThemeDarkRadio" Content="Тёмная" GroupName="Theme"
+                                             Checked="ThemeRadio_Changed" Margin="0,0,0,8" />
+                                <RadioButton x:Name="ThemeLightRadio" Content="Светлая" GroupName="Theme"
+                                             Checked="ThemeRadio_Changed" Margin="0,0,0,8" />
+                                <RadioButton x:Name="ThemeSystemRadio" Content="Системная (как в Windows)"
+                                             GroupName="Theme" Checked="ThemeRadio_Changed" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. AppSettings.AccentColorMode/AccentColorHex. Пресеты — просто восемь
+                             готовых hex-цветов; "Свой" открывает стандартный системный ColorDialog. У
+                             выбранного сейчас цвета (если это один из пресетов) рамка подсвечена белым —
+                             см. RefreshAccentSwatchSelection. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Акцентный цвет" Margin="0,0,0,8" />
+                                <RadioButton x:Name="AccentSystemRadio" Content="Системный (как в Windows)"
+                                             GroupName="AccentMode" Checked="AccentModeRadio_Changed" Margin="0,0,0,10" />
+                                <RadioButton x:Name="AccentManualRadio" Content="Свой" GroupName="AccentMode"
+                                             Checked="AccentModeRadio_Changed" Margin="0,0,0,10" />
+
+                                <WrapPanel x:Name="AccentSwatchesPanel" Margin="26,0,0,0">
+                                    <Border x:Name="AccentSwatch0" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#0078D4" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="AccentSwatch1" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#8764B8" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="AccentSwatch2" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#E3008C" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="AccentSwatch3" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#E81123" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="AccentSwatch4" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#FF8C00" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="AccentSwatch5" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#FFB900" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="AccentSwatch6" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#107C10" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="AccentSwatch7" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#00B7C3" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
+
+                                    <ui:Button x:Name="AccentCustomButton" Width="26" Height="26" Padding="0"
+                                               Margin="0,0,8,8" Appearance="Secondary" ToolTip="Свой цвет через палитру"
+                                               Click="AccentCustomButton_Click">
+                                        <ui:Button.Icon>
+                                            <local:SvgPathIcon Icon="IconEdit" Size="12" />
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                </WrapPanel>
                             </StackPanel>
                         </Border>
                     </StackPanel>
