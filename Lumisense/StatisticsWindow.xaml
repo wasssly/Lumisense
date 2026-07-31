@@ -94,7 +94,6 @@
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Border Grid.Column="0" Style="{StaticResource TopRankBadgeStyle}" VerticalAlignment="Top" Margin="0,1,10,0">
                     <TextBlock Text="{Binding Rank}" Style="{StaticResource TopRankTextStyle}" />
@@ -106,13 +105,6 @@
                 </StackPanel>
                 <TextBlock Grid.Column="2" Text="{Binding CountText}" Style="{StaticResource TopCountTextStyle}"
                            VerticalAlignment="Top" Margin="10,1,0,0" />
-                <ui:Button Grid.Column="3" Appearance="Transparent" Width="24" Height="24" Padding="0"
-                           Margin="6,0,0,0" VerticalAlignment="Top" ToolTip="Сбросить прослушивания этого трека"
-                           Click="ResetTrackPlayCountButton_Click">
-                    <ui:Button.Icon>
-                        <local:SvgPathIcon Icon="IconDelete" Size="13" />
-                    </ui:Button.Icon>
-                </ui:Button>
             </Grid>
         </DataTemplate>
     </ui:FluentWindow.Resources>
