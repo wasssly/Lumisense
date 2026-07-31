@@ -157,6 +157,33 @@ public partial class StatisticsWindow : FluentWindow
         return $"{count} {word}";
     }
 
+    // Сброс необратим (счётчики прослушиваний по трекам теряются безвозвратно), поэтому —
+    // MessageBox с YesNo и предупреждающей иконкой, тот же паттерн подтверждения, что и у
+    // MainWindow.ClearPlaylistButton_Click/DeleteTrackFromDiskMenuItem_Click, с той же
+    // осторожностью: результат по умолчанию — No, чтобы случайный Enter не сработал как
+    // согласие. В отличие от ResetStatsButton_Click ниже — трогает только счётчики
+    // прослушиваний (PlayCountManager), не суммарное время и не дату начала отсчёта.
+    private void ResetPlayCountsButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = System.Windows.MessageBox.Show(
+            this,
+            "Сбросить счётчики прослушиваний по всем трекам?\n\nЭто обнулит \"Прослушано треков\", " +
+            "\"Разных треков\" и оба топ-списка. Суммарное время прослушивания не изменится. " +
+            "Отменить это действие нельзя.",
+            "Сброс прослушиваний",
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning,
+            System.Windows.MessageBoxResult.No);
+
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        PlayCountManager.Reset();
+        _settings.PlayCounts = PlayCountManager.GetAll();
+        SettingsManager.Save(_settings);
+
+        _ = LoadAsync();
+    }
+
     // Сброс необратим (счётчики прослушиваний по трекам и суммарное время теряются
     // безвозвратно), поэтому — MessageBox с YesNo и предупреждающей иконкой, тот же паттерн
     // подтверждения, что и у MainWindow.ClearPlaylistButton_Click/DeleteTrackFromDiskMenuItem_Click,

@@ -120,13 +120,30 @@
 
                 <!-- Сердечко "добавить/убрать из избранного" на строке трека. Контур,
                      приглушённый — трек не избранный; закрашенное красное — избранный
-                     (переключается DataTrigger-ом ниже по IsFavoriteMultiConverter). -->
+                     (переключается DataTrigger-ом ниже по IsFavoriteMultiConverter).
+
+                     FocusVisualStyle="{x:Null}" — без него при клике по кнопке (который заодно
+                     выделяет и саму строку) WPF рисует вокруг кнопки штатную прямоугольную
+                     пунктирную рамку фокуса поверх скруглённого выделения строки — на
+                     выделенном (залитом акцентом, со скруглёнными углами) треке это смотрится
+                     как явный визуальный баг, острый прямоугольник поверх скруглённого фона.
+
+                     Foreground у самой иконки (не у кнопки) — TrackFavoriteIcon ничего не
+                     задаёт сам и по умолчанию наследует Foreground от ближайшего предка;
+                     обычно это TextFillColorPrimaryBrush от строки-ListViewItem, но когда трек
+                     выделен, ListViewItem подменяет Foreground на TextOnAccentFillColorPrimaryBrush
+                     (см. App.xaml, Trigger IsSelected) — и контурное сердечко на 50% прозрачности
+                     непредсказуемо меняет цвет/контраст вместе с выделением. Явно фиксируем его
+                     на TextFillColorPrimaryBrush, чтобы контур сердечка выглядел одинаково и на
+                     выделенном, и на обычном треке — только заполненное (избранное) сердечко и
+                     так уже не зависит от этого (у него ниже свой явный Foreground="#E53935"). -->
                 <ui:Button x:Name="TrackFavoriteButton" Grid.Column="3" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="4,0,0,0"
-                           Click="FavoriteButton_Click"
+                           Click="FavoriteButton_Click" FocusVisualStyle="{x:Null}"
                            ToolTip="Добавить/убрать из избранного">
                     <ui:Button.Icon>
-                        <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5" />
+                        <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                     </ui:Button.Icon>
                 </ui:Button>
             </Grid>
