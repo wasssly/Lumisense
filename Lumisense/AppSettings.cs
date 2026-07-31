@@ -172,6 +172,22 @@ public class AppSettings
     // само через пару секунд) — см. TrackChangeToastWindow и MainWindow.ShowTrackChangeToast.
     public bool ShowTrackChangeToast { get; set; } = true;
 
+    // В каком углу экрана показывать уведомление — "BottomRight" (по умолчанию, как было
+    // всегда), "BottomLeft", "TopRight" или "TopLeft".
+    public string TrackChangeToastPosition { get; set; } = "BottomRight";
+
+    // На каком мониторе показывать уведомление, если их несколько. Пусто — "автоматически":
+    // тот же монитор, на котором сейчас находится основное окно плеера (см.
+    // MainWindow.ResolveToastScreen); иначе — Screen.DeviceName конкретного монитора (вида
+    // "\\.\DISPLAY1"). Если сохранённый монитор отключили (или это уже другой компьютер) —
+    // тихо откатываемся на автоматический выбор, а не падаем и не показываем уведомление
+    // за пределами экрана.
+    public string TrackChangeToastMonitor { get; set; } = "";
+
+    // Размер карточки — "Small" / "Medium" (по умолчанию, как было всегда) / "Large" —
+    // см. TrackChangeToastWindow.GetSizePreset.
+    public string TrackChangeToastSize { get; set; } = "Medium";
+
     // Расположение кнопок управления в мини-плеере при наведении курсора. "Below" (по
     // умолчанию) — прежнее поведение: окно подрастает вниз и кнопки появляются отдельной
     // строкой под прогресс-баром. "Overlay" — новый вариант для тех, кому не нужен рост
@@ -219,8 +235,9 @@ public class AppSettings
     // интерфейсе смысла нет, только сбросило бы выбор тем, у кого уже стоит true.
     public bool UseImprovedShuffle { get; set; }
 
-    // "Без анимации" (по умолчанию, как было всегда — мгновенный скачок раз в тик таймера
-    // прогресса) или "Плавно" (см. MainWindow.ProgressTimer_Tick/AnimateProgressSliderTo).
+    // "None" (по умолчанию, как было всегда — мгновенный скачок раз в тик таймера прогресса)
+    // или "MD3" — плавная анимация с кривой ускорения "Standard" из Material Design 3
+    // (cubic-bezier(0.2, 0, 0, 1) — см. MainWindow.SetProgressSliderValue).
     public string ProgressSliderAnimation { get; set; } = "None";
 
     // ---------- Экспериментальные функции ----------

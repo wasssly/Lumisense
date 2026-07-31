@@ -2864,7 +2864,28 @@ public partial class MainWindow : FluentWindow
 
         _trackChangeToastWindow ??= new TrackChangeToastWindow();
         _trackChangeToastWindow.ShowToast(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
-            _settings.IsLightThemeResolved());
+            _settings.IsLightThemeResolved(), ResolveToastScreen(),
+            _settings.TrackChangeToastPosition, _settings.TrackChangeToastSize);
+    }
+
+    // Монитор для всплывающего уведомления (см. AppSettings.TrackChangeToastMonitor) — если
+    // выбран конкретный и он всё ещё подключён, используем его; иначе (пусто, либо сохранённый
+    // монитор отключили или это уже другой компьютер) — тот, на котором сейчас находится само
+    // окно плеера, а не жёстко прибитый к "основному" монитору Windows: так уведомление скорее
+    // всего выскочит там, куда человек и так сейчас смотрит.
+    private System.Windows.Forms.Screen ResolveToastScreen()
+    {
+        if (!string.IsNullOrEmpty(_settings.TrackChangeToastMonitor))
+        {
+            var saved = System.Windows.Forms.Screen.AllScreens
+                .FirstOrDefault(s => s.DeviceName == _settings.TrackChangeToastMonitor);
+            if (saved != null) return saved;
+        }
+
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (handle != IntPtr.Zero) return System.Windows.Forms.Screen.FromHandle(handle);
+
+        return System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
     }
 
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
@@ -3174,7 +3195,7 @@ public partial class MainWindow : FluentWindow
     // с очень неприятными артефактами на слух вместо плавного визуального скольжения.
     private void SetProgressSliderValue(double seconds)
     {
-        if (_settings.ProgressSliderAnimation != "Smooth")
+        if (_settings.ProgressSliderAnimation != "MD3")
         {
             // На случай, если до этого момента играла ещё не долетевшая анимация от
             // предыдущего тика (переключили настройку прямо на лету, посреди движения) —
@@ -3188,10 +3209,19 @@ public partial class MainWindow : FluentWindow
         }
 
         _isSyncingProgressFromPlayback = true;
-        var animation = new DoubleAnimation(seconds, new Duration(_progressTimer.Interval))
-        {
-            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
-        };
+
+        // Кривая ускорения "Standard" из Material Design 3 — cubic-bezier(0.2, 0, 0, 1)
+        // (см. https://m3.material.io/styles/motion/easing-and-duration/tokens-specs,
+        // токен md.sys.motion.easing.standard). У WPF нет готового IEasingFunction под
+        // произвольный кубический безье с двумя контрольными точками, зато есть ровно то же
+        // самое по смыслу в KeySpline у DoubleAnimationUsingKeyFrames — те же две контрольные
+        // точки, тот же результат, просто устроено на уровне ключевых кадров, а не
+        // EasingFunction.
+        var keyFrame = new SplineDoubleKeyFrame(seconds, KeyTime.FromTimeSpan(_progressTimer.Interval),
+            new KeySpline(0.2, 0, 0, 1));
+        var animation = new DoubleAnimationUsingKeyFrames();
+        animation.KeyFrames.Add(keyFrame);
+
         // Обычно эта анимация не успевает доиграть сама — следующий тик приходит ровно через
         // тот же интервал и запускает новую, WPF плавно перенацеливает уже идущую анимацию на
         // новую цель. Completed сработает только у самой последней — на паузе/остановке

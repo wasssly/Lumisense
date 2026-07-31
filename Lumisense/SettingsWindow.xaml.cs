@@ -109,6 +109,8 @@ public partial class SettingsWindow : FluentWindow
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
         TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
+        InitializeToastPositionAndSize();
+        InitializeToastMonitorCombo();
         MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
 
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
@@ -130,8 +132,8 @@ public partial class SettingsWindow : FluentWindow
                                          && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
-        SliderAnimationSmoothRadio.IsChecked = _settings.ProgressSliderAnimation == "Smooth";
-        SliderAnimationNoneRadio.IsChecked = !SliderAnimationSmoothRadio.IsChecked.GetValueOrDefault();
+        SliderAnimationMd3Radio.IsChecked = _settings.ProgressSliderAnimation == "MD3";
+        SliderAnimationNoneRadio.IsChecked = !SliderAnimationMd3Radio.IsChecked.GetValueOrDefault();
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
@@ -328,7 +330,9 @@ public partial class SettingsWindow : FluentWindow
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
-        Add("Анимация ползунка трека", "Воспроизведение", "Playback", SliderAnimationNoneRadio, "анимация ползунок прогресс слайдер трек slider animation progress");
+        Add("Анимация ползунка трека", "Воспроизведение", "Playback", SliderAnimationNoneRadio, "анимация ползунок прогресс слайдер трек slider animation progress md3 material design");
+        Add("Уведомление о смене трека", "Воспроизведение", "Playback", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
+        Add("Расположение уведомления", "Воспроизведение", "Playback", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
         Add("Убрать фон у кнопок управления воспроизведением", "Экспериментальное", "Experimental", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini экспериментальное");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
@@ -550,6 +554,75 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.ShowTrackChangeToast = TrackChangeToastCheckBox.IsChecked == true;
+    }
+
+    private void InitializeToastPositionAndSize()
+    {
+        ToastPosTopLeftRadio.IsChecked = _settings.TrackChangeToastPosition == "TopLeft";
+        ToastPosTopRightRadio.IsChecked = _settings.TrackChangeToastPosition == "TopRight";
+        ToastPosBottomLeftRadio.IsChecked = _settings.TrackChangeToastPosition == "BottomLeft";
+        ToastPosBottomRightRadio.IsChecked = !ToastPosTopLeftRadio.IsChecked.GetValueOrDefault()
+                                              && !ToastPosTopRightRadio.IsChecked.GetValueOrDefault()
+                                              && !ToastPosBottomLeftRadio.IsChecked.GetValueOrDefault();
+
+        ToastSizeSmallRadio.IsChecked = _settings.TrackChangeToastSize == "Small";
+        ToastSizeLargeRadio.IsChecked = _settings.TrackChangeToastSize == "Large";
+        ToastSizeMediumRadio.IsChecked = !ToastSizeSmallRadio.IsChecked.GetValueOrDefault()
+                                          && !ToastSizeLargeRadio.IsChecked.GetValueOrDefault();
+    }
+
+    // Список мониторов собирается заново при каждом открытии окна настроек — состав/порядок
+    // экранов мог измениться с прошлого раза (подключили/отключили монитор), а окно настроек
+    // всё равно создаётся заново при каждом показе (см. MainWindow.ShowSettingsWindow), так
+    // что кэшировать список между открытиями смысла нет.
+    private void InitializeToastMonitorCombo()
+    {
+        ToastMonitorCombo.Items.Clear();
+
+        var autoItem = new System.Windows.Controls.ComboBoxItem
+        {
+            Content = "Автоматически (тот же монитор, что и окно плеера)", Tag = ""
+        };
+        ToastMonitorCombo.Items.Add(autoItem);
+
+        var screens = System.Windows.Forms.Screen.AllScreens;
+        for (int i = 0; i < screens.Length; i++)
+        {
+            var s = screens[i];
+            string label = $"Монитор {i + 1} — {s.Bounds.Width}×{s.Bounds.Height}" + (s.Primary ? " (основной)" : "");
+            ToastMonitorCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = label, Tag = s.DeviceName });
+        }
+
+        var selected = ToastMonitorCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+            .FirstOrDefault(i => (string)i.Tag == _settings.TrackChangeToastMonitor);
+        ToastMonitorCombo.SelectedItem = selected ?? autoItem;
+    }
+
+    private void ToastPositionRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastPosition = ToastPosTopLeftRadio.IsChecked == true ? "TopLeft"
+            : ToastPosTopRightRadio.IsChecked == true ? "TopRight"
+            : ToastPosBottomLeftRadio.IsChecked == true ? "BottomLeft"
+            : "BottomRight";
+    }
+
+    private void ToastSizeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastSize = ToastSizeSmallRadio.IsChecked == true ? "Small"
+            : ToastSizeLargeRadio.IsChecked == true ? "Large"
+            : "Medium";
+    }
+
+    private void ToastMonitorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastMonitor =
+            ToastMonitorCombo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag } ? tag : "";
     }
 
     private void MinimizeToTrayCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -889,7 +962,7 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.ProgressSliderAnimation = SliderAnimationSmoothRadio.IsChecked == true ? "Smooth" : "None";
+        _settings.ProgressSliderAnimation = SliderAnimationMd3Radio.IsChecked == true ? "MD3" : "None";
     }
 
     private void HidePlaybackButtonsCheckBox_Changed(object sender, RoutedEventArgs e)

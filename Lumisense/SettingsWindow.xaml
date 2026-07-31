@@ -500,6 +500,39 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.TrackChangeToastPosition/TrackChangeToastMonitor/TrackChangeToastSize.
+                             Список мониторов в ToastMonitorCombo заполняется в code-behind (InitializeSettings) —
+                             в разметке заранее известен только первый пункт "Автоматически". -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Расположение уведомления" Margin="0,0,0,8" />
+                                <UniformGrid Columns="2" Margin="0,0,0,14">
+                                    <RadioButton x:Name="ToastPosTopLeftRadio" Content="Сверху слева"
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,8" />
+                                    <RadioButton x:Name="ToastPosTopRightRadio" Content="Сверху справа"
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,8" />
+                                    <RadioButton x:Name="ToastPosBottomLeftRadio" Content="Снизу слева"
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                    <RadioButton x:Name="ToastPosBottomRightRadio" Content="Снизу справа"
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                </UniformGrid>
+
+                                <TextBlock Text="Размер" Margin="0,0,0,8" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                    <RadioButton x:Name="ToastSizeSmallRadio" Content="Маленький"
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" Margin="0,0,16,0" />
+                                    <RadioButton x:Name="ToastSizeMediumRadio" Content="Средний"
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" Margin="0,0,16,0" />
+                                    <RadioButton x:Name="ToastSizeLargeRadio" Content="Большой"
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" />
+                                </StackPanel>
+
+                                <TextBlock Text="Монитор" Margin="0,0,0,8" />
+                                <ComboBox x:Name="ToastMonitorCombo" SelectionChanged="ToastMonitorCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="220" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Раньше называлась "Улучшенный шаффл" и жила на странице "Экспериментальное" —
                              имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
                              сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
@@ -520,7 +553,7 @@
                                 <RadioButton x:Name="SliderAnimationNoneRadio" Content="Без анимации (мгновенно)"
                                              GroupName="SliderAnimation" Checked="SliderAnimationRadio_Changed"
                                              Margin="0,0,0,8" />
-                                <RadioButton x:Name="SliderAnimationSmoothRadio" Content="Плавно"
+                                <RadioButton x:Name="SliderAnimationMd3Radio" Content="MD3 (Material Design 3)"
                                              GroupName="SliderAnimation" Checked="SliderAnimationRadio_Changed" />
                             </StackPanel>
                         </Border>
