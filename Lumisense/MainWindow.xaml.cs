@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
@@ -102,8 +103,8 @@ public partial class MainWindow : FluentWindow
     private readonly List<string> _shuffleHistory = new();
     private int _shuffleHistoryIndex = -1;
 
-    // "Колода" для улучшенного шаффла (см. GetNextShuffleTrack) — активна только когда
-    // включена экспериментальная настройка Settings.UseImprovedShuffle.
+    // "Колода" для шаффла без повторов (см. GetNextShuffleTrack) — активна только когда
+    // включена настройка Settings.UseImprovedShuffle.
     private List<string> _shuffleBag = new();
     private bool _isMiniMode;
     private RepeatMode _repeatMode = RepeatMode.Off;
@@ -776,6 +777,7 @@ public partial class MainWindow : FluentWindow
     {
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
+        ApplyWindowBackdrop();
 
         if (_settings.AlwaysOnTop)
             Topmost = true;
@@ -814,6 +816,16 @@ public partial class MainWindow : FluentWindow
             // тихо остаёмся на системном акценте вместо падения.
             ApplicationAccentColorManager.ApplySystemAccent();
         }
+    }
+
+    // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте и
+    // заново из окна настроек при переключении этой настройки (см.
+    // SettingsWindow.WindowBackdropRadio_Changed), пока главное окно уже открыто.
+    public void ApplyWindowBackdrop()
+    {
+        WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
+            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
+            : Wpf.Ui.Controls.WindowBackdropType.Mica;
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettingsWindow();
@@ -2338,7 +2350,7 @@ public partial class MainWindow : FluentWindow
         {
             _outputDevice.Pause();
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
-            _progressTimer.Stop();
+            StopProgressTimerAndAnimation();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
             PlaybackStateChanged?.Invoke(false);
 
@@ -2361,7 +2373,7 @@ public partial class MainWindow : FluentWindow
 
     private void StopPlayback(bool disposeOnly = false)
     {
-        _progressTimer.Stop();
+        StopProgressTimerAndAnimation();
 
         // Stop()/Dispose() ниже сами поднимают событие PlaybackStopped — это особенность
         // NAudio: оно срабатывает и при естественном окончании трека, и при любой ручной
@@ -2524,7 +2536,7 @@ public partial class MainWindow : FluentWindow
         return candidate;
     }
 
-    // ---------- Улучшенный шаффл (Settings.UseImprovedShuffle, экспериментальная настройка) ----------
+    // ---------- Шаффл без повторов (Settings.UseImprovedShuffle) ----------
     //
     // Старый способ (GetRandomTrack выше) на каждом шаге просто берёт случайный трек из
     // всего активного плейлиста, не совпадающий с текущим. У чисто случайного выбора на
@@ -2666,9 +2678,9 @@ public partial class MainWindow : FluentWindow
         _shuffleBag.Clear();
     }
 
-    // Вызывается из окна настроек при переключении экспериментальной настройки
-    // "Улучшенный шаффл" — колода от старого/нового алгоритма не имеет смысла продолжать
-    // использовать после смены режима на лету, поэтому просто начинаем её заново.
+    // Вызывается из окна настроек при переключении настройки "Шаффл без повторов" — колода
+    // от старого/нового алгоритма не имеет смысла продолжать использовать после смены режима
+    // на лету, поэтому просто начинаем её заново.
     public void ResetShuffleState()
     {
         _shuffleHistory.Clear();
@@ -3152,6 +3164,55 @@ public partial class MainWindow : FluentWindow
     private const int AutoSaveEveryNTicks = 40;
     private int _ticksSinceLastAutoSave;
 
+    // Обновляет позицию ползунка прогресса под текущее время воспроизведения — либо мгновенным
+    // скачком (по умолчанию, как было всегда), либо плавной анимацией длиной в один тик
+    // таймера прогресса (см. AppSettings.ProgressSliderAnimation). Сама же и управляет флагом
+    // _isSyncingProgressFromPlayback — в анимированном случае он должен оставаться включённым
+    // не на миг присвоения, а на всё время анимации: ValueChanged срабатывает на каждый
+    // промежуточный кадр, и без этого ProgressSlider_ValueChanged принял бы каждый такой кадр
+    // за перемотку пользователем и дёргал бы _audioFile.CurrentTime по несколько раз за тик —
+    // с очень неприятными артефактами на слух вместо плавного визуального скольжения.
+    private void SetProgressSliderValue(double seconds)
+    {
+        if (_settings.ProgressSliderAnimation != "Smooth")
+        {
+            // На случай, если до этого момента играла ещё не долетевшая анимация от
+            // предыдущего тика (переключили настройку прямо на лету, посреди движения) —
+            // останавливаем её, иначе она продолжила бы досчитывать поверх нового мгновенного
+            // значения и слайдер бы "поехал" сам по себе на пропавшем полсекунды кадре.
+            ProgressSlider.BeginAnimation(System.Windows.Controls.Slider.ValueProperty, null);
+            _isSyncingProgressFromPlayback = true;
+            ProgressSlider.Value = seconds;
+            _isSyncingProgressFromPlayback = false;
+            return;
+        }
+
+        _isSyncingProgressFromPlayback = true;
+        var animation = new DoubleAnimation(seconds, new Duration(_progressTimer.Interval))
+        {
+            EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut }
+        };
+        // Обычно эта анимация не успевает доиграть сама — следующий тик приходит ровно через
+        // тот же интервал и запускает новую, WPF плавно перенацеливает уже идущую анимацию на
+        // новую цель. Completed сработает только у самой последней — на паузе/остановке
+        // (см. StopProgressTimerAndAnimation) или пока следующий тик не подоспел.
+        animation.Completed += (_, _) => _isSyncingProgressFromPlayback = false;
+        ProgressSlider.BeginAnimation(System.Windows.Controls.Slider.ValueProperty, animation);
+    }
+
+    // Останавливает таймер прогресса и любую его недоигравшую анимацию слайдера (см.
+    // SetProgressSliderValue) разом — по всем местам, где раньше был голый
+    // _progressTimer.Stop(). Без явной остановки анимации тут возможно узкое окно (до её
+    // естественного Completed, то есть до отдельного тика таймера прогресса), в течение
+    // которого _isSyncingProgressFromPlayback остаётся true, и ручная перемотка ползунка
+    // сразу после паузы не сработала бы.
+    private void StopProgressTimerAndAnimation()
+    {
+        _progressTimer.Stop();
+        ProgressSlider.BeginAnimation(System.Windows.Controls.Slider.ValueProperty, null);
+        _isSyncingProgressFromPlayback = false;
+    }
+
     private void ProgressTimer_Tick(object? sender, EventArgs e)
     {
         // Пока пользователь держит ползунок нажатым (клик или перетаскивание) — не трогаем его
@@ -3159,9 +3220,7 @@ public partial class MainWindow : FluentWindow
         // прямо во время движения, и ползунок будет "дёргаться".
         if (_audioFile == null || _isUserInteractingWithProgress) return;
 
-        _isSyncingProgressFromPlayback = true;
-        ProgressSlider.Value = _audioFile.CurrentTime.TotalSeconds;
-        _isSyncingProgressFromPlayback = false;
+        SetProgressSliderValue(_audioFile.CurrentTime.TotalSeconds);
 
         CurrentTimeText.Text = _audioFile.CurrentTime.ToString(@"mm\:ss");
         ProgressChanged?.Invoke(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);

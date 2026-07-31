@@ -260,9 +260,7 @@
                                 <RadioButton x:Name="ThemeDarkRadio" Content="Тёмная" GroupName="Theme"
                                              Checked="ThemeRadio_Changed" Margin="0,0,0,8" />
                                 <RadioButton x:Name="ThemeLightRadio" Content="Светлая" GroupName="Theme"
-                                             Checked="ThemeRadio_Changed" Margin="0,0,0,8" />
-                                <RadioButton x:Name="ThemeSystemRadio" Content="Системная (как в Windows)"
-                                             GroupName="Theme" Checked="ThemeRadio_Changed" />
+                                             Checked="ThemeRadio_Changed" />
                             </StackPanel>
                         </Border>
 
@@ -320,6 +318,19 @@
                                         </ui:Button.Icon>
                                     </ui:Button>
                                 </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. AppSettings.WindowBackdropType. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Основа окна" Margin="0,0,0,8" />
+                                <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
+                                <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,4" />
+                                <TextBlock Text="Применяется к главному окну, окну настроек и статистике — на остальных, мелких окнах разницы почти не видно."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -486,6 +497,31 @@
                                           Margin="0,0,0,4" />
                                 <TextBlock Text="Маленькая карточка с обложкой и названием в углу экрана — появляется на пару секунд при каждом переключении трека и пропадает сама."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Раньше называлась "Улучшенный шаффл" и жила на странице "Экспериментальное" —
+                             имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
+                             сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
+                             это называется в интерфейсе. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
+                                          Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
+                                <TextBlock Text="Вместо чисто случайного выбора трека на каждом шаге сначала тасуется весь плейлист целиком, а треки проигрываются по порядку из этой тасовки — так один и тот же трек не может повториться, пока не сыграют все остальные."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. AppSettings.ProgressSliderAnimation и MainWindow.ProgressTimer_Tick. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Анимация ползунка трека" Margin="0,0,0,8" />
+                                <RadioButton x:Name="SliderAnimationNoneRadio" Content="Без анимации (мгновенно)"
+                                             GroupName="SliderAnimation" Checked="SliderAnimationRadio_Changed"
+                                             Margin="0,0,0,8" />
+                                <RadioButton x:Name="SliderAnimationSmoothRadio" Content="Плавно"
+                                             GroupName="SliderAnimation" Checked="SliderAnimationRadio_Changed" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -955,15 +991,6 @@
                         <TextBlock Text="Экспериментальное" Style="{StaticResource PageTitleStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Улучшенный шаффл"
-                                          Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
-                                <TextBlock Text="Вместо чисто случайного выбора трека на каждом шаге сначала тасуется весь плейлист целиком, а треки проигрываются по порядку из этой тасовки — так один и тот же трек не может повториться, пока не сыграют все остальные. Настройка экспериментальная: может измениться или стать поведением по умолчанию в будущих версиях."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
                             <StackPanel>
                                 <CheckBox x:Name="HidePlaybackButtonsCheckBox" Content="Убрать фон у кнопок управления воспроизведением"
                                           Checked="HidePlaybackButtonsCheckBox_Changed" Unchecked="HidePlaybackButtonsCheckBox_Changed" />

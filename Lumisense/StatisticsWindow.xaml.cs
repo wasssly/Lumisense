@@ -21,6 +21,11 @@ public partial class StatisticsWindow : FluentWindow
     {
         InitializeComponent();
         _settings = settings;
+
+        WindowBackdropType = settings.WindowBackdropType == "Acrylic"
+            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
+            : Wpf.Ui.Controls.WindowBackdropType.Mica;
+
         Loaded += async (_, _) => await LoadAsync();
     }
 

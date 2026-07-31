@@ -55,6 +55,10 @@ public partial class SettingsWindow : FluentWindow
     {
         InitializeComponent();
 
+        WindowBackdropType = settings.WindowBackdropType == "Acrylic"
+            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
+            : Wpf.Ui.Controls.WindowBackdropType.Mica;
+
         // Выбираем стартовую страницу здесь, а не через IsChecked="True" в XAML — на этот
         // момент все страницы (PageAppearance, PageWindow и т.д.) уже гарантированно созданы,
         // так что обработчик NavItem_Checked отработает без NullReferenceException.
@@ -91,14 +95,15 @@ public partial class SettingsWindow : FluentWindow
         PositionOverOwner(owner);
 
         ThemeLightRadio.IsChecked = _settings.Theme == "Light";
-        ThemeSystemRadio.IsChecked = _settings.Theme == "System";
-        ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault()
-                                    && !ThemeSystemRadio.IsChecked.GetValueOrDefault();
+        ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault();
 
         AccentManualRadio.IsChecked = _settings.AccentColorMode == "Manual";
         AccentSystemRadio.IsChecked = !AccentManualRadio.IsChecked.GetValueOrDefault();
         AccentSwatchesPanel.Visibility = AccentManualRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         RefreshAccentSwatchSelection();
+
+        BackdropAcrylicRadio.IsChecked = _settings.WindowBackdropType == "Acrylic";
+        BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault();
 
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
@@ -125,6 +130,8 @@ public partial class SettingsWindow : FluentWindow
                                          && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
+        SliderAnimationSmoothRadio.IsChecked = _settings.ProgressSliderAnimation == "Smooth";
+        SliderAnimationNoneRadio.IsChecked = !SliderAnimationSmoothRadio.IsChecked.GetValueOrDefault();
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
@@ -296,8 +303,9 @@ public partial class SettingsWindow : FluentWindow
         void Add(string label, string pageTitle, string pageKey, FrameworkElement target, string extraKeywords = "")
             => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey, $"{label} {extraKeywords}".ToLowerInvariant(), target));
 
-        Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая системная цвет тема оформление dark light system");
+        Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
+        Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic акрил размытие блюр подложка фон backdrop blur");
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
@@ -319,7 +327,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Перемешать", "Горячие клавиши", "Hotkeys", HotkeyShuffleButton, "shuffle перемешать горячая клавиша");
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
-        Add("Улучшенный шаффл", "Экспериментальное", "Experimental", ImprovedShuffleCheckBox, "шаффл перемешать shuffle экспериментальное bag колода");
+        Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
+        Add("Анимация ползунка трека", "Воспроизведение", "Playback", SliderAnimationNoneRadio, "анимация ползунок прогресс слайдер трек slider animation progress");
         Add("Убрать фон у кнопок управления воспроизведением", "Экспериментальное", "Experimental", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini экспериментальное");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
@@ -413,9 +422,7 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.Theme = ThemeLightRadio.IsChecked == true ? "Light"
-            : ThemeSystemRadio.IsChecked == true ? "System"
-            : "Dark";
+        _settings.Theme = ThemeLightRadio.IsChecked == true ? "Light" : "Dark";
 
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         _owner.ApplyAccentColor(); // акцент пересчитывает светлые/тёмные варианты под новую тему
@@ -499,6 +506,16 @@ public partial class SettingsWindow : FluentWindow
     {
         public Wpf32Window(nint handle) => Handle = handle;
         public nint Handle { get; }
+    }
+
+    private void WindowBackdropRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? "Acrylic" : "Mica";
+
+        _owner.ApplyWindowBackdrop();
+        WindowBackdropType = _owner.WindowBackdropType; // то же самое — и у этого окна настроек тоже
     }
 
     private void AlwaysOnTopCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -866,6 +883,13 @@ public partial class SettingsWindow : FluentWindow
         // Колода/история от предыдущего режима шаффла не имеет смысла в новом —
         // начинаем с чистого листа, а не пытаемся домешать её в новую логику.
         _owner.ResetShuffleState();
+    }
+
+    private void SliderAnimationRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ProgressSliderAnimation = SliderAnimationSmoothRadio.IsChecked == true ? "Smooth" : "None";
     }
 
     private void HidePlaybackButtonsCheckBox_Changed(object sender, RoutedEventArgs e)
