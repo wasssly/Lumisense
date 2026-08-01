@@ -506,12 +506,16 @@
                         <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
                             <StackPanel>
                                 <TextBlock Text="Расположение уведомления" Margin="0,0,0,8" />
-                                <UniformGrid Columns="2" Margin="0,0,0,14">
+                                <UniformGrid Columns="3" Margin="0,0,0,14">
                                     <RadioButton x:Name="ToastPosTopLeftRadio" Content="Сверху слева"
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,8" />
+                                    <RadioButton x:Name="ToastPosTopCenterRadio" Content="Сверху по центру"
                                                  GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,8" />
                                     <RadioButton x:Name="ToastPosTopRightRadio" Content="Сверху справа"
                                                  GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,8" />
                                     <RadioButton x:Name="ToastPosBottomLeftRadio" Content="Снизу слева"
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                    <RadioButton x:Name="ToastPosBottomCenterRadio" Content="Снизу по центру"
                                                  GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
                                     <RadioButton x:Name="ToastPosBottomRightRadio" Content="Снизу справа"
                                                  GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />

@@ -172,8 +172,8 @@ public class AppSettings
     // само через пару секунд) — см. TrackChangeToastWindow и MainWindow.ShowTrackChangeToast.
     public bool ShowTrackChangeToast { get; set; } = true;
 
-    // В каком углу экрана показывать уведомление — "BottomRight" (по умолчанию, как было
-    // всегда), "BottomLeft", "TopRight" или "TopLeft".
+    // Где на экране показывать уведомление — "BottomRight" (по умолчанию, как было всегда),
+    // "BottomLeft", "BottomCenter", "TopRight", "TopLeft" или "TopCenter".
     public string TrackChangeToastPosition { get; set; } = "BottomRight";
 
     // На каком мониторе показывать уведомление, если их несколько. Пусто — "автоматически":

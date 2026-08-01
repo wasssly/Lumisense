@@ -90,15 +90,6 @@ public partial class MainWindow : FluentWindow
     // Путь к треку, который сейчас загружен/играет. Хранится как путь, а не как индекс —
     // это позволяет треку спокойно доигрывать даже если его папку потом удалили из плейлиста.
     private string? _currentTrackPath;
-
-    // Временный WAV-файл, из которого сейчас доигрывает трек, удалённый с диска прямо во
-    // время воспроизведения (см. DeleteTrackFromDisk) — подчищается либо при следующей
-    // загрузке ЛЮБОГО другого трека (см. верх LoadAndPlay), либо при выходе из приложения
-    // (см. OnClosed), смотря что наступит раньше. Пока не null — сейчас именно такая
-    // ситуация, и _currentTrackPath указывает не на настоящий файл трека, а на эту временную
-    // копию (важно для PersistPlaybackAndPlaylistState — такой путь нельзя сохранять как
-    // "трек для восстановления при следующем запуске", он же временный и будет удалён).
-    private string? _pendingTempWavToDelete;
     private bool _isUserInteractingWithProgress;
     private bool _isSyncingProgressFromPlayback;
     private bool _isPlaying;
@@ -866,7 +857,29 @@ public partial class MainWindow : FluentWindow
         if (_isFavoritesView)
             IconResources.SetOnAccent(FavoritesButtonIcon, true);
 
+        // Известный баг WPF-UI (https://github.com/lepoco/wpfui/issues/965): после
+        // ApplicationAccentColorManager.Apply/ApplySystemAccent кнопки с Appearance="Primary"
+        // в состоянии покоя остаются в СТАРОМ цвете — новый акцент виден только когда на
+        // кнопку наводишь курсор (у hover-состояния почему-то отдельная, живая привязка к
+        // ресурсу, а у состояния покоя — нет). Кратковременное переключение Appearance
+        // туда-обратно форсирует полную переоценку стиля кнопки и заставляет её подхватить
+        // актуальный акцент даже в покое, без наведения — WPF успевает применить оба
+        // присваивания за один проход до отрисовки, так что видимого мерцания нет.
+        RefreshButtonAppearance(PlayPauseButton);
+        RefreshButtonAppearance(ShuffleButton);
+        RefreshButtonAppearance(RepeatButton);
+        RefreshButtonAppearance(FavoritesButton);
+
         _miniPlayerWindow?.UpdateSecondaryButton();
+        _miniPlayerWindow?.RefreshAccentButtons();
+    }
+
+    private static void RefreshButtonAppearance(Wpf.Ui.Controls.Button button)
+    {
+        if (button.Appearance != ControlAppearance.Primary) return;
+
+        button.Appearance = ControlAppearance.Secondary;
+        button.Appearance = ControlAppearance.Primary;
     }
 
     // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте и
@@ -2042,56 +2055,25 @@ public partial class MainWindow : FluentWindow
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
         bool isCurrentlyLoaded = filePath == _currentTrackPath && _audioFile != null;
-        string? tempWavPath = null;
-        TimeSpan resumePosition = default;
+        string? nextPath = null;
         bool wasPlaying = false;
-        string resumeTitle = "", resumeArtist = "";
-        BitmapImage? resumeArt = null;
-        byte[]? resumeArtBytes = null;
-        string? resumeArtMime = null;
-        TagLib.PictureType? resumeArtPictureType = null;
 
         if (isCurrentlyLoaded)
         {
-            // Файл у играющего трека открыт NAudio-потоком, поэтому удаление ниже упадёт с
-            // "файл занят другим процессом", пока хендл не освобождён — но вместо полной
-            // остановки (как было раньше) сначала, пока живой _audioFile как ни в чём не
-            // бывало продолжает играть (мы его никак не трогаем), перегоняем файл ЦЕЛИКОМ
-            // через ОТДЕЛЬНЫЙ независимый ридер во временный WAV на диске. Только когда копия
-            // готова, коротко освобождаем хендл живого плеера, удаляем оригинал и тут же
-            // перезапускаем воспроизведение с того же места, но уже из временной копии — тем
-            // же LoadAndPlay, которым грузится и любой обычный трек. Копирование не мгновенно
-            // на больших файлах, поэтому и делается ДО остановки — чтобы момент реальной
-            // тишины был как можно короче, а не растягивался на всё время копирования.
-            try
-            {
-                using var tempReader = new AudioFileReader(filePath);
-                tempWavPath = Path.Combine(Path.GetTempPath(), $"lumisense-{Guid.NewGuid():N}.wav");
-                WaveFileWriter.CreateWaveFile(tempWavPath, tempReader.ToWaveProvider());
-            }
-            catch
-            {
-                // Не получилось скопировать файл целиком заранее (например, он огромный, диск
-                // переполнен или файл уже недоступен для чтения) — не страшно, просто ведём
-                // себя по-старому: останавливаем воспроизведение перед удалением.
-                if (tempWavPath != null) { try { File.Delete(tempWavPath); } catch { } }
-                tempWavPath = null;
-            }
-
-            resumePosition = _audioFile!.CurrentTime;
             wasPlaying = _isPlaying;
-            resumeTitle = TrackTitleText.Text;
-            resumeArtist = TrackArtistText.Text;
-            resumeArt = _currentAlbumArt;
-            resumeArtBytes = _currentAlbumArtBytes;
-            resumeArtMime = _currentAlbumArtMimeType;
-            resumeArtPictureType = _currentAlbumArtPictureType;
 
-            // disposeOnly: true, когда копия готова — LoadAndPlay ниже почти сразу перезапустит
-            // полноценное воспроизведение и сам всё обновит; полный StopPlayback() (со сбросом
-            // прогресс-бара, иконки паузы и т.п. в "ничего не играет") нужен, только если копию
-            // сделать не удалось и мы возвращаемся к прежнему поведению — трек просто остановлен.
-            StopPlayback(disposeOnly: tempWavPath != null);
+            // Считаем "следующий трек в очереди" ДО того, как уберём удаляемый из плейлиста
+            // ниже — иначе ComputeNextTrackPath отсчитывал бы позицию уже без него и с этого
+            // же места начал бы играть что-то не то (или сначала списка). Если следующий
+            // трек — это тот же самый файл (он был единственным в очереди), играть больше
+            // нечего.
+            nextPath = ComputeNextTrackPath(_currentTrackPath);
+            if (nextPath == filePath) nextPath = null;
+
+            // Файл у играющего трека открыт NAudio-потоком, поэтому удаление ниже упадёт с
+            // "файл занят другим процессом", пока мы явно не остановим воспроизведение и не
+            // освободим хендл.
+            StopPlayback();
         }
 
         try
@@ -2106,7 +2088,6 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            if (tempWavPath != null) { try { File.Delete(tempWavPath); } catch { } }
             System.Windows.MessageBox.Show($"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка удаления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             return;
@@ -2125,27 +2106,11 @@ public partial class MainWindow : FluentWindow
         RefreshPlaylistView();
         if (_isFavoritesView) RefreshFavoritesTrackList();
 
-        if (tempWavPath == null) return;
-
-        LoadAndPlay(tempWavPath, autoPlay: wasPlaying, startPosition: resumePosition);
-
-        // LoadAndPlay выше прочитал бы теги/обложку с временного WAV-файла — а у него их,
-        // конечно, нет (см. LoadAlbumArt: пустой WAV без картинки → ResetAlbumArtPlaceholder,
-        // без названия/исполнителя в тегах → TrackTitleText/TrackArtistText не трогаются, у
-        // них там имя временного файла с диска). Возвращаем настоящие название/исполнителя/
-        // обложку удалённого трека — они и так были на экране секунду назад.
-        TrackTitleText.Text = resumeTitle;
-        TrackArtistText.Text = resumeArtist;
-        _currentAlbumArt = resumeArt;
-        _currentAlbumArtBytes = resumeArtBytes;
-        _currentAlbumArtMimeType = resumeArtMime;
-        _currentAlbumArtPictureType = resumeArtPictureType;
-        if (resumeArt != null) ApplyAlbumArtBrush(new ImageBrush(resumeArt) { Stretch = Stretch.UniformToFill });
-        TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
-
-        // Подчищается либо при следующей загрузке другого трека (см. верх LoadAndPlay), либо
-        // при выходе из приложения (см. OnClosed) — что наступит раньше.
-        _pendingTempWavToDelete = tempWavPath;
+        // Играл именно удалённый трек и в очереди был кто-то ещё — переключаемся дальше,
+        // сохраняя состояние "играло/было на паузе", а не просто останавливаемся на месте
+        // удалённого трека.
+        if (nextPath != null)
+            LoadAndPlay(nextPath, autoPlay: wasPlaying);
     }
 
     // ---------- Загрузка и воспроизведение ----------
@@ -2153,18 +2118,6 @@ public partial class MainWindow : FluentWindow
     private void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null)
     {
         StopPlayback(disposeOnly: true);
-
-        // Подчищаем временный WAV от предыдущего "удалили проигрываемый трек с диска, но
-        // воспроизведение не прервали" (см. DeleteTrackFromDisk и комментарий у
-        // _pendingTempWavToDelete) — раз грузится что-то новое, прошлый временный файл
-        // больше никому не нужен. Сравнение с filePath — на случай (в норме невозможный
-        // при правильном порядке вызовов, но проверка дешёвая) повторной загрузки того же
-        // самого временного файла.
-        if (_pendingTempWavToDelete != null && _pendingTempWavToDelete != filePath)
-        {
-            try { File.Delete(_pendingTempWavToDelete); } catch { /* не критично — тихо оставляем файл в temp */ }
-            _pendingTempWavToDelete = null;
-        }
 
         try
         {
@@ -3406,13 +3359,7 @@ public partial class MainWindow : FluentWindow
             && _audioFile.CurrentTime.TotalSeconds >= _audioFile.TotalTime.TotalSeconds / 2.0)
         {
             _halfPlayCounted = true;
-
-            // Временная WAV-копия удалённого с диска трека (см. DeleteTrackFromDisk) — не
-            // настоящий путь трека, засчитывать прослушивание на него нельзя: получилась бы
-            // мёртвая запись в счётчиках по пути временного файла, который через секунду
-            // удалится и больше никогда не встретится, только зря засоряя топ треков в
-            // статистике.
-            if (_currentTrackPath != null && _currentTrackPath != _pendingTempWavToDelete)
+            if (_currentTrackPath != null)
                 PlayCountManager.Increment(_currentTrackPath);
         }
 
@@ -3567,13 +3514,7 @@ public partial class MainWindow : FluentWindow
             IsLooseFilesBucket = f.IsLooseFilesBucket
         }).ToList();
 
-        // Если сейчас доигрывает временная копия удалённого с диска трека (см.
-        // _pendingTempWavToDelete) — не сохраняем её путь как "трек для восстановления при
-        // следующем запуске": сам файл временный и будет удалён самое позднее в OnClosed,
-        // так что при следующем запуске плеер просто не пытался бы восстановить ничего,
-        // вместо попытки открыть уже несуществующий файл.
-        var currentPath = GetCurrentTrackPath();
-        _settings.LastTrackPath = currentPath != _pendingTempWavToDelete ? currentPath : null;
+        _settings.LastTrackPath = GetCurrentTrackPath();
         _settings.LastPositionSeconds = _audioFile?.CurrentTime.TotalSeconds ?? _settings.LastPositionSeconds;
         _settings.WasMiniPlayerOnClose = _isMiniMode;
         _settings.IsPlaylistVisible = _isPlaylistVisible;
@@ -3598,12 +3539,6 @@ public partial class MainWindow : FluentWindow
         // PersistPlaybackAndPlaylistState читает текущую позицию именно из него.
         PersistPlaybackAndPlaylistState();
         StopPlayback(disposeOnly: true);
-
-        if (_pendingTempWavToDelete != null)
-        {
-            try { File.Delete(_pendingTempWavToDelete); } catch { /* не критично — тихо оставляем файл в temp */ }
-            _pendingTempWavToDelete = null;
-        }
 
         _mediaHotKeys?.Dispose();
         _trayIconManager?.Dispose();

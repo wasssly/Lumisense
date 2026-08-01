@@ -135,11 +135,15 @@ public partial class TrackChangeToastWindow : Window
         double areaRight = area.Right / scale;
         double areaBottom = area.Bottom / scale;
 
+        double centerLeft = areaLeft + (areaRight - areaLeft - Width) / 2;
+
         (Left, Top) = position switch
         {
             "TopLeft" => (areaLeft + ScreenMargin, areaTop + ScreenMargin),
             "TopRight" => (areaRight - Width - ScreenMargin, areaTop + ScreenMargin),
+            "TopCenter" => (centerLeft, areaTop + ScreenMargin),
             "BottomLeft" => (areaLeft + ScreenMargin, areaBottom - Height - ScreenMargin),
+            "BottomCenter" => (centerLeft, areaBottom - Height - ScreenMargin),
             _ => (areaRight - Width - ScreenMargin, areaBottom - Height - ScreenMargin) // "BottomRight"
         };
     }

@@ -530,6 +530,24 @@ public partial class MiniPlayerWindow : Window
             OnRepeatModeChanged(_mainWindow.CurrentRepeatModeName);
     }
 
+    // См. MainWindow.RefreshAccentDependentIcons/RefreshButtonAppearance — тот же обходной
+    // приём для того же известного бага WPF-UI (кнопки Appearance="Primary" в состоянии покоя
+    // не подхватывают новый акцент сами, только при наведении курсора), только применительно
+    // к кнопкам мини-плеера. Вызывается оттуда же, при каждой смене акцента.
+    public void RefreshAccentButtons()
+    {
+        RefreshButtonAppearance(PlayPauseButton);
+        RefreshButtonAppearance(SecondaryButton);
+    }
+
+    private static void RefreshButtonAppearance(Wpf.Ui.Controls.Button button)
+    {
+        if (button.Appearance != ControlAppearance.Primary) return;
+
+        button.Appearance = ControlAppearance.Secondary;
+        button.Appearance = ControlAppearance.Primary;
+    }
+
     // Подставляем актуальное состояние настроек прямо перед показом меню — на случай, если
     // закрепление/топмост поменяли в другом месте (например, в окне настроек) уже после
     // того, как это меню было создано.

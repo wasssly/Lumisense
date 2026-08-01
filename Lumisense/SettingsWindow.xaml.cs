@@ -559,11 +559,15 @@ public partial class SettingsWindow : FluentWindow
     private void InitializeToastPositionAndSize()
     {
         ToastPosTopLeftRadio.IsChecked = _settings.TrackChangeToastPosition == "TopLeft";
+        ToastPosTopCenterRadio.IsChecked = _settings.TrackChangeToastPosition == "TopCenter";
         ToastPosTopRightRadio.IsChecked = _settings.TrackChangeToastPosition == "TopRight";
         ToastPosBottomLeftRadio.IsChecked = _settings.TrackChangeToastPosition == "BottomLeft";
+        ToastPosBottomCenterRadio.IsChecked = _settings.TrackChangeToastPosition == "BottomCenter";
         ToastPosBottomRightRadio.IsChecked = !ToastPosTopLeftRadio.IsChecked.GetValueOrDefault()
+                                              && !ToastPosTopCenterRadio.IsChecked.GetValueOrDefault()
                                               && !ToastPosTopRightRadio.IsChecked.GetValueOrDefault()
-                                              && !ToastPosBottomLeftRadio.IsChecked.GetValueOrDefault();
+                                              && !ToastPosBottomLeftRadio.IsChecked.GetValueOrDefault()
+                                              && !ToastPosBottomCenterRadio.IsChecked.GetValueOrDefault();
 
         ToastSizeSmallRadio.IsChecked = _settings.TrackChangeToastSize == "Small";
         ToastSizeLargeRadio.IsChecked = _settings.TrackChangeToastSize == "Large";
@@ -603,8 +607,10 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.TrackChangeToastPosition = ToastPosTopLeftRadio.IsChecked == true ? "TopLeft"
+            : ToastPosTopCenterRadio.IsChecked == true ? "TopCenter"
             : ToastPosTopRightRadio.IsChecked == true ? "TopRight"
             : ToastPosBottomLeftRadio.IsChecked == true ? "BottomLeft"
+            : ToastPosBottomCenterRadio.IsChecked == true ? "BottomCenter"
             : "BottomRight";
     }
 
