@@ -141,11 +141,17 @@
                      FavoriteBackdrop — сама кнопка Appearance="Transparent", то есть без
                      собственного фона, и на сплошной заливке выделенной строки (акцентный цвет,
                      см. App.xaml) визуально растворяется — непонятно, где именно кликабельная
-                     область. DataTrigger ниже подсвечивает подложку под кнопкой полупрозрачным
-                     чёрным ТОЛЬКО когда строка выделена — независимо от конкретного акцента
-                     (он настраиваемый, см. AppSettings.AccentColorHex) полупрозрачное затемнение
-                     даёт видимый, но ненавязчивый контраст на любом достаточно ярком фоне, не
-                     требуя вычислять контраст под конкретный акцент отдельно. -->
+                     область. DataTrigger ниже подсвечивает подложку под кнопкой ТОЛЬКО когда
+                     строка выделена, цветом из FavoriteBackdropSelectedBrush (см. App.xaml и
+                     MainWindow.ApplyFavoriteBackdropBrush). Раньше тут стоял фиксированный
+                     полупрозрачный чёрный — недостаточно тёмный на светлых акцентах (сердечко
+                     на них не то что "сливалось", а буквально терялось, см. баг-репорт).
+                     Настраиваемый акцент (AppSettings.AccentColorHex) может быть каким угодно —
+                     и тёмным, и совсем светлым пастельным, — а вот цвет самой иконки сердечка
+                     фиксирован не акцентом, а темой (см. Foreground у TrackFavoriteIcon ниже),
+                     поэтому и контрастную подложку под ним правильнее подбирать тоже по теме
+                     (тёмная тема → почти непрозрачный тёмный чип, светлая → почти непрозрачный
+                     светлый), а не пытаться каждый раз вычислять контраст под конкретный акцент. -->
                 <Border x:Name="FavoriteBackdrop" Grid.Column="3" Width="26" Height="26" CornerRadius="13"
                         Margin="4,0,0,0" Background="Transparent">
                     <Border.Style>
@@ -153,7 +159,7 @@
                             <Style.Triggers>
                                 <DataTrigger Value="True"
                                              Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsSelected}">
-                                    <Setter Property="Background" Value="#40000000" />
+                                    <Setter Property="Background" Value="{DynamicResource FavoriteBackdropSelectedBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>

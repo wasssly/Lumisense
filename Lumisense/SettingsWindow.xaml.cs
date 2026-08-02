@@ -430,6 +430,7 @@ public partial class SettingsWindow : FluentWindow
 
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         _owner.ApplyAccentColor(); // акцент пересчитывает светлые/тёмные варианты под новую тему
+        _owner.ApplyFavoriteBackdropBrush();
         _owner.ApplyTrayTheme(_settings.IsLightThemeResolved());
         _owner.ApplyMiniPlayerThemeLive();
     }

@@ -777,6 +777,7 @@ public partial class MainWindow : FluentWindow
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();
+        ApplyFavoriteBackdropBrush();
 
         if (_settings.AlwaysOnTop)
             Topmost = true;
@@ -795,6 +796,20 @@ public partial class MainWindow : FluentWindow
     // или темы (см. SettingsWindow.AccentColorMode/ThemeRadio_Changed) — Apply() учитывает
     // текущую тему, чтобы подобрать светлые/тёмные варианты акцента (SystemAccentColorLight1
     // и т.п.), поэтому пересчитывать нужно и при переключении темы, не только цвета.
+    // Подложка под кнопкой "избранное" на выделенной строке плейлиста (см. MainWindow.xaml,
+    // TrackFavoriteButton/FavoriteBackdrop) — тёмная тема → почти непрозрачный тёмный чип
+    // (сердечко там белое), светлая → почти непрозрачный светлый (сердечко там тёмное).
+    // Вызывается при старте и при каждой смене темы (см. SettingsWindow.ThemeRadio_Changed) —
+    // не при смене акцента: акцент тут ни при чём, подложка привязана только к теме.
+    public void ApplyFavoriteBackdropBrush()
+    {
+        var color = _settings.IsLightThemeResolved()
+            ? Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF)
+            : Color.FromArgb(0xCC, 0x00, 0x00, 0x00);
+
+        Application.Current.Resources["FavoriteBackdropSelectedBrush"] = new SolidColorBrush(color);
+    }
+
     public void ApplyAccentColor()
     {
         if (_settings.AccentColorMode != "Manual")
@@ -857,29 +872,30 @@ public partial class MainWindow : FluentWindow
         if (_isFavoritesView)
             IconResources.SetOnAccent(FavoritesButtonIcon, true);
 
-        // Известный баг WPF-UI (https://github.com/lepoco/wpfui/issues/965): после
-        // ApplicationAccentColorManager.Apply/ApplySystemAccent кнопки с Appearance="Primary"
-        // в состоянии покоя остаются в СТАРОМ цвете — новый акцент виден только когда на
-        // кнопку наводишь курсор (у hover-состояния почему-то отдельная, живая привязка к
-        // ресурсу, а у состояния покоя — нет). Кратковременное переключение Appearance
-        // туда-обратно форсирует полную переоценку стиля кнопки и заставляет её подхватить
-        // актуальный акцент даже в покое, без наведения — WPF успевает применить оба
-        // присваивания за один проход до отрисовки, так что видимого мерцания нет.
-        RefreshButtonAppearance(PlayPauseButton);
-        RefreshButtonAppearance(ShuffleButton);
-        RefreshButtonAppearance(RepeatButton);
-        RefreshButtonAppearance(FavoritesButton);
+        // Известный, судя по всему пока не решённый в самой библиотеке WPF-UI баг
+        // (см. github.com/lepoco/wpfui issues #965 и #981 — там же подтверждают, что
+        // "очевидные" обходные пути тоже не срабатывают) — контролы с Appearance="Primary" в
+        // состоянии покоя не подхватывают новый акцент после
+        // ApplicationAccentColorManager.Apply/ApplySystemAccent, только на hover. Простого
+        // переключения Appearance туда-обратно оказалось недостаточно — форсируем более
+        // тяжёлым способом: полностью снимаем и заново накладываем Style, что заставляет WPF
+        // пересобрать весь визуальный шаблон кнопки с нуля, а вместе с ним — заново разрешить
+        // все DynamicResource внутри него по актуальным значениям. Оба присваивания происходят
+        // синхронно в одном проходе до следующей отрисовки, так что видимого мерцания нет.
+        RefreshButtonStyle(PlayPauseButton);
+        RefreshButtonStyle(ShuffleButton);
+        RefreshButtonStyle(RepeatButton);
+        RefreshButtonStyle(FavoritesButton);
 
         _miniPlayerWindow?.UpdateSecondaryButton();
         _miniPlayerWindow?.RefreshAccentButtons();
     }
 
-    private static void RefreshButtonAppearance(Wpf.Ui.Controls.Button button)
+    private static void RefreshButtonStyle(Wpf.Ui.Controls.Button button)
     {
-        if (button.Appearance != ControlAppearance.Primary) return;
-
-        button.Appearance = ControlAppearance.Secondary;
-        button.Appearance = ControlAppearance.Primary;
+        var style = button.Style;
+        button.Style = null;
+        button.Style = style;
     }
 
     // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте и
