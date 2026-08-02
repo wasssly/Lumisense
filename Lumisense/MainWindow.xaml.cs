@@ -1986,7 +1986,7 @@ public partial class MainWindow : FluentWindow
         string filePath = row.FilePath;
         if (!File.Exists(filePath)) return;
 
-        var tagsWindow = new TrackTagsWindow(filePath) { Owner = this };
+        var tagsWindow = new TrackTagsWindow(filePath, this) { Owner = this };
         tagsWindow.ShowDialog();
 
         if (tagsWindow.Saved && filePath == _currentTrackPath)
@@ -2456,6 +2456,26 @@ public partial class MainWindow : FluentWindow
     }
 
     private void StopButton_Click(object sender, RoutedEventArgs e) => StopPlayback();
+
+    // См. TrackTagsWindow.SaveButton_Click — координация с внешней записью в файл (изменение
+    // тегов/обложки), пока он может быть открыт живым NAudio-потоком на чтение. Возвращает
+    // null, если сейчас играет не этот файл вовсе (ничего останавливать не нужно, запись
+    // пройдёт спокойно параллельно с воспроизведением ДРУГОГО трека); если это именно
+    // filePath — временно освобождает хендл и возвращает точку восстановления, которую нужно
+    // передать в ResumeAfterExternalWrite после того, как запись закончится (успешно или нет).
+    public (TimeSpan Position, bool WasPlaying)? ReleaseFileForExternalWrite(string filePath)
+    {
+        if (filePath != _currentTrackPath || _audioFile == null) return null;
+
+        var snapshot = (_audioFile.CurrentTime, _isPlaying);
+        StopPlayback(disposeOnly: true);
+        return snapshot;
+    }
+
+    public void ResumeAfterExternalWrite(string filePath, (TimeSpan Position, bool WasPlaying) snapshot)
+    {
+        LoadAndPlay(filePath, autoPlay: snapshot.WasPlaying, startPosition: snapshot.Position);
+    }
 
     private void StopPlayback(bool disposeOnly = false)
     {

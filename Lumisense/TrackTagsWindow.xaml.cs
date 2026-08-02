@@ -14,6 +14,7 @@ namespace AudioPlayer;
 public partial class TrackTagsWindow : FluentWindow
 {
     private readonly string _filePath;
+    private readonly MainWindow? _owner;
 
     // Новая обложка, выбранная в этом окне (в файл ещё не записана — только по "Сохранить").
     // null — обложка не менялась, если только _coverArtChanged не true — тогда null значит "удалили"
@@ -25,11 +26,12 @@ public partial class TrackTagsWindow : FluentWindow
     // название/исполнителя в плеере, если редактировался именно текущий трек
     public bool Saved { get; private set; }
 
-    public TrackTagsWindow(string filePath)
+    public TrackTagsWindow(string filePath, MainWindow? owner = null)
     {
         InitializeComponent();
 
         _filePath = filePath;
+        _owner = owner;
         FileNameHeader.Text = Path.GetFileName(filePath);
 
         try
@@ -184,6 +186,17 @@ public partial class TrackTagsWindow : FluentWindow
     {
         ErrorText.Visibility = Visibility.Collapsed;
 
+        // Если именно этот файл сейчас играет — NAudio держит его открытым на чтение, а
+        // TagLib может не суметь его переписать, особенно если меняется размер встроенной
+        // обложки (ID3/Vorbis-блок может вырасти настолько, что потребуется переписать файл
+        // почти целиком, а не поправить байты на месте) — раньше в этом случае Save молча
+        // ничего не делал: TagLib либо ловил бы исключение уровня ОС при попытке открыть файл
+        // на запись без нужных прав доступа. Коротко освобождаем хендл живого плеера на время
+        // записи и запускаем воспроизведение заново с той же позиции сразу после — сохранение
+        // прошло успешно или нет, плеер не должен остаться "выключенным" из-за неудачной
+        // попытки сохранить теги.
+        var resumeInfo = _owner?.ReleaseFileForExternalWrite(_filePath);
+
         try
         {
             using var tagFile = TagLib.File.Create(_filePath);
@@ -224,6 +237,10 @@ public partial class TrackTagsWindow : FluentWindow
             // Файл может быть занят, доступен только для чтения, без поддержки записи тегов
             // для этого формата и т.п. — сообщаем прямо в окне, а не роняем весь плеер
             ShowError($"Не удалось сохранить: {ex.Message}");
+        }
+        finally
+        {
+            if (resumeInfo != null) _owner!.ResumeAfterExternalWrite(_filePath, resumeInfo.Value);
         }
     }
 
