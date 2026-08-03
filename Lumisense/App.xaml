@@ -23,15 +23,6 @@
                  выбран). -->
             <SolidColorBrush x:Key="FavoriteBackdropSelectedBrush" Color="#262626" />
 
-            <!-- Тонкая обводка поверх FavoriteBackdropSelectedBrush (см. выше) — сама заливка уже
-                 непрозрачная и подобрана по теме, а не по акценту, но на некоторых системных/ручных
-                 акцентах, близких по яркости к самой заливке (например, очень тёмный акцент почти
-                 совпадает с почти-чёрной подложкой в тёмной теме), край подложки всё равно плохо
-                 читался без явной обводки — граница кнопки должна быть видна ВСЕГДА, а не только
-                 когда заливка случайно достаточно контрастна конкретному акценту. Тоже
-                 пересчитывается в MainWindow.ApplyFavoriteBackdropBrush вместе с самой заливкой. -->
-            <SolidColorBrush x:Key="FavoriteBackdropSelectedBorderBrush" Color="#404040" />
-
             <!-- ===== SVG-иконки ===== -->
             <!-- Настоящие .svg-файлы лежат в папке Icons/svg/ (рендерятся через SharpVectors,
                  см. SvgPathIcon.cs) и подключать их тут не нужно — они встраиваются в сборку
@@ -144,6 +135,76 @@
                                                          этой, "прозрачной для глаза" половины
                                                          трека триггер по Orientation не нужен —
                                                          она только ловит клики мимо бегунка. -->
+                                                    <Border Background="Transparent" />
+                                                </ControlTemplate>
+                                            </RepeatButton.Template>
+                                        </RepeatButton>
+                                    </Track.IncreaseRepeatButton>
+
+                                    <Track.Thumb>
+                                        <Thumb Width="16" Height="16" Cursor="Hand">
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Ellipse Fill="{DynamicResource AccentFillColorDefaultBrush}"
+                                                             Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                             StrokeThickness="1.5" />
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Grid>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <!-- Слайдер прогресса воспроизведения с волнистой заливкой в духе Material Design 3
+                 Expressive — НЕ применяется ко ВСЕМ Slider (в отличие от стиля выше): у этого
+                 есть явный x:Key, поэтому глобальный неявный стиль по TargetType его не
+                 подхватывает автоматически, назначается только вручную. Так и задумано — волна
+                 нужна только у ProgressSlider (см. MainWindow.xaml/ApplyProgressSliderAnimationMode),
+                 а не у громкости или полос эквалайзера, которым лишняя анимация каждый кадр ни
+                 к чему.
+
+                 Структура — тот же Track/RepeatButton/Thumb, что и в обычном стиле выше, с
+                 единственной содержательной разницей: вместо плоского Border с закраской
+                 DecreaseRepeatButton (заполненная часть трека, от начала до текущего значения)
+                 содержит WavyProgressFill — он ничего не знает про Value слайдера сам по себе,
+                 а просто рисует волну на всю СВОЮ ширину; а ширину эту ему обеспечивает уже сам
+                 стандартный Track, растягивая DecreaseRepeatButton ровно на "заполненный"
+                 промежуток (см. подробный комментарий в WavyProgressFill.cs). -->
+            <Style x:Key="WavyProgressSliderStyle" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Slider">
+                            <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent">
+                                <Border CornerRadius="2" Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
+
+                                <Track x:Name="PART_Track" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                       Orientation="{TemplateBinding Orientation}">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
+                                            <RepeatButton.Template>
+                                                <ControlTemplate TargetType="RepeatButton">
+                                                    <!-- Высота 12 (не 4, как у плоской версии) —
+                                                         синусоиде с амплитудой ~5px по обе
+                                                         стороны от центральной линии нужен
+                                                         запас по вертикали, иначе гребни волны
+                                                         обрезались бы по границе элемента. -->
+                                                    <local:WavyProgressFill x:Name="PART_Wave" Height="12"
+                                                        HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                                        WaveColor="{DynamicResource AccentFillColorDefaultBrush}" />
+                                                </ControlTemplate>
+                                            </RepeatButton.Template>
+                                        </RepeatButton>
+                                    </Track.DecreaseRepeatButton>
+
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Command="Slider.IncreaseLarge" Background="Transparent" BorderThickness="0">
+                                            <RepeatButton.Template>
+                                                <ControlTemplate TargetType="RepeatButton">
                                                     <Border Background="Transparent" />
                                                 </ControlTemplate>
                                             </RepeatButton.Template>

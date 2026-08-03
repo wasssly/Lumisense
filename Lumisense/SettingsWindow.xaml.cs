@@ -970,6 +970,7 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.ProgressSliderAnimation = SliderAnimationMd3Radio.IsChecked == true ? "MD3" : "None";
+        _owner.ApplyProgressSliderAnimationMode();
     }
 
     private void HidePlaybackButtonsCheckBox_Changed(object sender, RoutedEventArgs e)

@@ -807,6 +807,7 @@ public partial class MainWindow : FluentWindow
         ApplyAccentColor();
         ApplyWindowBackdrop();
         ApplyFavoriteBackdropBrush();
+        ApplyProgressSliderAnimationMode();
 
         if (_settings.AlwaysOnTop)
             Topmost = true;
@@ -840,15 +841,60 @@ public partial class MainWindow : FluentWindow
             ? Color.FromRgb(0xF2, 0xF2, 0xF2)
             : Color.FromRgb(0x26, 0x26, 0x26);
 
-        // Обводка на пару делений светлее/темнее самой заливки (см. FavoriteBackdropSelectedBorderBrush
-        // в App.xaml) — гарантирует видимую границу кнопки даже в тех редких случаях, когда сам
-        // акцент выделенной строки случайно близок по яркости к почти-белой/почти-чёрной заливке.
-        var borderColor = _settings.IsLightThemeResolved()
-            ? Color.FromRgb(0xD0, 0xD0, 0xD0)
-            : Color.FromRgb(0x40, 0x40, 0x40);
-
         Application.Current.Resources["FavoriteBackdropSelectedBrush"] = new SolidColorBrush(color);
-        Application.Current.Resources["FavoriteBackdropSelectedBorderBrush"] = new SolidColorBrush(borderColor);
+    }
+
+    // Storyboard, крутящий фазу волны у ProgressSlider (см. WavyProgressFill.Phase и
+    // WavyProgressSliderStyle в App.xaml) — держим ссылку, чтобы было что остановить при
+    // выключении анимации или повторном вызове этого метода (иначе на каждое переключение в
+    // настройках плодили бы новый Storyboard поверх старого).
+    private Storyboard? _progressWaveStoryboard;
+
+    // Переключает ProgressSlider между обычным плоским стилем (глобальный неявный Style
+    // TargetType="Slider" в App.xaml) и волнистым MD3 Expressive (WavyProgressSliderStyle,
+    // тоже в App.xaml) — см. AppSettings.ProgressSliderAnimation. Вызывается один раз при
+    // старте (ApplySettingsOnStartup) и заново при каждом переключении этой настройки в окне
+    // настроек (см. SettingsWindow.SliderAnimationRadio_Changed).
+    public void ApplyProgressSliderAnimationMode()
+    {
+        bool isWavy = _settings.ProgressSliderAnimation == "MD3";
+
+        ProgressSlider.Style = isWavy
+            ? (Style)FindResource("WavyProgressSliderStyle")
+            // Явный доступ к неявному стилю по его ключу (для стилей без x:Key ключом служит
+            // сам TargetType) — так мы гарантированно возвращаемся к тому же самому стилю,
+            // который применился бы сам по себе, не будь у ProgressSlider локального Style,
+            // а не пытаемся угадывать его через null/сброс (простое присваивание null стилю
+            // элемента в WPF НЕ откатывает к неявному стилю ресурсов автоматически).
+            : (Style)FindResource(typeof(System.Windows.Controls.Slider));
+
+        // Смена Style синхронно меняет и Template (Setter внутри Style), но сам визуальный
+        // элемент (Track/RepeatButton/PART_Wave) появляется в дереве только после
+        // ApplyTemplate — без явного вызова FindName ниже почти всегда бы падал в null,
+        // потому что применение шаблона иначе откладывается до следующего прохода layout.
+        _progressWaveStoryboard?.Stop();
+        _progressWaveStoryboard = null;
+
+        if (!isWavy) return;
+
+        ProgressSlider.ApplyTemplate();
+        if (ProgressSlider.Template.FindName("PART_Wave", ProgressSlider) is not WavyProgressFill wave) return;
+
+        // Фаза бежит от 0 до ровно одной длины волны и зацикливается — синусоида периодична,
+        // поэтому такой сдвиг выглядит как непрерывное течение волны без видимого "шва" в
+        // момент, когда анимация уходит на новый виток (см. подробности в WavyProgressFill.cs).
+        // 2.5 секунды на виток — середина требуемого диапазона "2-3 секунды".
+        var phaseAnimation = new DoubleAnimation(0, wave.Wavelength, TimeSpan.FromSeconds(2.5))
+        {
+            RepeatBehavior = RepeatBehavior.Forever
+        };
+        Storyboard.SetTarget(phaseAnimation, wave);
+        Storyboard.SetTargetProperty(phaseAnimation, new PropertyPath(WavyProgressFill.PhaseProperty));
+
+        var storyboard = new Storyboard();
+        storyboard.Children.Add(phaseAnimation);
+        storyboard.Begin();
+        _progressWaveStoryboard = storyboard;
     }
 
     // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
@@ -2129,7 +2175,7 @@ public partial class MainWindow : FluentWindow
             "Удаление трека с диска",
             System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Warning,
-            System.Windows.MessageBoxResult.No);
+            System.Windows.MessageBoxResult.Yes);
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
