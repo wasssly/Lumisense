@@ -153,13 +153,14 @@
                      (тёмная тема → почти непрозрачный тёмный чип, светлая → почти непрозрачный
                      светлый), а не пытаться каждый раз вычислять контраст под конкретный акцент. -->
                 <Border x:Name="FavoriteBackdrop" Grid.Column="3" Width="26" Height="26" CornerRadius="13"
-                        Margin="4,0,0,0" Background="Transparent">
+                        Margin="4,0,0,0" Background="Transparent" BorderThickness="1" BorderBrush="Transparent">
                     <Border.Style>
                         <Style TargetType="Border">
                             <Style.Triggers>
                                 <DataTrigger Value="True"
                                              Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsSelected}">
                                     <Setter Property="Background" Value="{DynamicResource FavoriteBackdropSelectedBrush}" />
+                                    <Setter Property="BorderBrush" Value="{DynamicResource FavoriteBackdropSelectedBorderBrush}" />
                                 </DataTrigger>
                             </Style.Triggers>
                         </Style>

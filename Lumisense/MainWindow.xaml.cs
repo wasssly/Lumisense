@@ -213,12 +213,41 @@ public partial class MainWindow : FluentWindow
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
 
+        // Повторно применяем акцент уже ПОСЛЕ того, как окно реально отрисовано (см.
+        // MainWindow_Loaded) — иначе на некоторых машинах при запуске приложения с системным
+        // акцентом (AccentColorMode == "System") часть визуальных элементов не подхватывает
+        // акцент, хотя он совершенно корректно применён по коду (первый ApplyAccentColor() в
+        // ApplySettingsOnStartup выше отрабатывает ДО показа окна).
+        Loaded += MainWindow_Loaded;
+
         // Подстраховка для завершения сеанса Windows (выключение/перезагрузка/выход из
         // системы) — в этот момент OnClosing/OnClosed могут не успеть отработать штатно, а
         // сворачивание в трей само по себе новых сохранений после первого раза не вызывает.
         // Без этого позиция трека, начатого прямо перед выключением компьютера, терялась бы
         // до следующего периодического автосохранения (см. ProgressTimer_Tick).
         System.Windows.Application.Current.SessionEnding += (_, _) => PersistPlaybackAndPlaylistState();
+    }
+
+    // Первое применение акцента в ApplySettingsOnStartup происходит ещё в конструкторе, до
+    // Show() — на этот момент окно ни разу не было реально отрисовано. У WPF-UI 3.0.5 есть
+    // подтверждённый, пока не решённый в библиотеке баг с "холодным" применением акцента:
+    // ApplicationAccentColorManager/ApplicationThemeManager корректно кладут новый цвет в
+    // ресурсы приложения, но часть элементов, завязанных на DynamicResource напрямую в XAML
+    // (в первую очередь — выделение строки плейлиста и другие штатные стили из
+    // ui:ThemesDictionary/ui:ControlsDictionary), не перечитывает эти ресурсы, пока визуальное
+    // дерево не будет хотя бы раз полностью выстроено и отрисовано (кнопки плеера этот баг не
+    // задевают — их Background мы красим вручную явным присваиванием, см.
+    // RefreshAccentDependentIcons/SetAccentButtonActive, а не полагаемся на DynamicResource;
+    // тот же обходной путь и по той же причине уже применён там — см. issues #965/#981 у
+    // github.com/lepoco/wpfui). Поэтому просто повторяем ApplyAccentColor() ещё раз сразу
+    // после первого Loaded — к этому моменту окно уже показано и реально отрисовано хотя бы
+    // один раз, и повторное присваивание тех же ресурсов гарантированно доходит до всех
+    // элементов. Once — сразу отписываемся, чтобы не пересчитывать акцент на каждый Loaded
+    // (например, при возврате из свёрнутого состояния).
+    private void MainWindow_Loaded(object? sender, RoutedEventArgs e)
+    {
+        Loaded -= MainWindow_Loaded;
+        Dispatcher.BeginInvoke(new Action(ApplyAccentColor), DispatcherPriority.Loaded);
     }
 
     // ---------- Полноэкранный режим ----------
@@ -811,7 +840,15 @@ public partial class MainWindow : FluentWindow
             ? Color.FromRgb(0xF2, 0xF2, 0xF2)
             : Color.FromRgb(0x26, 0x26, 0x26);
 
+        // Обводка на пару делений светлее/темнее самой заливки (см. FavoriteBackdropSelectedBorderBrush
+        // в App.xaml) — гарантирует видимую границу кнопки даже в тех редких случаях, когда сам
+        // акцент выделенной строки случайно близок по яркости к почти-белой/почти-чёрной заливке.
+        var borderColor = _settings.IsLightThemeResolved()
+            ? Color.FromRgb(0xD0, 0xD0, 0xD0)
+            : Color.FromRgb(0x40, 0x40, 0x40);
+
         Application.Current.Resources["FavoriteBackdropSelectedBrush"] = new SolidColorBrush(color);
+        Application.Current.Resources["FavoriteBackdropSelectedBorderBrush"] = new SolidColorBrush(borderColor);
     }
 
     // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
