@@ -12,16 +12,15 @@
 
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Подложка под кнопкой "избранное" на выделенной строке плейлиста (см.
-                 MainWindow.xaml, TrackFavoriteButton) — значение тут просто дефолт на случай,
-                 пока MainWindow ещё не успел его пересчитать под текущую тему; реальное
-                 значение выставляет MainWindow.ApplyFavoriteBackdropBrush (тёмная тема — почти
-                 чёрный, светлая — почти белый, оба ПОЛНОСТЬЮ непрозрачные — сердечко-иконка на
-                 выделенной строке всегда одного и того же, привязанного к теме цвета — не к
-                 акценту, — и подложка под ним не должна пропускать акцент сквозь себя ни в
-                 каком количестве, иначе контраст зависит от того, насколько светлый акцент
-                 выбран). -->
-            <SolidColorBrush x:Key="FavoriteBackdropSelectedBrush" Color="#262626" />
+            <!-- Граница кнопки "избранное" на выделенной строке плейлиста (см. MainWindow.xaml,
+                 TrackFavoriteButton/FavoriteBackdrop) — без неё кнопка Appearance="Transparent"
+                 визуально теряется на сплошной акцентной заливке выделенной строки. Цвет —
+                 фиксированный очень тёмный, один и тот же в обеих темах (не подбирается под
+                 акцент и не пересчитывается под тему): большинство системных/ручных акцентов
+                 достаточно светлые или средние по яркости, чтобы очень тёмная обводка была видна
+                 на них в любом случае, а не только при удачном сочетании темы и конкретного
+                 акцента. -->
+            <SolidColorBrush x:Key="FavoriteBackdropSelectedBorderBrush" Color="#141414" />
 
             <!-- ===== SVG-иконки ===== -->
             <!-- Настоящие .svg-файлы лежат в папке Icons/svg/ (рендерятся через SharpVectors,
@@ -168,20 +167,22 @@
                  к чему.
 
                  Структура — тот же Track/RepeatButton/Thumb, что и в обычном стиле выше, с
-                 единственной содержательной разницей: вместо плоского Border с закраской
-                 DecreaseRepeatButton (заполненная часть трека, от начала до текущего значения)
-                 содержит WavyProgressFill — он ничего не знает про Value слайдера сам по себе,
-                 а просто рисует волну на всю СВОЮ ширину; а ширину эту ему обеспечивает уже сам
-                 стандартный Track, растягивая DecreaseRepeatButton ровно на "заполненный"
-                 промежуток (см. подробный комментарий в WavyProgressFill.cs). -->
+                 содержательной разницей в обоих RepeatButton сразу (не только в заполненном!):
+                 раньше тут была ОБЩАЯ полоса-подложка на всю ширину слайдера, а поверх неё —
+                 волна только на заполненной части; из-за этого в played-области волна и
+                 подложка визуально накладывались друг на друга (гребни волны "выглядывали"
+                 за пределы прямой линии снизу), что выглядело как волна, пририсованная СВЕРХ
+                 обычного слайдера, а не вместо него. Здесь у каждого RepeatButton — Track сам
+                 растягивает их ровно на "до бегунка" / "после бегунка" — своё собственное
+                 содержимое: у DecreaseRepeatButton (сыгранная часть) это WavyProgressFill, у
+                 IncreaseRepeatButton (ещё не сыгранная часть) — обычная прямая линия. Никакого
+                 наложения между ними нет: полоса — это ОДНА непрерывная лента, которая просто
+                 меняет свой рисунок ровно в точке текущего значения. -->
             <Style x:Key="WavyProgressSliderStyle" TargetType="Slider" BasedOn="{StaticResource {x:Type Slider}}">
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent">
-                                <Border CornerRadius="2" Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
-                                        Height="4" HorizontalAlignment="Stretch" VerticalAlignment="Center" />
-
                                 <Track x:Name="PART_Track" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                        Orientation="{TemplateBinding Orientation}">
                                     <Track.DecreaseRepeatButton>
@@ -205,7 +206,13 @@
                                         <RepeatButton Command="Slider.IncreaseLarge" Background="Transparent" BorderThickness="0">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
-                                                    <Border Background="Transparent" />
+                                                    <!-- Незаполненный "хвост" ленты — прямая линия
+                                                         той же толщины (3), что и штрих волны,
+                                                         чтобы в точке стыка не было заметного
+                                                         перепада толщины. -->
+                                                    <Border CornerRadius="1.5" Height="3"
+                                                            Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                                            HorizontalAlignment="Stretch" VerticalAlignment="Center" />
                                                 </ControlTemplate>
                                             </RepeatButton.Template>
                                         </RepeatButton>

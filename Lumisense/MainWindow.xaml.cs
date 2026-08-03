@@ -655,6 +655,18 @@ public partial class MainWindow : FluentWindow
         _trayIconManager.NextRequested += () => Dispatcher.Invoke(PlayNextTrack);
         _trayIconManager.PreviousRequested += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
         PlaybackStateChanged += isPlaying => _trayIconManager?.SetPlayingState(isPlaying);
+
+        // Волнистая MD3-анимация прогресса (см. WavyProgressFill.cs, ApplyProgressSliderAnimationMode)
+        // должна двигаться только пока трек реально играет — на паузе/остановке замираем на
+        // текущем кадре, а не продолжаем крутить фазу вхолостую. Подписка тут одна на всё время
+        // жизни окна: сам Storyboard за это время может пересоздаваться (например, при
+        // переключении настройки MD3 туда-обратно) — актуальную ссылку каждый раз берём из
+        // поля _progressWaveStoryboard, а не из замыкания.
+        PlaybackStateChanged += isPlaying =>
+        {
+            if (isPlaying) _progressWaveStoryboard?.Resume(this);
+            else _progressWaveStoryboard?.Pause(this);
+        };
         TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
         _trayIconManager.SetPlayingState(_isPlaying);
         _trayIconManager.ApplyTheme(isLight: _settings.IsLightThemeResolved());
@@ -806,7 +818,6 @@ public partial class MainWindow : FluentWindow
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();
-        ApplyFavoriteBackdropBrush();
         ApplyProgressSliderAnimationMode();
 
         if (_settings.AlwaysOnTop)
@@ -826,23 +837,6 @@ public partial class MainWindow : FluentWindow
     // или темы (см. SettingsWindow.AccentColorMode/ThemeRadio_Changed) — Apply() учитывает
     // текущую тему, чтобы подобрать светлые/тёмные варианты акцента (SystemAccentColorLight1
     // и т.п.), поэтому пересчитывать нужно и при переключении темы, не только цвета.
-    // Подложка под кнопкой "избранное" на выделенной строке плейлиста (см. MainWindow.xaml,
-    // TrackFavoriteButton/FavoriteBackdrop) — тёмная тема → почти непрозрачный тёмный чип
-    // (сердечко там белое), светлая → почти непрозрачный светлый (сердечко там тёмное).
-    // Вызывается при старте и при каждой смене темы (см. SettingsWindow.ThemeRadio_Changed) —
-    // не при смене акцента: акцент тут ни при чём, подложка привязана только к теме.
-    public void ApplyFavoriteBackdropBrush()
-    {
-        // Полностью непрозрачный (не полупрозрачный, как было раньше) — чтобы контраст не
-        // зависел от того, насколько светлый или тёмный выбран акцент: сквозь непрозрачный
-        // цвет акцент в принципе не может "просвечивать" и снижать контраст, сколько бы
-        // полупрозрачности мы ни подбирали.
-        var color = _settings.IsLightThemeResolved()
-            ? Color.FromRgb(0xF2, 0xF2, 0xF2)
-            : Color.FromRgb(0x26, 0x26, 0x26);
-
-        Application.Current.Resources["FavoriteBackdropSelectedBrush"] = new SolidColorBrush(color);
-    }
 
     // Storyboard, крутящий фазу волны у ProgressSlider (см. WavyProgressFill.Phase и
     // WavyProgressSliderStyle в App.xaml) — держим ссылку, чтобы было что остановить при
@@ -872,7 +866,7 @@ public partial class MainWindow : FluentWindow
         // элемент (Track/RepeatButton/PART_Wave) появляется в дереве только после
         // ApplyTemplate — без явного вызова FindName ниже почти всегда бы падал в null,
         // потому что применение шаблона иначе откладывается до следующего прохода layout.
-        _progressWaveStoryboard?.Stop();
+        _progressWaveStoryboard?.Stop(this);
         _progressWaveStoryboard = null;
 
         if (!isWavy) return;
@@ -893,7 +887,21 @@ public partial class MainWindow : FluentWindow
 
         var storyboard = new Storyboard();
         storyboard.Children.Add(phaseAnimation);
-        storyboard.Begin();
+
+        // isControllableStoryboard=true — обязательно, иначе Pause()/Resume() ниже (см.
+        // подписку на PlaybackStateChanged в конструкторе) кидали бы InvalidOperationException:
+        // без этого флага Storyboard считается "одноразовым" и не поддерживает управление после
+        // запуска. FrameworkElement-параметр (this) тут — просто владелец таймлайна для System
+        // управления паузой/возобновлением, сама анимация всё равно привязана к wave явным
+        // Storyboard.SetTarget выше, а не через поиск по имени в дереве MainWindow.
+        storyboard.Begin(this, true);
+
+        // Волна не должна "бежать" сама по себе постоянно — только пока реально идёт
+        // воспроизведение (см. запрошенное поведение). Если в момент применения режима трек
+        // стоит на паузе (или просто выбран режим MD3 без активного воспроизведения), сразу
+        // замораживаем анимацию на первом кадре — PlaybackStateChanged разбудит её позже.
+        if (!_isPlaying) storyboard.Pause(this);
+
         _progressWaveStoryboard = storyboard;
     }
 
