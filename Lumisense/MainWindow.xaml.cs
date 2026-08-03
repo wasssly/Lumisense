@@ -803,11 +803,52 @@ public partial class MainWindow : FluentWindow
     // не при смене акцента: акцент тут ни при чём, подложка привязана только к теме.
     public void ApplyFavoriteBackdropBrush()
     {
+        // Полностью непрозрачный (не полупрозрачный, как было раньше) — чтобы контраст не
+        // зависел от того, насколько светлый или тёмный выбран акцент: сквозь непрозрачный
+        // цвет акцент в принципе не может "просвечивать" и снижать контраст, сколько бы
+        // полупрозрачности мы ни подбирали.
         var color = _settings.IsLightThemeResolved()
-            ? Color.FromArgb(0xCC, 0xFF, 0xFF, 0xFF)
-            : Color.FromArgb(0xCC, 0x00, 0x00, 0x00);
+            ? Color.FromRgb(0xF2, 0xF2, 0xF2)
+            : Color.FromRgb(0x26, 0x26, 0x26);
 
         Application.Current.Resources["FavoriteBackdropSelectedBrush"] = new SolidColorBrush(color);
+    }
+
+    // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
+    // подтверждённый, судя по всему пока не решённый в библиотеке баг (см. историю этого
+    // файла и github.com/lepoco/wpfui issues #965/#981): даже принудительный сброс+накладка
+    // Style не помогают ей вживую подхватить смену акцента, только простое переключение
+    // Secondary/Primary туда-обратно. Вместо того чтобы просить библиотеку это сделать —
+    // красим Background вручную сами: это обычное присваивание DependencyProperty, WPF
+    // гарантированно применяет и перерисовывает его сразу, никаких библиотечных допущений
+    // тут больше нет и ломаться нечему.
+    private void SetAccentButtonActive(Wpf.Ui.Controls.Button button, bool active)
+    {
+        button.Appearance = ControlAppearance.Secondary;
+
+        if (active)
+            button.Background = new SolidColorBrush(GetResolvedAccentColor());
+        else
+            button.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+    }
+
+    // Возвращает акцент, реально применённый прямо сейчас — тот же цвет, который бы выбрал
+    // ApplyAccentColor: свой (AppSettings.AccentColorHex), либо, если он почему-то
+    // повреждён, или выбран режим "Системный", актуальный SystemAccentColor (его в ресурсы
+    // приложения кладёт сама ApplicationAccentColorManager.ApplySystemAccent). Публичный —
+    // им же пользуется и мини-плеер для покраски своих кнопок (см. MiniPlayerWindow.
+    // SetAccentButtonActive), чтобы не дублировать эту же логику там ещё раз.
+    public Color GetResolvedAccentColor()
+    {
+        if (_settings.AccentColorMode == "Manual")
+        {
+            try { return (Color)ColorConverter.ConvertFromString(_settings.AccentColorHex); }
+            catch { /* некорректный hex — откатываемся на системный акцент ниже */ }
+        }
+
+        return Application.Current.Resources["SystemAccentColor"] is Color color
+            ? color
+            : Color.FromRgb(0x00, 0x78, 0xD4);
     }
 
     public void ApplyAccentColor()
@@ -860,6 +901,9 @@ public partial class MainWindow : FluentWindow
     private void RefreshAccentDependentIcons()
     {
         PlayPauseButton.Icon = IconResources.MakeOnAccent(_isPlaying ? "IconPause" : "IconPlay", 15);
+        PlayPauseButton.Background = new SolidColorBrush(GetResolvedAccentColor()); // всегда акцентная, не переключается
+
+        SetAccentButtonActive(ShuffleButton, _isShuffleEnabled);
         IconResources.SetOnAccent(ShuffleIcon, _isShuffleEnabled);
 
         RepeatButton.Icon = _repeatMode switch
@@ -868,34 +912,16 @@ public partial class MainWindow : FluentWindow
             RepeatMode.One => IconResources.MakeOnAccent("IconRepeatOne"),
             _ => RepeatButton.Icon
         };
+        SetAccentButtonActive(RepeatButton, _repeatMode != RepeatMode.Off);
 
         if (_isFavoritesView)
+        {
             IconResources.SetOnAccent(FavoritesButtonIcon, true);
-
-        // Известный, судя по всему пока не решённый в самой библиотеке WPF-UI баг
-        // (см. github.com/lepoco/wpfui issues #965 и #981 — там же подтверждают, что
-        // "очевидные" обходные пути тоже не срабатывают) — контролы с Appearance="Primary" в
-        // состоянии покоя не подхватывают новый акцент после
-        // ApplicationAccentColorManager.Apply/ApplySystemAccent, только на hover. Простого
-        // переключения Appearance туда-обратно оказалось недостаточно — форсируем более
-        // тяжёлым способом: полностью снимаем и заново накладываем Style, что заставляет WPF
-        // пересобрать весь визуальный шаблон кнопки с нуля, а вместе с ним — заново разрешить
-        // все DynamicResource внутри него по актуальным значениям. Оба присваивания происходят
-        // синхронно в одном проходе до следующей отрисовки, так что видимого мерцания нет.
-        RefreshButtonStyle(PlayPauseButton);
-        RefreshButtonStyle(ShuffleButton);
-        RefreshButtonStyle(RepeatButton);
-        RefreshButtonStyle(FavoritesButton);
+            SetAccentButtonActive(FavoritesButton, true);
+        }
 
         _miniPlayerWindow?.UpdateSecondaryButton();
         _miniPlayerWindow?.RefreshAccentButtons();
-    }
-
-    private static void RefreshButtonStyle(Wpf.Ui.Controls.Button button)
-    {
-        var style = button.Style;
-        button.Style = null;
-        button.Style = style;
     }
 
     // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте и
@@ -1631,7 +1657,7 @@ public partial class MainWindow : FluentWindow
         _isFavoritesView = active;
 
         PlaylistHeaderText.Text = active ? "Избранное" : "Плейлист";
-        FavoritesButton.Appearance = active ? ControlAppearance.Primary : ControlAppearance.Secondary;
+        SetAccentButtonActive(FavoritesButton, active);
         FavoritesButtonIcon.Icon = active ? "IconHeartFilled" : "IconHeart";
         IconResources.SetOnAccent(FavoritesButtonIcon, active);
 
@@ -2789,7 +2815,7 @@ public partial class MainWindow : FluentWindow
     private void SetShuffleEnabled(bool enabled)
     {
         _isShuffleEnabled = enabled;
-        ShuffleButton.Appearance = _isShuffleEnabled ? ControlAppearance.Primary : ControlAppearance.Secondary;
+        SetAccentButtonActive(ShuffleButton, _isShuffleEnabled);
         IconResources.SetOnAccent(ShuffleIcon, _isShuffleEnabled);
         ShuffleStateChanged?.Invoke(_isShuffleEnabled);
 
@@ -2833,17 +2859,17 @@ public partial class MainWindow : FluentWindow
         {
             case RepeatMode.Off:
                 RepeatButton.Icon = IconResources.Make("IconRepeatAll");
-                RepeatButton.Appearance = ControlAppearance.Secondary;
+                SetAccentButtonActive(RepeatButton, false);
                 RepeatButton.ToolTip = "Повтор: выключен";
                 break;
             case RepeatMode.All:
                 RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatAll");
-                RepeatButton.Appearance = ControlAppearance.Primary;
+                SetAccentButtonActive(RepeatButton, true);
                 RepeatButton.ToolTip = "Повтор: весь плейлист";
                 break;
             case RepeatMode.One:
                 RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatOne");
-                RepeatButton.Appearance = ControlAppearance.Primary;
+                SetAccentButtonActive(RepeatButton, true);
                 RepeatButton.ToolTip = "Повтор: один трек";
                 break;
         }

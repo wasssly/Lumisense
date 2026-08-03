@@ -501,7 +501,12 @@
                 </ui:Button.Icon>
             </ui:Button>
 
-            <ui:Button x:Name="PlayPauseButton" Appearance="Primary"
+            <!-- Appearance="Secondary", а не "Primary" — фон под текущий акцент красится
+                 вручную в коде (см. MainWindow.RefreshAccentDependentIcons/
+                 SetAccentButtonActive): у ControlAppearance.Primary в WPF-UI подтверждённый
+                 баг библиотеки — фон не обновляется вживую при смене акцента, только при
+                 перезапуске (см. github.com/lepoco/wpfui issues #965/#981). -->
+            <ui:Button x:Name="PlayPauseButton" Appearance="Secondary"
                        Width="54" Height="54" Margin="4,0"
                        Click="PlayPauseButton_Click" ToolTip="Пуск/Пауза">
                 <ui:Button.Icon>
@@ -593,8 +598,9 @@
 
             <!-- Переключает показ обычного плейлиста на виртуальный плейлист "Избранное"
                  (собирается на лету из треков, отмеченных сердечком, см. FavoritesManager) и
-                 обратно. Активное состояние подсвечено акцентным фоном (Appearance="Primary"),
-                 как и у ShuffleButton/RepeatButton — см. MainWindow.SetFavoritesViewActive. -->
+                 обратно. Активное состояние подсвечено акцентным фоном (красится вручную, см.
+                 MainWindow.SetAccentButtonActive), как и у ShuffleButton/RepeatButton — см.
+                 MainWindow.SetFavoritesViewActive. -->
             <ui:Button Grid.Column="2" x:Name="FavoritesButton" Appearance="Secondary"
                        Width="32" Height="32" Padding="0" Margin="4,0,0,0"
                        Click="FavoritesButton_Click" ToolTip="Избранное">

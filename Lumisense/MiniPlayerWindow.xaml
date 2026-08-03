@@ -247,7 +247,10 @@
                         <local:SvgPathIcon Icon="IconPrevious" />
                     </ui:Button.Icon>
                 </ui:Button>
-                <ui:Button x:Name="PlayPauseButton" Appearance="Primary"
+                <!-- Appearance="Secondary" — фон красится вручную в коде под текущий акцент
+                     (см. RefreshAccentButtons), а не через ControlAppearance.Primary: у него
+                     подтверждённый баг WPF-UI, фон не обновляется вживую при смене акцента. -->
+                <ui:Button x:Name="PlayPauseButton" Appearance="Secondary"
                            Width="36" Height="36" Padding="0" Margin="3,0"
                            Click="PlayPauseButton_Click">
                     <ui:Button.Icon>

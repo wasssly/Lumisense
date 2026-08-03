@@ -454,6 +454,7 @@ public partial class MiniPlayerWindow : Window
     private void OnPlaybackStateChanged(bool isPlaying)
     {
         PlayPauseButton.Icon = IconResources.MakeOnAccent(isPlaying ? "IconPause" : "IconPlay");
+        PlayPauseButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor()); // всегда акцентная
     }
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPlayPause();
@@ -461,6 +462,19 @@ public partial class MiniPlayerWindow : Window
     private void PrevButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPrev();
     private void RestoreButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExitMiniMode();
     private void SettingsMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowSettingsWindow("MiniPlayer");
+
+    // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
+    // тот же подтверждённый баг библиотеки, что и в MainWindow.SetAccentButtonActive (фон не
+    // обновляется вживую при смене акцента). Красим Background вручную тем же способом.
+    private void SetAccentButtonActive(Wpf.Ui.Controls.Button button, bool active)
+    {
+        button.Appearance = ControlAppearance.Secondary;
+
+        if (active)
+            button.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor());
+        else
+            button.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+    }
 
     // Компактное окно мини-плеера — под кнопку повтора и кнопку "перемешать" одновременно
     // места нет (в отличие от основного окна, где показаны обе), поэтому здесь всего одна
@@ -492,15 +506,15 @@ public partial class MiniPlayerWindow : Window
         {
             case "All":
                 SecondaryButton.Icon = IconResources.MakeOnAccent("IconRepeatAll", size: 12);
-                SecondaryButton.Appearance = ControlAppearance.Primary;
+                SetAccentButtonActive(SecondaryButton, true);
                 break;
             case "One":
                 SecondaryButton.Icon = IconResources.MakeOnAccent("IconRepeatOne", size: 12);
-                SecondaryButton.Appearance = ControlAppearance.Primary;
+                SetAccentButtonActive(SecondaryButton, true);
                 break;
             default:
                 SecondaryButton.Icon = IconResources.Make("IconRepeatAll", size: 12);
-                SecondaryButton.Appearance = ControlAppearance.Secondary;
+                SetAccentButtonActive(SecondaryButton, false);
                 break;
         }
     }
@@ -514,7 +528,7 @@ public partial class MiniPlayerWindow : Window
         SecondaryButton.Icon = enabled
             ? IconResources.MakeOnAccent("IconShuffle", size: 12)
             : IconResources.Make("IconShuffle", size: 12);
-        SecondaryButton.Appearance = enabled ? ControlAppearance.Primary : ControlAppearance.Secondary;
+        SetAccentButtonActive(SecondaryButton, enabled);
     }
 
     // Вызывается при открытии мини-плеера (см. конструктор) и сразу же, если пользователь
@@ -530,21 +544,20 @@ public partial class MiniPlayerWindow : Window
             OnRepeatModeChanged(_mainWindow.CurrentRepeatModeName);
     }
 
-    // См. MainWindow.RefreshAccentDependentIcons/RefreshButtonStyle — тот же обходной приём
-    // для того же известного бага WPF-UI (кнопки Appearance="Primary" в состоянии покоя не
-    // подхватывают новый акцент сами, только при наведении курсора), только применительно
-    // к кнопкам мини-плеера. Вызывается оттуда же, при каждой смене акцента.
+    // Вызывается из MainWindow.RefreshAccentDependentIcons при каждой смене акцента — сама
+    // by себе смена состояния (повтор/шафл вкл-выкл, играет/на паузе) уже красит кнопки через
+    // SetAccentButtonActive/OnPlaybackStateChanged выше, а тут нужно перекрасить их и тогда,
+    // когда состояние НЕ менялось, а сменился только сам цвет акцента.
     public void RefreshAccentButtons()
     {
-        RefreshButtonStyle(PlayPauseButton);
-        RefreshButtonStyle(SecondaryButton);
-    }
+        PlayPauseButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor()); // всегда акцентная
 
-    private static void RefreshButtonStyle(Wpf.Ui.Controls.Button button)
-    {
-        var style = button.Style;
-        button.Style = null;
-        button.Style = style;
+        bool secondaryActive = ShowsShuffleButton
+            ? _mainWindow.CurrentIsShuffleEnabled
+            : _mainWindow.CurrentRepeatModeName != "Off";
+
+        if (secondaryActive)
+            SecondaryButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor());
     }
 
     // Подставляем актуальное состояние настроек прямо перед показом меню — на случай, если
