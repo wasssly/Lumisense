@@ -246,8 +246,14 @@
                 </Grid>
             </Border>
 
-            <!-- ===== Содержимое выбранной страницы ===== -->
-            <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+            <!-- ===== Содержимое выбранной страницы =====
+                 Один и тот же ScrollViewer используется для ВСЕХ страниц — переключение вкладки
+                 (см. NavItem_Checked) просто скрывает один StackPanel и показывает другой, сам
+                 ScrollViewer при этом не пересоздаётся. Из-за этого его VerticalOffset раньше
+                 сохранялся между вкладками: если долистать вниз на одной странице и переключиться
+                 на другую, та открывалась не сверху, а с той же прокруткой, что осталась от
+                 предыдущей — см. явный сброс в PART_ContentScroll.ScrollToTop() в NavItem_Checked. -->
+            <ScrollViewer x:Name="PART_ContentScroll" Grid.Column="1" VerticalScrollBarVisibility="Auto">
                 <Grid Margin="24,20,24,20">
 
                     <!-- Оформление -->

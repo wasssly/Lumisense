@@ -1004,6 +1004,13 @@ public partial class SettingsWindow : FluentWindow
         PageHotkeys.Visibility = key == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
         PageExperimental.Visibility = key == "Experimental" ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = key == "About" ? Visibility.Visible : Visibility.Collapsed;
+
+        // Один и тот же ScrollViewer используется для всех страниц (см. комментарий в
+        // SettingsWindow.xaml) — без явного сброса он "помнил" бы прокрутку с предыдущей
+        // вкладки. Клик по результату поиска (см. SearchResultItem_Click) следом ещё раз
+        // прокрутит к конкретному найденному элементу через отложенный Dispatcher.InvokeAsync —
+        // тот вызов случится позже этого и просто переопределит позицию, никакого конфликта.
+        PART_ContentScroll.ScrollToTop();
     }
 
     // ---------- Список изменений ----------
