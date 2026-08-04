@@ -2041,6 +2041,127 @@ public partial class MainWindow : FluentWindow
         LoadAndPlay(row.FilePath);
     }
 
+    // ---------- Удаление выбранных треков клавишей Delete + отмена (Ctrl+Z) ----------
+    //
+    // SelectionMode="Extended" у обоих ListView (см. MainWindow.xaml) — раньше выделение
+    // строки было по сути однозначным (SelectedItem всегда одна и та же строка, см. подробный
+    // комментарий у ScrollPlaylistToCurrentTrack), поэтому множественное выделение мышью/
+    // Ctrl+A и не работало. С Extended выделять можно сколько угодно строк как обычно
+    // (Ctrl+клик, Shift+клик, Ctrl+A — последнее уже встроено в стандартный ListBox, отдельно
+    // реализовывать не нужно), а "текущий играющий трек" как был единственной строкой в
+    // SelectedItem, так и остался: LoadAndPlay при смене трека просто переприсваивает
+    // SelectedItem нужной строке, а WPF сам снимает с остальных выделение при таком
+    // присваивании — никакого конфликта с множественным выбором тут нет.
+    //
+    // Стек отмены — только для этого одного действия (удаления треков из плейлиста), не
+    // общий undo-фреймворк на всё приложение. Каждый Delete кладёт в стек ОДНО замыкание,
+    // которое полностью восстанавливает удалённое; Ctrl+Z снимает и выполняет верхнее.
+    private readonly Stack<Action> _playlistDeleteUndoStack = new();
+
+    private void PlaylistTrackList_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != System.Windows.Input.Key.Delete) return;
+        if (sender is not System.Windows.Controls.ListView listView) return;
+
+        var rows = listView.SelectedItems.OfType<PlaylistTrackRow>().ToList();
+        if (rows.Count == 0) return;
+
+        e.Handled = true;
+        DeleteTracksFromPlaylist(rows);
+    }
+
+    // Убирает переданные строки из плейлиста (тот же смысл, что и "Убрать из плейлиста" в
+    // контекстном меню — см. RemoveTrackMenuItem_Click, — просто пачкой сразу по всем
+    // выделенным) и кладёт в _playlistDeleteUndoStack одно действие, полностью откатывающее
+    // именно эту пачку. Если выделить все треки (Ctrl+A) и нажать Delete — по факту это и есть
+    // "очистить весь плейлист", просто через обычное построчное удаление, а не через отдельную
+    // кнопку "Очистить плейлист" (та стирает вообще все папки списком и останавливает
+    // воспроизведение — здесь так резко не поступаем, см. ниже).
+    private void DeleteTracksFromPlaylist(IReadOnlyList<PlaylistTrackRow> rows)
+    {
+        var undoActions = new List<Action>();
+        bool touchedFavorites = false;
+
+        foreach (var group in rows.GroupBy(row => row.Folder))
+        {
+            var folder = group.Key;
+
+            // В виртуальной группе "Избранное" своего списка треков нет — она пересобирается
+            // из FavoritesManager (см. комментарий в RemoveTrackMenuItem_Click), поэтому здесь
+            // "удалить" значит "снять сердечко", а отменить — поставить обратно.
+            if (folder.IsFavoritesGroup)
+            {
+                foreach (var row in group)
+                {
+                    string path = row.FilePath;
+                    FavoritesManager.SetFavorite(path, false);
+                    undoActions.Add(() => FavoritesManager.SetFavorite(path, true));
+                }
+                touchedFavorites = true;
+                continue;
+            }
+
+            // Индексы считаем ДО удаления — после каждого RemoveAt индексы последующих
+            // элементов сдвигаются, поэтому сперва собираем все пары (индекс, путь), затем
+            // удаляем по убыванию индекса (более ранние индексы остаются верными), а
+            // восстанавливаем при отмене — по возрастанию (иначе более ранняя вставка сбила
+            // бы индекс, рассчитанный для более поздней).
+            var indexed = group
+                .Select(row => (Index: folder.Tracks.IndexOf(row.FilePath), row.FilePath))
+                .Where(entry => entry.Index >= 0)
+                .OrderByDescending(entry => entry.Index)
+                .ToList();
+
+            foreach (var (index, _) in indexed)
+                folder.Tracks.RemoveAt(index);
+
+            foreach (var (index, path) in indexed.OrderBy(entry => entry.Index))
+            {
+                var capturedFolder = folder;
+                var capturedIndex = index;
+                var capturedPath = path;
+                undoActions.Add(() =>
+                {
+                    // Min на случай, если между удалением и отменой список этой папки успел
+                    // ещё уменьшиться (например, тем же Delete ещё раз) — вставляем не дальше
+                    // текущего конца списка, а не падаем с ArgumentOutOfRangeException.
+                    int insertAt = Math.Min(capturedIndex, capturedFolder.Tracks.Count);
+                    capturedFolder.Tracks.Insert(insertAt, capturedPath);
+                });
+            }
+        }
+
+        if (undoActions.Count == 0) return;
+
+        RefreshPlaylistView();
+        if (touchedFavorites && _isFavoritesView) RefreshFavoritesTrackList();
+
+        _playlistDeleteUndoStack.Push(() =>
+        {
+            foreach (var undo in undoActions)
+                undo();
+
+            RefreshPlaylistView();
+            if (touchedFavorites && _isFavoritesView) RefreshFavoritesTrackList();
+        });
+    }
+
+    // Ctrl+Z — на уровне всего окна (см. PreviewKeyDown у корневого FluentWindow в
+    // MainWindow.xaml), а не только у списков плейлиста: сама отмена не привязана к тому, что
+    // сейчас в фокусе список треков (человек мог кликнуть куда угодно между удалением и Ctrl+Z).
+    // Пропускаем, если фокус сейчас в текстовом поле (поиск по плейлисту и т.п.) — там Ctrl+Z
+    // должен работать как обычная отмена ввода текста, а не как отмена удаления треков.
+    private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        bool isCtrl = System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control);
+        if (!isCtrl || e.Key != System.Windows.Input.Key.Z) return;
+        if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
+        if (_playlistDeleteUndoStack.Count == 0) return;
+
+        e.Handled = true;
+        _playlistDeleteUndoStack.Pop().Invoke();
+    }
+
     // ---------- Контекстное меню трека (правый клик по строке в плейлисте) ----------
     //
     // У каждого пункта меню DataContext унаследован от ContextMenu.PlacementTarget (Grid —
@@ -3642,6 +3763,75 @@ public partial class MainWindow : FluentWindow
     // Клик по значку динамика возле ползунка громкости: выключает звук, а при повторном
     // нажатии возвращает ровно то значение громкости, что было до выключения.
     private void MuteButton_Click(object sender, RoutedEventArgs e) => ToggleMute();
+
+    // ---------- Экспорт/импорт плейлиста для .lumi-профиля (см. LumiProfile.cs, ProfileTransferWindow) ----------
+    //
+    // Та же самая конвертация _folders <-> SavedPlaylistFolder, что уже используется для
+    // settings.json (см. PersistPlaybackAndPlaylistState / RestoreSavedPlaylistAsync чуть
+    // ниже) — просто отдельными публичными методами, чтобы SettingsWindow могла дотянуться
+    // до текущего плейлиста и подставить в него импортированный, не трогая приватные поля
+    // MainWindow напрямую.
+    public List<SavedPlaylistFolder> ExportPlaylistFolders() =>
+        _folders.Select(f => new SavedPlaylistFolder
+        {
+            DisplayName = f.DisplayName,
+            SourcePath = f.SourcePath,
+            IsEnabled = f.IsEnabled,
+            IsExpanded = f.IsExpanded,
+            Tracks = f.Tracks.ToList(),
+            IsLooseFilesBucket = f.IsLooseFilesBucket
+        }).ToList();
+
+    // Импортированные группы ДОБАВЛЯЮТСЯ к уже открытому плейлисту, а не заменяют его —
+    // импорт профиля задуман как перенос НА другой компьютер (в том числе на уже
+    // использующийся), а не как затирание того, что там уже было. Пути к файлам внутри групп
+    // — абсолютные пути с исходного компьютера; если структура папок на этом компьютере
+    // другая, треки просто тихо пропадут при следующей фоновой проверке существования файлов
+    // (см. VerifyTrackExistenceInBackgroundAsync) — то же самое поведение, что и у любых
+    // "протухших" записей в обычном settings.json.
+    public void ImportPlaylistFolders(List<SavedPlaylistFolder> saved)
+    {
+        foreach (var s in saved)
+        {
+            var folder = new PlaylistFolder
+            {
+                SourcePath = s.SourcePath,
+                DisplayName = s.DisplayName,
+                IsEnabled = s.IsEnabled,
+                IsLooseFilesBucket = s.IsLooseFilesBucket,
+                IsExpanded = s.IsExpanded
+            };
+            folder.Tracks.AddRange(s.Tracks);
+            _folders.Add(folder);
+        }
+
+        RefreshPlaylistView();
+    }
+
+    // Аналогично плейлисту — добавляет пути к уже существующему избранному, не заменяя его
+    // (FavoritesManager.SetFavorite сам по себе идемпотентен: путь, уже бывший в избранном,
+    // просто останется в нём же).
+    public void ImportFavorites(List<string> favorites)
+    {
+        foreach (var path in favorites)
+            FavoritesManager.SetFavorite(path, true);
+
+        if (_isFavoritesView) RefreshFavoritesTrackList();
+    }
+
+    // Живо переприменяет только самые заметные настройки сразу после импорта секции
+    // "Настройки" из .lumi-профиля (см. LumiProfileIO.ApplySettingsSection) — тему, акцент,
+    // подложку окна, анимацию прогресса. Остальное (хоткеи, эквалайзер, поведение трея,
+    // мини-плеера и т.п.) читается только при старте соответствующих подсистем — тянуть
+    // живое обновление для всего сразу ради разового действия "импортировать профиль" себя
+    // не окупает, поэтому ProfileTransferWindow дополнительно предлагает перезапустить плеер.
+    public void ApplyImportedSettingsLive()
+    {
+        ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
+        ApplyAccentColor();
+        ApplyWindowBackdrop();
+        ApplyProgressSliderAnimationMode();
+    }
 
     // Единая точка сохранения всего, что должно переживать перезапуск — плейлист, громкость,
     // последний трек и позиция в нём, вид плеера, шафл/повтор, избранное. Раньше вызывалась

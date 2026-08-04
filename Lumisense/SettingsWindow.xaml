@@ -1041,6 +1041,57 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- Перенос профиля на другой компьютер: настройки/плейлист/избранное —
+                             любая комбинация, выбирается в ProfileTransferWindow — в один .lumi-файл
+                             (обычный JSON, см. LumiProfile.cs). -->
+                        <TextBlock Text="Профиль" Style="{StaticResource PageTitleStyle}" FontSize="14" Margin="0,20,0,8" />
+
+                        <ui:Button x:Name="ExportProfileButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Margin="0,0,0,8" Click="ExportProfileButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconCopy" Size="16"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Экспортировать профиль…" FontWeight="SemiBold" />
+                                    <TextBlock Text="Настройки, плейлист и/или избранное в один .lumi-файл" FontSize="12" Opacity="0.6" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
+
+                        <ui:Button x:Name="ImportProfileButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Click="ImportProfileButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconAddFile" Size="16"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Импортировать профиль…" FontWeight="SemiBold" />
+                                    <TextBlock Text="Из .lumi-файла, экспортированного на другом компьютере" FontSize="12" Opacity="0.6" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
                     </StackPanel>
 
                     <!-- О плеере (+ Патчноуты) -->

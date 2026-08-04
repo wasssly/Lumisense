@@ -9,7 +9,8 @@
         MinHeight="680" MinWidth="400"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
-        WindowStartupLocation="CenterScreen">
+        WindowStartupLocation="CenterScreen"
+        PreviewKeyDown="MainWindow_PreviewKeyDown">
 
     <Window.Resources>
         <local:FileNameConverter x:Key="FileNameConverter" />
@@ -743,6 +744,7 @@
                 <ListView x:Name="PlaylistFoldersControl" Grid.Row="1" Grid.Column="0" Margin="4"
                           Background="Transparent" BorderThickness="0"
                           AlternationCount="100000"
+                          SelectionMode="Extended"
                           ItemTemplateSelector="{StaticResource PlaylistDisplayItemTemplateSelector}"
                           ItemContainerStyleSelector="{StaticResource PlaylistDisplayItemContainerStyleSelector}"
                           ScrollViewer.CanContentScroll="True"
@@ -754,7 +756,8 @@
                           SizeChanged="PlaylistScrollViewer_SizeChanged"
                           ScrollViewer.ScrollChanged="PlaylistScrollViewer_ScrollChanged"
                           MouseDoubleClick="PlaylistTrackList_MouseDoubleClick"
-                          PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel" />
+                          PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel"
+                          PreviewKeyDown="PlaylistTrackList_PreviewKeyDown" />
 
                 <!-- Виртуальный плейлист "Избранное" — отдельный, плоский список того же типа
                      строк (PlaylistTrackRow, см. MainWindow.RefreshFavoritesTrackList), просто без
@@ -770,6 +773,7 @@
                           Background="Transparent" BorderThickness="0"
                           AlternationCount="100000"
                           Visibility="Collapsed"
+                          SelectionMode="Extended"
                           ItemTemplate="{StaticResource TrackItemTemplate}"
                           ItemContainerStyle="{StaticResource SearchableTrackListViewItemStyle}"
                           ScrollViewer.CanContentScroll="True"
@@ -781,7 +785,8 @@
                           SizeChanged="PlaylistScrollViewer_SizeChanged"
                           ScrollViewer.ScrollChanged="PlaylistScrollViewer_ScrollChanged"
                           MouseDoubleClick="PlaylistTrackList_MouseDoubleClick"
-                          PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel" />
+                          PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel"
+                          PreviewKeyDown="PlaylistTrackList_PreviewKeyDown" />
 
                 <!-- Свой скроллбар с нуля: никаких ScrollBar/Track — просто дорожка (Grid) и
                      ползунок (Border), позиция и размер которого целиком считаются вручную в

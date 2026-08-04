@@ -1,0 +1,63 @@
+<ui:FluentWindow x:Class="AudioPlayer.ProfileTransferWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        Title="Lumisense"
+        Icon="/Icons/app/lumisense.ico"
+        Height="320" Width="380"
+        MinHeight="320" MinWidth="340"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False">
+
+    <!-- Один и тот же диалог используется и для экспорта, и для импорта (см.
+         ProfileTransferWindow.xaml.cs, Mode) — при экспорте доступны для выбора все три
+         секции сразу; при импорте доступны только те секции, что реально есть в открытом
+         .lumi-файле (недоступные пункты просто выключены — не спрятаны совсем, чтобы было
+         видно, что в файле их нет). Заголовок, подсказка и подпись главной кнопки меняются
+         конструктором под конкретный режим. -->
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Lumisense" ShowMaximize="False" ShowMinimize="False" />
+
+        <Grid Grid.Row="1" Margin="20,4,20,16">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Name="HeaderText" Grid.Row="0" Text="Что перенести?" FontSize="15" FontWeight="Medium" Margin="0,0,0,4" />
+            <TextBlock x:Name="SubHeaderText" Grid.Row="1" TextWrapping="Wrap" Opacity="0.7" FontSize="12" Margin="0,0,0,12" />
+
+            <StackPanel Grid.Row="2">
+                <CheckBox x:Name="SettingsCheckBox" Content="Настройки" Margin="0,0,0,10" IsChecked="True" />
+                <TextBlock Text="Тема, акцент, эквалайзер, хоткеи и т.п." Opacity="0.6" FontSize="11"
+                           Margin="26,-8,0,10" TextWrapping="Wrap" />
+
+                <CheckBox x:Name="PlaylistCheckBox" Content="Плейлист" Margin="0,0,0,10" IsChecked="True" />
+                <TextBlock Text="Группы папок и отдельных файлов" Opacity="0.6" FontSize="11"
+                           Margin="26,-8,0,10" TextWrapping="Wrap" />
+
+                <CheckBox x:Name="FavoritesCheckBox" Content="Избранное" Margin="0,0,0,10" IsChecked="True" />
+                <TextBlock Text="Список треков, отмеченных сердечком" Opacity="0.6" FontSize="11"
+                           Margin="26,-8,0,0" TextWrapping="Wrap" />
+            </StackPanel>
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+                <ui:Button x:Name="CancelButton" Content="Отмена" Appearance="Secondary"
+                           Width="88" Margin="0,0,8,0" Click="CancelButton_Click" />
+                <ui:Button x:Name="ConfirmButton" Content="Экспортировать" Appearance="Primary"
+                           Width="130" Click="ConfirmButton_Click" />
+            </StackPanel>
+        </Grid>
+    </Grid>
+</ui:FluentWindow>
