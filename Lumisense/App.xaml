@@ -182,10 +182,18 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ListViewItem">
-                            <Border x:Name="ItemBorder" CornerRadius="8"
+                            <!-- ClipToBounds="True" — без него, если по каким-то причинам
+                                 измеренная ширина содержимого (ContentPresenter) хоть немного
+                                 разойдётся с шириной самой карточки (например, из-за
+                                 округления при виртуализации), содержимое у правого края —
+                                 в частности, кнопка "избранное" — может отрисоваться ЗА
+                                 пределами скруглённого фона карточки, будто повиснув в
+                                 воздухе рядом с ней, а не внутри неё. С ClipToBounds такое
+                                 просто обрезается по границе карточки, а не торчит наружу. -->
+                            <Border x:Name="ItemBorder" CornerRadius="8" ClipToBounds="True"
                                     Background="{TemplateBinding Background}"
                                     Padding="{TemplateBinding Padding}">
-                                <ContentPresenter VerticalAlignment="Center" />
+                                <ContentPresenter HorizontalAlignment="Stretch" VerticalAlignment="Center" />
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
