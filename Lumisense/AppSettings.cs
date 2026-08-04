@@ -235,11 +235,6 @@ public class AppSettings
     // интерфейсе смысла нет, только сбросило бы выбор тем, у кого уже стоит true.
     public bool UseImprovedShuffle { get; set; }
 
-    // "None" (по умолчанию, как было всегда — мгновенный скачок раз в тик таймера прогресса)
-    // или "MD3" — плавная анимация с кривой ускорения "Standard" из Material Design 3
-    // (cubic-bezier(0.2, 0, 0, 1) — см. MainWindow.SetProgressSliderValue).
-    public string ProgressSliderAnimation { get; set; } = "None";
-
     // ---------- Экспериментальные функции ----------
     // По умолчанию выключены — осознанный выбор пользователя, а не смена привычного
     // поведения без явного согласия.

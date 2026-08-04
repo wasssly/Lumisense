@@ -555,18 +555,6 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
-
-                        <!-- См. AppSettings.ProgressSliderAnimation и MainWindow.ProgressTimer_Tick. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
-                            <StackPanel>
-                                <TextBlock Text="Анимация ползунка трека" Margin="0,0,0,8" />
-                                <RadioButton x:Name="SliderAnimationNoneRadio" Content="Без анимации (мгновенно)"
-                                             GroupName="SliderAnimation" Checked="SliderAnimationRadio_Changed"
-                                             Margin="0,0,0,8" />
-                                <RadioButton x:Name="SliderAnimationMd3Radio" Content="MD3 (Material Design 3)"
-                                             GroupName="SliderAnimation" Checked="SliderAnimationRadio_Changed" />
-                            </StackPanel>
-                        </Border>
                     </StackPanel>
 
                     <!-- Эквалайзер -->

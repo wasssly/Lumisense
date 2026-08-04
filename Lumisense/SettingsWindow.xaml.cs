@@ -132,8 +132,6 @@ public partial class SettingsWindow : FluentWindow
                                          && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
-        SliderAnimationMd3Radio.IsChecked = _settings.ProgressSliderAnimation == "MD3";
-        SliderAnimationNoneRadio.IsChecked = !SliderAnimationMd3Radio.IsChecked.GetValueOrDefault();
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
@@ -330,7 +328,6 @@ public partial class SettingsWindow : FluentWindow
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
-        Add("Анимация ползунка трека", "Воспроизведение", "Playback", SliderAnimationNoneRadio, "анимация ползунок прогресс слайдер трек slider animation progress md3 material design");
         Add("Уведомление о смене трека", "Воспроизведение", "Playback", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
         Add("Расположение уведомления", "Воспроизведение", "Playback", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
         Add("Убрать фон у кнопок управления воспроизведением", "Экспериментальное", "Experimental", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini экспериментальное");
@@ -962,14 +959,6 @@ public partial class SettingsWindow : FluentWindow
         // Колода/история от предыдущего режима шаффла не имеет смысла в новом —
         // начинаем с чистого листа, а не пытаемся домешать её в новую логику.
         _owner.ResetShuffleState();
-    }
-
-    private void SliderAnimationRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.ProgressSliderAnimation = SliderAnimationMd3Radio.IsChecked == true ? "MD3" : "None";
-        _owner.ApplyProgressSliderAnimationMode();
     }
 
     private void HidePlaybackButtonsCheckBox_Changed(object sender, RoutedEventArgs e)

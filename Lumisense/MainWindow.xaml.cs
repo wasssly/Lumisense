@@ -806,7 +806,6 @@ public partial class MainWindow : FluentWindow
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();
-        ApplyProgressSliderAnimationMode();
 
         if (_settings.AlwaysOnTop)
             Topmost = true;
@@ -825,63 +824,6 @@ public partial class MainWindow : FluentWindow
     // или темы (см. SettingsWindow.AccentColorMode/ThemeRadio_Changed) — Apply() учитывает
     // текущую тему, чтобы подобрать светлые/тёмные варианты акцента (SystemAccentColorLight1
     // и т.п.), поэтому пересчитывать нужно и при переключении темы, не только цвета.
-
-    // Ссылка на волну внутри ProgressSlider (см. WavyProgressSliderStyle в App.xaml) — держим
-    // тут, а не ищем каждый раз заново через FindName, потому что фазу нужно двигать на
-    // КАЖДЫЙ тик _progressTimer (см. AdvanceProgressWavePhase), а не разово. null — если
-    // выбран обычный ("None") режим анимации прогресса, там этого элемента просто нет.
-    private WavyProgressFill? _progressWaveFill;
-
-    // Переключает ProgressSlider между обычным плоским стилем (глобальный неявный Style
-    // TargetType="Slider" в App.xaml) и волнистым MD3 Expressive (WavyProgressSliderStyle,
-    // тоже в App.xaml) — см. AppSettings.ProgressSliderAnimation. Вызывается один раз при
-    // старте (ApplySettingsOnStartup) и заново при каждом переключении этой настройки в окне
-    // настроек (см. SettingsWindow.SliderAnimationRadio_Changed).
-    public void ApplyProgressSliderAnimationMode()
-    {
-        bool isWavy = _settings.ProgressSliderAnimation == "MD3";
-
-        ProgressSlider.Style = isWavy
-            ? (Style)FindResource("WavyProgressSliderStyle")
-            // Явный доступ к неявному стилю по его ключу (для стилей без x:Key ключом служит
-            // сам TargetType) — так мы гарантированно возвращаемся к тому же самому стилю,
-            // который применился бы сам по себе, не будь у ProgressSlider локального Style,
-            // а не пытаемся угадывать его через null/сброс (простое присваивание null стилю
-            // элемента в WPF НЕ откатывает к неявному стилю ресурсов автоматически).
-            : (Style)FindResource(typeof(System.Windows.Controls.Slider));
-
-        _progressWaveFill = null;
-        if (!isWavy) return;
-
-        // Смена Style синхронно меняет и Template (Setter внутри Style), но сам визуальный
-        // элемент (Track/RepeatButton/PART_Wave) появляется в дереве только после
-        // ApplyTemplate — без явного вызова FindName ниже почти всегда бы падал в null,
-        // потому что применение шаблона иначе откладывается до следующего прохода layout.
-        ProgressSlider.ApplyTemplate();
-        _progressWaveFill = ProgressSlider.Template.FindName("PART_Wave", ProgressSlider) as WavyProgressFill;
-    }
-
-    // Двигает фазу волны на один "тик" _progressTimer (250мс) — вызывается из ProgressTimer_Tick,
-    // который САМ тикает только пока трек реально играет (см. _progressTimer.Start/Stop вокруг
-    // пауз) — раньше волну крутил отдельный Storyboard с ручным Pause()/Resume() по событию
-    // PlaybackStateChanged, что оказалось лишним и хрупким усложнением: тут просто нет тиков —
-    // просто нет и движения волны, ничего специально останавливать/запускать не нужно, пауза
-    // получается сама собой. Не полагаемся на Storyboard/DoubleAnimation вообще — Phase меняем
-    // напрямую, шаг рассчитан так, чтобы полный сдвиг ровно на одну длину волны (после чего
-    // синусоида просто повторяет сама себя, видимого "шва" не возникает) укладывался в
-    // 2.5 секунды — середина требуемого диапазона "2-3 секунды".
-    private void AdvanceProgressWavePhase()
-    {
-        var wave = _progressWaveFill;
-        if (wave == null) return;
-
-        double wavelength = wave.Wavelength;
-        if (wavelength <= 0) return;
-
-        double phase = wave.Phase + wavelength * (_progressTimer.Interval.TotalSeconds / 2.5);
-        if (phase >= wavelength) phase -= wavelength;
-        wave.Phase = phase;
-    }
 
     // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
     // подтверждённый, судя по всему пока не решённый в библиотеке баг (см. историю этого
@@ -3523,68 +3465,24 @@ public partial class MainWindow : FluentWindow
     private const int AutoSaveEveryNTicks = 40;
     private int _ticksSinceLastAutoSave;
 
-    // Обновляет позицию ползунка прогресса под текущее время воспроизведения — либо мгновенным
-    // скачком (по умолчанию, как было всегда), либо плавной анимацией длиной в один тик
-    // таймера прогресса (см. AppSettings.ProgressSliderAnimation). Сама же и управляет флагом
-    // _isSyncingProgressFromPlayback — в анимированном случае он должен оставаться включённым
-    // не на миг присвоения, а на всё время анимации: ValueChanged срабатывает на каждый
-    // промежуточный кадр, и без этого ProgressSlider_ValueChanged принял бы каждый такой кадр
-    // за перемотку пользователем и дёргал бы _audioFile.CurrentTime по несколько раз за тик —
-    // с очень неприятными артефактами на слух вместо плавного визуального скольжения.
+    // Обновляет позицию ползунка прогресса под текущее время воспроизведения. Флагом
+    // _isSyncingProgressFromPlayback управляет сама — без него ProgressSlider_ValueChanged
+    // принял бы это присвоение за перемотку пользователем и дёргал бы _audioFile.CurrentTime.
     private void SetProgressSliderValue(double seconds)
     {
-        if (_settings.ProgressSliderAnimation != "MD3")
-        {
-            // На случай, если до этого момента играла ещё не долетевшая анимация от
-            // предыдущего тика (переключили настройку прямо на лету, посреди движения) —
-            // останавливаем её, иначе она продолжила бы досчитывать поверх нового мгновенного
-            // значения и слайдер бы "поехал" сам по себе на пропавшем полсекунды кадре.
-            ProgressSlider.BeginAnimation(System.Windows.Controls.Slider.ValueProperty, null);
-            _isSyncingProgressFromPlayback = true;
-            ProgressSlider.Value = seconds;
-            _isSyncingProgressFromPlayback = false;
-            return;
-        }
-
         _isSyncingProgressFromPlayback = true;
-
-        // Кривая ускорения "Standard" из Material Design 3 — cubic-bezier(0.2, 0, 0, 1)
-        // (см. https://m3.material.io/styles/motion/easing-and-duration/tokens-specs,
-        // токен md.sys.motion.easing.standard). У WPF нет готового IEasingFunction под
-        // произвольный кубический безье с двумя контрольными точками, зато есть ровно то же
-        // самое по смыслу в KeySpline у DoubleAnimationUsingKeyFrames — те же две контрольные
-        // точки, тот же результат, просто устроено на уровне ключевых кадров, а не
-        // EasingFunction.
-        var keyFrame = new SplineDoubleKeyFrame(seconds, KeyTime.FromTimeSpan(_progressTimer.Interval),
-            new KeySpline(0.2, 0, 0, 1));
-        var animation = new DoubleAnimationUsingKeyFrames();
-        animation.KeyFrames.Add(keyFrame);
-
-        // Обычно эта анимация не успевает доиграть сама — следующий тик приходит ровно через
-        // тот же интервал и запускает новую, WPF плавно перенацеливает уже идущую анимацию на
-        // новую цель. Completed сработает только у самой последней — на паузе/остановке
-        // (см. StopProgressTimerAndAnimation) или пока следующий тик не подоспел.
-        animation.Completed += (_, _) => _isSyncingProgressFromPlayback = false;
-        ProgressSlider.BeginAnimation(System.Windows.Controls.Slider.ValueProperty, animation);
+        ProgressSlider.Value = seconds;
+        _isSyncingProgressFromPlayback = false;
     }
 
-    // Останавливает таймер прогресса и любую его недоигравшую анимацию слайдера (см.
-    // SetProgressSliderValue) разом — по всем местам, где раньше был голый
-    // _progressTimer.Stop(). Без явной остановки анимации тут возможно узкое окно (до её
-    // естественного Completed, то есть до отдельного тика таймера прогресса), в течение
-    // которого _isSyncingProgressFromPlayback остаётся true, и ручная перемотка ползунка
-    // сразу после паузы не сработала бы.
     private void StopProgressTimerAndAnimation()
     {
         _progressTimer.Stop();
-        ProgressSlider.BeginAnimation(System.Windows.Controls.Slider.ValueProperty, null);
         _isSyncingProgressFromPlayback = false;
     }
 
     private void ProgressTimer_Tick(object? sender, EventArgs e)
     {
-        AdvanceProgressWavePhase();
-
         // Пока пользователь держит ползунок нажатым (клик или перетаскивание) — не трогаем его
         // значение автоматически, иначе неточность перемотки в mp3/aac будет сбивать позицию
         // прямо во время движения, и ползунок будет "дёргаться".
@@ -3745,17 +3643,16 @@ public partial class MainWindow : FluentWindow
     private void MuteButton_Click(object sender, RoutedEventArgs e) => ToggleMute();
 
     // Живо переприменяет только самые заметные настройки сразу после импорта .lumi-профиля
-    // (см. LumiProfileIO.Apply) — тему, акцент, подложку окна, анимацию прогресса. Остальное
-    // (хоткеи, эквалайзер, поведение трея, мини-плеера и т.п.) читается только при старте
-    // соответствующих подсистем — тянуть живое обновление для всего сразу ради разового
-    // действия "импортировать настройки" себя не окупает, поэтому SettingsWindow
-    // дополнительно предлагает перезапустить плеер.
+    // (см. LumiProfileIO.Apply) — тему, акцент, подложку окна. Остальное (хоткеи, эквалайзер,
+    // поведение трея, мини-плеера и т.п.) читается только при старте соответствующих подсистем
+    // — тянуть живое обновление для всего сразу ради разового действия "импортировать
+    // настройки" себя не окупает, поэтому SettingsWindow дополнительно предлагает
+    // перезапустить плеер.
     public void ApplyImportedSettingsLive()
     {
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();
-        ApplyProgressSliderAnimationMode();
     }
 
     // Единая точка сохранения всего, что должно переживать перезапуск — плейлист, громкость,
