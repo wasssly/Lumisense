@@ -980,19 +980,12 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyPlaybackButtonsVisibility();
     }
 
-    // ---------- Экспорт/импорт профиля (.lumi) ----------
-    // См. LumiProfile.cs (формат файла) и ProfileTransferWindow (диалог выбора секций).
-    // Собственно чтение/запись файла и обращение к живым данным (AppSettings/плейлист/
-    // избранное) — здесь, а не в диалоге: диалог ничего не знает про формат .lumi и данные
-    // приложения, только спрашивает "что" в виде трёх галочек.
+    // ---------- Экспорт/импорт настроек (.lumi) ----------
+    // См. LumiProfile.cs — формат файла. Плейлист и избранное сюда не входят, переносятся
+    // только настройки (тема, акцент, эквалайзер, хоткеи и т.п.) — см. LumiProfileIO.
 
     private void ExportProfileButton_Click(object sender, RoutedEventArgs e)
     {
-        var pickerDialog = new ProfileTransferWindow(ProfileTransferMode.Export) { Owner = this };
-        if (pickerDialog.ShowDialog() != true) return;
-
-        var selection = pickerDialog.Result;
-
         var saveDialog = new Microsoft.Win32.SaveFileDialog
         {
             Filter = LumiProfileIO.FileFilter,
@@ -1003,13 +996,9 @@ public partial class SettingsWindow : FluentWindow
 
         try
         {
-            LumiProfileIO.Export(
-                saveDialog.FileName,
-                liveSettings: selection.IncludeSettings ? _settings : null,
-                playlist: selection.IncludePlaylist ? _owner.ExportPlaylistFolders() : null,
-                favorites: selection.IncludeFavorites ? FavoritesManager.GetAll() : null);
+            LumiProfileIO.Export(saveDialog.FileName, _settings);
 
-            System.Windows.MessageBox.Show(this, "Профиль сохранён.", "Экспорт завершён",
+            System.Windows.MessageBox.Show(this, "Настройки сохранены.", "Экспорт завершён",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
         catch (Exception ex)
@@ -1032,55 +1021,20 @@ public partial class SettingsWindow : FluentWindow
             return;
         }
 
-        var availableSections = new ProfileTransferSelection
-        {
-            IncludeSettings = profile.Settings != null,
-            IncludePlaylist = profile.Playlist != null,
-            IncludeFavorites = profile.Favorites != null
-        };
+        LumiProfileIO.Apply(profile.Settings, _settings);
+        _owner.ApplyImportedSettingsLive();
+        SettingsManager.Save(_settings);
 
-        if (!availableSections.IncludeSettings && !availableSections.IncludePlaylist && !availableSections.IncludeFavorites)
-        {
-            System.Windows.MessageBox.Show(this, "В этом файле нет ни одной секции для импорта.",
-                "Нечего импортировать", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-            return;
-        }
-
-        var pickerDialog = new ProfileTransferWindow(ProfileTransferMode.Import, availableSections) { Owner = this };
-        if (pickerDialog.ShowDialog() != true) return;
-
-        var selection = pickerDialog.Result;
-        bool settingsImported = false;
-
-        if (selection.IncludeSettings && profile.Settings != null)
-        {
-            LumiProfileIO.ApplySettingsSection(profile.Settings, _settings);
-            _owner.ApplyImportedSettingsLive();
-            SettingsManager.Save(_settings);
-            settingsImported = true;
-        }
-
-        if (selection.IncludePlaylist && profile.Playlist != null)
-            _owner.ImportPlaylistFolders(profile.Playlist);
-
-        if (selection.IncludeFavorites && profile.Favorites != null)
-            _owner.ImportFavorites(profile.Favorites);
-
-        string restartHint = settingsImported
-            ? "\n\nЧасть настроек (хоткеи, эквалайзер, поведение трея и мини-плеера) применится полностью после перезапуска плеера."
-            : "";
-        System.Windows.MessageBox.Show(this, "Импорт завершён." + restartHint, "Импорт завершён",
-            System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        System.Windows.MessageBox.Show(this,
+            "Настройки импортированы.\n\nЧасть из них (хоткеи, эквалайзер, поведение трея и мини-плеера) применится полностью после перезапуска плеера.",
+            "Импорт завершён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
 
         // Поля этого окна настроек читаются из _settings только один раз, в конструкторе —
         // после импорта они не переприменяются сами. Проще переоткрыть окно (переиспользует
         // уже готовый MainWindow.ShowSettingsWindow), чем гоняться за каждым изменившимся
         // полем формы по отдельности.
-        if (settingsImported)
-        {
-            Close();
-            _owner.ShowSettingsWindow("Experimental");
-        }
+        Close();
+        _owner.ShowSettingsWindow("Experimental");
     }
 
     // ---------- Навигация по страницам настроек ----------

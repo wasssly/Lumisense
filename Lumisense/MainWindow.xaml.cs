@@ -655,18 +655,6 @@ public partial class MainWindow : FluentWindow
         _trayIconManager.NextRequested += () => Dispatcher.Invoke(PlayNextTrack);
         _trayIconManager.PreviousRequested += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
         PlaybackStateChanged += isPlaying => _trayIconManager?.SetPlayingState(isPlaying);
-
-        // Волнистая MD3-анимация прогресса (см. WavyProgressFill.cs, ApplyProgressSliderAnimationMode)
-        // должна двигаться только пока трек реально играет — на паузе/остановке замираем на
-        // текущем кадре, а не продолжаем крутить фазу вхолостую. Подписка тут одна на всё время
-        // жизни окна: сам Storyboard за это время может пересоздаваться (например, при
-        // переключении настройки MD3 туда-обратно) — актуальную ссылку каждый раз берём из
-        // поля _progressWaveStoryboard, а не из замыкания.
-        PlaybackStateChanged += isPlaying =>
-        {
-            if (isPlaying) _progressWaveStoryboard?.Resume(this);
-            else _progressWaveStoryboard?.Pause(this);
-        };
         TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
         _trayIconManager.SetPlayingState(_isPlaying);
         _trayIconManager.ApplyTheme(isLight: _settings.IsLightThemeResolved());
@@ -838,11 +826,11 @@ public partial class MainWindow : FluentWindow
     // текущую тему, чтобы подобрать светлые/тёмные варианты акцента (SystemAccentColorLight1
     // и т.п.), поэтому пересчитывать нужно и при переключении темы, не только цвета.
 
-    // Storyboard, крутящий фазу волны у ProgressSlider (см. WavyProgressFill.Phase и
-    // WavyProgressSliderStyle в App.xaml) — держим ссылку, чтобы было что остановить при
-    // выключении анимации или повторном вызове этого метода (иначе на каждое переключение в
-    // настройках плодили бы новый Storyboard поверх старого).
-    private Storyboard? _progressWaveStoryboard;
+    // Ссылка на волну внутри ProgressSlider (см. WavyProgressSliderStyle в App.xaml) — держим
+    // тут, а не ищем каждый раз заново через FindName, потому что фазу нужно двигать на
+    // КАЖДЫЙ тик _progressTimer (см. AdvanceProgressWavePhase), а не разово. null — если
+    // выбран обычный ("None") режим анимации прогресса, там этого элемента просто нет.
+    private WavyProgressFill? _progressWaveFill;
 
     // Переключает ProgressSlider между обычным плоским стилем (глобальный неявный Style
     // TargetType="Slider" в App.xaml) и волнистым MD3 Expressive (WavyProgressSliderStyle,
@@ -862,47 +850,37 @@ public partial class MainWindow : FluentWindow
             // элемента в WPF НЕ откатывает к неявному стилю ресурсов автоматически).
             : (Style)FindResource(typeof(System.Windows.Controls.Slider));
 
+        _progressWaveFill = null;
+        if (!isWavy) return;
+
         // Смена Style синхронно меняет и Template (Setter внутри Style), но сам визуальный
         // элемент (Track/RepeatButton/PART_Wave) появляется в дереве только после
         // ApplyTemplate — без явного вызова FindName ниже почти всегда бы падал в null,
         // потому что применение шаблона иначе откладывается до следующего прохода layout.
-        _progressWaveStoryboard?.Stop(this);
-        _progressWaveStoryboard = null;
-
-        if (!isWavy) return;
-
         ProgressSlider.ApplyTemplate();
-        if (ProgressSlider.Template.FindName("PART_Wave", ProgressSlider) is not WavyProgressFill wave) return;
+        _progressWaveFill = ProgressSlider.Template.FindName("PART_Wave", ProgressSlider) as WavyProgressFill;
+    }
 
-        // Фаза бежит от 0 до ровно одной длины волны и зацикливается — синусоида периодична,
-        // поэтому такой сдвиг выглядит как непрерывное течение волны без видимого "шва" в
-        // момент, когда анимация уходит на новый виток (см. подробности в WavyProgressFill.cs).
-        // 2.5 секунды на виток — середина требуемого диапазона "2-3 секунды".
-        var phaseAnimation = new DoubleAnimation(0, wave.Wavelength, TimeSpan.FromSeconds(2.5))
-        {
-            RepeatBehavior = RepeatBehavior.Forever
-        };
-        Storyboard.SetTarget(phaseAnimation, wave);
-        Storyboard.SetTargetProperty(phaseAnimation, new PropertyPath(WavyProgressFill.PhaseProperty));
+    // Двигает фазу волны на один "тик" _progressTimer (250мс) — вызывается из ProgressTimer_Tick,
+    // который САМ тикает только пока трек реально играет (см. _progressTimer.Start/Stop вокруг
+    // пауз) — раньше волну крутил отдельный Storyboard с ручным Pause()/Resume() по событию
+    // PlaybackStateChanged, что оказалось лишним и хрупким усложнением: тут просто нет тиков —
+    // просто нет и движения волны, ничего специально останавливать/запускать не нужно, пауза
+    // получается сама собой. Не полагаемся на Storyboard/DoubleAnimation вообще — Phase меняем
+    // напрямую, шаг рассчитан так, чтобы полный сдвиг ровно на одну длину волны (после чего
+    // синусоида просто повторяет сама себя, видимого "шва" не возникает) укладывался в
+    // 2.5 секунды — середина требуемого диапазона "2-3 секунды".
+    private void AdvanceProgressWavePhase()
+    {
+        var wave = _progressWaveFill;
+        if (wave == null) return;
 
-        var storyboard = new Storyboard();
-        storyboard.Children.Add(phaseAnimation);
+        double wavelength = wave.Wavelength;
+        if (wavelength <= 0) return;
 
-        // isControllableStoryboard=true — обязательно, иначе Pause()/Resume() ниже (см.
-        // подписку на PlaybackStateChanged в конструкторе) кидали бы InvalidOperationException:
-        // без этого флага Storyboard считается "одноразовым" и не поддерживает управление после
-        // запуска. FrameworkElement-параметр (this) тут — просто владелец таймлайна для System
-        // управления паузой/возобновлением, сама анимация всё равно привязана к wave явным
-        // Storyboard.SetTarget выше, а не через поиск по имени в дереве MainWindow.
-        storyboard.Begin(this, true);
-
-        // Волна не должна "бежать" сама по себе постоянно — только пока реально идёт
-        // воспроизведение (см. запрошенное поведение). Если в момент применения режима трек
-        // стоит на паузе (или просто выбран режим MD3 без активного воспроизведения), сразу
-        // замораживаем анимацию на первом кадре — PlaybackStateChanged разбудит её позже.
-        if (!_isPlaying) storyboard.Pause(this);
-
-        _progressWaveStoryboard = storyboard;
+        double phase = wave.Phase + wavelength * (_progressTimer.Interval.TotalSeconds / 2.5);
+        if (phase >= wavelength) phase -= wavelength;
+        wave.Phase = phase;
     }
 
     // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
@@ -3605,6 +3583,8 @@ public partial class MainWindow : FluentWindow
 
     private void ProgressTimer_Tick(object? sender, EventArgs e)
     {
+        AdvanceProgressWavePhase();
+
         // Пока пользователь держит ползунок нажатым (клик или перетаскивание) — не трогаем его
         // значение автоматически, иначе неточность перемотки в mp3/aac будет сбивать позицию
         // прямо во время движения, и ползунок будет "дёргаться".
@@ -3764,67 +3744,12 @@ public partial class MainWindow : FluentWindow
     // нажатии возвращает ровно то значение громкости, что было до выключения.
     private void MuteButton_Click(object sender, RoutedEventArgs e) => ToggleMute();
 
-    // ---------- Экспорт/импорт плейлиста для .lumi-профиля (см. LumiProfile.cs, ProfileTransferWindow) ----------
-    //
-    // Та же самая конвертация _folders <-> SavedPlaylistFolder, что уже используется для
-    // settings.json (см. PersistPlaybackAndPlaylistState / RestoreSavedPlaylistAsync чуть
-    // ниже) — просто отдельными публичными методами, чтобы SettingsWindow могла дотянуться
-    // до текущего плейлиста и подставить в него импортированный, не трогая приватные поля
-    // MainWindow напрямую.
-    public List<SavedPlaylistFolder> ExportPlaylistFolders() =>
-        _folders.Select(f => new SavedPlaylistFolder
-        {
-            DisplayName = f.DisplayName,
-            SourcePath = f.SourcePath,
-            IsEnabled = f.IsEnabled,
-            IsExpanded = f.IsExpanded,
-            Tracks = f.Tracks.ToList(),
-            IsLooseFilesBucket = f.IsLooseFilesBucket
-        }).ToList();
-
-    // Импортированные группы ДОБАВЛЯЮТСЯ к уже открытому плейлисту, а не заменяют его —
-    // импорт профиля задуман как перенос НА другой компьютер (в том числе на уже
-    // использующийся), а не как затирание того, что там уже было. Пути к файлам внутри групп
-    // — абсолютные пути с исходного компьютера; если структура папок на этом компьютере
-    // другая, треки просто тихо пропадут при следующей фоновой проверке существования файлов
-    // (см. VerifyTrackExistenceInBackgroundAsync) — то же самое поведение, что и у любых
-    // "протухших" записей в обычном settings.json.
-    public void ImportPlaylistFolders(List<SavedPlaylistFolder> saved)
-    {
-        foreach (var s in saved)
-        {
-            var folder = new PlaylistFolder
-            {
-                SourcePath = s.SourcePath,
-                DisplayName = s.DisplayName,
-                IsEnabled = s.IsEnabled,
-                IsLooseFilesBucket = s.IsLooseFilesBucket,
-                IsExpanded = s.IsExpanded
-            };
-            folder.Tracks.AddRange(s.Tracks);
-            _folders.Add(folder);
-        }
-
-        RefreshPlaylistView();
-    }
-
-    // Аналогично плейлисту — добавляет пути к уже существующему избранному, не заменяя его
-    // (FavoritesManager.SetFavorite сам по себе идемпотентен: путь, уже бывший в избранном,
-    // просто останется в нём же).
-    public void ImportFavorites(List<string> favorites)
-    {
-        foreach (var path in favorites)
-            FavoritesManager.SetFavorite(path, true);
-
-        if (_isFavoritesView) RefreshFavoritesTrackList();
-    }
-
-    // Живо переприменяет только самые заметные настройки сразу после импорта секции
-    // "Настройки" из .lumi-профиля (см. LumiProfileIO.ApplySettingsSection) — тему, акцент,
-    // подложку окна, анимацию прогресса. Остальное (хоткеи, эквалайзер, поведение трея,
-    // мини-плеера и т.п.) читается только при старте соответствующих подсистем — тянуть
-    // живое обновление для всего сразу ради разового действия "импортировать профиль" себя
-    // не окупает, поэтому ProfileTransferWindow дополнительно предлагает перезапустить плеер.
+    // Живо переприменяет только самые заметные настройки сразу после импорта .lumi-профиля
+    // (см. LumiProfileIO.Apply) — тему, акцент, подложку окна, анимацию прогресса. Остальное
+    // (хоткеи, эквалайзер, поведение трея, мини-плеера и т.п.) читается только при старте
+    // соответствующих подсистем — тянуть живое обновление для всего сразу ради разового
+    // действия "импортировать настройки" себя не окупает, поэтому SettingsWindow
+    // дополнительно предлагает перезапустить плеер.
     public void ApplyImportedSettingsLive()
     {
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);

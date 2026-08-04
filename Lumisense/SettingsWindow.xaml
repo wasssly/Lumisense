@@ -1042,10 +1042,10 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Перенос профиля на другой компьютер: настройки/плейлист/избранное —
-                             любая комбинация, выбирается в ProfileTransferWindow — в один .lumi-файл
-                             (обычный JSON, см. LumiProfile.cs). -->
-                        <TextBlock Text="Профиль" Style="{StaticResource PageTitleStyle}" FontSize="14" Margin="0,20,0,8" />
+                        <!-- Перенос настроек на другой компьютер в один .lumi-файл (обычный
+                             JSON, см. LumiProfile.cs). Плейлист и избранное сюда не входят —
+                             только тема, акцент, эквалайзер, хоткеи и т.п. -->
+                        <TextBlock Text="Настройки" Style="{StaticResource PageTitleStyle}" FontSize="14" Margin="0,20,0,8" />
 
                         <ui:Button x:Name="ExportProfileButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
@@ -1064,8 +1064,8 @@
                                 </Border>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Экспортировать профиль…" FontWeight="SemiBold" />
-                                    <TextBlock Text="Настройки, плейлист и/или избранное в один .lumi-файл" FontSize="12" Opacity="0.6" />
+                                    <TextBlock Text="Экспортировать настройки…" FontWeight="SemiBold" />
+                                    <TextBlock Text="Сохранить в один .lumi-файл" FontSize="12" Opacity="0.6" />
                                 </StackPanel>
                             </Grid>
                         </ui:Button>
@@ -1087,7 +1087,7 @@
                                 </Border>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Импортировать профиль…" FontWeight="SemiBold" />
+                                    <TextBlock Text="Импортировать настройки…" FontWeight="SemiBold" />
                                     <TextBlock Text="Из .lumi-файла, экспортированного на другом компьютере" FontSize="12" Opacity="0.6" />
                                 </StackPanel>
                             </Grid>
