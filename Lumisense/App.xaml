@@ -12,11 +12,13 @@
 
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Подложка под кнопкой "избранное" на выделенной строке плейлиста (см.
-                 MainWindow.xaml, TrackFavoriteButton/FavoriteBackdrop) — фиксированный тёмный
-                 цвет, один и тот же независимо от темы и акцента (см. подробный комментарий в
-                 MainWindow.xaml). -->
-            <SolidColorBrush x:Key="FavoriteBackdropSelectedBrush" Color="#1A1A1A" />
+            <!-- Подложка под кнопкой "избранное" (см. MainWindow.xaml, TrackFavoriteButton/
+                 FavoriteBackdrop) — фиксированные цвета, одни и те же независимо от темы и
+                 акцента, показываются на кнопке всегда, а не только на выделенном треке (см.
+                 подробный комментарий в MainWindow.xaml). Обводка — на пару тонов светлее
+                 заливки, просто чтобы край кружка читался чуть чётче. -->
+            <SolidColorBrush x:Key="FavoriteBackdropBrush" Color="#1A1A1A" />
+            <SolidColorBrush x:Key="FavoriteBackdropBorderBrush" Color="#3D3D3D" />
 
             <!-- ===== SVG-иконки ===== -->
             <!-- Настоящие .svg-файлы лежат в папке Icons/svg/ (рендерятся через SharpVectors,

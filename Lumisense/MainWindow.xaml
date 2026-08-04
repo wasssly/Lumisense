@@ -134,45 +134,36 @@
                      обычно это TextFillColorPrimaryBrush от строки-ListViewItem, но когда трек
                      выделен, ListViewItem подменяет Foreground на TextOnAccentFillColorPrimaryBrush
                      (см. App.xaml, Trigger IsSelected) — и контурное сердечко на 50% прозрачности
-                     непредсказуемо меняет цвет/контраст вместе с выделением. Явно фиксируем его
-                     на TextFillColorPrimaryBrush для обычного состояния.
+                     непредсказуемо меняло бы цвет/контраст вместе с выделением, если бы не
+                     фиксированный белый Foreground ниже (см. DataTrigger.Triggers).
 
                      FavoriteBackdrop — сама кнопка Appearance="Transparent", то есть без
                      собственного фона, и на сплошной заливке выделенной строки (акцентный цвет,
                      см. App.xaml) визуально растворяется — непонятно, где именно кликабельная
-                     область. DataTrigger на самом Border ниже подкладывает под кнопку ВСЕГДА
-                     тёмный фон (FavoriteBackdropSelectedBrush, см. App.xaml) — фиксированный
-                     цвет, один и тот же независимо от темы и акцента, а не подбирается заново
-                     под каждое их сочетание: непрозрачная тёмная подложка гарантированно
-                     контрастна почти любому акценту (кроме разве что самого-самого тёмного —
-                     редкий крайний случай, которым можно пренебречь). Раз подложка теперь
-                     всегда тёмная, а не переменного цвета под тему, то и цвет самой иконки
-                     на выделенном треке (см. MultiDataTrigger в DataTemplate.Triggers ниже)
-                     тоже фиксированный светлый, а не берётся из темы — специально ПОД эту
-                     конкретную тёмную подложку, а не "на глаз, авось хватит контраста".
-                     Заполненное (избранное) сердечко в этот механизм не входит — у него свой
-                     явный красный Foreground ниже, и он неплохо читается что на тёмной
-                     подложке, что без неё. -->
+                     область. Фон и обводка тут — просто статичные значения, БЕЗ Trigger по
+                     IsSelected: раньше подкладывали тёмный фон только на выделенном треке, и
+                     из-за того, что кнопка на всех остальных строках при этом выглядит иначе
+                     (без подложки), сама кнопка казалась "то есть, то нет" — теперь фон и
+                     обводка одинаковые всегда, вне зависимости от того, выделена строка или
+                     нет. Оба цвета фиксированные — один и тот же независимо от темы и акцента:
+                     непрозрачная тёмная подложка гарантированно контрастна почти любому фону, а
+                     обводка на пару тонов светлее заливки — просто для чуть более чёткого края
+                     самого кружка. Раз подложка всегда тёмная, а не переменного цвета под тему,
+                     то и цвет самой иконки (см. DataTrigger.Triggers ниже) тоже фиксированный
+                     белый, а не берётся из темы — специально ПОД эту конкретную тёмную
+                     подложку. Заполненное (избранное) сердечко в этот механизм не входит — у
+                     него свой явный красный Foreground ниже, и он неплохо читается на тёмной
+                     подложке. -->
                 <Border x:Name="FavoriteBackdrop" Grid.Column="3" Width="26" Height="26" CornerRadius="13"
-                        Margin="4,0,0,0" Background="Transparent">
-                    <Border.Style>
-                        <Style TargetType="Border">
-                            <Style.Triggers>
-                                <DataTrigger Value="True"
-                                             Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsSelected}">
-                                    <Setter Property="Background" Value="{DynamicResource FavoriteBackdropSelectedBrush}" />
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Border.Style>
-
+                        Margin="4,0,0,0" Background="{DynamicResource FavoriteBackdropBrush}"
+                        BorderBrush="{DynamicResource FavoriteBackdropBorderBrush}" BorderThickness="1">
                     <ui:Button x:Name="TrackFavoriteButton" Appearance="Transparent"
                                Width="26" Height="26" Padding="0"
                                Click="FavoriteButton_Click" FocusVisualStyle="{x:Null}"
                                ToolTip="Добавить/убрать из избранного">
                         <ui:Button.Icon>
                             <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5"
-                                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                                               Foreground="White" />
                         </ui:Button.Icon>
                     </ui:Button>
                 </Border>
@@ -205,31 +196,6 @@
                     <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#E53935" />
                     <Setter TargetName="TrackFavoriteIcon" Property="Opacity" Value="1" />
                 </DataTrigger>
-                <!-- Контурное (НЕ избранное) сердечко на выделенной строке — см. подробный
-                     комментарий выше, у FavoriteBackdrop. Фиксированный светлый цвет — ПОД
-                     конкретно ту тёмную подложку, что кладёт триггер у Border, а не под
-                     произвольный фон. Второе условие (IsFavoriteMultiConverter = False) — чтобы
-                     не перебивать явный красный Foreground избранного сердечка из триггера
-                     выше: избранное и так неплохо читается на тёмной подложке, этот триггер
-                     только про обычный контур. -->
-                <MultiDataTrigger>
-                    <MultiDataTrigger.Conditions>
-                        <Condition Value="True">
-                            <Condition.Binding>
-                                <Binding RelativeSource="{RelativeSource AncestorType=ListViewItem}" Path="IsSelected" />
-                            </Condition.Binding>
-                        </Condition>
-                        <Condition Value="False">
-                            <Condition.Binding>
-                                <MultiBinding Converter="{StaticResource IsFavoriteMultiConverter}">
-                                    <Binding Path="FilePath" />
-                                    <Binding Source="{x:Static local:FavoritesChangeNotifier.Instance}" Path="Epoch" />
-                                </MultiBinding>
-                            </Condition.Binding>
-                        </Condition>
-                    </MultiDataTrigger.Conditions>
-                    <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="White" />
-                </MultiDataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
 
