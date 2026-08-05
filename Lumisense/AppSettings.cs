@@ -150,6 +150,11 @@ public class AppSettings
     public bool IsShuffleEnabled { get; set; }
     public string RepeatMode { get; set; } = "Off";
 
+    // Анимация смены обложки (старая "улетает" в сторону, новая "влетает" с
+    // противоположной — как в iTunes) при переключении трека. Можно выключить в
+    // настройках, если анимация мешает или не нравится — см. MainWindow.SetAlbumArtTransitionEnabled.
+    public bool AlbumArtTransitionEnabled { get; set; } = true;
+
     // Настройки мини-плеера
     public double MiniPlayerOpacity { get; set; } = 1.0;
     public bool MiniPlayerAlwaysOnTop { get; set; } = true;

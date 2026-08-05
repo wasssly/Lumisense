@@ -133,6 +133,7 @@ public partial class SettingsWindow : FluentWindow
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
+        AlbumArtTransitionCheckBox.IsChecked = _owner.IsAlbumArtTransitionEnabled;
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
@@ -306,6 +307,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic акрил размытие блюр подложка фон backdrop blur");
+        Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionCheckBox, "анимация обложка переход трек itunes слайд fly transition album art cover");
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
@@ -967,6 +969,13 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.HidePlaybackButtons = HidePlaybackButtonsCheckBox.IsChecked == true;
         _owner.ApplyPlaybackButtonsVisibility();
+    }
+
+    private void AlbumArtTransitionCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _owner.SetAlbumArtTransitionEnabled(AlbumArtTransitionCheckBox.IsChecked == true);
     }
 
     // ---------- Экспорт/импорт настроек (.lumi) ----------

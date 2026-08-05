@@ -26,6 +26,11 @@ public partial class MainWindow : FluentWindow
     // и мини-плеер (отдельное окно MiniPlayerWindow).
     private enum PlayerViewMode { Square, Rectangular, Mini }
 
+    // Направление анимации смены обложки (см. AnimateAlbumArtTransition): Next — старая
+    // обложка "улетает" влево, новая "влетает" справа; Previous — наоборот. None — без
+    // анимации (например, самая первая загрузка обложки при старте приложения).
+    private enum AlbumArtTransitionDirection { None, Next, Previous }
+
     // Поддерживаемые расширения — используются при сканировании папок
     private static readonly string[] SupportedExtensions = { ".mp3", ".wav", ".wma", ".flac", ".m4a", ".aac", ".ogg" };
 
@@ -305,6 +310,8 @@ public partial class MainWindow : FluentWindow
     // том, что полноэкранный занимает весь монитор, а квадратный — увеличенное окно.
     private void ApplyContentScale(bool big)
     {
+        AlbumArtContainer.Width = big ? 260 : 150;
+        AlbumArtContainer.Height = big ? 260 : 150;
         AlbumArtBorder.Width = big ? 260 : 150;
         AlbumArtBorder.Height = big ? 260 : 150;
         AlbumArtIcon.Size = big ? 64 : 36;
@@ -555,7 +562,8 @@ public partial class MainWindow : FluentWindow
         if (!File.Exists(_settings.LastTrackPath)) return; // единичная дешёвая проверка ОДНОГО файла — не массовое сканирование
 
         LoadAndPlay(_settings.LastTrackPath, autoPlay: false,
-            startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)));
+            startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)),
+            albumArtDirection: AlbumArtTransitionDirection.None);
     }
 
     // Тихая фоновая проверка File.Exists по ВСЕМ трекам ВСЕХ папок плейлиста — единственное
@@ -2289,7 +2297,8 @@ public partial class MainWindow : FluentWindow
 
     // ---------- Загрузка и воспроизведение ----------
 
-    private void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null)
+    private void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
+        AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next)
     {
         StopPlayback(disposeOnly: true);
 
@@ -2340,7 +2349,7 @@ public partial class MainWindow : FluentWindow
         _currentTrackPath = filePath;
         _halfPlayCounted = false;
 
-        LoadAlbumArt(filePath);
+        LoadAlbumArt(filePath, albumArtDirection);
 
         // Позиция старта: восстановленная (сохранённая между запусками) либо начало трека.
         // Раньше при переключении трека на паузе слайдер и время не сбрасывались и
@@ -2478,7 +2487,7 @@ public partial class MainWindow : FluentWindow
         TrackArtistText.Text = artist;
     }
 
-    private void LoadAlbumArt(string filePath)
+    private void LoadAlbumArt(string filePath, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
     {
         try
         {
@@ -2496,7 +2505,7 @@ public partial class MainWindow : FluentWindow
                 bitmap.EndInit();
                 bitmap.Freeze();
 
-                ApplyAlbumArtBrush(new ImageBrush(bitmap) { Stretch = Stretch.UniformToFill });
+                ApplyAlbumArtBrush(new ImageBrush(bitmap) { Stretch = Stretch.UniformToFill }, direction);
                 _currentAlbumArt = bitmap;
                 _currentAlbumArtBytes = bytes;
                 _currentAlbumArtMimeType = string.IsNullOrWhiteSpace(pictures[0].MimeType) ? "image/jpeg" : pictures[0].MimeType;
@@ -2504,7 +2513,7 @@ public partial class MainWindow : FluentWindow
             }
             else
             {
-                ResetAlbumArtPlaceholder();
+                ResetAlbumArtPlaceholder(direction);
             }
 
             // Если в тегах есть название и исполнитель — покажем их вместо имени файла/папки
@@ -2518,24 +2527,85 @@ public partial class MainWindow : FluentWindow
         catch
         {
             // Файл без тегов, повреждённые метаданные и т.п. — просто показываем плейсхолдер
-            ResetAlbumArtPlaceholder();
+            ResetAlbumArtPlaceholder(direction);
         }
     }
 
-    private void ApplyAlbumArtBrush(Brush brush)
+    private void ApplyAlbumArtBrush(Brush brush, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
     {
-        AlbumArtBorder.Background = brush;
-        AlbumArtIcon.Visibility = Visibility.Collapsed;
+        AnimateAlbumArtTransition(direction, () =>
+        {
+            AlbumArtBorder.Background = brush;
+            AlbumArtIcon.Visibility = Visibility.Collapsed;
+        });
     }
 
-    private void ResetAlbumArtPlaceholder()
+    private void ResetAlbumArtPlaceholder(AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
     {
-        AlbumArtBorder.Background = (Brush)FindResource("ControlFillColorSecondaryBrush");
-        AlbumArtIcon.Visibility = Visibility.Visible;
+        AnimateAlbumArtTransition(direction, () =>
+        {
+            AlbumArtBorder.Background = (Brush)FindResource("ControlFillColorSecondaryBrush");
+            AlbumArtIcon.Visibility = Visibility.Visible;
+        });
         _currentAlbumArt = null;
         _currentAlbumArtBytes = null;
         _currentAlbumArtMimeType = null;
         _currentAlbumArtPictureType = null;
+    }
+
+    // Анимация смены обложки в духе iTunes: снимок ("призрак") прежней обложки накладывается
+    // поверх текущей и "улетает" в сторону с одновременным затуханием, а сама обложка (уже
+    // получившая новое изображение через applyNewArt) в этот момент "влетает" с
+    // противоположной стороны. Настоящей новой обложки не видно, пока не начнётся анимация,
+    // потому что старая версия всё это время закрыта улетающим "призраком".
+    //
+    // direction == None (первая загрузка при старте приложения, анимация выключена в
+    // настройках и т.п.) — новое изображение применяется мгновенно, без какой-либо анимации.
+    private void AnimateAlbumArtTransition(AlbumArtTransitionDirection direction, Action applyNewArt)
+    {
+        if (direction == AlbumArtTransitionDirection.None || !_settings.AlbumArtTransitionEnabled || !IsLoaded)
+        {
+            applyNewArt();
+            return;
+        }
+
+        // Останавливаем анимации предыдущего перехода, если он ещё не успел доиграть
+        // (быстрое переключение треков подряд) — иначе они будут конфликтовать за одни и
+        // те же свойства.
+        AlbumArtGhostTransform.BeginAnimation(TranslateTransform.XProperty, null);
+        AlbumArtGhostBorder.BeginAnimation(OpacityProperty, null);
+        AlbumArtBorderTransform.BeginAnimation(TranslateTransform.XProperty, null);
+
+        double size = AlbumArtBorder.ActualWidth > 0 ? AlbumArtBorder.ActualWidth : AlbumArtBorder.Width;
+        double distance = size + 24;
+        double exitX = direction == AlbumArtTransitionDirection.Next ? -distance : distance;
+        double enterFromX = direction == AlbumArtTransitionDirection.Next ? distance : -distance;
+
+        // "Призрак" — снимок ТЕКУЩЕЙ (ещё старой) обложки, показанный поверх основной, пока та
+        // подменяется на новую и стартует за кадром с противоположной стороны.
+        AlbumArtGhostBorder.Width = AlbumArtBorder.Width;
+        AlbumArtGhostBorder.Height = AlbumArtBorder.Height;
+        AlbumArtGhostBorder.CornerRadius = AlbumArtBorder.CornerRadius;
+        AlbumArtGhostBorder.Background = AlbumArtIcon.Visibility == Visibility.Visible ? null : AlbumArtBorder.Background;
+        AlbumArtGhostIcon.Visibility = AlbumArtIcon.Visibility;
+        AlbumArtGhostTransform.X = 0;
+        AlbumArtGhostBorder.Opacity = 1;
+        AlbumArtGhostBorder.Visibility = Visibility.Visible;
+
+        applyNewArt();
+        AlbumArtBorderTransform.X = enterFromX;
+
+        var duration = TimeSpan.FromMilliseconds(320);
+
+        var ghostSlide = new DoubleAnimation(0, exitX, duration) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
+        var ghostFade = new DoubleAnimation(1, 0, duration);
+        ghostSlide.Completed += (_, _) => AlbumArtGhostBorder.Visibility = Visibility.Collapsed;
+
+        var enterSlide = new DoubleAnimation(enterFromX, 0, duration) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+
+        AlbumArtGhostTransform.BeginAnimation(TranslateTransform.XProperty, ghostSlide);
+        AlbumArtGhostBorder.BeginAnimation(OpacityProperty, ghostFade);
+        AlbumArtBorderTransform.BeginAnimation(TranslateTransform.XProperty, enterSlide);
     }
 
     private void OutputDevice_PlaybackStopped(object? sender, StoppedEventArgs e)
@@ -2688,7 +2758,7 @@ public partial class MainWindow : FluentWindow
     private void PrevButton_Click(object sender, RoutedEventArgs e)
     {
         if (ComputePreviousTrackPath(GetCurrentTrackPath()) is { } prevPath)
-            LoadAndPlay(prevPath, autoPlay: _isPlaying);
+            LoadAndPlay(prevPath, autoPlay: _isPlaying, albumArtDirection: AlbumArtTransitionDirection.Previous);
     }
 
     private void NextButton_Click(object sender, RoutedEventArgs e) => PlayNextTrack();
@@ -2769,18 +2839,20 @@ public partial class MainWindow : FluentWindow
     private const int HotkeyTrackStepThrottleMs = 200;
     private readonly DispatcherTimer _hotkeyTrackStepTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private string? _pendingHotkeyTrackStepPath;
+    private AlbumArtTransitionDirection _pendingHotkeyTrackStepDirection = AlbumArtTransitionDirection.Next;
     private DateTime _lastHotkeyTrackStepCommit = DateTime.MinValue;
 
-    private void HandleHotkeyNext() => HandleHotkeyTrackStep(ComputeNextTrackPath);
+    private void HandleHotkeyNext() => HandleHotkeyTrackStep(ComputeNextTrackPath, AlbumArtTransitionDirection.Next);
 
-    private void HandleHotkeyPrevious() => HandleHotkeyTrackStep(ComputePreviousTrackPath);
+    private void HandleHotkeyPrevious() => HandleHotkeyTrackStep(ComputePreviousTrackPath, AlbumArtTransitionDirection.Previous);
 
-    private void HandleHotkeyTrackStep(Func<string?, string?> computeNext)
+    private void HandleHotkeyTrackStep(Func<string?, string?> computeNext, AlbumArtTransitionDirection direction)
     {
         string? fromPath = _pendingHotkeyTrackStepPath ?? GetCurrentTrackPath();
         if (computeNext(fromPath) is not { } targetPath) return;
 
         _pendingHotkeyTrackStepPath = targetPath;
+        _pendingHotkeyTrackStepDirection = direction;
         _hotkeyTrackStepTimer.Stop();
 
         bool looksLikeHeldKeyRepeat =
@@ -2799,7 +2871,7 @@ public partial class MainWindow : FluentWindow
 
         if (_pendingHotkeyTrackStepPath is not { } path) return;
         _pendingHotkeyTrackStepPath = null;
-        LoadAndPlay(path, autoPlay: _isPlaying);
+        LoadAndPlay(path, autoPlay: _isPlaying, albumArtDirection: _pendingHotkeyTrackStepDirection);
     }
 
     private string GetRandomTrack(List<string> activeTracks, string? excludePath)
@@ -3187,6 +3259,14 @@ public partial class MainWindow : FluentWindow
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
             _equalizer.SetBandGain(band, band < saved.Length ? saved[band] : 0);
     }
+
+    // Анимация смены обложки (см. AnimateAlbumArtTransition) — переключатель в настройках,
+    // "Оформление". Хранится и читается напрямую из _settings, отдельного применения к
+    // "живому" состоянию не требуется: флаг просто проверяется при каждом следующем вызове
+    // AnimateAlbumArtTransition.
+    public bool IsAlbumArtTransitionEnabled => _settings.AlbumArtTransitionEnabled;
+
+    public void SetAlbumArtTransitionEnabled(bool enabled) => _settings.AlbumArtTransitionEnabled = enabled;
 
     public bool IsEqualizerEnabled => _settings.EqualizerEnabled;
 

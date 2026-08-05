@@ -339,6 +339,17 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- См. AppSettings.AlbumArtTransitionEnabled. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="AlbumArtTransitionCheckBox" Content="Анимация смены обложки"
+                                          Checked="AlbumArtTransitionCheckBox_Changed" Unchecked="AlbumArtTransitionCheckBox_Changed"
+                                          Margin="0,0,0,4" />
+                                <TextBlock Text="При переключении трека старая обложка «улетает» в сторону, а новая «влетает» с противоположной — как в iTunes."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Окно -->

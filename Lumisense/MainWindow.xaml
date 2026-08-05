@@ -403,35 +403,57 @@
 
         <!-- Блок с обложкой и названием трека -->
         <StackPanel x:Name="AlbumArtPanel" Grid.Row="1" HorizontalAlignment="Center" Margin="0,8,0,8">
-            <Border x:Name="AlbumArtBorder" Width="150" Height="150" CornerRadius="16"
-                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                    Cursor="Hand"
-                    MouseLeftButtonDown="AlbumArtBorder_MouseLeftButtonDown"
-                    ContextMenuOpening="AlbumArtBorder_ContextMenuOpening">
-                <Border.ContextMenu>
-                    <ContextMenu>
-                        <MenuItem Header="Скачать изображение…" Click="DownloadAlbumArtMenuItem_Click">
-                            <MenuItem.Icon>
-                                <local:SvgPathIcon Icon="IconAddFile" Size="13" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <MenuItem Header="Копировать изображение" Click="CopyAlbumArtMenuItem_Click">
-                            <MenuItem.Icon>
-                                <local:SvgPathIcon Icon="IconCopy" Size="13" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                        <Separator />
-                        <MenuItem Header="Свойства" Click="AlbumArtPropertiesMenuItem_Click">
-                            <MenuItem.Icon>
-                                <local:SvgPathIcon Icon="IconInfo" Size="13" />
-                            </MenuItem.Icon>
-                        </MenuItem>
-                    </ContextMenu>
-                </Border.ContextMenu>
-                <local:SvgPathIcon x:Name="AlbumArtIcon" Icon="IconMusicNote" Size="36"
-                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-            </Border>
+            <!-- ClipToBounds="False": во время анимации смены обложки (см.
+                 MainWindow.AnimateAlbumArtTransition) старая и новая обложки временно уезжают
+                 за пределы своего 150x150 места — им нужно куда "вылетать"/"влетать". -->
+            <Grid x:Name="AlbumArtContainer" Width="150" Height="150" ClipToBounds="False">
+                <!-- "Улетающая" копия предыдущей обложки — накладывается поверх основной на
+                     время анимации и убирается после её завершения (см. AnimateAlbumArtTransition).
+                     IsHitTestVisible="False", чтобы не перехватывать клики/контекстное меню. -->
+                <Border x:Name="AlbumArtGhostBorder" Width="150" Height="150" CornerRadius="16"
+                        Visibility="Collapsed" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="AlbumArtGhostTransform" X="0" />
+                    </Border.RenderTransform>
+                    <local:SvgPathIcon x:Name="AlbumArtGhostIcon" Icon="IconMusicNote" Size="36"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                   Visibility="Collapsed" />
+                </Border>
+
+                <Border x:Name="AlbumArtBorder" Width="150" Height="150" CornerRadius="16"
+                        Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                        Cursor="Hand" RenderTransformOrigin="0.5,0.5"
+                        MouseLeftButtonDown="AlbumArtBorder_MouseLeftButtonDown"
+                        ContextMenuOpening="AlbumArtBorder_ContextMenuOpening">
+                    <Border.RenderTransform>
+                        <TranslateTransform x:Name="AlbumArtBorderTransform" X="0" />
+                    </Border.RenderTransform>
+                    <Border.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="Скачать изображение…" Click="DownloadAlbumArtMenuItem_Click">
+                                <MenuItem.Icon>
+                                    <local:SvgPathIcon Icon="IconAddFile" Size="13" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <MenuItem Header="Копировать изображение" Click="CopyAlbumArtMenuItem_Click">
+                                <MenuItem.Icon>
+                                    <local:SvgPathIcon Icon="IconCopy" Size="13" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
+                            <MenuItem Header="Свойства" Click="AlbumArtPropertiesMenuItem_Click">
+                                <MenuItem.Icon>
+                                    <local:SvgPathIcon Icon="IconInfo" Size="13" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                        </ContextMenu>
+                    </Border.ContextMenu>
+                    <local:SvgPathIcon x:Name="AlbumArtIcon" Icon="IconMusicNote" Size="36"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                </Border>
+            </Grid>
 
             <TextBlock x:Name="TrackTitleText" Text="Файл не выбран"
                        FontSize="17" FontWeight="SemiBold"
