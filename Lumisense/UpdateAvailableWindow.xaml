@@ -15,9 +15,12 @@
 
     <!-- Диалог "доступно обновление" — показывается и автоматически при старте (если давно не
          отклоняли эту же версию, см. AppSettings.SkippedUpdateVersion), и по кнопке "Проверить
-         обновления" на странице "О плеере" в настройках. Скачивает и запускает установщик
-         (Lumisense_Setup.exe), а не архив — Inno Setup сам обновляет уже установленную копию
-         на месте (см. подробный комментарий в UpdateChecker). -->
+         обновления" на странице "О плеере" в настройках. Скачивает ZIP-архив новой версии,
+         распаковывает его и передаёт Updater'у — отдельному маленькому приложению, которое
+         дожидается закрытия плеера, копирует новые файлы поверх старой установки и запускает
+         обновлённый Lumisense.exe (см. подробный комментарий в UpdateChecker и в
+         Updater/Program.cs). Установщик (Lumisense_Setup.exe, Inno Setup) здесь больше не
+         используется — он остаётся только для самой первой установки "с нуля". -->
 
     <Grid>
         <Grid.RowDefinitions>
@@ -67,6 +70,9 @@
 
             <ProgressBar x:Name="DownloadProgressBar" Grid.Row="3" Height="4" Margin="0,10,0,0"
                          Minimum="0" Maximum="1" Visibility="Collapsed" />
+
+            <TextBlock x:Name="PhaseText" Grid.Row="3" Margin="0,4,0,0" FontSize="12" Opacity="0.6"
+                       Visibility="Collapsed" />
 
             <TextBlock x:Name="StatusText" Grid.Row="3" Margin="0,10,0,0" FontSize="12"
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"

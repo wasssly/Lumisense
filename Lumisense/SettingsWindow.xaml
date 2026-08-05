@@ -343,9 +343,11 @@
                         <!-- См. AppSettings.AlbumArtTransitionEnabled. -->
                         <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
                             <StackPanel>
-                                <CheckBox x:Name="AlbumArtTransitionCheckBox" Content="Анимация смены обложки"
-                                          Checked="AlbumArtTransitionCheckBox_Changed" Unchecked="AlbumArtTransitionCheckBox_Changed"
-                                          Margin="0,0,0,4" />
+                                <TextBlock Text="Анимация смены обложки" Margin="0,0,0,8" />
+                                <RadioButton x:Name="AlbumArtTransitionOnRadio" Content="С анимацией" GroupName="AlbumArtTransition"
+                                             Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,8" />
+                                <RadioButton x:Name="AlbumArtTransitionOffRadio" Content="Без анимации" GroupName="AlbumArtTransition"
+                                             Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,4" />
                                 <TextBlock Text="При переключении трека старая обложка «улетает» в сторону, а новая «влетает» с противоположной — как в iTunes."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
@@ -1158,7 +1160,7 @@
                                 <TextBlock Text="Источник загрузки обновлений" FontSize="14" FontWeight="SemiBold" />
                             </Expander.Header>
                             <StackPanel>
-                                <TextBlock Text="Откуда скачивать сам файл установщика при обновлении. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из зеркал gh-proxy. На саму проверку версии эта настройка не влияет."
+                                <TextBlock Text="Откуда скачивать ZIP-архив обновления. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из зеркал gh-proxy. На саму проверку версии эта настройка не влияет."
                                            TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
 
                                 <RadioButton x:Name="UpdateSourceGitHubRadio" GroupName="UpdateSource" Tag="GitHub"

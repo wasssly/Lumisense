@@ -413,7 +413,10 @@
                 <Border x:Name="AlbumArtGhostBorder" Width="150" Height="150" CornerRadius="16"
                         Visibility="Collapsed" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
                     <Border.RenderTransform>
-                        <TranslateTransform x:Name="AlbumArtGhostTransform" X="0" />
+                        <TransformGroup>
+                            <ScaleTransform x:Name="AlbumArtGhostScale" ScaleX="1" ScaleY="1" />
+                            <TranslateTransform x:Name="AlbumArtGhostTransform" X="0" />
+                        </TransformGroup>
                     </Border.RenderTransform>
                     <local:SvgPathIcon x:Name="AlbumArtGhostIcon" Icon="IconMusicNote" Size="36"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -427,7 +430,10 @@
                         MouseLeftButtonDown="AlbumArtBorder_MouseLeftButtonDown"
                         ContextMenuOpening="AlbumArtBorder_ContextMenuOpening">
                     <Border.RenderTransform>
-                        <TranslateTransform x:Name="AlbumArtBorderTransform" X="0" />
+                        <TransformGroup>
+                            <ScaleTransform x:Name="AlbumArtBorderScale" ScaleX="1" ScaleY="1" />
+                            <TranslateTransform x:Name="AlbumArtBorderTransform" X="0" />
+                        </TransformGroup>
                     </Border.RenderTransform>
                     <Border.ContextMenu>
                         <ContextMenu>

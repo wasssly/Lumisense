@@ -1,0 +1,36 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Updater — маленькое отдельное приложение для завершения обновления Lumisense через ZIP
+    (см. UpdateChecker.LaunchUpdaterAndExit и подробный комментарий в Program.cs).
+
+    Публикуется и версионируется независимо от Lumisense.exe, но собирается и разворачивается
+    вместе с ним: workflow (.github/workflows/release.yml) кладёт Updater.exe рядом с
+    Lumisense.exe и в установщик (Installer/Lumisense.iss), и в ZIP-архив релиза — так он
+    всегда доступен локально в папке установки, а в паре с новой версией плеера ещё и сам
+    обновляется при каждом обновлении программы.
+
+    Настройки публикации специально зеркалят Lumisense.csproj (self-contained single-file
+    win-x64) — Updater должен запускаться на машине пользователя без зависимости от
+    установленного отдельно .NET, точно так же, как и сам плеер.
+  -->
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <RootNamespace>Updater</RootNamespace>
+    <AssemblyName>Updater</AssemblyName>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <PublishReadyToRun>false</PublishReadyToRun>
+  </PropertyGroup>
+
+</Project>

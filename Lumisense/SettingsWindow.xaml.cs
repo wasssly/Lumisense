@@ -133,7 +133,8 @@ public partial class SettingsWindow : FluentWindow
 
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
-        AlbumArtTransitionCheckBox.IsChecked = _owner.IsAlbumArtTransitionEnabled;
+        AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled;
+        AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
@@ -286,9 +287,9 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    // Переключатель источника загрузки установщика (GitHub напрямую / одно из зеркал
+    // Переключатель источника загрузки обновления (GitHub напрямую / одно из зеркал
     // gh-proxy, см. UpdateChecker.DownloadSources) — сама проверка версии (кнопка выше) этой
-    // настройкой не затрагивается, она влияет только на скачивание файла в UpdateAvailableWindow.
+    // настройкой не затрагивается, она влияет только на скачивание ZIP-архива в UpdateAvailableWindow.
     private void UpdateSourceRadio_Checked(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -307,7 +308,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic акрил размытие блюр подложка фон backdrop blur");
-        Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionCheckBox, "анимация обложка переход трек itunes слайд fly transition album art cover");
+        Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд fly transition album art cover");
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
@@ -971,11 +972,11 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyPlaybackButtonsVisibility();
     }
 
-    private void AlbumArtTransitionCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void AlbumArtTransitionRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
 
-        _owner.SetAlbumArtTransitionEnabled(AlbumArtTransitionCheckBox.IsChecked == true);
+        _owner.SetAlbumArtTransitionEnabled(AlbumArtTransitionOnRadio.IsChecked == true);
     }
 
     // ---------- Экспорт/импорт настроек (.lumi) ----------

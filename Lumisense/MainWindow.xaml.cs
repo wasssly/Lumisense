@@ -2554,10 +2554,12 @@ public partial class MainWindow : FluentWindow
     }
 
     // Анимация смены обложки в духе iTunes: снимок ("призрак") прежней обложки накладывается
-    // поверх текущей и "улетает" в сторону с одновременным затуханием, а сама обложка (уже
-    // получившая новое изображение через applyNewArt) в этот момент "влетает" с
-    // противоположной стороны. Настоящей новой обложки не видно, пока не начнётся анимация,
-    // потому что старая версия всё это время закрыта улетающим "призраком".
+    // поверх текущей и "улетает" в сторону с одновременным затуханием и лёгким уменьшением, а
+    // сама обложка (уже получившая новое изображение через applyNewArt) в этот момент
+    // "влетает" с противоположной стороны, слегка увеличиваясь до нормального размера ("осаживается"
+    // на месте — это и даёт более плавное, менее резкое ощущение, чем голый слайд). Настоящей
+    // новой обложки не видно, пока не начнётся анимация, потому что старая версия всё это
+    // время закрыта улетающим "призраком".
     //
     // direction == None (первая загрузка при старте приложения, анимация выключена в
     // настройках и т.п.) — новое изображение применяется мгновенно, без какой-либо анимации.
@@ -2573,8 +2575,12 @@ public partial class MainWindow : FluentWindow
         // (быстрое переключение треков подряд) — иначе они будут конфликтовать за одни и
         // те же свойства.
         AlbumArtGhostTransform.BeginAnimation(TranslateTransform.XProperty, null);
+        AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
         AlbumArtGhostBorder.BeginAnimation(OpacityProperty, null);
         AlbumArtBorderTransform.BeginAnimation(TranslateTransform.XProperty, null);
+        AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
 
         double size = AlbumArtBorder.ActualWidth > 0 ? AlbumArtBorder.ActualWidth : AlbumArtBorder.Width;
         double distance = size + 24;
@@ -2589,23 +2595,39 @@ public partial class MainWindow : FluentWindow
         AlbumArtGhostBorder.Background = AlbumArtIcon.Visibility == Visibility.Visible ? null : AlbumArtBorder.Background;
         AlbumArtGhostIcon.Visibility = AlbumArtIcon.Visibility;
         AlbumArtGhostTransform.X = 0;
+        AlbumArtGhostScale.ScaleX = 1;
+        AlbumArtGhostScale.ScaleY = 1;
         AlbumArtGhostBorder.Opacity = 1;
         AlbumArtGhostBorder.Visibility = Visibility.Visible;
 
         applyNewArt();
         AlbumArtBorderTransform.X = enterFromX;
+        AlbumArtBorderScale.ScaleX = 0.88;
+        AlbumArtBorderScale.ScaleY = 0.88;
 
-        var duration = TimeSpan.FromMilliseconds(320);
+        // Плавные, но разные кривые для "туда" и "оттуда": уезжающая обложка стартует резче и
+        // ускоряется (EaseIn), а влетающая — наоборот, гасит скорость к концу и мягко
+        // "садится" на место (EaseOut). Такое сочетание выглядит естественнее одинаковой
+        // кривой в обе стороны и меньше похоже на дёрганый слайд.
+        var duration = TimeSpan.FromMilliseconds(460);
+        var exitEase = new CubicEase { EasingMode = EasingMode.EaseIn };
+        var enterEase = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-        var ghostSlide = new DoubleAnimation(0, exitX, duration) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseIn } };
-        var ghostFade = new DoubleAnimation(1, 0, duration);
+        var ghostSlide = new DoubleAnimation(0, exitX, duration) { EasingFunction = exitEase };
+        var ghostScaleAnim = new DoubleAnimation(1, 0.88, duration) { EasingFunction = exitEase };
+        var ghostFade = new DoubleAnimation(1, 0, duration) { EasingFunction = exitEase };
         ghostSlide.Completed += (_, _) => AlbumArtGhostBorder.Visibility = Visibility.Collapsed;
 
-        var enterSlide = new DoubleAnimation(enterFromX, 0, duration) { EasingFunction = new QuadraticEase { EasingMode = EasingMode.EaseOut } };
+        var enterSlide = new DoubleAnimation(enterFromX, 0, duration) { EasingFunction = enterEase };
+        var enterScaleAnim = new DoubleAnimation(0.88, 1, duration) { EasingFunction = enterEase };
 
         AlbumArtGhostTransform.BeginAnimation(TranslateTransform.XProperty, ghostSlide);
+        AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleXProperty, ghostScaleAnim);
+        AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleYProperty, ghostScaleAnim);
         AlbumArtGhostBorder.BeginAnimation(OpacityProperty, ghostFade);
         AlbumArtBorderTransform.BeginAnimation(TranslateTransform.XProperty, enterSlide);
+        AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleXProperty, enterScaleAnim);
+        AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleYProperty, enterScaleAnim);
     }
 
     private void OutputDevice_PlaybackStopped(object? sender, StoppedEventArgs e)

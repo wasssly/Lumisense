@@ -68,7 +68,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     {
         if (string.IsNullOrEmpty(_result.DownloadUrl))
         {
-            ShowError("Не удалось найти файл установщика в этом релизе.");
+            ShowError("Не удалось найти ZIP-архив обновления в этом релизе.");
             return;
         }
 
@@ -77,22 +77,35 @@ public partial class UpdateAvailableWindow : FluentWindow
         _downloadCts = new CancellationTokenSource();
         var progress = new Progress<double>(p => DownloadProgressBar.Value = p);
 
+        // Сессионная временная папка на эту конкретную попытку обновления — сюда попадёт и
+        // сам скачанный ZIP, и распакованные из него файлы (см. UpdateChecker.CreateUpdateSession).
+        string sessionDir = UpdateChecker.CreateUpdateSession();
+
         try
         {
             string source = _settings?.UpdateDownloadSource ?? "GitHub";
             string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.DownloadUrl, source);
 
-            string installerPath = await UpdateChecker.DownloadInstallerAsync(downloadUrl, progress, _downloadCts.Token);
+            string zipPath = await UpdateChecker.DownloadUpdateZipAsync(downloadUrl, sessionDir, progress, _downloadCts.Token);
 
-            // Установщик сам закроет запущенный плеер перед копированием файлов (см.
-            // CloseApplications в Lumisense.iss), но выходим сами — так плавнее и без лишнего
-            // системного диалога "приложение всё ещё занято".
-            UpdateChecker.LaunchInstallerAndExit(installerPath);
+            // Скачивание завершено — дальше распаковка архива и подготовка Updater'а, это
+            // быстро, но заметно на глаз (доли секунды — секунды на больших обновлениях), так
+            // что показываем отдельную фазу вместо того, чтобы прогресс-бар просто "завис" на
+            // 100%.
+            SetPreparing();
+
+            string payloadRoot = UpdateChecker.ExtractUpdatePayload(zipPath, sessionDir);
+            string updaterRunnerPath = UpdateChecker.PrepareUpdaterRunner(payloadRoot);
+
+            // С этого момента дальнейшую судьбу обновления берёт на себя Updater (отдельный
+            // процесс) — если запуск прошёл успешно, плеер должен закрыться, чтобы файлы
+            // освободились и Updater мог их заменить (см. UpdateChecker.LaunchUpdaterAndExit).
+            UpdateChecker.LaunchUpdaterAndExit(updaterRunnerPath, payloadRoot, sessionDir);
         }
         catch (Exception ex)
         {
             SetDownloading(false);
-            ShowError($"Не удалось скачать обновление: {ex.Message}");
+            ShowError($"Не удалось подготовить обновление: {ex.Message}");
         }
     }
 
@@ -102,8 +115,21 @@ public partial class UpdateAvailableWindow : FluentWindow
         LaterButton.IsEnabled = !isDownloading;
         MoreButton.IsEnabled = !isDownloading;
         DownloadProgressBar.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
+        DownloadProgressBar.IsIndeterminate = false;
         DownloadProgressBar.Value = 0;
+        PhaseText.Visibility = Visibility.Collapsed;
         StatusText.Visibility = Visibility.Collapsed;
+    }
+
+    // Между "скачано" и "плеер вот-вот закроется на обновление" — короткая, но заметная пауза
+    // на распаковку архива и подготовку Updater'а. Прогресс здесь не в процентах (неизвестно
+    // заранее, сколько это займёт), поэтому индикатор становится неопределённым, а рядом
+    // появляется поясняющий текст, чтобы это не выглядело зависанием.
+    private void SetPreparing()
+    {
+        DownloadProgressBar.IsIndeterminate = true;
+        PhaseText.Text = "Подготовка обновления…";
+        PhaseText.Visibility = Visibility.Visible;
     }
 
     private void ShowError(string message)
