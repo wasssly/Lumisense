@@ -133,40 +133,21 @@
                      задаёт сам и по умолчанию наследует Foreground от ближайшего предка;
                      обычно это TextFillColorPrimaryBrush от строки-ListViewItem, но когда трек
                      выделен, ListViewItem подменяет Foreground на TextOnAccentFillColorPrimaryBrush
-                     (см. App.xaml, Trigger IsSelected) — и контурное сердечко на 50% прозрачности
-                     непредсказуемо меняло бы цвет/контраст вместе с выделением, если бы не
-                     фиксированный белый Foreground ниже (см. DataTrigger.Triggers).
-
-                     FavoriteBackdrop — сама кнопка Appearance="Transparent", то есть без
-                     собственного фона, и на сплошной заливке выделенной строки (акцентный цвет,
-                     см. App.xaml) визуально растворяется — непонятно, где именно кликабельная
-                     область. Фон и обводка тут — просто статичные значения, БЕЗ Trigger по
-                     IsSelected: раньше подкладывали тёмный фон только на выделенном треке, и
-                     из-за того, что кнопка на всех остальных строках при этом выглядит иначе
-                     (без подложки), сама кнопка казалась "то есть, то нет" — теперь фон и
-                     обводка одинаковые всегда, вне зависимости от того, выделена строка или
-                     нет. Оба цвета фиксированные — один и тот же независимо от темы и акцента:
-                     непрозрачная тёмная подложка гарантированно контрастна почти любому фону, а
-                     обводка на пару тонов светлее заливки — просто для чуть более чёткого края
-                     самого кружка. Раз подложка всегда тёмная, а не переменного цвета под тему,
-                     то и цвет самой иконки (см. DataTrigger.Triggers ниже) тоже фиксированный
-                     белый, а не берётся из темы — специально ПОД эту конкретную тёмную
-                     подложку. Заполненное (избранное) сердечко в этот механизм не входит — у
-                     него свой явный красный Foreground ниже, и он неплохо читается на тёмной
-                     подложке. -->
-                <Border x:Name="FavoriteBackdrop" Grid.Column="3" Width="26" Height="26" CornerRadius="13"
-                        Margin="4,0,0,0" Background="{DynamicResource FavoriteBackdropBrush}"
-                        BorderBrush="{DynamicResource FavoriteBackdropBorderBrush}" BorderThickness="1">
-                    <ui:Button x:Name="TrackFavoriteButton" Appearance="Transparent"
-                               Width="26" Height="26" Padding="0"
-                               Click="FavoriteButton_Click" FocusVisualStyle="{x:Null}"
-                               ToolTip="Добавить/убрать из избранного">
-                        <ui:Button.Icon>
-                            <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5"
-                                               Foreground="White" />
-                        </ui:Button.Icon>
-                    </ui:Button>
-                </Border>
+                     (см. App.xaml, Trigger IsSelected). Явно фиксируем очень тёмный цвет —
+                     он не зависит ни от темы, ни от того, выделена строка или нет, и остаётся
+                     читаемым на большинстве акцентов без какой-либо подложки под кнопкой
+                     (кнопка обычная, Appearance="Transparent", без фона и обводки). Заполненное
+                     (избранное) сердечко в этот механизм не входит — у него свой явный красный
+                     Foreground ниже. -->
+                <ui:Button x:Name="TrackFavoriteButton" Grid.Column="3" Appearance="Transparent"
+                           Width="26" Height="26" Padding="0" Margin="4,0,0,0"
+                           Click="FavoriteButton_Click" FocusVisualStyle="{x:Null}"
+                           ToolTip="Добавить/убрать из избранного">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5"
+                                           Foreground="#141414" />
+                    </ui:Button.Icon>
+                </ui:Button>
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsMouseOver}" Value="True">
