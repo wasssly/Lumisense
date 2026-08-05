@@ -133,19 +133,20 @@
                      задаёт сам и по умолчанию наследует Foreground от ближайшего предка;
                      обычно это TextFillColorPrimaryBrush от строки-ListViewItem, но когда трек
                      выделен, ListViewItem подменяет Foreground на TextOnAccentFillColorPrimaryBrush
-                     (см. App.xaml, Trigger IsSelected). Явно фиксируем очень тёмный цвет —
-                     он не зависит ни от темы, ни от того, выделена строка или нет, и остаётся
-                     читаемым на большинстве акцентов без какой-либо подложки под кнопкой
-                     (кнопка обычная, Appearance="Transparent", без фона и обводки). Заполненное
-                     (избранное) сердечко в этот механизм не входит — у него свой явный красный
-                     Foreground ниже. -->
+                     (см. App.xaml, Trigger IsSelected) — светлый на светлом акценте читался бы
+                     плохо, поэтому на выделенном треке (см. MultiDataTrigger в
+                     DataTemplate.Triggers ниже) явно фиксируем тёмный #141414 вместо него. На
+                     обычном (невыделенном) треке ничего не переопределяем — используется
+                     светлый TextFillColorPrimaryBrush, заданный явно ниже, как было раньше.
+                     Заполненное (избранное) сердечко в этот механизм не входит — у него свой
+                     явный красный Foreground ниже, и он неплохо читается в обоих случаях. -->
                 <ui:Button x:Name="TrackFavoriteButton" Grid.Column="3" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="4,0,0,0"
                            Click="FavoriteButton_Click" FocusVisualStyle="{x:Null}"
                            ToolTip="Добавить/убрать из избранного">
                     <ui:Button.Icon>
                         <local:SvgPathIcon x:Name="TrackFavoriteIcon" Icon="IconHeart" Size="14" Opacity="0.5"
-                                           Foreground="#141414" />
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                     </ui:Button.Icon>
                 </ui:Button>
             </Grid>
@@ -177,6 +178,29 @@
                     <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#E53935" />
                     <Setter TargetName="TrackFavoriteIcon" Property="Opacity" Value="1" />
                 </DataTrigger>
+                <!-- Контурное (НЕ избранное) сердечко на выделенной строке — см. подробный
+                     комментарий выше, у TrackFavoriteButton. Второе условие
+                     (IsFavoriteMultiConverter = False) — чтобы не перебивать явный красный
+                     Foreground избранного сердечка из триггера выше: избранное и так неплохо
+                     читается на выделении, этот триггер только про обычный контур. -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Value="True">
+                            <Condition.Binding>
+                                <Binding RelativeSource="{RelativeSource AncestorType=ListViewItem}" Path="IsSelected" />
+                            </Condition.Binding>
+                        </Condition>
+                        <Condition Value="False">
+                            <Condition.Binding>
+                                <MultiBinding Converter="{StaticResource IsFavoriteMultiConverter}">
+                                    <Binding Path="FilePath" />
+                                    <Binding Source="{x:Static local:FavoritesChangeNotifier.Instance}" Path="Epoch" />
+                                </MultiBinding>
+                            </Condition.Binding>
+                        </Condition>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#141414" />
+                </MultiDataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
 
