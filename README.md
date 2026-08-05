@@ -100,6 +100,9 @@ Lumisense/
     ├── EqualizerSampleProvider.cs                — 10-полосный эквалайзер (NAudio ISampleProvider)
     ├── CoverArt*.xaml(.cs)                     — окна обложки: поиск, свойства, установка
     ├── Track*.xaml(.cs)                        — свойства трека, редактирование тегов
+    ├── TrackChangeToastWindow.xaml(.cs)         — всплывающее уведомление о смене трека
+    ├── PlayCounts.cs, StatisticsWindow.xaml(.cs) — счётчик прослушиваний и окно статистики
+    ├── LumiProfile.cs                           — экспорт/импорт настроек в .lumi-файл
     ├── SettingsWindow.xaml / .cs                — окно настроек
     ├── Changelog*.cs, ChangelogWindow.xaml(.cs) — список изменений и подсчёт версии по SemVer
     ├── Changelog/changelog.json                — сама история изменений (см. комментарий в
