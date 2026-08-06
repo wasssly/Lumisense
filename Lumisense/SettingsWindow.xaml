@@ -5,8 +5,8 @@
         xmlns:local="clr-namespace:AudioPlayer"
         Title="Настройки"
         Icon="/Icons/app/lumisense.ico"
-        Height="640" Width="760"
-        MinHeight="520" MinWidth="680"
+        Height="760" Width="920"
+        MinHeight="600" MinWidth="800"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
         WindowStartupLocation="Manual"
@@ -176,6 +176,18 @@
                         </StackPanel>
                     </RadioButton>
 
+                    <!-- Вынесено в отдельную страницу из "Воспроизведение" — карточек про
+                         всплывающее уведомление о смене трека (вкл/выкл, расположение, размер,
+                         монитор) набралось достаточно, чтобы не мешать настройкам громкости и
+                         шаффла на той же странице. -->
+                    <RadioButton x:Name="NavNotifications" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Notifications" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconBell" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Уведомления" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
                     <RadioButton x:Name="NavEqualizer" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Equalizer" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -200,11 +212,15 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <RadioButton x:Name="NavExperimental" Style="{StaticResource NavItemStyle}"
-                                 GroupName="SettingsNav" Tag="Experimental" Checked="NavItem_Checked">
+                    <!-- Вынесено в отдельную страницу из "Экспериментальное" — экспорт/импорт
+                         настроек в .lumi-файл (см. LumiProfile.cs) это не экспериментальная
+                         функция, а обычная и завершённая, ей просто не хватало собственного
+                         места вместо соседства со случайным набором мелких переключателей. -->
+                    <RadioButton x:Name="NavProfile" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Profile" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
-                            <local:SvgPathIcon Icon="IconWrench" Size="18" VerticalAlignment="Center" />
-                            <TextBlock Text="Экспериментальное" Margin="10,0,0,0" VerticalAlignment="Center" />
+                            <local:SvgPathIcon Icon="IconSync" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Профиль" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
 
@@ -350,6 +366,17 @@
                                              Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,4" />
                                 <TextBlock Text="При переключении трека старая обложка «улетает» в сторону, а новая «влетает» с противоположной — как в iTunes."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Раньше жила на странице "Экспериментальное" — по сути обычная
+                             визуальная настройка кнопок, а не что-то экспериментальное. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="HidePlaybackButtonsCheckBox" Content="Убрать фон у кнопок управления воспроизведением"
+                                          Checked="HidePlaybackButtonsCheckBox_Changed" Unchecked="HidePlaybackButtonsCheckBox_Changed" />
+                                <TextBlock Text="Убирает фон у кнопок «Перемешать», «Повтор», «Предыдущий», «Пуск/Пауза», «Следующий», «Стоп» и перехода в мини-плеер в главном окне — сами кнопки остаются на месте и работают как раньше, просто фон становится прозрачным и сливается с фоном плеера, видна только иконка."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -508,8 +535,28 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.ShowTrackChangeToast и TrackChangeToastWindow. -->
+                        <!-- Раньше называлась "Улучшенный шаффл" и жила на странице "Экспериментальное" —
+                             имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
+                             сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
+                             это называется в интерфейсе. -->
                         <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
+                                          Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
+                                <TextBlock Text="Вместо чисто случайного выбора трека на каждом шаге сначала тасуется весь плейлист целиком, а треки проигрываются по порядку из этой тасовки — так один и тот же трек не может повториться, пока не сыграют все остальные."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Уведомления — раньше жили на странице "Воспроизведение", вынесены на
+                         отдельную страницу: набралось три карточки только про всплывающее
+                         уведомление о смене трека (вкл/выкл, расположение, размер, монитор). -->
+                    <StackPanel x:Name="PageNotifications" Visibility="Collapsed">
+                        <TextBlock Text="Уведомления" Style="{StaticResource PageTitleStyle}" />
+
+                        <!-- См. AppSettings.ShowTrackChangeToast и TrackChangeToastWindow. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="TrackChangeToastCheckBox" Content="Уведомление о смене трека"
                                           Checked="TrackChangeToastCheckBox_Changed" Unchecked="TrackChangeToastCheckBox_Changed"
@@ -553,19 +600,6 @@
                                 <TextBlock Text="Монитор" Margin="0,0,0,8" />
                                 <ComboBox x:Name="ToastMonitorCombo" SelectionChanged="ToastMonitorCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="220" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Раньше называлась "Улучшенный шаффл" и жила на странице "Экспериментальное" —
-                             имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
-                             сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
-                             это называется в интерфейсе. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
-                            <StackPanel>
-                                <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
-                                          Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
-                                <TextBlock Text="Вместо чисто случайного выбора трека на каждом шаге сначала тасуется весь плейлист целиком, а треки проигрываются по порядку из этой тасовки — так один и тот же трек не может повториться, пока не сыграют все остальные."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -1030,23 +1064,16 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Экспериментальное -->
-                    <StackPanel x:Name="PageExperimental" Visibility="Collapsed">
-                        <TextBlock Text="Экспериментальное" Style="{StaticResource PageTitleStyle}" />
-
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <CheckBox x:Name="HidePlaybackButtonsCheckBox" Content="Убрать фон у кнопок управления воспроизведением"
-                                          Checked="HidePlaybackButtonsCheckBox_Changed" Unchecked="HidePlaybackButtonsCheckBox_Changed" />
-                                <TextBlock Text="Убирает фон у кнопок «Перемешать», «Повтор», «Предыдущий», «Пуск/Пауза», «Следующий», «Стоп» и перехода в мини-плеер в главном окне — сами кнопки остаются на месте и работают как раньше, просто фон становится прозрачным и сливается с фоном плеера, видна только иконка."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Перенос настроек на другой компьютер в один .lumi-файл (обычный
-                             JSON, см. LumiProfile.cs). Плейлист и избранное сюда не входят —
-                             только тема, акцент, эквалайзер, хоткеи и т.п. -->
-                        <TextBlock Text="Настройки" Style="{StaticResource PageTitleStyle}" FontSize="14" Margin="0,20,0,8" />
+                    <!-- Профиль — раньше жила на странице "Экспериментальное" вместе со
+                         случайным набором мелких переключателей: перенос настроек на другой
+                         компьютер в один .lumi-файл (обычный JSON, см. LumiProfile.cs) — это
+                         обычная, завершённая функция, а не что-то экспериментальное, ей
+                         просто не хватало собственного места. Плейлист и избранное в профиль
+                         не входят — только тема, акцент, эквалайзер, хоткеи и т.п. -->
+                    <StackPanel x:Name="PageProfile" Visibility="Collapsed">
+                        <TextBlock Text="Профиль" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Перенос настроек плеера на другой компьютер одним файлом — тема, акцентный цвет, эквалайзер, горячие клавиши и остальные переключатели на этих страницах. Плейлист, избранное и история прослушиваний сюда не входят."
+                                   Opacity="0.6" FontSize="12" Margin="0,0,0,16" TextWrapping="Wrap" />
 
                         <ui:Button x:Name="ExportProfileButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"

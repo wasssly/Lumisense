@@ -43,10 +43,11 @@ public partial class SettingsWindow : FluentWindow
             "About" => NavAbout,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
+            "Notifications" => NavNotifications,
             "Equalizer" => NavEqualizer,
             "MiniPlayer" => NavMiniPlayer,
             "Hotkeys" => NavHotkeys,
-            "Experimental" => NavExperimental,
+            "Profile" => NavProfile,
             _ => NavAppearance
         }).IsChecked = true;
     }
@@ -331,9 +332,11 @@ public partial class SettingsWindow : FluentWindow
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
-        Add("Уведомление о смене трека", "Воспроизведение", "Playback", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
-        Add("Расположение уведомления", "Воспроизведение", "Playback", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
-        Add("Убрать фон у кнопок управления воспроизведением", "Экспериментальное", "Experimental", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini экспериментальное");
+        Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
+        Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
+        Add("Убрать фон у кнопок управления воспроизведением", "Оформление", "Appearance", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini");
+        Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
+        Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
@@ -377,10 +380,11 @@ public partial class SettingsWindow : FluentWindow
             "Appearance" => NavAppearance,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
+            "Notifications" => NavNotifications,
             "Equalizer" => NavEqualizer,
             "MiniPlayer" => NavMiniPlayer,
             "Hotkeys" => NavHotkeys,
-            "Experimental" => NavExperimental,
+            "Profile" => NavProfile,
             "About" => NavAbout,
             _ => NavAppearance
         };
@@ -1033,7 +1037,7 @@ public partial class SettingsWindow : FluentWindow
         // уже готовый MainWindow.ShowSettingsWindow), чем гоняться за каждым изменившимся
         // полем формы по отдельности.
         Close();
-        _owner.ShowSettingsWindow("Experimental");
+        _owner.ShowSettingsWindow("Profile");
     }
 
     // ---------- Навигация по страницам настроек ----------
@@ -1055,10 +1059,11 @@ public partial class SettingsWindow : FluentWindow
         PageAppearance.Visibility = key == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
         PageWindow.Visibility = key == "Window" ? Visibility.Visible : Visibility.Collapsed;
         PagePlayback.Visibility = key == "Playback" ? Visibility.Visible : Visibility.Collapsed;
+        PageNotifications.Visibility = key == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
         PageEqualizer.Visibility = key == "Equalizer" ? Visibility.Visible : Visibility.Collapsed;
         PageMiniPlayer.Visibility = key == "MiniPlayer" ? Visibility.Visible : Visibility.Collapsed;
         PageHotkeys.Visibility = key == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
-        PageExperimental.Visibility = key == "Experimental" ? Visibility.Visible : Visibility.Collapsed;
+        PageProfile.Visibility = key == "Profile" ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = key == "About" ? Visibility.Visible : Visibility.Collapsed;
 
         // Один и тот же ScrollViewer используется для всех страниц (см. комментарий в
