@@ -127,6 +127,7 @@ public partial class MainWindow : FluentWindow
     private TrayIconManager? _trayIconManager;
     private NowPlayingIntegration? _nowPlaying;
     private MiniPlayerWindow? _miniPlayerWindow;
+    private FullScreenPlayerWindow? _fullScreenPlayerWindow;
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
     private TrackChangeToastWindow? _trackChangeToastWindow;
@@ -187,6 +188,31 @@ public partial class MainWindow : FluentWindow
 
     // Зеркальный аналог CurrentRepeatModeName для перемешивания — см. ShuffleStateChanged.
     public bool CurrentIsShuffleEnabled => _isShuffleEnabled;
+
+    // Для полноэкранного окна (FullScreenPlayerWindow) — тот же приём, что и с
+    // CurrentRepeatModeName/CurrentIsShuffleEnabled: значение на момент открытия окна, до
+    // первого события ProgressChanged/VolumeChanged (события начинают приходить только на
+    // изменения, поэтому без этого начальное состояние окна было бы пустым/нулевым, пока
+    // что-нибудь не поменяется).
+    public double CurrentProgressSeconds => _audioFile?.CurrentTime.TotalSeconds ?? 0;
+    public double CurrentDurationSeconds => _audioFile?.TotalTime.TotalSeconds ?? 0;
+    public double CurrentVolume => VolumeSlider.Value;
+
+    // Текущий путь к файлу — библиотека в полноэкранном окне подсвечивает эту строку как
+    // "сейчас играет". Null, пока ничего не загружено (самый первый запуск без сохранённого
+    // последнего трека).
+    public string? CurrentTrackPath => _currentTrackPath;
+
+    // Сама коллекция, а не копия/снимок — ObservableCollection<PlaylistFolder>, за которую
+    // напрямую биндится библиотека в полноэкранном окне (см. FullScreenPlayerWindow.xaml,
+    // PageLibrary): любое добавление/удаление папки или трека отражается там сразу же, без
+    // отдельной синхронизации. Та же коллекция, что и у обычного плейлиста в этом окне.
+    public ObservableCollection<PlaylistFolder> PlaylistFolders => _folders;
+
+    // Публичная обёртка над приватным LoadAndPlay — плейлист выбирает трек по клику в
+    // библиотеке полноэкранного окна тем же способом, что и двойной клик по строке в обычном
+    // плейлисте (см. PlaylistTrackList_MouseDoubleClick).
+    public void ExternalPlayTrack(string filePath) => LoadAndPlay(filePath);
 
     // Полноразмерная обложка текущего трека (или null, если у трека нет обложки/тегов).
     // Хранится отдельно от ImageBrush, которым залит AlbumArtBorder, потому что окну
@@ -1313,6 +1339,8 @@ public partial class MainWindow : FluentWindow
             SetPlayerViewMode(mode);
     }
 
+    private void FullScreenMenuItem_Click(object sender, RoutedEventArgs e) => EnterFullScreenMode();
+
     // Публичная обёртка над SetPlayerViewMode для окна настроек (PlayerViewMode — приватный
     // enum, наружу наружу торчать не должен) — тот же разбор строки "Square"/"Rectangular"/
     // "Mini", что и в ViewModeMenuItem_Click, только вызывается из SettingsWindow.
@@ -2081,6 +2109,19 @@ public partial class MainWindow : FluentWindow
     // должен работать как обычная отмена ввода текста, а не как отмена удаления треков.
     private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        // F11 — стандартная клавиша полноэкранного режима в браузерах и медиаплеерах,
+        // отдельно от остальной логики этого обработчика (Ctrl+Z ниже): срабатывает
+        // независимо от модификаторов и фокуса, кроме текстовых полей — иначе в поиске по
+        // плейлисту в это имя было бы невозможно вписать заглавную латинскую "F11"-подобную
+        // подстроку (маловероятно, но проверка та же, что и для Ctrl+Z, для единообразия).
+        if (e.Key == System.Windows.Input.Key.F11
+            && System.Windows.Input.Keyboard.FocusedElement is not System.Windows.Controls.Primitives.TextBoxBase)
+        {
+            e.Handled = true;
+            EnterFullScreenMode();
+            return;
+        }
+
         bool isCtrl = System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control);
         if (!isCtrl || e.Key != System.Windows.Input.Key.Z) return;
         if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
@@ -3173,6 +3214,46 @@ public partial class MainWindow : FluentWindow
         UpdateViewModeMenuChecks();
     }
 
+    // ---------- Полноэкранный плеер с боковой панелью (FullScreenPlayerWindow) ----------
+    // Не путать с "полноэкранным режимом" чуть выше (_isFullscreenLayout) — тот просто
+    // укрупняет содержимое этого же окна при разворачивании кнопкой в заголовке. Это —
+    // отдельное окно на весь экран: слева боковая панель (Библиотека / Сейчас играет),
+    // снизу закреплённая панель управления воспроизведением. Тот же общий приём, что и у
+    // мини-плеера (EnterMiniMode/ExitMiniMode) — отдельное окно, скрывающее это, синхронизация
+    // через события TrackInfoChanged/ProgressChanged/... и Public API (см. блок "события для
+    // внешнего окна" в начале файла).
+    public void EnterFullScreenMode()
+    {
+        if (_fullScreenPlayerWindow != null) return;
+
+        // Мини-режим и полноэкранный — взаимоисключающие альтернативные виды этого же плеера,
+        // выйти сначала из одного, чтобы перейти в другой, а не пытаться совместить оба окна.
+        if (_isMiniMode) ExitMiniMode();
+
+        _fullScreenPlayerWindow = new FullScreenPlayerWindow(this);
+
+        // Единая точка возврата к обычному окну — срабатывает одинаково и на явный выход
+        // (кнопка/Escape в FullScreenPlayerWindow вызывают ExitFullScreenMode ниже, который
+        // просто закрывает окно), и на закрытие в обход него (Alt+F4, крестик в заголовке,
+        // "Закрыть окно" из панели задач) — в обоих случаях Closed всё равно срабатывает, и
+        // основное окно гарантированно не остаётся скрытым навсегда.
+        _fullScreenPlayerWindow.Closed += (_, _) =>
+        {
+            _fullScreenPlayerWindow = null;
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+        };
+
+        _fullScreenPlayerWindow.Show();
+        Hide();
+    }
+
+    // Вызывается из FullScreenPlayerWindow при нажатии "Выйти из полноэкранного режима"/Escape.
+    // Сам возврат к обычному окну происходит в обработчике Closed, подписанном выше — здесь
+    // только закрываем окно, чтобы не дублировать эту логику в двух местах.
+    public void ExitFullScreenMode() => _fullScreenPlayerWindow?.Close();
+
     // Вызывается из MiniPlayerWindow при перемещении окна пользователем — запоминаем
     // положение в общих настройках, чтобы при следующем сворачивании в мини-плеер
     // окно появилось на том же месте (в том числе и после перезапуска приложения)
@@ -3239,7 +3320,7 @@ public partial class MainWindow : FluentWindow
         _trackChangeToastWindow ??= new TrackChangeToastWindow();
         _trackChangeToastWindow.ShowToast(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
             _settings.IsLightThemeResolved(), ResolveToastScreen(),
-            _settings.TrackChangeToastPosition, _settings.TrackChangeToastSize);
+            _settings.TrackChangeToastPosition, _settings.TrackChangeToastWidth);
     }
 
     // Монитор для всплывающего уведомления (см. AppSettings.TrackChangeToastMonitor) — если
@@ -3449,10 +3530,18 @@ public partial class MainWindow : FluentWindow
     public void ExternalPrev() => PrevButton_Click(this, new RoutedEventArgs());
     public void ExternalToggleRepeat() => RepeatButton_Click(this, new RoutedEventArgs());
     public void ExternalToggleShuffle() => ShuffleButton_Click(this, new RoutedEventArgs());
+    public void ExternalToggleMute() => ToggleMute();
 
     // Используется и колесом мыши над ползунком громкости в главном окне (см.
     // VolumeOverlay_MouseWheel), и колесом мыши над мини-плеером целиком
     public void ExternalChangeVolume(double delta) => ChangeVolumeBy(delta);
+
+    // Абсолютная установка громкости (0..1) — нужна полноэкранному окну для перетаскивания
+    // своего собственного ползунка громкости (см. FullScreenPlayerWindow.BarVolume_MouseMove);
+    // ExternalChangeVolume выше даёт только относительный сдвиг (колесо мыши), для перетаскивания
+    // же нужно ставить конкретную позицию, а не накапливать дельту от неё.
+    public void ExternalSetVolume(double value) =>
+        VolumeSlider.Value = Math.Clamp(value, VolumeSlider.Minimum, VolumeSlider.Maximum);
 
     public void ExternalSeekRatio(double ratio)
     {

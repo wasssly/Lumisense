@@ -39,12 +39,12 @@ public partial class TrackChangeToastWindow : Window
     // isLightTheme — та же логика, что и у MiniPlayerWindow.ApplyTheme: карточка не связана
     // с системной темой автоматически (фон рисуется вручную, не через Mica/Acrylic), поэтому
     // текущую тему приложения передаёт вызывающий код (см. MainWindow.ShowTrackChangeToast).
-    // screen/position/size — см. AppSettings.TrackChangeToastMonitor/TrackChangeToastPosition/
-    // TrackChangeToastSize; screen уже полностью разрешён вызывающим кодом (см.
+    // screen/position/width — см. AppSettings.TrackChangeToastMonitor/TrackChangeToastPosition/
+    // TrackChangeToastWidth; screen уже полностью разрешён вызывающим кодом (см.
     // MainWindow.ResolveToastScreen) — это окно само не решает, "какой монитор", только "где
     // на нём" и "какого размера".
     public void ShowToast(string title, string artist, Brush? art, bool isLightTheme,
-        System.Windows.Forms.Screen screen, string position, string size)
+        System.Windows.Forms.Screen screen, string position, double width)
     {
         ToastTitleText.Text = title;
 
@@ -52,7 +52,7 @@ public partial class TrackChangeToastWindow : Window
         ToastArtistText.Text = artist;
         ToastArtistText.Visibility = hasArtist ? Visibility.Visible : Visibility.Collapsed;
 
-        ApplySizePreset(size);
+        ApplyWidth(width);
 
         if (art != null)
         {
@@ -89,28 +89,26 @@ public partial class TrackChangeToastWindow : Window
         RootBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
     }
 
-    // Три готовых размера карточки — ширина/высота самого окна, размер обложки, размер
-    // шрифтов и максимальная ширина текстовой колонки (чтобы длинные названия обрезались
-    // многоточием в разумном месте, а не растягивали карточку). Применяется заново на
-    // каждый показ (не только при создании окна) — размер мог смениться в настройках между
+    // Ширина карточки — единственное, что пользователь крутит напрямую (ползунок в настройках,
+    // см. AppSettings.TrackChangeToastWidth); высота, размер обложки, размер шрифтов и
+    // максимальная ширина текстовой колонки (чтобы длинные названия обрезались многоточием в
+    // разумном месте, а не растягивали карточку) пересчитываются от неё пропорционально —
+    // коэффициенты подобраны так, чтобы при ширине 300 (прежний фиксированный размер, единственный
+    // до появления ползунка) получались те же самые числа, что были раньше. Применяется заново
+    // на каждый показ (не только при создании окна) — ширина могла смениться в настройках между
     // двумя прослушиваниями, а окно переиспользуется одно на всё время работы приложения.
-    private void ApplySizePreset(string size)
+    private void ApplyWidth(double width)
     {
-        var (width, height, art, titleFont, artistFont, textMaxWidth) = size switch
-        {
-            "Small" => (240.0, 60.0, 38.0, 12.0, 10.0, 150.0),
-            "Large" => (380.0, 92.0, 62.0, 16.0, 13.0, 260.0),
-            _ => (300.0, 72.0, 48.0, 13.0, 11.0, 200.0) // "Medium"
-        };
+        double scale = width / 300.0;
 
         Width = width;
-        Height = height;
-        ArtBorder.Width = art;
-        ArtBorder.Height = art;
-        ArtIcon.Size = art * 0.42; // та же пропорция иконки к обложке, что и в исходном "Medium" (20/48)
-        ToastTitleText.FontSize = titleFont;
-        ToastArtistText.FontSize = artistFont;
-        ToastTextPanel.MaxWidth = textMaxWidth;
+        Height = 72.0 * scale;
+        ArtBorder.Width = 48.0 * scale;
+        ArtBorder.Height = 48.0 * scale;
+        ArtIcon.Size = ArtBorder.Width * 0.42; // та же пропорция иконки к обложке, что и раньше (20/48)
+        ToastTitleText.FontSize = 13.0 * scale;
+        ToastArtistText.FontSize = 11.0 * scale;
+        ToastTextPanel.MaxWidth = width - 100.0;
     }
 
     // Выбранный угол рабочей области ВЫБРАННОГО монитора (без учёта панели задач на нём).

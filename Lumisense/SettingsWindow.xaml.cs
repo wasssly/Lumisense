@@ -334,6 +334,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
+        Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
         Add("Убрать фон у кнопок управления воспроизведением", "Оформление", "Appearance", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
         Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
@@ -573,10 +574,8 @@ public partial class SettingsWindow : FluentWindow
                                               && !ToastPosBottomLeftRadio.IsChecked.GetValueOrDefault()
                                               && !ToastPosBottomCenterRadio.IsChecked.GetValueOrDefault();
 
-        ToastSizeSmallRadio.IsChecked = _settings.TrackChangeToastSize == "Small";
-        ToastSizeLargeRadio.IsChecked = _settings.TrackChangeToastSize == "Large";
-        ToastSizeMediumRadio.IsChecked = !ToastSizeSmallRadio.IsChecked.GetValueOrDefault()
-                                          && !ToastSizeLargeRadio.IsChecked.GetValueOrDefault();
+        ToastWidthSlider.Value = Math.Clamp(_settings.TrackChangeToastWidth, ToastWidthSlider.Minimum, ToastWidthSlider.Maximum);
+        UpdateToastWidthValueText();
     }
 
     // Список мониторов собирается заново при каждом открытии окна настроек — состав/порядок
@@ -618,21 +617,27 @@ public partial class SettingsWindow : FluentWindow
             : "BottomRight";
     }
 
-    private void ToastSizeRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.TrackChangeToastSize = ToastSizeSmallRadio.IsChecked == true ? "Small"
-            : ToastSizeLargeRadio.IsChecked == true ? "Large"
-            : "Medium";
-    }
-
     private void ToastMonitorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (_isInitializing) return;
 
         _settings.TrackChangeToastMonitor =
             ToastMonitorCombo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag } ? tag : "";
+    }
+
+    // Слайдер целочисленный (IsSnapToTickEnabled, шаг 10px) — плавнее шагами в 1px пользователю
+    // не нужно, а подпись рядом остаётся короткой и читаемой ("300 px").
+    private void ToastWidthSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateToastWidthValueText();
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastWidth = ToastWidthSlider.Value;
+    }
+
+    private void UpdateToastWidthValueText()
+    {
+        ToastWidthValueText.Text = $"{(int)Math.Round(ToastWidthSlider.Value)} px";
     }
 
     private void MinimizeToTrayCheckBox_Changed(object sender, RoutedEventArgs e)

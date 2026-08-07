@@ -189,9 +189,11 @@ public class AppSettings
     // за пределами экрана.
     public string TrackChangeToastMonitor { get; set; } = "";
 
-    // Размер карточки — "Small" / "Medium" (по умолчанию, как было всегда) / "Large" —
-    // см. TrackChangeToastWindow.GetSizePreset.
-    public string TrackChangeToastSize { get; set; } = "Medium";
+    // Ширина карточки уведомления в пикселях — пользователь настраивает ползунком (см.
+    // SettingsWindow.ToastWidthSlider), высота/размер обложки/шрифты пересчитываются
+    // пропорционально от неё (см. TrackChangeToastWindow.ApplyWidth). 300 — прежняя ширина
+    // пресета "Средний", который был единственным вариантом до появления этого ползунка.
+    public double TrackChangeToastWidth { get; set; } = 300.0;
 
     // Расположение кнопок управления в мини-плеере при наведении курсора. "Below" (по
     // умолчанию) — прежнее поведение: окно подрастает вниз и кнопки появляются отдельной

@@ -566,7 +566,7 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.TrackChangeToastPosition/TrackChangeToastMonitor/TrackChangeToastSize.
+                        <!-- См. AppSettings.TrackChangeToastPosition/TrackChangeToastMonitor/TrackChangeToastWidth.
                              Список мониторов в ToastMonitorCombo заполняется в code-behind (InitializeSettings) —
                              в разметке заранее известен только первый пункт "Автоматически". -->
                         <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
@@ -587,15 +587,18 @@
                                                  GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
                                 </UniformGrid>
 
-                                <TextBlock Text="Размер" Margin="0,0,0,8" />
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
-                                    <RadioButton x:Name="ToastSizeSmallRadio" Content="Маленький"
-                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" Margin="0,0,16,0" />
-                                    <RadioButton x:Name="ToastSizeMediumRadio" Content="Средний"
-                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" Margin="0,0,16,0" />
-                                    <RadioButton x:Name="ToastSizeLargeRadio" Content="Большой"
-                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" />
-                                </StackPanel>
+                                <TextBlock Text="Ширина" Margin="0,0,0,8" />
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="1" x:Name="ToastWidthValueText" Text="300 px"
+                                               Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                </Grid>
+                                <Slider x:Name="ToastWidthSlider" Minimum="220" Maximum="420" Value="300"
+                                        TickFrequency="10" IsSnapToTickEnabled="True"
+                                        ValueChanged="ToastWidthSlider_ValueChanged" Margin="0,0,0,14" />
 
                                 <TextBlock Text="Монитор" Margin="0,0,0,8" />
                                 <ComboBox x:Name="ToastMonitorCombo" SelectionChanged="ToastMonitorCombo_SelectionChanged"

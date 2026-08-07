@@ -375,6 +375,17 @@
                                 <local:SvgPathIcon Icon="IconMinimizePlayer" Size="14" />
                             </MenuItem.Icon>
                         </MenuItem>
+                        <Separator />
+                        <!-- Не входит в группу видов выше (не IsCheckable/GroupName) — это не
+                             ещё один вид ЭТОГО окна, а отдельное окно на весь экран (см.
+                             MainWindow.EnterFullScreenMode). F11 — тот же переход, см.
+                             MainWindow_PreviewKeyDown. -->
+                        <MenuItem x:Name="FullScreenMenuItem" Header="Полноэкранный режим (F11)"
+                                  Click="FullScreenMenuItem_Click">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconMaximizeWindow" Size="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                     </ContextMenu>
                 </Border.ContextMenu>
             </Border>
