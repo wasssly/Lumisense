@@ -3321,7 +3321,7 @@ public partial class MainWindow : FluentWindow
         _trackChangeToastWindow ??= new TrackChangeToastWindow();
         _trackChangeToastWindow.ShowToast(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
             _settings.IsLightThemeResolved(), ResolveToastScreen(),
-            _settings.TrackChangeToastPosition, _settings.TrackChangeToastWidth);
+            _settings.TrackChangeToastPosition, _settings.TrackChangeToastSize, _settings.TrackChangeToastWidth);
     }
 
     // Монитор для всплывающего уведомления (см. AppSettings.TrackChangeToastMonitor) — если

@@ -373,8 +373,20 @@
                              визуальная настройка кнопок, а не что-то экспериментальное. -->
                         <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
                             <StackPanel>
-                                <CheckBox x:Name="HidePlaybackButtonsCheckBox" Content="Убрать фон у кнопок управления воспроизведением"
-                                          Checked="HidePlaybackButtonsCheckBox_Changed" Unchecked="HidePlaybackButtonsCheckBox_Changed" />
+                                <CheckBox x:Name="HidePlaybackButtonsCheckBox"
+                                          Checked="HidePlaybackButtonsCheckBox_Changed" Unchecked="HidePlaybackButtonsCheckBox_Changed">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Убрать фон у кнопок управления воспроизведением" VerticalAlignment="Center" />
+                                        <!-- Настройка недавно вынесена с прежней страницы "Экспериментальное" (см.
+                                             комментарий выше) — сама функция ещё не так давно обкатывается, поэтому
+                                             помечена как бета, чтобы это было сразу видно, а не только в описании ниже. -->
+                                        <Border Background="{DynamicResource AccentTextFillColorPrimaryBrush}" CornerRadius="4"
+                                                Padding="6,1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Text="БЕТА" FontSize="10" FontWeight="SemiBold"
+                                                       Foreground="White" />
+                                        </Border>
+                                    </StackPanel>
+                                </CheckBox>
                                 <TextBlock Text="Убирает фон у кнопок «Перемешать», «Повтор», «Предыдущий», «Пуск/Пауза», «Следующий», «Стоп» и перехода в мини-плеер в главном окне — сами кнопки остаются на месте и работают как раньше, просто фон становится прозрачным и сливается с фоном плеера, видна только иконка."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
@@ -587,6 +599,18 @@
                                                  GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
                                 </UniformGrid>
 
+                                <TextBlock Text="Размер" Margin="0,0,0,8" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                    <RadioButton x:Name="ToastSizeSmallRadio" Content="Маленький"
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" Margin="0,0,16,0" />
+                                    <RadioButton x:Name="ToastSizeMediumRadio" Content="Средний"
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" Margin="0,0,16,0" />
+                                    <RadioButton x:Name="ToastSizeLargeRadio" Content="Большой"
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" />
+                                </StackPanel>
+
+                                <!-- См. AppSettings.TrackChangeToastWidth — независимо от размера выше,
+                                     только ширина карточки (и то, сколько текста влезает в строку). -->
                                 <TextBlock Text="Ширина" Margin="0,0,0,8" />
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>

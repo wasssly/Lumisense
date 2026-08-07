@@ -337,6 +337,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
+        Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
         Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
         Add("Убрать фон у кнопок управления воспроизведением", "Оформление", "Appearance", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
@@ -577,6 +578,11 @@ public partial class SettingsWindow : FluentWindow
                                               && !ToastPosBottomLeftRadio.IsChecked.GetValueOrDefault()
                                               && !ToastPosBottomCenterRadio.IsChecked.GetValueOrDefault();
 
+        ToastSizeSmallRadio.IsChecked = _settings.TrackChangeToastSize == "Small";
+        ToastSizeLargeRadio.IsChecked = _settings.TrackChangeToastSize == "Large";
+        ToastSizeMediumRadio.IsChecked = !ToastSizeSmallRadio.IsChecked.GetValueOrDefault()
+                                          && !ToastSizeLargeRadio.IsChecked.GetValueOrDefault();
+
         ToastWidthSlider.Value = Math.Clamp(_settings.TrackChangeToastWidth, ToastWidthSlider.Minimum, ToastWidthSlider.Maximum);
         UpdateToastWidthValueText();
     }
@@ -618,6 +624,15 @@ public partial class SettingsWindow : FluentWindow
             : ToastPosBottomLeftRadio.IsChecked == true ? "BottomLeft"
             : ToastPosBottomCenterRadio.IsChecked == true ? "BottomCenter"
             : "BottomRight";
+    }
+
+    private void ToastSizeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastSize = ToastSizeSmallRadio.IsChecked == true ? "Small"
+            : ToastSizeLargeRadio.IsChecked == true ? "Large"
+            : "Medium";
     }
 
     private void ToastMonitorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
