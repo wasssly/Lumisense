@@ -113,6 +113,7 @@ public partial class SettingsWindow : FluentWindow
         InitializeToastPositionAndSize();
         InitializeToastMonitorCombo();
         MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
+        MainSnapToEdgesCheckBox.IsChecked = _settings.MainPlayerSnapToEdges;
 
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
         // чекбокс всегда показывает то, что реально настроено, а не могло устареть.
@@ -123,6 +124,7 @@ public partial class SettingsWindow : FluentWindow
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
+        MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
         MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
         MiniSecondaryFavoriteRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Favorite";
         MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault()
@@ -212,6 +214,7 @@ public partial class SettingsWindow : FluentWindow
         _isInitializing = true;
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
+        MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
         MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         _isInitializing = false;
@@ -315,6 +318,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
+        Add("Прилипание к краям экрана", "Окно", "Window", MainSnapToEdgesCheckBox, "прилипание магнит края экран snap edge окно window");
         Add("Запускать вместе с Windows", "Окно", "Window", LaunchOnStartupCheckBox, "автозапуск запуск windows автозагрузка startup");
         Add("Запускать свёрнутым в трей", "Окно", "Window", StartHiddenInTrayCheckBox, "запуск свёрнутым трей автозапуск скрыто hidden startup tray");
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
@@ -323,6 +327,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
         Add("Закрепить положение (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniPinnedCheckBox, "закрепить перетаскивание pin мини плеер");
+        Add("Прилипание к краям экрана (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniSnapToEdgesCheckBox, "прилипание магнит края экран snap edge мини плеер");
         Add("Вторая кнопка в мини-плеере", "Мини-плеер", "MiniPlayer", MiniSecondaryRepeatRadio, "вторая кнопка повтор перемешать избранное сердечко favorite shuffle repeat мини плеер");
         Add("Пуск / пауза", "Горячие клавиши", "Hotkeys", HotkeyPlayPauseButton, "play pause горячая клавиша");
         Add("Следующий трек", "Горячие клавиши", "Hotkeys", HotkeyNextButton, "next горячая клавиша");
@@ -665,6 +670,13 @@ public partial class SettingsWindow : FluentWindow
         _settings.MinimizeToTrayOnClose = MinimizeToTrayCheckBox.IsChecked == true;
     }
 
+    private void MainSnapToEdgesCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MainPlayerSnapToEdges = MainSnapToEdgesCheckBox.IsChecked == true;
+    }
+
     private void LaunchOnStartupCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -739,6 +751,13 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.MiniPlayerPinned = MiniPinnedCheckBox.IsChecked == true;
+    }
+
+    private void MiniSnapToEdgesCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerSnapToEdges = MiniSnapToEdgesCheckBox.IsChecked == true;
     }
 
     private void MiniSecondaryButtonRadio_Changed(object sender, RoutedEventArgs e)

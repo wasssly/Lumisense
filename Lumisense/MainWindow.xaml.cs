@@ -128,6 +128,16 @@ public partial class MainWindow : FluentWindow
     private NowPlayingIntegration? _nowPlaying;
     private MiniPlayerWindow? _miniPlayerWindow;
     private FullScreenPlayerWindow? _fullScreenPlayerWindow;
+
+    // ---------- Прилипание к краям экрана для обычного окна плеера ----------
+    // Та же механика (перехват WM_MOVING через WindowSnapHelper), что и у мини-плеера — см.
+    // AppSettings.MainPlayerSnapToEdges и WndProc/OnSourceInitialized ниже. Состояние текущего
+    // перетаскивания живёт здесь же, как и у MiniPlayerWindow — каждое окно считает своё
+    // перетаскивание независимо от чужого.
+    private IntPtr _hwnd;
+    private bool _isDraggingMainWindow;
+    private WindowSnapHelper.POINT _dragStartCursor;
+    private WindowSnapHelper.RECT _dragStartRect;
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
     private TrackChangeToastWindow? _trackChangeToastWindow;
@@ -414,9 +424,34 @@ public partial class MainWindow : FluentWindow
         else if (!_isMiniMode)
         {
             Show();
+
+            // Обычного Show() иногда недостаточно, чтобы окно оказалось действительно поверх
+            // остальных — см. подробный комментарий у ForceForeground ниже (актуально и для
+            // запуска с ярлыка на панели задач, и просто при обычном запуске, когда в фокусе
+            // уже другое окно).
+            ForceForeground(this);
         }
 
         _ = CheckForUpdatesOnStartupAsync();
+    }
+
+    // Windows не всегда даёт свежезапущенному процессу забрать фокус и оказаться поверх уже
+    // активного окна другой программы — механизм защиты от "кражи фокуса" фоновыми процессами
+    // иногда срабатывает и для только что стартовавшего приложения (особенно заметно при
+    // запуске с закреплённого ярлыка на панели задач). Обычного Activate() при этом не всегда
+    // достаточно. Кратковременное включение-выключение Topmost — стандартный, широко
+    // используемый обходной путь: он одним махом ставит окно на самый верх Z-порядка, а не
+    // оставляет его "прилипшим" поверх всех окон навсегда, как оставило бы постоянное
+    // Topmost=true (после чего окно бы уже не пряталось за другими, даже когда должно).
+    // Возвращаем именно исходное значение Topmost, а не жёстко false — если у окна и так уже
+    // включено "поверх всех окон" (актуально скорее для MiniPlayerWindow, чем для этого окна),
+    // трюк не должен случайно его выключить.
+    private static void ForceForeground(Window window)
+    {
+        bool wasTopmost = window.Topmost;
+        window.Topmost = true;
+        window.Topmost = wasTopmost;
+        window.Activate();
     }
 
     // Раньше здесь ещё был WarmUpMainWindowLayout(): прогревал layout обычного окна заранее в
@@ -642,6 +677,12 @@ public partial class MainWindow : FluentWindow
     {
         base.OnSourceInitialized(e);
 
+        if (PresentationSource.FromVisual(this) is HwndSource hwndSource)
+        {
+            _hwnd = hwndSource.Handle;
+            hwndSource.AddHook(MainWindowWndProc);
+        }
+
         // Глобальные медиаклавиши (Play/Pause, Next, Prev, Stop) — работают даже без фокуса на окне
         _mediaHotKeys = new GlobalMediaHotKeys(this);
         _mediaHotKeys.PlayPausePressed += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
@@ -694,6 +735,55 @@ public partial class MainWindow : FluentWindow
         _trayIconManager.ApplyTheme(isLight: _settings.IsLightThemeResolved());
 
         ApplyPlaybackButtonsVisibility();
+    }
+
+    // Прилипание к краям экрана при перетаскивании обычного окна плеера за заголовок — та же
+    // техника (перехват WM_MOVING), что и у MiniPlayerWindow, арифметика — в WindowSnapHelper,
+    // общей для обоих окон. Работает и при перетаскивании через ui:TitleBar (см. MainWindow.xaml)
+    // — тот вызывает стандартный DragMove(), запускающий тот же самый системный цикл
+    // интерактивного перемещения окна, что и обычное перетаскивание за заголовок, поэтому
+    // WM_MOVING приходит сюда точно так же. См. AppSettings.MainPlayerSnapToEdges (страница
+    // "Окно" в настройках) — включено по умолчанию.
+    private IntPtr MainWindowWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        switch (msg)
+        {
+            case WindowSnapHelper.WM_ENTERSIZEMOVE:
+                _isDraggingMainWindow = true;
+                WindowSnapHelper.GetCursorPos(out _dragStartCursor);
+                WindowSnapHelper.GetWindowRect(_hwnd, out _dragStartRect);
+                break;
+
+            case WindowSnapHelper.WM_MOVING when _settings.MainPlayerSnapToEdges && _isDraggingMainWindow:
+                {
+                    WindowSnapHelper.GetCursorPos(out var cursor);
+                    int dx = cursor.X - _dragStartCursor.X;
+                    int dy = cursor.Y - _dragStartCursor.Y;
+
+                    var width = _dragStartRect.Right - _dragStartRect.Left;
+                    var height = _dragStartRect.Bottom - _dragStartRect.Top;
+
+                    var rect = new WindowSnapHelper.RECT
+                    {
+                        Left = _dragStartRect.Left + dx,
+                        Top = _dragStartRect.Top + dy,
+                    };
+                    rect.Right = rect.Left + width;
+                    rect.Bottom = rect.Top + height;
+
+                    WindowSnapHelper.SnapToScreenEdges(ref rect);
+
+                    System.Runtime.InteropServices.Marshal.StructureToPtr(rect, lParam, false);
+                    handled = true;
+                    return new IntPtr(1); // приложение обязано вернуть TRUE, если само обработало WM_MOVING
+                }
+
+            case WindowSnapHelper.WM_EXITSIZEMOVE:
+                _isDraggingMainWindow = false;
+                break;
+        }
+
+        return IntPtr.Zero;
     }
 
     // Экспериментальная настройка (Settings.HidePlaybackButtons, страница "Экспериментальное"
@@ -767,7 +857,7 @@ public partial class MainWindow : FluentWindow
 
             Show();
             WindowState = WindowState.Normal;
-            Activate();
+            ForceForeground(this);
             _trayIconManager?.Hide();
         });
     }
@@ -802,7 +892,7 @@ public partial class MainWindow : FluentWindow
             {
                 Show();
                 WindowState = WindowState.Normal;
-                Activate();
+                ForceForeground(this);
                 _trayIconManager?.Hide();
                 return;
             }
@@ -3180,6 +3270,7 @@ public partial class MainWindow : FluentWindow
 
         _miniPlayerWindow.Closed += (_, _) => _miniPlayerWindow = null;
         _miniPlayerWindow.Show();
+        ForceForeground(_miniPlayerWindow);
 
         _isMiniMode = true;
         Hide();
@@ -3202,7 +3293,7 @@ public partial class MainWindow : FluentWindow
 
         Show();
         WindowState = WindowState.Normal;
-        Activate();
+        ForceForeground(this);
         _trayIconManager?.Hide();
 
         // Ширина/высота окна не менялись, пока плеер был свёрнут в мини-режим — они уже
@@ -3243,7 +3334,7 @@ public partial class MainWindow : FluentWindow
             _fullScreenPlayerWindow = null;
             Show();
             WindowState = WindowState.Normal;
-            Activate();
+            ForceForeground(this);
         };
 
         _fullScreenPlayerWindow.Show();

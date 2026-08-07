@@ -160,6 +160,18 @@ public class AppSettings
     public bool MiniPlayerAlwaysOnTop { get; set; } = true;
     public bool MiniPlayerPinned { get; set; }               // Запрещает перетаскивание окна мышью
 
+    // "Магнитное" прилипание к краям экрана при перетаскивании — см. WindowSnapHelper (общая
+    // механика для этого окна и обычного плеера, см. MainPlayerSnapToEdges ниже). По умолчанию
+    // включено — так мини-плеер вёл себя всегда, до появления этой настройки; MiniPlayerPinned
+    // выше при этом сильнее — если положение закреплено, перетаскивания нет вообще и прилипать
+    // уже нечему.
+    public bool MiniPlayerSnapToEdges { get; set; } = true;
+
+    // То же самое прилипание к краям экрана, что и у мини-плеера выше, но для обычного окна
+    // плеера — см. MainWindow (перехват WM_MOVING в OnSourceInitialized/MainWindowWndProc).
+    // По умолчанию включено.
+    public bool MainPlayerSnapToEdges { get; set; } = true;
+
     // Какая из двух кнопок (повтор/перемешать) показывается в компактном мини-плеере — там
     // места хватает только под одну "вторую" кнопку рядом с play/pause и next/prev (в отличие
     // от основного окна, где показаны обе). "Repeat" или "Shuffle", по умолчанию "Repeat" —

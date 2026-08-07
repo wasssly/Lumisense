@@ -514,7 +514,13 @@
                                           Checked="AlwaysOnTopCheckBox_Changed" Unchecked="AlwaysOnTopCheckBox_Changed"
                                           Margin="0,0,0,8" />
                                 <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Сворачивать в трей при закрытии"
-                                          Checked="MinimizeToTrayCheckBox_Changed" Unchecked="MinimizeToTrayCheckBox_Changed" />
+                                          Checked="MinimizeToTrayCheckBox_Changed" Unchecked="MinimizeToTrayCheckBox_Changed"
+                                          Margin="0,0,0,8" />
+                                <!-- См. AppSettings.MainPlayerSnapToEdges / WindowSnapHelper. -->
+                                <CheckBox x:Name="MainSnapToEdgesCheckBox" Content="Прилипание к краям экрана"
+                                          Checked="MainSnapToEdgesCheckBox_Changed" Unchecked="MainSnapToEdgesCheckBox_Changed" />
+                                <TextBlock Text="При перетаскивании окно мышью «магнитится» к ближайшему краю экрана, если оказывается рядом с ним."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -826,7 +832,13 @@
                                           Checked="MiniAlwaysOnTopCheckBox_Changed" Unchecked="MiniAlwaysOnTopCheckBox_Changed"
                                           Margin="0,0,0,8" />
                                 <CheckBox x:Name="MiniPinnedCheckBox" Content="Закрепить положение (запретить перетаскивание)"
-                                          Checked="MiniPinnedCheckBox_Changed" Unchecked="MiniPinnedCheckBox_Changed" />
+                                          Checked="MiniPinnedCheckBox_Changed" Unchecked="MiniPinnedCheckBox_Changed"
+                                          Margin="0,0,0,8" />
+                                <!-- См. AppSettings.MiniPlayerSnapToEdges / WindowSnapHelper. Действует, только
+                                     пока положение НЕ закреплено чекбоксом выше — если перетаскивания нет
+                                     вообще, прилипать уже нечему. -->
+                                <CheckBox x:Name="MiniSnapToEdgesCheckBox" Content="Прилипание к краям экрана"
+                                          Checked="MiniSnapToEdgesCheckBox_Changed" Unchecked="MiniSnapToEdgesCheckBox_Changed" />
                             </StackPanel>
                         </Border>
 

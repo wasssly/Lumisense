@@ -19,46 +19,15 @@ public partial class MiniPlayerWindow : Window
     private const double ExpandedHeight = 140;
 
     // ---------- Прилипание к краям экрана ----------
-    // Дистанция в физических пикселях, на которой окно "магнитится" к краю рабочей области
-    // монитора (без учёта панели задач). Работает независимо по X и Y — поэтому мини-плеер
-    // так же аккуратно прилипает и в углы экрана. Значение специально небольшое, чтобы
-    // притяжение ощущалось мягким, а не резким "прыжком" окна к краю.
-    private const int SnapMarginPx = 10;
+    // Сама механика (перехват WM_MOVING, арифметика прилипания) — в WindowSnapHelper, общем
+    // для этого окна и MainWindow. Включение/выключение — AppSettings.MiniPlayerSnapToEdges
+    // (см. страницу "Мини-плеер" в настройках), по умолчанию включено — прежнее поведение до
+    // появления этой настройки.
 
-    private const int WM_ENTERSIZEMOVE = 0x0231;
-    private const int WM_MOVING = 0x0216;
-    private const int WM_EXITSIZEMOVE = 0x0232;
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct RECT
-    {
-        public int Left;
-        public int Top;
-        public int Right;
-        public int Bottom;
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    private struct POINT
-    {
-        public int X;
-        public int Y;
-    }
-
-    [DllImport("user32.dll")]
-    private static extern bool GetCursorPos(out POINT lpPoint);
-
-    [DllImport("user32.dll")]
-    private static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-
-    [DllImport("user32.dll", SetLastError = true)]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
-        int x, int y, int cx, int cy, uint uFlags);
-
-    private static readonly IntPtr HWND_TOPMOST = new(-1);
-    private const uint SWP_NOMOVE = 0x0002;
-    private const uint SWP_NOSIZE = 0x0001;
-    private const uint SWP_NOACTIVATE = 0x0010;
+    private static readonly IntPtr HWND_TOPMOST = WindowSnapHelper.HWND_TOPMOST;
+    private const uint SWP_NOMOVE = WindowSnapHelper.SWP_NOMOVE;
+    private const uint SWP_NOSIZE = WindowSnapHelper.SWP_NOSIZE;
+    private const uint SWP_NOACTIVATE = WindowSnapHelper.SWP_NOACTIVATE;
 
     // Windows иногда молча теряет топмост-состояние окна (флаг формально остаётся, а
     // реальный Z-order — нет) — после полноэкранных игр, диалогов UAC, RDP, блокировки экрана
@@ -74,8 +43,8 @@ public partial class MiniPlayerWindow : Window
     // почти не удавалось оттащить обратно: каждое новое сообщение отталкивалось уже от
     // прижатой позиции. Так позиция всегда — чистое смещение курсора от точки старта.
     private bool _isDragging;
-    private POINT _dragStartCursor;
-    private RECT _dragStartRect;
+    private WindowSnapHelper.POINT _dragStartCursor;
+    private WindowSnapHelper.RECT _dragStartRect;
 
     // См. ApplyButtonsLayoutMode — true, когда в настройках выбран режим "кнопки на месте
     // обложки" (AppSettings.MiniPlayerButtonsLayout == "Overlay") вместо прежнего "снизу".
@@ -118,7 +87,7 @@ public partial class MiniPlayerWindow : Window
     {
         if (!Topmost || _hwnd == IntPtr.Zero || WindowState == WindowState.Minimized) return;
 
-        SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+        WindowSnapHelper.SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
     }
 
     // Перехватываем оконные сообщения на уровне Win32: это единственный способ подправить
@@ -142,26 +111,27 @@ public partial class MiniPlayerWindow : Window
     {
         switch (msg)
         {
-            case WM_ENTERSIZEMOVE:
+            case WindowSnapHelper.WM_ENTERSIZEMOVE:
                 // Начало нового перетаскивания — фиксируем точку отсчёта. GetWindowRect
                 // отдаёт физические пиксели — те же единицы, что и GetCursorPos и WM_MOVING,
                 // так что на мониторах с масштабированием (100% ≠ 125%/150% и т.д.) расчёт
                 // остаётся точным.
                 _isDragging = true;
-                GetCursorPos(out _dragStartCursor);
-                GetWindowRect(_hwnd, out _dragStartRect);
+                WindowSnapHelper.GetCursorPos(out _dragStartCursor);
+                WindowSnapHelper.GetWindowRect(_hwnd, out _dragStartRect);
                 break;
 
-            case WM_MOVING when !_mainWindow.Settings.MiniPlayerPinned && _isDragging:
+            case WindowSnapHelper.WM_MOVING when !_mainWindow.Settings.MiniPlayerPinned
+                                                  && _mainWindow.Settings.MiniPlayerSnapToEdges && _isDragging:
                 {
-                    GetCursorPos(out var cursor);
+                    WindowSnapHelper.GetCursorPos(out var cursor);
                     int dx = cursor.X - _dragStartCursor.X;
                     int dy = cursor.Y - _dragStartCursor.Y;
 
                     var width = _dragStartRect.Right - _dragStartRect.Left;
                     var height = _dragStartRect.Bottom - _dragStartRect.Top;
 
-                    var rect = new RECT
+                    var rect = new WindowSnapHelper.RECT
                     {
                         Left = _dragStartRect.Left + dx,
                         Top = _dragStartRect.Top + dy,
@@ -169,53 +139,19 @@ public partial class MiniPlayerWindow : Window
                     rect.Right = rect.Left + width;
                     rect.Bottom = rect.Top + height;
 
-                    SnapToScreenEdges(ref rect);
+                    WindowSnapHelper.SnapToScreenEdges(ref rect);
 
                     Marshal.StructureToPtr(rect, lParam, false);
                     handled = true;
                     return new IntPtr(1); // приложение обязано вернуть TRUE, если само обработало WM_MOVING
                 }
 
-            case WM_EXITSIZEMOVE:
+            case WindowSnapHelper.WM_EXITSIZEMOVE:
                 _isDragging = false;
                 break;
         }
 
         return IntPtr.Zero;
-    }
-
-    // Подправляет предложенный Windows прямоугольник окна: если он оказался в пределах
-    // SnapMarginPx от какого-либо края рабочей области текущего монитора — ровно к этому краю
-    // и прижимаем. Проверяется независимо по горизонтали и вертикали.
-    private static void SnapToScreenEdges(ref RECT rect)
-    {
-        var width = rect.Right - rect.Left;
-        var height = rect.Bottom - rect.Top;
-
-        var winBounds = new System.Drawing.Rectangle(rect.Left, rect.Top, width, height);
-        var workArea = System.Windows.Forms.Screen.FromRectangle(winBounds).WorkingArea;
-
-        if (Math.Abs(rect.Left - workArea.Left) <= SnapMarginPx)
-        {
-            rect.Left = workArea.Left;
-            rect.Right = rect.Left + width;
-        }
-        else if (Math.Abs(rect.Right - workArea.Right) <= SnapMarginPx)
-        {
-            rect.Right = workArea.Right;
-            rect.Left = rect.Right - width;
-        }
-
-        if (Math.Abs(rect.Top - workArea.Top) <= SnapMarginPx)
-        {
-            rect.Top = workArea.Top;
-            rect.Bottom = rect.Top + height;
-        }
-        else if (Math.Abs(rect.Bottom - workArea.Bottom) <= SnapMarginPx)
-        {
-            rect.Bottom = workArea.Bottom;
-            rect.Top = rect.Bottom - height;
-        }
     }
 
     // Сырые значения с последнего OnTrackInfoChanged/OnProgressChanged — нужны, чтобы
