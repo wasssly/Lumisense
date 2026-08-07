@@ -808,7 +808,7 @@
 
                         <!-- В компактном окне мини-плеера, в отличие от основного, место есть только
                              под одну "вторую" кнопку рядом с play/pause и next/prev — выбираем здесь,
-                             какую из двух функций она выполняет (см. AppSettings.MiniPlayerSecondaryButton
+                             какую из трёх функций она выполняет (см. AppSettings.MiniPlayerSecondaryButton
                              и MiniPlayerWindow.UpdateSecondaryButton). -->
                         <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
                             <StackPanel>
@@ -816,6 +816,8 @@
                                 <RadioButton x:Name="MiniSecondaryRepeatRadio" Content="Повтор" GroupName="MiniSecondaryButton"
                                              Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,8" />
                                 <RadioButton x:Name="MiniSecondaryShuffleRadio" Content="Перемешать" GroupName="MiniSecondaryButton"
+                                             Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,8" />
+                                <RadioButton x:Name="MiniSecondaryFavoriteRadio" Content="Избранное" GroupName="MiniSecondaryButton"
                                              Checked="MiniSecondaryButtonRadio_Changed" />
                             </StackPanel>
                         </Border>

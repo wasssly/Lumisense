@@ -92,6 +92,7 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.VolumeChanged += OnVolumeChanged;
         _mainWindow.RepeatModeChanged += OnRepeatModeChanged;
         _mainWindow.ShuffleStateChanged += OnShuffleStateChanged;
+        FavoritesChangeNotifier.Instance.PropertyChanged += OnFavoritesChanged;
 
         Height = CollapsedHeight;
         ApplyButtonsLayoutMode();
@@ -230,6 +231,11 @@ public partial class MiniPlayerWindow : Window
         TitleText.Text = title;
         _lastArtist = artist;
         UpdateSecondaryLine();
+
+        // Новый трек — новое избранное-состояние; если сейчас выбран режим "Избранное" (см.
+        // SecondaryButtonMode), сердечко должно тут же отразить статус НОВОГО трека, а не
+        // донашивать вид предыдущего до следующего клика по нему где-либо ещё.
+        if (SecondaryButtonMode == "Favorite") UpdateFavoriteSecondaryButtonVisual();
 
         if (art != null)
         {
@@ -476,31 +482,39 @@ public partial class MiniPlayerWindow : Window
             button.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
     }
 
-    // Компактное окно мини-плеера — под кнопку повтора и кнопку "перемешать" одновременно
-    // места нет (в отличие от основного окна, где показаны обе), поэтому здесь всего одна
-    // "вторая" кнопка, а какую из двух функций она выполняет, выбирается в настройках (см.
-    // AppSettings.MiniPlayerSecondaryButton и SettingsWindow, страница "Мини-плеер").
-    // SecondaryButton в разметке — один и тот же элемент под обе функции, она либо повтор,
-    // либо шафл, никогда не обе сразу.
-    private bool ShowsShuffleButton => _mainWindow.Settings.MiniPlayerSecondaryButton == "Shuffle";
+    // Компактное окно мини-плеера — под кнопку повтора, кнопку "перемешать" и сердечко
+    // избранного одновременно места нет (в отличие от основного окна, где показаны все три),
+    // поэтому здесь всего одна "вторая" кнопка, а какую из трёх функций она выполняет,
+    // выбирается в настройках (см. AppSettings.MiniPlayerSecondaryButton и SettingsWindow,
+    // страница "Мини-плеер"). SecondaryButton в разметке — один и тот же элемент под все три
+    // функции, никогда не больше одной сразу.
+    private string SecondaryButtonMode => _mainWindow.Settings.MiniPlayerSecondaryButton;
 
     private void SecondaryButton_Click(object sender, RoutedEventArgs e)
     {
-        if (ShowsShuffleButton)
-            _mainWindow.ExternalToggleShuffle();
-        else
-            _mainWindow.ExternalToggleRepeat();
+        switch (SecondaryButtonMode)
+        {
+            case "Shuffle":
+                _mainWindow.ExternalToggleShuffle();
+                break;
+            case "Favorite":
+                _mainWindow.ExternalToggleFavoriteCurrentTrack();
+                break;
+            default:
+                _mainWindow.ExternalToggleRepeat();
+                break;
+        }
     }
 
     // Синхронизирует вид кнопки повтора с фактическим режимом в основном окне — тот же набор
     // иконок/акцента, что и у RepeatButton там (см. MainWindow.SetRepeatMode), просто в
     // уменьшенном размере под мини-плеер. Применяется только если сейчас выбрана функция
-    // "Повтор" (см. ShowsShuffleButton) — иначе кнопка сейчас показывает шафл, и трогать её
-    // вид отсюда не нужно (когда пользователь переключит настройку обратно, UpdateSecondaryButton
-    // сама подставит актуальный режим повтора).
+    // "Повтор" (см. SecondaryButtonMode) — иначе кнопка сейчас показывает что-то другое, и
+    // трогать её вид отсюда не нужно (когда пользователь переключит настройку обратно,
+    // UpdateSecondaryButton сама подставит актуальный режим повтора).
     private void OnRepeatModeChanged(string modeName)
     {
-        if (ShowsShuffleButton) return;
+        if (SecondaryButtonMode != "Repeat") return;
 
         switch (modeName)
         {
@@ -520,15 +534,38 @@ public partial class MiniPlayerWindow : Window
     }
 
     // Зеркальный аналог OnRepeatModeChanged для перемешивания — применяется, только если
-    // сейчас выбрана функция "Перемешать" (см. ShowsShuffleButton), по той же причине.
+    // сейчас выбрана функция "Перемешать" (см. SecondaryButtonMode), по той же причине.
     private void OnShuffleStateChanged(bool enabled)
     {
-        if (!ShowsShuffleButton) return;
+        if (SecondaryButtonMode != "Shuffle") return;
 
         SecondaryButton.Icon = enabled
             ? IconResources.MakeOnAccent("IconShuffle", size: 12)
             : IconResources.Make("IconShuffle", size: 12);
         SetAccentButtonActive(SecondaryButton, enabled);
+    }
+
+    // Третий вариант "второй кнопки" — избранное текущего трека. В отличие от повтора и
+    // перемешивания, у избранного нет отдельного события на MainWindow: FavoritesManager
+    // глобальный и статический, а на его изменения подписан FavoritesChangeNotifier.Instance
+    // (см. Favorites.cs) — тот же Epoch-приём, на котором держится сердечко в обычном
+    // плейлисте (IsFavoriteMultiConverter). Подписка идёт в конструкторе безусловно — сама
+    // проверка режима внутри дешевле, чем подписываться/отписываться при каждом переключении
+    // настройки.
+    private void OnFavoritesChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    {
+        if (SecondaryButtonMode != "Favorite") return;
+        UpdateFavoriteSecondaryButtonVisual();
+    }
+
+    private void UpdateFavoriteSecondaryButtonVisual()
+    {
+        bool isFavorite = _mainWindow.CurrentTrackPath is { } path && FavoritesManager.IsFavorite(path);
+
+        SecondaryButton.Icon = isFavorite
+            ? IconResources.MakeOnAccent("IconHeartFilled", size: 12)
+            : IconResources.Make("IconHeart", size: 12);
+        SetAccentButtonActive(SecondaryButton, isFavorite);
     }
 
     // Вызывается при открытии мини-плеера (см. конструктор) и сразу же, если пользователь
@@ -538,10 +575,18 @@ public partial class MiniPlayerWindow : Window
     // окна текущее состояние (так же, как конструктор поступает с play/pause при открытии).
     public void UpdateSecondaryButton()
     {
-        if (ShowsShuffleButton)
-            OnShuffleStateChanged(_mainWindow.CurrentIsShuffleEnabled);
-        else
-            OnRepeatModeChanged(_mainWindow.CurrentRepeatModeName);
+        switch (SecondaryButtonMode)
+        {
+            case "Shuffle":
+                OnShuffleStateChanged(_mainWindow.CurrentIsShuffleEnabled);
+                break;
+            case "Favorite":
+                UpdateFavoriteSecondaryButtonVisual();
+                break;
+            default:
+                OnRepeatModeChanged(_mainWindow.CurrentRepeatModeName);
+                break;
+        }
     }
 
     // Вызывается из MainWindow.RefreshAccentDependentIcons при каждой смене акцента — сама
@@ -781,6 +826,7 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.VolumeChanged -= OnVolumeChanged;
         _mainWindow.RepeatModeChanged -= OnRepeatModeChanged;
         _mainWindow.ShuffleStateChanged -= OnShuffleStateChanged;
+        FavoritesChangeNotifier.Instance.PropertyChanged -= OnFavoritesChanged;
         base.OnClosed(e);
     }
 }

@@ -1465,7 +1465,7 @@ public partial class MainWindow : FluentWindow
 
         if (!foundAnything)
         {
-            System.Windows.MessageBox.Show("В выбранной папке не найдено поддерживаемых аудиофайлов.",
+            System.Windows.MessageBox.Show(this, "В выбранной папке не найдено поддерживаемых аудиофайлов.",
                 "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
@@ -1591,7 +1591,7 @@ public partial class MainWindow : FluentWindow
 
         if (!foundAnything || addedCount <= 0)
         {
-            System.Windows.MessageBox.Show("Новых треков в этой папке не найдено.",
+            System.Windows.MessageBox.Show(this, "Новых треков в этой папке не найдено.",
                 "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
@@ -2269,6 +2269,7 @@ public partial class MainWindow : FluentWindow
         var trackName = Path.GetFileName(filePath);
 
         var confirm = System.Windows.MessageBox.Show(
+            this,
             $"Удалить файл «{trackName}» с диска?\n\nФайл будет перемещён в корзину, а трек — убран из всех плейлистов.",
             "Удаление трека с диска",
             System.Windows.MessageBoxButton.YesNo,
@@ -2311,7 +2312,7 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
+            System.Windows.MessageBox.Show(this, $"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка удаления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             return;
         }
@@ -2377,7 +2378,7 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
+            System.Windows.MessageBox.Show(this, $"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
             return;
         }
@@ -3531,6 +3532,16 @@ public partial class MainWindow : FluentWindow
     public void ExternalToggleRepeat() => RepeatButton_Click(this, new RoutedEventArgs());
     public void ExternalToggleShuffle() => ShuffleButton_Click(this, new RoutedEventArgs());
     public void ExternalToggleMute() => ToggleMute();
+
+    // Для "второй кнопки" мини-плеера в режиме "Избранное" (см. AppSettings.
+    // MiniPlayerSecondaryButton и MiniPlayerWindow.SecondaryButton_Click) — тот же метод,
+    // которым пользуется сердечко в обычном плейлисте (см. ToggleFavoriteAndRefresh), просто
+    // путь к файлу берётся из того, что сейчас играет, а не из DataContext строки плейлиста.
+    // Ничего не делает, если сейчас ничего не загружено.
+    public void ExternalToggleFavoriteCurrentTrack()
+    {
+        if (_currentTrackPath != null) ToggleFavoriteAndRefresh(_currentTrackPath);
+    }
 
     // Используется и колесом мыши над ползунком громкости в главном окне (см.
     // VolumeOverlay_MouseWheel), и колесом мыши над мини-плеером целиком

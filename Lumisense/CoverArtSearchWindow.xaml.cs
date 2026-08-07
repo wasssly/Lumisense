@@ -386,7 +386,7 @@ public partial class CoverArtSearchWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show($"Не удалось загрузить обложку:\n{ex.Message}",
+            System.Windows.MessageBox.Show(this, $"Не удалось загрузить обложку:\n{ex.Message}",
                 "Ошибка загрузки", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
         finally

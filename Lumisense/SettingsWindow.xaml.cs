@@ -124,7 +124,9 @@ public partial class SettingsWindow : FluentWindow
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
         MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
-        MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault();
+        MiniSecondaryFavoriteRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Favorite";
+        MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault()
+                                              && !MiniSecondaryFavoriteRadio.IsChecked.GetValueOrDefault();
         MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
         MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
         MiniInfoOnlyTitleRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleOnly";
@@ -321,6 +323,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
         Add("Закрепить положение (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniPinnedCheckBox, "закрепить перетаскивание pin мини плеер");
+        Add("Вторая кнопка в мини-плеере", "Мини-плеер", "MiniPlayer", MiniSecondaryRepeatRadio, "вторая кнопка повтор перемешать избранное сердечко favorite shuffle repeat мини плеер");
         Add("Пуск / пауза", "Горячие клавиши", "Hotkeys", HotkeyPlayPauseButton, "play pause горячая клавиша");
         Add("Следующий трек", "Горячие клавиши", "Hotkeys", HotkeyNextButton, "next горячая клавиша");
         Add("Предыдущий трек", "Горячие клавиши", "Hotkeys", HotkeyPreviousButton, "previous горячая клавиша");
@@ -727,7 +730,9 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.MiniPlayerSecondaryButton = MiniSecondaryShuffleRadio.IsChecked == true ? "Shuffle" : "Repeat";
+        _settings.MiniPlayerSecondaryButton = MiniSecondaryShuffleRadio.IsChecked == true ? "Shuffle"
+            : MiniSecondaryFavoriteRadio.IsChecked == true ? "Favorite"
+            : "Repeat";
         _owner.ApplyMiniPlayerSecondaryButtonLive();
     }
 
