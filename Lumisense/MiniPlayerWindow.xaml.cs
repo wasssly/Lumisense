@@ -597,9 +597,12 @@ public partial class MiniPlayerWindow : Window
     {
         PlayPauseButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor()); // всегда акцентная
 
-        bool secondaryActive = ShowsShuffleButton
-            ? _mainWindow.CurrentIsShuffleEnabled
-            : _mainWindow.CurrentRepeatModeName != "Off";
+        bool secondaryActive = SecondaryButtonMode switch
+        {
+            "Shuffle" => _mainWindow.CurrentIsShuffleEnabled,
+            "Favorite" => _mainWindow.CurrentTrackPath is { } path && FavoritesManager.IsFavorite(path),
+            _ => _mainWindow.CurrentRepeatModeName != "Off"
+        };
 
         if (secondaryActive)
             SecondaryButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor());
