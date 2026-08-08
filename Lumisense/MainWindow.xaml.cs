@@ -127,17 +127,22 @@ public partial class MainWindow : FluentWindow
     private TrayIconManager? _trayIconManager;
     private NowPlayingIntegration? _nowPlaying;
     private MiniPlayerWindow? _miniPlayerWindow;
-    private FullScreenPlayerWindow? _fullScreenPlayerWindow;
 
     // ---------- Прилипание к краям экрана для обычного окна плеера ----------
-    // Та же механика (перехват WM_MOVING через WindowSnapHelper), что и у мини-плеера — см.
-    // AppSettings.MainPlayerSnapToEdges и WndProc/OnSourceInitialized ниже. Состояние текущего
-    // перетаскивания живёт здесь же, как и у MiniPlayerWindow — каждое окно считает своё
-    // перетаскивание независимо от чужого.
-    private IntPtr _hwnd;
-    private bool _isDraggingMainWindow;
-    private WindowSnapHelper.POINT _dragStartCursor;
-    private WindowSnapHelper.RECT _dragStartRect;
+    // В отличие от MiniPlayerWindow (та вызывает DragMove() сама, из своего собственного
+    // MouseLeftButtonDown — см. Header_MouseLeftButtonDown), перетаскивание этого окна за
+    // заголовок целиком обрабатывает ui:TitleBar на уровне Win32 (WM_NCHITTEST → HTCAPTION,
+    // см. комментарий у самого TitleBar в MainWindow.xaml) — WPF-обработчики мыши в его
+    // границах вообще не срабатывают, а полагаться, что через HTCAPTION-перетаскивание
+    // добавленный вручную хук HwndSource.AddHook гарантированно увидит WM_MOVING, оказалось
+    // ненадёжно на практике. Поэтому здесь прилипание работает иначе — не через перехват
+    // предлагаемого прямоугольника ДО отрисовки (как в WindowSnapHelper/MiniPlayerWindow), а
+    // через LocationChanged (чисто WPF-событие, гарантированно срабатывающее при любом
+    // изменении Left/Top независимо от того, как именно двигают окно) с "довороткой" на
+    // ближайший край сразу после. _isApplyingSnap — защита от повторного входа: сама подгонка
+    // Left/Top ниже тоже порождает LocationChanged, её не нужно обрабатывать повторно.
+    private bool _isApplyingSnap;
+
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
     private TrackChangeToastWindow? _trackChangeToastWindow;
@@ -199,30 +204,11 @@ public partial class MainWindow : FluentWindow
     // Зеркальный аналог CurrentRepeatModeName для перемешивания — см. ShuffleStateChanged.
     public bool CurrentIsShuffleEnabled => _isShuffleEnabled;
 
-    // Для полноэкранного окна (FullScreenPlayerWindow) — тот же приём, что и с
-    // CurrentRepeatModeName/CurrentIsShuffleEnabled: значение на момент открытия окна, до
-    // первого события ProgressChanged/VolumeChanged (события начинают приходить только на
-    // изменения, поэтому без этого начальное состояние окна было бы пустым/нулевым, пока
-    // что-нибудь не поменяется).
-    public double CurrentProgressSeconds => _audioFile?.CurrentTime.TotalSeconds ?? 0;
-    public double CurrentDurationSeconds => _audioFile?.TotalTime.TotalSeconds ?? 0;
-    public double CurrentVolume => VolumeSlider.Value;
-
-    // Текущий путь к файлу — библиотека в полноэкранном окне подсвечивает эту строку как
-    // "сейчас играет". Null, пока ничего не загружено (самый первый запуск без сохранённого
-    // последнего трека).
+    // Текущий путь к файлу — нужен мини-плееру для варианта "Избранное" второй кнопки (см.
+    // MiniPlayerWindow.UpdateFavoriteSecondaryButtonVisual), чтобы понять, какой именно трек
+    // сейчас проверять на признак избранного. Null, пока ничего не загружено (самый первый
+    // запуск без сохранённого последнего трека).
     public string? CurrentTrackPath => _currentTrackPath;
-
-    // Сама коллекция, а не копия/снимок — ObservableCollection<PlaylistFolder>, за которую
-    // напрямую биндится библиотека в полноэкранном окне (см. FullScreenPlayerWindow.xaml,
-    // PageLibrary): любое добавление/удаление папки или трека отражается там сразу же, без
-    // отдельной синхронизации. Та же коллекция, что и у обычного плейлиста в этом окне.
-    public ObservableCollection<PlaylistFolder> PlaylistFolders => _folders;
-
-    // Публичная обёртка над приватным LoadAndPlay — плейлист выбирает трек по клику в
-    // библиотеке полноэкранного окна тем же способом, что и двойной клик по строке в обычном
-    // плейлисте (см. PlaylistTrackList_MouseDoubleClick).
-    public void ExternalPlayTrack(string filePath) => LoadAndPlay(filePath);
 
     // Полноразмерная обложка текущего трека (или null, если у трека нет обложки/тегов).
     // Хранится отдельно от ImageBrush, которым залит AlbumArtBorder, потому что окну
@@ -253,6 +239,7 @@ public partial class MainWindow : FluentWindow
 
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
+        LocationChanged += MainWindow_LocationChanged;
 
         // Повторно применяем акцент уже ПОСЛЕ того, как окно реально отрисовано (см.
         // MainWindow_Loaded) — иначе на некоторых машинах при запуске приложения с системным
@@ -677,11 +664,11 @@ public partial class MainWindow : FluentWindow
     {
         base.OnSourceInitialized(e);
 
-        if (PresentationSource.FromVisual(this) is HwndSource hwndSource)
-        {
-            _hwnd = hwndSource.Handle;
-            hwndSource.AddHook(MainWindowWndProc);
-        }
+        // ApplySettingsOnStartup (конструктор) вызывает ApplyWindowBackdrop до того, как у окна
+        // появляется нативный HWND — для Mica/Acrylic это не проблема (WindowBackdropType сам
+        // применяется отложенно, когда источник готов), а вот WindowBlurHelper.EnableBlur нужен
+        // реальный хендл прямо сейчас, поэтому переприменяем здесь, когда он уже точно есть.
+        ApplyWindowBackdrop();
 
         // Глобальные медиаклавиши (Play/Pause, Next, Prev, Stop) — работают даже без фокуса на окне
         _mediaHotKeys = new GlobalMediaHotKeys(this);
@@ -737,53 +724,54 @@ public partial class MainWindow : FluentWindow
         ApplyPlaybackButtonsVisibility();
     }
 
-    // Прилипание к краям экрана при перетаскивании обычного окна плеера за заголовок — та же
-    // техника (перехват WM_MOVING), что и у MiniPlayerWindow, арифметика — в WindowSnapHelper,
-    // общей для обоих окон. Работает и при перетаскивании через ui:TitleBar (см. MainWindow.xaml)
-    // — тот вызывает стандартный DragMove(), запускающий тот же самый системный цикл
-    // интерактивного перемещения окна, что и обычное перетаскивание за заголовок, поэтому
-    // WM_MOVING приходит сюда точно так же. См. AppSettings.MainPlayerSnapToEdges (страница
-    // "Окно" в настройках) — включено по умолчанию.
-    private IntPtr MainWindowWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    // Прилипание к краям экрана при перетаскивании обычного окна плеера за заголовок — см.
+    // подробное объяснение почему через LocationChanged, а не WM_MOVING (как у
+    // MiniPlayerWindow), в комментарии у поля _isApplyingSnap выше. См. AppSettings.
+    // MainPlayerSnapToEdges (страница "Окно" в настройках) — включено по умолчанию.
+    private void MainWindow_LocationChanged(object? sender, EventArgs e)
     {
-        switch (msg)
+        if (_isApplyingSnap) return;
+        if (!_settings.MainPlayerSnapToEdges) return;
+        if (System.Windows.Input.Mouse.LeftButton != System.Windows.Input.MouseButtonState.Pressed) return;
+        if (WindowState != WindowState.Normal) return;
+
+        // Left/Top/ActualWidth/ActualHeight — DIP-единицы (96 DPI), а WindowSnapHelper (общий
+        // с MiniPlayerWindow) считает в физических пикселях, как и его исходный источник —
+        // Win32 RECT. TransformToDevice — тот же самый матричный пересчёт, которым WPF сам
+        // переводит DIP в пиксели при отрисовке на текущем мониторе, поэтому результат корректен
+        // и на мониторах с масштабированием, отличным от 100%.
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return;
+
+        var transform = target.TransformToDevice;
+        var topLeft = transform.Transform(new Point(Left, Top));
+        var size = transform.Transform(new Point(ActualWidth, ActualHeight));
+
+        var rect = new WindowSnapHelper.RECT
         {
-            case WindowSnapHelper.WM_ENTERSIZEMOVE:
-                _isDraggingMainWindow = true;
-                WindowSnapHelper.GetCursorPos(out _dragStartCursor);
-                WindowSnapHelper.GetWindowRect(_hwnd, out _dragStartRect);
-                break;
+            Left = (int)Math.Round(topLeft.X),
+            Top = (int)Math.Round(topLeft.Y),
+        };
+        rect.Right = rect.Left + (int)Math.Round(size.X);
+        rect.Bottom = rect.Top + (int)Math.Round(size.Y);
 
-            case WindowSnapHelper.WM_MOVING when _settings.MainPlayerSnapToEdges && _isDraggingMainWindow:
-                {
-                    WindowSnapHelper.GetCursorPos(out var cursor);
-                    int dx = cursor.X - _dragStartCursor.X;
-                    int dy = cursor.Y - _dragStartCursor.Y;
+        var before = rect;
+        WindowSnapHelper.SnapToScreenEdges(ref rect);
+        if (rect.Left == before.Left && rect.Top == before.Top) return; // уже не рядом с краем — трогать нечего
 
-                    var width = _dragStartRect.Right - _dragStartRect.Left;
-                    var height = _dragStartRect.Bottom - _dragStartRect.Top;
+        var deviceToDip = transform;
+        deviceToDip.Invert(); // Matrix — struct, копия; Invert() меняет её в месте, а не возвращает новую
+        var newTopLeft = deviceToDip.Transform(new Point(rect.Left, rect.Top));
 
-                    var rect = new WindowSnapHelper.RECT
-                    {
-                        Left = _dragStartRect.Left + dx,
-                        Top = _dragStartRect.Top + dy,
-                    };
-                    rect.Right = rect.Left + width;
-                    rect.Bottom = rect.Top + height;
-
-                    WindowSnapHelper.SnapToScreenEdges(ref rect);
-
-                    System.Runtime.InteropServices.Marshal.StructureToPtr(rect, lParam, false);
-                    handled = true;
-                    return new IntPtr(1); // приложение обязано вернуть TRUE, если само обработало WM_MOVING
-                }
-
-            case WindowSnapHelper.WM_EXITSIZEMOVE:
-                _isDraggingMainWindow = false;
-                break;
+        _isApplyingSnap = true;
+        try
+        {
+            Left = newTopLeft.X;
+            Top = newTopLeft.Y;
         }
-
-        return IntPtr.Zero;
+        finally
+        {
+            _isApplyingSnap = false;
+        }
     }
 
     // Экспериментальная настройка (Settings.HidePlaybackButtons, страница "Экспериментальное"
@@ -1059,14 +1047,28 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.RefreshAccentButtons();
     }
 
-    // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте и
-    // заново из окна настроек при переключении этой настройки (см.
-    // SettingsWindow.WindowBackdropRadio_Changed), пока главное окно уже открыто.
+    // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте (и
+    // ещё раз из OnSourceInitialized, см. там) и заново из окна настроек при переключении этой
+    // настройки (см. SettingsWindow.WindowBackdropRadio_Changed), пока главное окно уже открыто.
     public void ApplyWindowBackdrop()
     {
-        WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
-            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
-            : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        IntPtr hwnd = new WindowInteropHelper(this).Handle;
+
+        if (_settings.WindowBackdropType == "Blur")
+        {
+            // Системный backdrop (Mica/Acrylic через DWM) и классический blur-behind — два
+            // разных механизма композиции окна, одновременно они не нужны и могут
+            // конфликтовать, поэтому сначала гарантированно выключаем системный.
+            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
+            WindowBlurHelper.EnableBlur(hwnd);
+        }
+        else
+        {
+            WindowBlurHelper.DisableBlur(hwnd);
+            WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
+                ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
+                : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        }
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettingsWindow();
@@ -1428,8 +1430,6 @@ public partial class MainWindow : FluentWindow
         if (Enum.TryParse<PlayerViewMode>(modeName, out var mode))
             SetPlayerViewMode(mode);
     }
-
-    private void FullScreenMenuItem_Click(object sender, RoutedEventArgs e) => EnterFullScreenMode();
 
     // Публичная обёртка над SetPlayerViewMode для окна настроек (PlayerViewMode — приватный
     // enum, наружу наружу торчать не должен) — тот же разбор строки "Square"/"Rectangular"/
@@ -2199,19 +2199,6 @@ public partial class MainWindow : FluentWindow
     // должен работать как обычная отмена ввода текста, а не как отмена удаления треков.
     private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
-        // F11 — стандартная клавиша полноэкранного режима в браузерах и медиаплеерах,
-        // отдельно от остальной логики этого обработчика (Ctrl+Z ниже): срабатывает
-        // независимо от модификаторов и фокуса, кроме текстовых полей — иначе в поиске по
-        // плейлисту в это имя было бы невозможно вписать заглавную латинскую "F11"-подобную
-        // подстроку (маловероятно, но проверка та же, что и для Ctrl+Z, для единообразия).
-        if (e.Key == System.Windows.Input.Key.F11
-            && System.Windows.Input.Keyboard.FocusedElement is not System.Windows.Controls.Primitives.TextBoxBase)
-        {
-            e.Handled = true;
-            EnterFullScreenMode();
-            return;
-        }
-
         bool isCtrl = System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control);
         if (!isCtrl || e.Key != System.Windows.Input.Key.Z) return;
         if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
@@ -3306,46 +3293,6 @@ public partial class MainWindow : FluentWindow
         UpdateViewModeMenuChecks();
     }
 
-    // ---------- Полноэкранный плеер с боковой панелью (FullScreenPlayerWindow) ----------
-    // Не путать с "полноэкранным режимом" чуть выше (_isFullscreenLayout) — тот просто
-    // укрупняет содержимое этого же окна при разворачивании кнопкой в заголовке. Это —
-    // отдельное окно на весь экран: слева боковая панель (Библиотека / Сейчас играет),
-    // снизу закреплённая панель управления воспроизведением. Тот же общий приём, что и у
-    // мини-плеера (EnterMiniMode/ExitMiniMode) — отдельное окно, скрывающее это, синхронизация
-    // через события TrackInfoChanged/ProgressChanged/... и Public API (см. блок "события для
-    // внешнего окна" в начале файла).
-    public void EnterFullScreenMode()
-    {
-        if (_fullScreenPlayerWindow != null) return;
-
-        // Мини-режим и полноэкранный — взаимоисключающие альтернативные виды этого же плеера,
-        // выйти сначала из одного, чтобы перейти в другой, а не пытаться совместить оба окна.
-        if (_isMiniMode) ExitMiniMode();
-
-        _fullScreenPlayerWindow = new FullScreenPlayerWindow(this);
-
-        // Единая точка возврата к обычному окну — срабатывает одинаково и на явный выход
-        // (кнопка/Escape в FullScreenPlayerWindow вызывают ExitFullScreenMode ниже, который
-        // просто закрывает окно), и на закрытие в обход него (Alt+F4, крестик в заголовке,
-        // "Закрыть окно" из панели задач) — в обоих случаях Closed всё равно срабатывает, и
-        // основное окно гарантированно не остаётся скрытым навсегда.
-        _fullScreenPlayerWindow.Closed += (_, _) =>
-        {
-            _fullScreenPlayerWindow = null;
-            Show();
-            WindowState = WindowState.Normal;
-            ForceForeground(this);
-        };
-
-        _fullScreenPlayerWindow.Show();
-        Hide();
-    }
-
-    // Вызывается из FullScreenPlayerWindow при нажатии "Выйти из полноэкранного режима"/Escape.
-    // Сам возврат к обычному окну происходит в обработчике Closed, подписанном выше — здесь
-    // только закрываем окно, чтобы не дублировать эту логику в двух местах.
-    public void ExitFullScreenMode() => _fullScreenPlayerWindow?.Close();
-
     // Вызывается из MiniPlayerWindow при перемещении окна пользователем — запоминаем
     // положение в общих настройках, чтобы при следующем сворачивании в мини-плеер
     // окно появилось на том же месте (в том числе и после перезапуска приложения)
@@ -3637,13 +3584,6 @@ public partial class MainWindow : FluentWindow
     // Используется и колесом мыши над ползунком громкости в главном окне (см.
     // VolumeOverlay_MouseWheel), и колесом мыши над мини-плеером целиком
     public void ExternalChangeVolume(double delta) => ChangeVolumeBy(delta);
-
-    // Абсолютная установка громкости (0..1) — нужна полноэкранному окну для перетаскивания
-    // своего собственного ползунка громкости (см. FullScreenPlayerWindow.BarVolume_MouseMove);
-    // ExternalChangeVolume выше даёт только относительный сдвиг (колесо мыши), для перетаскивания
-    // же нужно ставить конкретную позицию, а не накапливать дельту от неё.
-    public void ExternalSetVolume(double value) =>
-        VolumeSlider.Value = Math.Clamp(value, VolumeSlider.Minimum, VolumeSlider.Maximum);
 
     public void ExternalSeekRatio(double ratio)
     {

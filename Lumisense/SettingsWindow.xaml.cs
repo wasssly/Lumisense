@@ -52,13 +52,44 @@ public partial class SettingsWindow : FluentWindow
         }).IsChecked = true;
     }
 
+    // То же самое, что и MainWindow.ApplyWindowBackdrop — этому окну нужна собственная копия,
+    // а не вызов чужого метода, потому что применяется к его СОБСТВЕННОМУ HWND, а не к HWND
+    // главного окна. См. её же подробный комментарий для сути "почему через System.None +
+    // WindowBlurHelper, а не просто WindowBackdropType.Blur" (в WPF-UI такого значения нет —
+    // Blur здесь не системный DWM backdrop, а старая техника AccentBlurBehind).
+    private void ApplyWindowBackdrop(AppSettings settings)
+    {
+        IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+
+        if (settings.WindowBackdropType == "Blur")
+        {
+            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
+            WindowBlurHelper.EnableBlur(hwnd);
+        }
+        else
+        {
+            WindowBlurHelper.DisableBlur(hwnd);
+            WindowBackdropType = settings.WindowBackdropType == "Acrylic"
+                ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
+                : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        }
+    }
+
+    // ApplyWindowBackdrop из конструктора выполняется до того, как у окна появляется нативный
+    // HWND (см. тот же порядок вызовов в MainWindow.ApplySettingsOnStartup/OnSourceInitialized)
+    // — для Mica/Acrylic это не важно, а WindowBlurHelper.EnableBlur нужен реальный хендл,
+    // поэтому переприменяем здесь, когда он уже точно есть.
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        ApplyWindowBackdrop(_settings);
+    }
+
     public SettingsWindow(AppSettings settings, MainWindow owner, string? initialPage = null)
     {
         InitializeComponent();
 
-        WindowBackdropType = settings.WindowBackdropType == "Acrylic"
-            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
-            : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        ApplyWindowBackdrop(settings);
 
         // Выбираем стартовую страницу здесь, а не через IsChecked="True" в XAML — на этот
         // момент все страницы (PageAppearance, PageWindow и т.д.) уже гарантированно созданы,
@@ -104,7 +135,9 @@ public partial class SettingsWindow : FluentWindow
         RefreshAccentSwatchSelection();
 
         BackdropAcrylicRadio.IsChecked = _settings.WindowBackdropType == "Acrylic";
-        BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault();
+        BackdropBlurRadio.IsChecked = _settings.WindowBackdropType == "Blur";
+        BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault()
+                                       && !BackdropBlurRadio.IsChecked.GetValueOrDefault();
 
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
@@ -313,7 +346,7 @@ public partial class SettingsWindow : FluentWindow
 
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
-        Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic акрил размытие блюр подложка фон backdrop blur");
+        Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд fly transition album art cover");
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
@@ -530,10 +563,12 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? "Acrylic" : "Mica";
+        _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? "Acrylic"
+            : BackdropBlurRadio.IsChecked == true ? "Blur"
+            : "Mica";
 
         _owner.ApplyWindowBackdrop();
-        WindowBackdropType = _owner.WindowBackdropType; // то же самое — и у этого окна настроек тоже
+        ApplyWindowBackdrop(_settings); // то же самое — и у этого окна настроек тоже
     }
 
     private void AlwaysOnTopCheckBox_Changed(object sender, RoutedEventArgs e)

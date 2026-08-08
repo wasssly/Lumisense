@@ -350,8 +350,10 @@
                                 <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
                                 <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
+                                <RadioButton x:Name="BackdropBlurRadio" Content="Blur (размытие без системного эффекта Windows 11)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,4" />
-                                <TextBlock Text="Применяется к главному окну, окну настроек и статистике — на остальных, мелких окнах разницы почти не видно."
+                                <TextBlock Text="Применяется к главному окну, окну настроек и статистике — на остальных, мелких окнах разницы почти не видно. Blur работает и на Windows 10, в отличие от Mica/Acrylic."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
                         </Border>

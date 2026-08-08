@@ -22,11 +22,38 @@ public partial class StatisticsWindow : FluentWindow
         InitializeComponent();
         _settings = settings;
 
-        WindowBackdropType = settings.WindowBackdropType == "Acrylic"
-            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
-            : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        ApplyWindowBackdrop();
 
         Loaded += async (_, _) => await LoadAsync();
+    }
+
+    // То же самое, что и MainWindow.ApplyWindowBackdrop/SettingsWindow.ApplyWindowBackdrop —
+    // своя копия, потому что применяется к собственному HWND этого окна. Вызывается и из
+    // конструктора (Mica/Acrylic это не важно), и повторно из OnSourceInitialized ниже — Blur
+    // (WindowBlurHelper.EnableBlur) нужен уже реальный нативный хендл, которого в конструкторе
+    // ещё нет.
+    private void ApplyWindowBackdrop()
+    {
+        IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+
+        if (_settings.WindowBackdropType == "Blur")
+        {
+            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
+            WindowBlurHelper.EnableBlur(hwnd);
+        }
+        else
+        {
+            WindowBlurHelper.DisableBlur(hwnd);
+            WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
+                ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
+                : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        }
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        ApplyWindowBackdrop();
     }
 
     private async Task LoadAsync()
