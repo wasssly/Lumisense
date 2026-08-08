@@ -172,6 +172,11 @@ public class AppSettings
     // По умолчанию включено.
     public bool MainPlayerSnapToEdges { get; set; } = true;
 
+    // Свёрнута ли боковая панель в полноэкранном окне до "рельсы" из одних иконок — см.
+    // FullScreenPlayerWindow.SetSidebarCollapsed/SidebarToggleButton_Click. Запоминается между
+    // запусками, как и большинство остального в этом файле.
+    public bool FullScreenSidebarCollapsed { get; set; }
+
     // Какая из двух кнопок (повтор/перемешать) показывается в компактном мини-плеере — там
     // места хватает только под одну "вторую" кнопку рядом с play/pause и next/prev (в отличие
     // от основного окна, где показаны обе). "Repeat" или "Shuffle", по умолчанию "Repeat" —

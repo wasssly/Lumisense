@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -19,6 +22,13 @@ public partial class FullScreenPlayerWindow : FluentWindow
 
     private bool _isDraggingProgress;
     private bool _isDraggingVolume;
+    private bool _isSidebarCollapsed;
+
+    // Кэш групп "Артисты"/"Альбомы" на время жизни этого окна — см. подробный комментарий у
+    // NavArtists/NavAlbums в XAML и RebuildLibraryIndexAsync/EnsureLibraryIndexAsync ниже. Null, пока индекс ни
+    // разу не строился (первый заход на вкладку) или после нажатия "Обновить".
+    private List<TrackMetadata>? _libraryMetadataCache;
+    private bool _isIndexingLibrary;
 
     public FullScreenPlayerWindow(MainWindow owner)
     {
@@ -27,6 +37,8 @@ public partial class FullScreenPlayerWindow : FluentWindow
 
         // Живая привязка прямо к коллекции MainWindow — см. комментарий у PlaylistFolders
         LibraryFoldersList.ItemsSource = _owner.PlaylistFolders;
+
+        SetSidebarCollapsed(_owner.Settings.FullScreenSidebarCollapsed, persist: false);
 
         _owner.TrackInfoChanged += OnTrackInfoChanged;
         _owner.ProgressChanged += OnProgressChanged;
@@ -73,6 +85,64 @@ public partial class FullScreenPlayerWindow : FluentWindow
 
         PageNowPlaying.Visibility = key == "NowPlaying" ? Visibility.Visible : Visibility.Collapsed;
         PageLibrary.Visibility = key == "Library" ? Visibility.Visible : Visibility.Collapsed;
+        PageArtists.Visibility = key == "Artists" ? Visibility.Visible : Visibility.Collapsed;
+        PageAlbums.Visibility = key == "Albums" ? Visibility.Visible : Visibility.Collapsed;
+
+        // Индекс для "Артисты"/"Альбомы" строится лениво — только когда пользователь реально
+        // на них заходит, а не сразу при открытии окна (незачем читать теги сотен файлов,
+        // если человек всё это время слушает музыку со страницы "Сейчас играет").
+        if (key is "Artists" or "Albums") _ = EnsureLibraryIndexAsync();
+    }
+
+    // ---------- Свёрнутая боковая панель ("рельса" из одних иконок) ----------
+
+    private void SidebarToggleButton_Click(object sender, RoutedEventArgs e) =>
+        SetSidebarCollapsed(!_isSidebarCollapsed, persist: true);
+
+    // persist=false — только при открытии окна (см. конструктор), там значение и так уже из
+    // настроек, повторно сохранять его же самому себе незачем.
+    private void SetSidebarCollapsed(bool collapsed, bool persist)
+    {
+        _isSidebarCollapsed = collapsed;
+
+        SidebarColumn.Width = new GridLength(collapsed ? 72 : 260);
+
+        var labelVisibility = collapsed ? Visibility.Collapsed : Visibility.Visible;
+        SidebarTitleText.Visibility = labelVisibility;
+        NavNowPlayingText.Visibility = labelVisibility;
+        NavLibraryText.Visibility = labelVisibility;
+        NavArtistsText.Visibility = labelVisibility;
+        NavAlbumsText.Visibility = labelVisibility;
+        ExitFullScreenButtonText.Visibility = labelVisibility;
+
+        // Схлопываем саму звёздочную колонку под заголовком до нуля (а не только прячем
+        // TextBlock внутри неё) — звёздочные колонки в Grid делят место между собой независимо
+        // от видимости содержимого, без этого лого осталось бы прижато к левому краю с пустым
+        // "хвостом" вместо аккуратной узкой рельсы.
+        SidebarTitleColumn.Width = collapsed ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        SidebarToggleButton.HorizontalAlignment = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Right;
+
+        // Просто скрыть подписи (Visibility) недостаточно для аккуратного вида "рельсы":
+        // RadioButton выровнен по левому краю (см. NavItemStyle, HorizontalContentAlignment
+        // ="Left" — там это верно для полной ширины панели), без этой подстройки иконки при
+        // сворачивании остались бы прижаты к левому краю узкой колонки вместо центра.
+        var navAlign = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Left;
+        NavNowPlaying.HorizontalContentAlignment = navAlign;
+        NavLibrary.HorizontalContentAlignment = navAlign;
+        NavArtists.HorizontalContentAlignment = navAlign;
+        NavAlbums.HorizontalContentAlignment = navAlign;
+
+        // У кнопки выхода схлопываем звёздочную колонку под текст до нуля — по той же причине,
+        // что и у заголовка выше.
+        ExitFullScreenButtonTextColumn.Width = collapsed ? new GridLength(0) : new GridLength(1, GridUnitType.Star);
+        ExitFullScreenButtonContent.HorizontalAlignment = collapsed ? HorizontalAlignment.Center : HorizontalAlignment.Stretch;
+
+        // Разворачиваем стрелку в другую сторону — она всегда указывает в направлении, куда
+        // приведёт следующий клик (вправо = "разворачивай", влево = "сворачивай").
+        SidebarToggleIcon.RenderTransform = new RotateTransform(collapsed ? 0 : 180);
+        SidebarToggleButton.ToolTip = collapsed ? "Развернуть панель" : "Свернуть панель";
+
+        if (persist) _owner.Settings.FullScreenSidebarCollapsed = collapsed;
     }
 
     private void ExitFullScreenButton_Click(object sender, RoutedEventArgs e) => _owner.ExitFullScreenMode();
@@ -277,5 +347,116 @@ public partial class FullScreenPlayerWindow : FluentWindow
     {
         if (sender is FrameworkElement { Tag: string filePath })
             FavoritesManager.Toggle(filePath);
+    }
+
+    // ---------- Артисты / Альбомы ----------
+    // В отличие от "Библиотеки" (прямая живая привязка к MainWindow.PlaylistFolders), для
+    // группировки по исполнителю/альбому нужно прочитать ID3-теги каждого файла — это не
+    // бесплатно на большой библиотеке, поэтому индекс строится один раз в фоне при первом
+    // заходе на любую из двух вкладок (кэш общий для обеих — TrackMetadata содержит сразу и
+    // артиста, и альбом), а не заново для каждой вкладки и не при каждом изменении плейлиста.
+    // Кнопка "Обновить" на самих страницах — на случай, если плейлист поменяли, пока окно уже
+    // было открыто на этой вкладке.
+
+    private void ArtistsRefreshButton_Click(object sender, RoutedEventArgs e) => _ = RebuildLibraryIndexAsync();
+    private void AlbumsRefreshButton_Click(object sender, RoutedEventArgs e) => _ = RebuildLibraryIndexAsync();
+
+    private Task EnsureLibraryIndexAsync() => _libraryMetadataCache != null ? Task.CompletedTask : RebuildLibraryIndexAsync();
+
+    private async Task RebuildLibraryIndexAsync()
+    {
+        if (_isIndexingLibrary) return;
+        _isIndexingLibrary = true;
+
+        var allPaths = _owner.PlaylistFolders.SelectMany(f => f.Tracks).ToList();
+
+        ArtistsLoadingText.Visibility = Visibility.Visible;
+        AlbumsLoadingText.Visibility = Visibility.Visible;
+        ArtistsList.ItemsSource = null;
+        AlbumsList.ItemsSource = null;
+
+        try
+        {
+            // Чтение тегов — блокирующий файловый ввод-вывод, целиком в фоновом потоке, чтобы
+            // не подвешивать интерфейс на сотнях-тысячах файлов; сюда же попадает и сама
+            // группировка по артисту/альбому — она тоже не бесплатна на большом списке.
+            var metadata = await Task.Run(() => allPaths.Select(ReadTrackMetadata).ToList());
+            _libraryMetadataCache = metadata;
+
+            ArtistsList.ItemsSource = GroupBy(metadata, m => m.Artist, "Неизвестный исполнитель");
+            AlbumsList.ItemsSource = GroupBy(metadata, m => m.Album, "Без альбома");
+        }
+        finally
+        {
+            ArtistsLoadingText.Visibility = Visibility.Collapsed;
+            AlbumsLoadingText.Visibility = Visibility.Collapsed;
+            _isIndexingLibrary = false;
+        }
+    }
+
+    private static List<LibraryGroup> GroupBy(List<TrackMetadata> metadata, System.Func<TrackMetadata, string> keySelector, string fallbackName) =>
+        metadata
+            .GroupBy(keySelector)
+            .OrderBy(g => g.Key, System.StringComparer.CurrentCultureIgnoreCase)
+            .Select(g => new LibraryGroup(
+                string.IsNullOrWhiteSpace(g.Key) ? fallbackName : g.Key,
+                g.Select(m => m.FilePath).ToList()))
+            .ToList();
+
+    // Читает Title/Artist/Album из ID3-тегов файла — тот же TagLib, что и в
+    // MainWindow.LoadAlbumArt, с тем же принципом "файл без тегов или с повреждёнными
+    // метаданными не должен ронять всю индексацию" — просто откатываемся на разумные
+    // значения по умолчанию.
+    private static TrackMetadata ReadTrackMetadata(string filePath)
+    {
+        try
+        {
+            using var tagFile = TagLib.File.Create(filePath);
+            string artist = string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer) ? "" : tagFile.Tag.FirstPerformer;
+            string album = string.IsNullOrWhiteSpace(tagFile.Tag.Album) ? "" : tagFile.Tag.Album;
+            return new TrackMetadata(filePath, artist, album);
+        }
+        catch
+        {
+            return new TrackMetadata(filePath, "", "");
+        }
+    }
+}
+
+// Артист/альбом трека — используется только для группировки в FullScreenPlayerWindow
+// (Артисты/Альбомы), заголовок трека здесь не нужен: сама строка трека в списке берёт его из
+// имени файла тем же FileNameConverter, что и "Библиотека" (см. LibraryTrackRowTemplate).
+internal sealed record TrackMetadata(string FilePath, string Artist, string Album);
+
+// Одна группа в "Артистах"/"Альбомах" — тот же по сути DataContext, что и PlaylistFolder у
+// "Библиотеки" (Name/SubtitleText/список путей), но собранная не из папок плейлиста, а из
+// TrackMetadata (см. FullScreenPlayerWindow.GroupBy). SubtitleText — та же формулировка
+// склонения, что и у PlaylistFolder.SubtitleText, ради единообразия карточек в обеих вкладках.
+internal sealed class LibraryGroup
+{
+    public string Name { get; }
+    public List<string> TrackPaths { get; }
+
+    public LibraryGroup(string name, List<string> trackPaths)
+    {
+        Name = name;
+        TrackPaths = trackPaths;
+    }
+
+    public string SubtitleText => $"{TrackPaths.Count} {PluralizeTracks(TrackPaths.Count)}";
+
+    // Тот же алгоритм русского склонения, что и в PlaylistFolder.SubtitleText — сознательно
+    // продублирован, а не вынесен в общий хелпер: PlaylistFolder специально не знает о
+    // FullScreenPlayerWindow (модель плейлиста не должна зависеть от конкретного окна,
+    // которое её показывает), а тащить ради трёх строк отдельный статический класс с одним
+    // методом смысла не было.
+    private static string PluralizeTracks(int count)
+    {
+        int n = System.Math.Abs(count) % 100;
+        int n1 = n % 10;
+        if (n is > 10 and < 20) return "треков";
+        if (n1 == 1) return "трек";
+        if (n1 is > 1 and < 5) return "трека";
+        return "треков";
     }
 }

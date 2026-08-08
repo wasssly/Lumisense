@@ -111,6 +111,17 @@
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+        <!-- Заголовок группы в "Артистах"/"Альбомах" — то же самое, что и заголовок папки в
+             "Библиотеке" (DisplayName/SubtitleText), но источник данных другой: не
+             MainWindow.PlaylistFolders напрямую, а группы LibraryGroup, посчитанные в фоне
+             (см. RebuildLibraryIndexAsync/EnsureLibraryIndexAsync в code-behind). -->
+        <DataTemplate x:Key="LibraryGroupTemplate">
+            <StackPanel Margin="0,0,0,26">
+                <TextBlock Text="{Binding Name}" FontSize="17" FontWeight="SemiBold" Margin="0,0,0,2" />
+                <TextBlock Text="{Binding SubtitleText}" Opacity="0.55" FontSize="12" Margin="0,0,0,8" />
+                <ItemsControl ItemsSource="{Binding TrackPaths}" ItemTemplate="{StaticResource LibraryTrackRowTemplate}" />
+            </StackPanel>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
@@ -123,11 +134,14 @@
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="260" />
+                <ColumnDefinition x:Name="SidebarColumn" Width="260" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- Боковая панель -->
+            <!-- Боковая панель. Ширина — SidebarColumn, переключается между полной (260) и
+                 "рельсой" из одних иконок (72) кнопкой SidebarToggleButton
+                 (см. FullScreenPlayerWindow.xaml.cs, SetSidebarCollapsed) — состояние
+                 запоминается между запусками (AppSettings.FullScreenSidebarCollapsed). -->
             <Border Grid.Column="0" Background="{DynamicResource ControlFillColorDefaultBrush}"
                     BorderThickness="0,0,1,0" BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
                     Padding="14,18">
@@ -138,39 +152,100 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="6,0,0,28">
-                        <Image Source="/Icons/app/lumisense.png" Width="22" Height="22" />
-                        <TextBlock Text="Lumisense" FontSize="16" FontWeight="SemiBold"
-                                   Margin="10,0,0,0" VerticalAlignment="Center" />
+                    <StackPanel Grid.Row="0" Margin="0,0,0,20">
+                        <Grid Margin="6,0,0,12">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition x:Name="SidebarTitleColumn" Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <Image Grid.Column="0" Source="/Icons/app/lumisense.png" Width="22" Height="22"
+                                   VerticalAlignment="Center" />
+                            <TextBlock x:Name="SidebarTitleText" Grid.Column="1" Text="Lumisense" FontSize="16"
+                                       FontWeight="SemiBold" Margin="10,0,0,0" VerticalAlignment="Center"
+                                       TextTrimming="CharacterEllipsis" />
+                        </Grid>
+
+                        <!-- Отдельная строка, а не третья колонка рядом с лого — при ширине
+                             панели-"рельсы" (72px, только иконки) лого и стрелке рядом было бы
+                             тесно; так кнопка сворачивания свободно перецентровывается сама по
+                             себе, не толкаясь с лого за то же место (см. SetSidebarCollapsed).
+                             Стрелка — тот же IconChevronRight, что и везде в приложении, просто
+                             развёрнутый на 180° в свёрнутом состоянии (см. SetSidebarCollapsed) —
+                             отдельная "двойная стрелка"/иконка гамбургера не понадобилась. -->
+                        <ui:Button x:Name="SidebarToggleButton" HorizontalAlignment="Right" Appearance="Transparent"
+                                   Width="28" Height="28" Padding="0" Click="SidebarToggleButton_Click"
+                                   ToolTip="Свернуть панель">
+                            <local:SvgPathIcon x:Name="SidebarToggleIcon" Icon="IconChevronRight" Size="13"
+                                               RenderTransformOrigin="0.5,0.5">
+                                <local:SvgPathIcon.RenderTransform>
+                                    <RotateTransform Angle="180" />
+                                </local:SvgPathIcon.RenderTransform>
+                            </local:SvgPathIcon>
+                        </ui:Button>
                     </StackPanel>
 
                     <StackPanel Grid.Row="1">
                         <RadioButton x:Name="NavNowPlaying" Style="{StaticResource NavItemStyle}"
                                      GroupName="FullScreenNav" IsChecked="True" Tag="NowPlaying"
-                                     Checked="NavItem_Checked">
+                                     Checked="NavItem_Checked" ToolTip="Сейчас играет">
                             <StackPanel Orientation="Horizontal">
                                 <local:SvgPathIcon Icon="IconSpeaker2" Size="18" VerticalAlignment="Center" />
-                                <TextBlock Text="Сейчас играет" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock x:Name="NavNowPlayingText" Text="Сейчас играет" Margin="10,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </RadioButton>
 
                         <RadioButton x:Name="NavLibrary" Style="{StaticResource NavItemStyle}"
                                      GroupName="FullScreenNav" Tag="Library"
-                                     Checked="NavItem_Checked">
+                                     Checked="NavItem_Checked" ToolTip="Библиотека">
                             <StackPanel Orientation="Horizontal">
                                 <local:SvgPathIcon Icon="IconLibrary" Size="18" VerticalAlignment="Center" />
-                                <TextBlock Text="Библиотека" Margin="10,0,0,0" VerticalAlignment="Center" />
+                                <TextBlock x:Name="NavLibraryText" Text="Библиотека" Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+
+                        <!-- Артисты/Альбомы — те же треки из плейлиста (MainWindow.PlaylistFolders),
+                             только перегруппированные по тегам ID3 "Исполнитель"/"Альбом" вместо
+                             папок. В отличие от "Библиотеки" выше, эта группировка не хранится
+                             готовой заранее — строится в фоне при первом заходе на вкладку (см.
+                             RebuildLibraryIndexAsync/EnsureLibraryIndexAsync) и затем кэшируется на время сессии
+                             окна, а не пересчитывается на лету при каждом изменении плейлиста. -->
+                        <RadioButton x:Name="NavArtists" Style="{StaticResource NavItemStyle}"
+                                     GroupName="FullScreenNav" Tag="Artists"
+                                     Checked="NavItem_Checked" ToolTip="Артисты">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconPerson" Size="18" VerticalAlignment="Center" />
+                                <TextBlock x:Name="NavArtistsText" Text="Артисты" Margin="10,0,0,0" VerticalAlignment="Center" />
+                            </StackPanel>
+                        </RadioButton>
+
+                        <RadioButton x:Name="NavAlbums" Style="{StaticResource NavItemStyle}"
+                                     GroupName="FullScreenNav" Tag="Albums"
+                                     Checked="NavItem_Checked" ToolTip="Альбомы">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconAlbum" Size="18" VerticalAlignment="Center" />
+                                <TextBlock x:Name="NavAlbumsText" Text="Альбомы" Margin="10,0,0,0" VerticalAlignment="Center" />
                             </StackPanel>
                         </RadioButton>
                     </StackPanel>
 
-                    <ui:Button Grid.Row="2" Appearance="Secondary" HorizontalAlignment="Stretch"
-                               Click="ExitFullScreenButton_Click" ToolTip="Escape">
-                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
-                            <local:SvgPathIcon Icon="IconMinimizeWindow" Size="14" VerticalAlignment="Center" />
-                            <TextBlock Text="Выйти из полноэкранного режима" Margin="8,0,0,0"
-                                       TextWrapping="Wrap" TextAlignment="Center" />
-                        </StackPanel>
+                    <!-- Grid, а не горизонтальный StackPanel — внутри StackPanel Orientation="Horizontal"
+                         TextWrapping="Wrap" ни на что не влияет (дочерний элемент меряется с
+                         бесконечной доступной шириной вдоль оси StackPanel), из-за чего текст
+                         раньше не переносился и вылезал за пределы кнопки/панели. У Grid дочерняя
+                         колонка получает реальную ограниченную ширину (Width="*"), перенос
+                         работает как положено. -->
+                    <ui:Button Grid.Row="2" x:Name="ExitFullScreenButton" Appearance="Secondary"
+                               HorizontalAlignment="Stretch" Click="ExitFullScreenButton_Click" ToolTip="Escape">
+                        <Grid x:Name="ExitFullScreenButtonContent">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition x:Name="ExitFullScreenButtonTextColumn" Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <local:SvgPathIcon Grid.Column="0" Icon="IconMinimizeWindow" Size="14" VerticalAlignment="Center" />
+                            <TextBlock x:Name="ExitFullScreenButtonText" Grid.Column="1" Text="Выйти из полноэкранного режима"
+                                       Margin="8,0,0,0" TextWrapping="Wrap" TextAlignment="Left" VerticalAlignment="Center" />
+                        </Grid>
                     </ui:Button>
                 </Grid>
             </Border>
@@ -236,6 +311,78 @@
                                 <TextBlock Text="Плейлист пуст — добавьте папки с музыкой в обычном окне плеера."
                                            Opacity="0.5" FontSize="13" Margin="0,20,0,0"
                                            Visibility="{Binding ElementName=LibraryFoldersList, Path=HasItems,
+                                                        Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <!-- Артисты и альбомы — тот же плейлист, перегруппированный по тегам вместо
+                         папок (см. подробный комментарий у NavArtists/NavAlbums выше и
+                         RebuildLibraryIndexAsync/EnsureLibraryIndexAsync в code-behind). Обе страницы построены
+                         одинаково: заголовок + индикатор построения индекса (виден только пока
+                         он строится) + сам список групп + кнопка "Обновить" на случай, если
+                         плейлист изменился, пока окно уже было открыто на этой вкладке. -->
+                    <Grid x:Name="PageArtists" Visibility="Collapsed">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="40,28,40,28">
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Артисты" FontSize="26" FontWeight="SemiBold" />
+                                    <ui:Button x:Name="ArtistsRefreshButton" Grid.Column="1" Appearance="Secondary"
+                                               Padding="10,6" Click="ArtistsRefreshButton_Click" ToolTip="Обновить, если плейлист изменился">
+                                        <StackPanel Orientation="Horizontal">
+                                            <local:SvgPathIcon Icon="IconRefresh" Size="13" VerticalAlignment="Center" />
+                                            <TextBlock Text="Обновить" Margin="6,0,0,0" FontSize="12" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </ui:Button>
+                                </Grid>
+                                <TextBlock Text="Треки из плейлиста, сгруппированные по исполнителю (тег ID3)."
+                                           Opacity="0.6" FontSize="13" Margin="0,0,0,22" />
+
+                                <TextBlock x:Name="ArtistsLoadingText" Text="Строим список исполнителей…"
+                                           Opacity="0.6" FontSize="13" Visibility="Collapsed" Margin="0,0,0,10" />
+
+                                <ItemsControl x:Name="ArtistsList" ItemTemplate="{StaticResource LibraryGroupTemplate}" />
+
+                                <TextBlock Text="Плейлист пуст — добавьте папки с музыкой в обычном окне плеера."
+                                           Opacity="0.5" FontSize="13" Margin="0,20,0,0"
+                                           Visibility="{Binding ElementName=ArtistsList, Path=HasItems,
+                                                        Converter={StaticResource InverseBoolToVisibilityConverter}}" />
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Grid>
+
+                    <Grid x:Name="PageAlbums" Visibility="Collapsed">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel Margin="40,28,40,28">
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Альбомы" FontSize="26" FontWeight="SemiBold" />
+                                    <ui:Button x:Name="AlbumsRefreshButton" Grid.Column="1" Appearance="Secondary"
+                                               Padding="10,6" Click="AlbumsRefreshButton_Click" ToolTip="Обновить, если плейлист изменился">
+                                        <StackPanel Orientation="Horizontal">
+                                            <local:SvgPathIcon Icon="IconRefresh" Size="13" VerticalAlignment="Center" />
+                                            <TextBlock Text="Обновить" Margin="6,0,0,0" FontSize="12" VerticalAlignment="Center" />
+                                        </StackPanel>
+                                    </ui:Button>
+                                </Grid>
+                                <TextBlock Text="Треки из плейлиста, сгруппированные по альбому (тег ID3)."
+                                           Opacity="0.6" FontSize="13" Margin="0,0,0,22" />
+
+                                <TextBlock x:Name="AlbumsLoadingText" Text="Строим список альбомов…"
+                                           Opacity="0.6" FontSize="13" Visibility="Collapsed" Margin="0,0,0,10" />
+
+                                <ItemsControl x:Name="AlbumsList" ItemTemplate="{StaticResource LibraryGroupTemplate}" />
+
+                                <TextBlock Text="Плейлист пуст — добавьте папки с музыкой в обычном окне плеера."
+                                           Opacity="0.5" FontSize="13" Margin="0,20,0,0"
+                                           Visibility="{Binding ElementName=AlbumsList, Path=HasItems,
                                                         Converter={StaticResource InverseBoolToVisibilityConverter}}" />
                             </StackPanel>
                         </ScrollViewer>
