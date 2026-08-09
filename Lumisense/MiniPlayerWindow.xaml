@@ -87,7 +87,8 @@
     <Grid>
     <Border x:Name="RootBorder" CornerRadius="14"
             MouseEnter="RootBorder_MouseEnter" MouseLeave="RootBorder_MouseLeave"
-            MouseWheel="RootBorder_MouseWheel">
+            MouseWheel="RootBorder_MouseWheel"
+            MouseLeftButtonDown="RootBorder_MouseLeftButtonDown">
         <Border.Background>
             <!-- Цвет и альфа-канал полностью выставляются в code-behind: базовый цвет — из
                  ApplyTheme (тёмный графит либо светло-серый, под тему приложения), альфа —

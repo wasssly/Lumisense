@@ -57,14 +57,18 @@ public partial class SettingsWindow : FluentWindow
     // главного окна. См. её же подробный комментарий для сути "почему через System.None +
     // WindowBlurHelper, а не просто WindowBackdropType.Blur" (в WPF-UI такого значения нет —
     // Blur здесь не системный DWM backdrop, а старая техника AccentBlurBehind).
-    private void ApplyWindowBackdrop(AppSettings settings)
+    private void ApplyWindowBackdrop(AppSettings settings, MainWindow owner)
     {
         IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
 
-        if (settings.WindowBackdropType == "Blur")
+        if (settings.WindowBackdropType is "Blur" or "AccentBlur")
         {
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
-            WindowBlurHelper.EnableBlur(hwnd, settings.IsLightThemeResolved());
+
+            if (settings.WindowBackdropType == "AccentBlur")
+                WindowBlurHelper.EnableAccentBlur(hwnd, owner.GetResolvedAccentColor(), settings.IsLightThemeResolved());
+            else
+                WindowBlurHelper.EnableBlur(hwnd, settings.IsLightThemeResolved());
         }
         else
         {
@@ -77,19 +81,22 @@ public partial class SettingsWindow : FluentWindow
 
     // ApplyWindowBackdrop из конструктора выполняется до того, как у окна появляется нативный
     // HWND (см. тот же порядок вызовов в MainWindow.ApplySettingsOnStartup/OnSourceInitialized)
-    // — для Mica/Acrylic это не важно, а WindowBlurHelper.EnableBlur нужен реальный хендл,
-    // поэтому переприменяем здесь, когда он уже точно есть.
+    // — для Mica/Acrylic это не важно, а WindowBlurHelper.EnableBlur/EnableAccentBlur нужен
+    // реальный хендл, поэтому переприменяем здесь, когда он уже точно есть. К этому моменту
+    // _settings/_owner (в отличие от вызова прямо из конструктора, см. ниже) уже гарантированно
+    // присвоены — OnSourceInitialized срабатывает при первом Show(), то есть уже после того, как
+    // конструктор полностью отработал.
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        ApplyWindowBackdrop(_settings);
+        ApplyWindowBackdrop(_settings, _owner);
     }
 
     public SettingsWindow(AppSettings settings, MainWindow owner, string? initialPage = null)
     {
         InitializeComponent();
 
-        ApplyWindowBackdrop(settings);
+        ApplyWindowBackdrop(settings, owner);
 
         // Выбираем стартовую страницу здесь, а не через IsChecked="True" в XAML — на этот
         // момент все страницы (PageAppearance, PageWindow и т.д.) уже гарантированно созданы,
@@ -117,14 +124,21 @@ public partial class SettingsWindow : FluentWindow
         // Windows ("клик по окну поднимает именно его") начинает работать само, без единой
         // строчки специального кода. Единственное, чем раньше пользовались ради Owner:
         //   1) WindowStartupLocation="CenterOwner" — теперь считаем позицию вручную ниже
-        //      (PositionOverOwner), с тем же визуальным результатом.
+        //      (RestoreOrCenterPosition), с тем же визуальным результатом при первом открытии.
         //   2) Закрытие настроек вместе с главным окном — это и раньше не полагалось на Owner,
         //      а вызывалось явно (см. MainWindow.OnClosed: "_settingsWindow?.Close();"), так что
         //      никакого "зависшего" окна настроек после закрытия плеера не появится.
-        //   3) Иконка в панели задач — теперь скрываем её явно через ShowInTaskbar (ниже), а не
-        //      полагаемся на побочный эффект owned-окна.
-        ShowInTaskbar = false;
-        PositionOverOwner(owner);
+        //   3) Иконка в панели задач — раньше здесь стоял явный ShowInTaskbar = false. Теперь,
+        //      наоборот, специально ПОКАЗЫВАЕМ окно настроек на панели задач отдельным ярлыком
+        //      (см. ShowInTaskbar ниже и Icon в SettingsWindow.xaml — своя иконка, отличная от
+        //      основной, чтобы ярлык настроек не путался с ярлыком плеера): раньше, если это
+        //      окно почему-либо оказывалось потеряно (например, утащено за пределы видимой
+        //      области после отключения монитора), у пользователя не было решительно никакого
+        //      способа вернуть его на передний план — не было ни отдельной кнопки на панели
+        //      задач, ни пункта в Alt+Tab, только полное закрытие приложения через диспетчер
+        //      задач. Теперь такой способ есть.
+        ShowInTaskbar = true;
+        RestoreOrCenterPosition(owner);
 
         ThemeLightRadio.IsChecked = _settings.Theme == "Light";
         ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault();
@@ -136,8 +150,10 @@ public partial class SettingsWindow : FluentWindow
 
         BackdropAcrylicRadio.IsChecked = _settings.WindowBackdropType == "Acrylic";
         BackdropBlurRadio.IsChecked = _settings.WindowBackdropType == "Blur";
+        BackdropAccentBlurRadio.IsChecked = _settings.WindowBackdropType == "AccentBlur";
         BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault()
-                                       && !BackdropBlurRadio.IsChecked.GetValueOrDefault();
+                                       && !BackdropBlurRadio.IsChecked.GetValueOrDefault()
+                                       && !BackdropAccentBlurRadio.IsChecked.GetValueOrDefault();
 
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
@@ -217,9 +233,26 @@ public partial class SettingsWindow : FluentWindow
 
     // WindowStartupLocation="CenterOwner" тут не подходит — пришлось отказаться от Owner
     // (см. начало конструктора), поэтому центрируем вручную: центр этого окна = центр owner'а,
-    // зажатый в границах рабочей области экрана, на котором сейчас находится owner
-    private void PositionOverOwner(Window owner)
+    // зажатый в границах рабочей области экрана, на котором сейчас находится owner.
+    //
+    // Если пользователь уже когда-то передвигал окно настроек сам — открываем его на том же
+    // месте (AppSettings.SettingsWindowLeft/Top), а не снова по центру: центрирование при
+    // каждом открытии — поведение только для "ещё ни разу не трогали" случая. Раньше
+    // (PositionOverOwner) окно ВСЕГДА пересчитывалось по позиции owner'а заново — стоило
+    // основному окну плеера оказаться у края экрана или на мониторе, который потом отключили,
+    // и настройки открывались там же, частично или полностью за пределами видимой области, без
+    // какого-либо способа вернуть их на место (см. также ShowInTaskbar = true в конструкторе —
+    // тем же самым, что чинит и это, заодно закрывается вторая часть той же проблемы: раньше
+    // окно, оказавшись "потерянным", было ещё и невозможно найти через панель задач).
+    private void RestoreOrCenterPosition(Window owner)
     {
+        if (_settings.SettingsWindowLeft is double savedLeft && _settings.SettingsWindowTop is double savedTop
+            && IsPositionOnAnyScreen(savedLeft, savedTop))
+        {
+            SetPositionProgrammatically(savedLeft, savedTop);
+            return;
+        }
+
         double ownerWidth = owner.ActualWidth > 0 ? owner.ActualWidth : owner.Width;
         double ownerHeight = owner.ActualHeight > 0 ? owner.ActualHeight : owner.Height;
 
@@ -234,8 +267,55 @@ public partial class SettingsWindow : FluentWindow
         left = Math.Clamp(left, workArea.Left, Math.Max(workArea.Left, workArea.Right - Width));
         top = Math.Clamp(top, workArea.Top, Math.Max(workArea.Top, workArea.Bottom - Height));
 
-        Left = left;
-        Top = top;
+        SetPositionProgrammatically(left, top);
+    }
+
+    // Сохранённая с прошлого раза позиция может больше не попадать ни на один подключённый
+    // монитор — например, если её запомнили на втором мониторе, который с тех пор отключили,
+    // или разрешение экрана поменялось. В этом случае лучше откатиться на центрирование по
+    // owner'у, а не открыть окно там, где до него физически не добраться мышью. Проверяем
+    // пересечение с рабочей областью ЛЮБОГО из подключённых мониторов, а не просто "какой-то
+    // Screen.FromRectangle нашёлся" — тот метод всегда возвращает ближайший монитор, даже если
+    // сам прямоугольник давно за пределами всех рабочих областей.
+    private bool IsPositionOnAnyScreen(double left, double top)
+    {
+        var bounds = new System.Drawing.Rectangle((int)left, (int)top,
+            (int)Math.Max(Width, 1), (int)Math.Max(Height, 1));
+        return System.Windows.Forms.Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(bounds));
+    }
+
+    // Признак того, что Left/Top сейчас правятся кодом (центрирование/восстановление), а не
+    // пользователем — см. OnLocationChanged ниже: запоминать в настройки нужно только реальное
+    // перетаскивание окна пользователем, а не эти программные перестановки при каждом открытии.
+    private bool _isApplyingProgrammaticPosition;
+
+    private void SetPositionProgrammatically(double left, double top)
+    {
+        _isApplyingProgrammaticPosition = true;
+        try
+        {
+            Left = left;
+            Top = top;
+        }
+        finally
+        {
+            _isApplyingProgrammaticPosition = false;
+        }
+    }
+
+    // Запоминаем позицию в AppSettings при любом перемещении окна пользователем (перетаскивание
+    // за заголовок) — как и MiniPlayerLeft/Top у мини-плеера, само значение пишется только в
+    // память; на диск оно попадёт вместе со всеми остальными настройками при следующем
+    // SettingsManager.Save (в частности — гарантированно при закрытии приложения, см.
+    // MainWindow.PersistPlaybackAndPlaylistState).
+    protected override void OnLocationChanged(EventArgs e)
+    {
+        base.OnLocationChanged(e);
+        if (_isApplyingProgrammaticPosition) return;
+        if (_isInitializing) return;
+
+        _settings.SettingsWindowLeft = Left;
+        _settings.SettingsWindowTop = Top;
     }
 
     // Вызывается извне (из контекстного меню мини-плеера), когда закрепление, "поверх окон"
@@ -479,6 +559,13 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyAccentColor(); // акцент пересчитывает светлые/тёмные варианты под новую тему
         _owner.ApplyTrayTheme(_settings.IsLightThemeResolved());
         _owner.ApplyMiniPlayerThemeLive();
+
+        // Подложка "Blur"/"AccentBlur" (см. WindowBlurHelper) сама не переключает свою
+        // тонировку под тему — она задаётся ровно в момент вызова EnableBlur/EnableAccentBlur
+        // (settings.IsLightThemeResolved() читается один раз внутри), в отличие от Mica/Acrylic
+        // (те — системный DWM backdrop, сам следящий за темой). Перепримеяем на обоих окнах,
+        // где подложка вообще применяется живьём.
+        RefreshAccentBlurBackdropLive();
     }
 
     private void AccentModeRadio_Changed(object sender, RoutedEventArgs e)
@@ -489,6 +576,18 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.AccentColorMode = AccentManualRadio.IsChecked == true ? "Manual" : "System";
         _owner.ApplyAccentColor();
+        RefreshAccentBlurBackdropLive();
+    }
+
+    // И тема, и акцент могут влиять на реальный цвет подложки, если сейчас выбран именно
+    // "AccentBlur" (см. WindowBlurHelper.EnableAccentBlur) — ApplyWindowBackdrop сам по себе
+    // недорогой (пара Win32-вызовов) и сам разбирается, какая подложка сейчас выбрана, поэтому
+    // проще перепримянять его безусловно при любом изменении темы/акцента, чем дублировать
+    // здесь ещё раз проверку "а вдруг сейчас AccentBlur".
+    private void RefreshAccentBlurBackdropLive()
+    {
+        _owner.ApplyWindowBackdrop();
+        ApplyWindowBackdrop(_settings, _owner);
     }
 
     private static readonly string[] AccentPresetHexes =
@@ -530,7 +629,10 @@ public partial class SettingsWindow : FluentWindow
     {
         _settings.AccentColorHex = hex;
         RefreshAccentSwatchSelection();
-        if (!_isInitializing) _owner.ApplyAccentColor();
+        if (_isInitializing) return;
+
+        _owner.ApplyAccentColor();
+        RefreshAccentBlurBackdropLive();
     }
 
     // Подсвечивает рамкой тот пресет-квадратик, который совпадает с текущим AccentColorHex —
@@ -565,10 +667,11 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? "Acrylic"
             : BackdropBlurRadio.IsChecked == true ? "Blur"
+            : BackdropAccentBlurRadio.IsChecked == true ? "AccentBlur"
             : "Mica";
 
         _owner.ApplyWindowBackdrop();
-        ApplyWindowBackdrop(_settings); // то же самое — и у этого окна настроек тоже
+        ApplyWindowBackdrop(_settings, _owner); // то же самое — и у этого окна настроек тоже
     }
 
     private void AlwaysOnTopCheckBox_Changed(object sender, RoutedEventArgs e)

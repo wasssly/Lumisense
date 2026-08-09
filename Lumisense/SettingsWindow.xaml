@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:local="clr-namespace:AudioPlayer"
         Title="Настройки"
-        Icon="/Icons/app/lumisense.ico"
+        Icon="/Icons/app/lumisense-settings.ico"
         Height="760" Width="920"
         MinHeight="600" MinWidth="800"
         WindowBackdropType="Mica"
@@ -352,8 +352,10 @@
                                 <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
                                 <RadioButton x:Name="BackdropBlurRadio" Content="Blur (размытие без системного эффекта Windows 11)"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
+                                <RadioButton x:Name="BackdropAccentBlurRadio" Content="AccentBlur (то же размытие, но с оттенком акцентного цвета)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,4" />
-                                <TextBlock Text="Применяется к главному окну, окну настроек и статистике — на остальных, мелких окнах разницы почти не видно. Blur работает и на Windows 10, в отличие от Mica/Acrylic."
+                                <TextBlock Text="Применяется к главному окну, окну настроек и статистике — на остальных, мелких окнах разницы почти не видно. Blur и AccentBlur работают и на Windows 10, в отличие от Mica/Acrylic."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
                         </Border>

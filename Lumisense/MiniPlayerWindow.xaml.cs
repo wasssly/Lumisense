@@ -644,6 +644,38 @@ public partial class MiniPlayerWindow : Window
     {
         if (!_mainWindow.Settings.MiniPlayerPinned && e.ButtonState == MouseButtonState.Pressed)
             DragMove();
+
+        // Помечаем событие обработанным независимо от того, сработал ли DragMove выше
+        // (не сработает, если закреплено) — иначе оно продолжит всплывать до RootBorder и
+        // вызовет RootBorder_MouseLeftButtonDown ещё раз поверх уже обработанного клика (см.
+        // комментарий у RootBorder_MouseLeftButtonDown ниже о том, зачем вообще нужен этот
+        // обработчик там, а не только здесь).
+        e.Handled = true;
+    }
+
+    // Общий обработчик перетаскивания — ловит клик в ЛЮБОМ свободном месте окна, не покрытом
+    // отдельным элементом со своим собственным обработчиком мыши (прогресс-бар, кнопки
+    // управления и т.п. — они помечают событие Handled = true в своих обработчиках и сюда оно
+    // уже не долетает).
+    //
+    // Раньше перетаскивание было навешено только на HeaderPanel (обложка+название) — пока
+    // видна ТОЛЬКО она, этого достаточно. Но в режиме AppSettings.MiniPlayerButtonsLayout ==
+    // "Overlay" при наведении курсора HeaderPanel целиком прячется (Visibility.Collapsed, см.
+    // ApplyButtonsLayoutMode/RootBorder_MouseEnter) и её место в той же строке занимает
+    // ControlsPanel с кнопками — а обработчик перетаскивания оставался только на (уже
+    // невидимой и не участвующей в hit-тестировании) HeaderPanel. В результате ровно в тот
+    // момент, когда пользователь наводит курсор, чтобы вообще увидеть кнопки, окно переставало
+    // перетаскиваться откуда бы то ни было: сами кнопки, разумеется, не таскают окно, а
+    // свободные промежутки между ними уже не попадали ни на один элемент с обработчиком.
+    //
+    // Обработчик на RootBorder (корневой Border на весь мини-плеер) чинит это раз и навсегда,
+    // не завязываясь на то, какие именно элементы сейчас видимы: клик в любом месте, которое не
+    // перехватил кто-то более конкретный выше по дереву (кнопка, прогресс-бар, оверлей
+    // прозрачности в контекстном меню), в итоге доходит именно сюда.
+    private void RootBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!_mainWindow.Settings.MiniPlayerPinned && e.ButtonState == MouseButtonState.Pressed)
+            DragMove();
     }
 
     // DragMove блокирует поток до отпускания кнопки мыши, поэтому момент, когда окно
@@ -729,6 +761,10 @@ public partial class MiniPlayerWindow : Window
         overlay.CaptureMouse();
         _isDraggingProgress = true;
         SeekFromMouse(e.GetPosition(overlay).X, overlay.ActualWidth);
+
+        // Иначе клик по прогресс-бару всплыл бы дальше до RootBorder_MouseLeftButtonDown и
+        // одновременно с перемоткой попытался бы начать перетаскивание окна тем же кликом.
+        e.Handled = true;
     }
 
     private void Progress_MouseMove(object sender, MouseEventArgs e)

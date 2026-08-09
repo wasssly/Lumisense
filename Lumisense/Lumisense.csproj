@@ -41,6 +41,8 @@
     <Resource Include="Icons\svg\**\*.svg" />
     <Resource Include="Icons\app\lumisense.ico" />
     <Resource Include="Icons\app\lumisense.png" />
+    <Resource Include="Icons\app\lumisense-settings.ico" />
+    <Resource Include="Icons\app\lumisense-settings.png" />
   </ItemGroup>
 
   <ItemGroup>

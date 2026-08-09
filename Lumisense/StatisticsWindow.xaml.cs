@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Media;
 using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
@@ -29,17 +30,21 @@ public partial class StatisticsWindow : FluentWindow
 
     // То же самое, что и MainWindow.ApplyWindowBackdrop/SettingsWindow.ApplyWindowBackdrop —
     // своя копия, потому что применяется к собственному HWND этого окна. Вызывается и из
-    // конструктора (Mica/Acrylic это не важно), и повторно из OnSourceInitialized ниже — Blur
-    // (WindowBlurHelper.EnableBlur) нужен уже реальный нативный хендл, которого в конструкторе
-    // ещё нет.
+    // конструктора (Mica/Acrylic это не важно), и повторно из OnSourceInitialized ниже — Blur/
+    // AccentBlur (WindowBlurHelper.EnableBlur/EnableAccentBlur) нужен уже реальный нативный
+    // хендл, которого в конструкторе ещё нет.
     private void ApplyWindowBackdrop()
     {
         IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
 
-        if (_settings.WindowBackdropType == "Blur")
+        if (_settings.WindowBackdropType is "Blur" or "AccentBlur")
         {
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
-            WindowBlurHelper.EnableBlur(hwnd, _settings.IsLightThemeResolved());
+
+            if (_settings.WindowBackdropType == "AccentBlur")
+                WindowBlurHelper.EnableAccentBlur(hwnd, ResolveAccentColor(), _settings.IsLightThemeResolved());
+            else
+                WindowBlurHelper.EnableBlur(hwnd, _settings.IsLightThemeResolved());
         }
         else
         {
@@ -48,6 +53,24 @@ public partial class StatisticsWindow : FluentWindow
                 ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
                 : Wpf.Ui.Controls.WindowBackdropType.Mica;
         }
+    }
+
+    // Урезанная копия MainWindow.GetResolvedAccentColor — у этого окна нет ссылки на
+    // MainWindow (конструктору передаются только AppSettings), а тянуть её сюда только ради
+    // одного этого метода не стоит: и без того у каждого из трёх окон уже есть собственная
+    // копия ApplyWindowBackdrop (см. комментарий выше), это тот же самый устоявшийся в проекте
+    // подход.
+    private Color ResolveAccentColor()
+    {
+        if (_settings.AccentColorMode == "Manual")
+        {
+            try { return (Color)ColorConverter.ConvertFromString(_settings.AccentColorHex); }
+            catch { /* некорректный hex — откатываемся на системный акцент ниже */ }
+        }
+
+        return Application.Current.Resources["SystemAccentColor"] is Color color
+            ? color
+            : Color.FromRgb(0x00, 0x78, 0xD4);
     }
 
     protected override void OnSourceInitialized(EventArgs e)

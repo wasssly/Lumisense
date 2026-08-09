@@ -90,11 +90,14 @@ public class AppSettings
 
     // Подложка окна (эффект под содержимым, за счёт которого сквозь окно частично видно
     // рабочий стол) — "Mica" (по умолчанию, как было всегда: лёгкое размытие, почти
-    // непрозрачно), "Acrylic" (заметно сильнее размытие и полупрозрачность) или "Blur".
-    // Mica/Acrylic — современный системный backdrop Windows 11 (DWM API, через
-    // Wpf.Ui.Controls.WindowBackdropType). Blur — старая техника AccentBlurBehind
-    // (WindowBlurHelper, SetWindowCompositionAttribute) — работает и на Windows 10, но
-    // выглядит проще: ровное размытие без "зерна" и оттенка настоящего Acrylic. Применяется
+    // непрозрачно), "Acrylic" (заметно сильнее размытие и полупрозрачность), "Blur" или
+    // "AccentBlur". Mica/Acrylic — современный системный backdrop Windows 11 (DWM API, через
+    // Wpf.Ui.Controls.WindowBackdropType). "Blur" и "AccentBlur" — оба через старую технику
+    // AccentBlurBehind (WindowBlurHelper, недокументированный SetWindowCompositionAttribute) —
+    // работают и на Windows 10, выглядят проще: ровное размытие без "зерна" настоящего Acrylic.
+    // Разница между ними только в тонировке: "Blur" — нейтрально-серая под тему (как было
+    // всегда), "AccentBlur" — с примесью акцентного цвета приложения (WindowBlurHelper.
+    // EnableAccentBlur), то самое размытие "с акцентом на системные цвета Windows". Применяется
     // только к трём "основным" окнам приложения — MainWindow, SettingsWindow, StatisticsWindow
     // (см. их конструкторы/ApplyWindowBackdrop/OnSourceInitialized) — остальные мелкие
     // диалоговые окна (свойства трека, поиск обложки и т.п.) специально не трогаем: они
@@ -228,6 +231,13 @@ public class AppSettings
     // null означает "ещё ни разу не задавалось" — тогда используется положение по умолчанию.
     public double? MiniPlayerLeft { get; set; }
     public double? MiniPlayerTop { get; set; }
+
+    // Место на экране, куда пользователь перетащил окно настроек в последний раз — сохраняется
+    // между сессиями (см. SettingsWindow.OnLocationChanged/RestoreOrCenterPosition). null
+    // означает "пользователь ни разу не двигал окно" — тогда оно открывается по центру экрана
+    // (владельца), как и раньше.
+    public double? SettingsWindowLeft { get; set; }
+    public double? SettingsWindowTop { get; set; }
 
     // Настраиваемые глобальные горячие клавиши. По умолчанию — Ctrl+Alt+<клавиша>,
     // чтобы не конфликтовать с обычным набором текста в других приложениях.

@@ -1090,17 +1090,24 @@ public partial class MainWindow : FluentWindow
     // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте (и
     // ещё раз из OnSourceInitialized, см. там) и заново из окна настроек при переключении этой
     // настройки (см. SettingsWindow.WindowBackdropRadio_Changed), пока главное окно уже открыто.
+    // Также заново вызывается из ApplyAccentColor (см. вызовы там) — если сейчас выбран именно
+    // "AccentBlur", тонировка подложки зависит от акцента, и при его смене подложку нужно
+    // перекрасить, а не только сами элементы управления.
     public void ApplyWindowBackdrop()
     {
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
 
-        if (_settings.WindowBackdropType == "Blur")
+        if (_settings.WindowBackdropType is "Blur" or "AccentBlur")
         {
             // Системный backdrop (Mica/Acrylic через DWM) и классический blur-behind — два
             // разных механизма композиции окна, одновременно они не нужны и могут
             // конфликтовать, поэтому сначала гарантированно выключаем системный.
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
-            WindowBlurHelper.EnableBlur(hwnd, _settings.IsLightThemeResolved());
+
+            if (_settings.WindowBackdropType == "AccentBlur")
+                WindowBlurHelper.EnableAccentBlur(hwnd, GetResolvedAccentColor(), _settings.IsLightThemeResolved());
+            else
+                WindowBlurHelper.EnableBlur(hwnd, _settings.IsLightThemeResolved());
         }
         else
         {
@@ -1404,6 +1411,11 @@ public partial class MainWindow : FluentWindow
             ApplyContentScale(square || _isFullscreenLayout);
             SetPlaylistVisibility(true);
 
+            // Снимок того, к каким краям рабочей области окно прилегало ДО ресайза (само по
+            // себе или через прилипание — WindowSnapHelper даёт один и тот же порог что для
+            // мини-плеера, что для этого окна) — см. ReapplyEdgeAnchors ниже, зачем это нужно.
+            var edgeAnchors = CaptureEdgeAnchors();
+
             if (square)
             {
                 // Крупный контент квадратного вида занимает больше места, чем обычная
@@ -1425,6 +1437,17 @@ public partial class MainWindow : FluentWindow
             {
                 RestoreRectangularWidth();
             }
+
+            // Квадратный вид ощутимо шире и/или выше прямоугольного (см. SquareContentMaxWidth
+            // и запас SquareMinHeightWithPlaylist выше) — MakeWindowSquare/RestoreRectangularWidth
+            // меняют только Width/Height, оставляя Left/Top как есть, поэтому окно растёт
+            // строго вправо-вниз от текущего верхнего левого угла. Если до переключения вида
+            // окно стояло вплотную к правому и/или нижнему краю экрана — выросшее окно вылезало
+            // за пределы рабочей области именно этой стороной, оставаясь прилипшим только к
+            // противоположной. ReapplyEdgeAnchors удерживает те же самые края прилегающими (а
+            // заодно, независимо от того, было ли раньше прилипание — на всякий случай не даёт
+            // окну оказаться частично за пределами экрана вообще).
+            ReapplyEdgeAnchors(edgeAnchors);
 
             // Считаем ширину контента ПОСЛЕ того, как Width/Height уже приведены к новому
             // виду (MakeWindowSquare/RestoreRectangularWidth выше) — иначе для квадратного
@@ -1460,6 +1483,109 @@ public partial class MainWindow : FluentWindow
     {
         MinWidth = 400; // как задан MinWidth окна в XAML
         Width = DefaultWindowWidth;
+    }
+
+    // ---------- Удержание окна у краёв экрана при смене вида (Квадрат/Прямоугольный) ----------
+    // См. вызовы в SetPlayerViewMode. Работает в физических пикселях через тот же
+    // WindowSnapHelper.RECT/SnapMarginPx, что и TrySnapToScreenEdges — чтобы порог "у самого
+    // края" был одним и тем же независимо от того, тащат окно мышью или меняют вид плеера.
+
+    private readonly struct EdgeAnchors
+    {
+        public readonly bool Left, Top, Right, Bottom;
+        public EdgeAnchors(bool left, bool top, bool right, bool bottom)
+        {
+            Left = left; Top = top; Right = right; Bottom = bottom;
+        }
+    }
+
+    // DIP → физические пиксели того же вида, что и в TrySnapToScreenEdges (TransformToDevice
+    // для текущего монитора) — общий кусок вынесен сюда, чтобы Capture/Reapply не могли
+    // незаметно разъехаться в арифметике.
+    private bool TryGetDeviceRect(out WindowSnapHelper.RECT rect, out Matrix transform)
+    {
+        rect = default;
+        transform = default;
+
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return false;
+
+        transform = target.TransformToDevice;
+        var topLeft = transform.Transform(new Point(Left, Top));
+        var size = transform.Transform(new Point(ActualWidth, ActualHeight));
+
+        rect = new WindowSnapHelper.RECT
+        {
+            Left = (int)Math.Round(topLeft.X),
+            Top = (int)Math.Round(topLeft.Y),
+        };
+        rect.Right = rect.Left + (int)Math.Round(size.X);
+        rect.Bottom = rect.Top + (int)Math.Round(size.Y);
+        return true;
+    }
+
+    // Вызывается ДО того, как MakeWindowSquare/RestoreRectangularWidth поменяют Width/Height —
+    // запоминает, к каким именно краям рабочей области окно прилегало на момент переключения
+    // вида (сама по себе позиция или предыдущее прилипание — неважно, порог тот же
+    // SnapMarginPx, что и при перетаскивании).
+    private EdgeAnchors CaptureEdgeAnchors()
+    {
+        if (!TryGetDeviceRect(out var rect, out _)) return default;
+
+        var winBounds = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+        var workArea = System.Windows.Forms.Screen.FromRectangle(winBounds).WorkingArea;
+
+        return new EdgeAnchors(
+            left: Math.Abs(rect.Left - workArea.Left) <= WindowSnapHelper.SnapMarginPx,
+            top: Math.Abs(rect.Top - workArea.Top) <= WindowSnapHelper.SnapMarginPx,
+            right: Math.Abs(rect.Right - workArea.Right) <= WindowSnapHelper.SnapMarginPx,
+            bottom: Math.Abs(rect.Bottom - workArea.Bottom) <= WindowSnapHelper.SnapMarginPx);
+    }
+
+    // Вызывается ПОСЛЕ того, как Width/Height уже приведены к новому виду (MakeWindowSquare/
+    // RestoreRectangularWidth) — двигает Left/Top так, чтобы стороны, отмеченные в anchors,
+    // остались прилегающими к тем же краям рабочей области, что и до ресайза. Заодно (уже
+    // безусловно, вне зависимости от anchors) не даёт окну в принципе оказаться частично за
+    // пределами рабочей области — например, если оно стояло чуть дальше SnapMarginPx от края,
+    // но всё равно недостаточно далеко, чтобы вместить выросшее окно целиком.
+    private void ReapplyEdgeAnchors(EdgeAnchors anchors)
+    {
+        if (!TryGetDeviceRect(out var rect, out var transform)) return;
+
+        var winBounds = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+        var workArea = System.Windows.Forms.Screen.FromRectangle(winBounds).WorkingArea;
+
+        int width = rect.Right - rect.Left;
+        int height = rect.Bottom - rect.Top;
+
+        if (anchors.Right) rect.Left = workArea.Right - width;
+        else if (anchors.Left) rect.Left = workArea.Left;
+
+        if (anchors.Bottom) rect.Top = workArea.Bottom - height;
+        else if (anchors.Top) rect.Top = workArea.Top;
+
+        // Безусловный запасной клэмп — держит окно в пределах рабочей области экрана даже
+        // тогда, когда ни один из anchors выше не сработал.
+        rect.Left = Math.Clamp(rect.Left, workArea.Left, Math.Max(workArea.Left, workArea.Right - width));
+        rect.Top = Math.Clamp(rect.Top, workArea.Top, Math.Max(workArea.Top, workArea.Bottom - height));
+
+        var deviceToDip = transform;
+        deviceToDip.Invert(); // Matrix — struct, копия; Invert() меняет её на месте, а не возвращает новую
+        var newTopLeft = deviceToDip.Transform(new Point(rect.Left, rect.Top));
+
+        // _isApplyingSnap — та же защита от повторного входа через LocationChanged, что и в
+        // TrySnapToScreenEdges (см. комментарий у поля выше в файле): сама подгонка Left/Top
+        // здесь тоже порождает LocationChanged, и его не нужно обрабатывать как новое
+        // перетаскивание.
+        _isApplyingSnap = true;
+        try
+        {
+            Left = newTopLeft.X;
+            Top = newTopLeft.Y;
+        }
+        finally
+        {
+            _isApplyingSnap = false;
+        }
     }
 
     // Обработчик всех трёх пунктов контекстного меню вида плеера — какой именно вид
