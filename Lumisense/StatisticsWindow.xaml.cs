@@ -39,7 +39,7 @@ public partial class StatisticsWindow : FluentWindow
         if (_settings.WindowBackdropType == "Blur")
         {
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
-            WindowBlurHelper.EnableBlur(hwnd);
+            WindowBlurHelper.EnableBlur(hwnd, _settings.IsLightThemeResolved());
         }
         else
         {

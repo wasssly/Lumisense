@@ -64,7 +64,7 @@ public partial class SettingsWindow : FluentWindow
         if (settings.WindowBackdropType == "Blur")
         {
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
-            WindowBlurHelper.EnableBlur(hwnd);
+            WindowBlurHelper.EnableBlur(hwnd, settings.IsLightThemeResolved());
         }
         else
         {

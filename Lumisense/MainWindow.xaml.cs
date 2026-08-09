@@ -133,14 +133,21 @@ public partial class MainWindow : FluentWindow
     // MouseLeftButtonDown — см. Header_MouseLeftButtonDown), перетаскивание этого окна за
     // заголовок целиком обрабатывает ui:TitleBar на уровне Win32 (WM_NCHITTEST → HTCAPTION,
     // см. комментарий у самого TitleBar в MainWindow.xaml) — WPF-обработчики мыши в его
-    // границах вообще не срабатывают, а полагаться, что через HTCAPTION-перетаскивание
-    // добавленный вручную хук HwndSource.AddHook гарантированно увидит WM_MOVING, оказалось
-    // ненадёжно на практике. Поэтому здесь прилипание работает иначе — не через перехват
-    // предлагаемого прямоугольника ДО отрисовки (как в WindowSnapHelper/MiniPlayerWindow), а
-    // через LocationChanged (чисто WPF-событие, гарантированно срабатывающее при любом
-    // изменении Left/Top независимо от того, как именно двигают окно) с "довороткой" на
-    // ближайший край сразу после. _isApplyingSnap — защита от повторного входа: сама подгонка
-    // Left/Top ниже тоже порождает LocationChanged, её не нужно обрабатывать повторно.
+    // границах вообще не срабатывают. Модификация предлагаемого прямоугольника через WM_MOVING
+    // (как в WindowSnapHelper/MiniPlayerWindow) для такого перетаскивания на практике оказалась
+    // ненадёжной — похоже, из-за композитинга DWM у окна с Mica/Acrylic-подложкой и
+    // ExtendsContentIntoTitleBar правки WM_MOVING либо не долетают, либо не применяются. Поэтому
+    // здесь два гибридных механизма вместо одного:
+    //   1) WM_ENTERSIZEMOVE/WM_EXITSIZEMOVE (простые уведомления без контракта на возврат
+    //      значения, надёжно приходят при ЛЮБОМ интерактивном перетаскивании независимо от
+    //      способа) — только чтобы знать, идёт ли сейчас перетаскивание;
+    //   2) LocationChanged (чисто WPF-событие) — правит Left/Top уже ПОСЛЕ того, как окно
+    //      реально сдвинулось, пока идёт перетаскивание (см. п.1), и ещё раз гарантированно на
+    //      WM_EXITSIZEMOVE — на случай, если за время перетаскивания LocationChanged успел
+    //      долететь не на каждый кадр, а только под конец.
+    // _isApplyingSnap — защита от повторного входа: сама подгонка Left/Top ниже тоже порождает
+    // LocationChanged, её не нужно обрабатывать повторно.
+    private bool _isDraggingMainWindow;
     private bool _isApplyingSnap;
 
     private SettingsWindow? _settingsWindow;
@@ -670,6 +677,11 @@ public partial class MainWindow : FluentWindow
         // реальный хендл прямо сейчас, поэтому переприменяем здесь, когда он уже точно есть.
         ApplyWindowBackdrop();
 
+        if (PresentationSource.FromVisual(this) is HwndSource hwndSource)
+        {
+            hwndSource.AddHook(MainWindowDragStateWndProc);
+        }
+
         // Глобальные медиаклавиши (Play/Pause, Next, Prev, Stop) — работают даже без фокуса на окне
         _mediaHotKeys = new GlobalMediaHotKeys(this);
         _mediaHotKeys.PlayPausePressed += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
@@ -725,14 +737,42 @@ public partial class MainWindow : FluentWindow
     }
 
     // Прилипание к краям экрана при перетаскивании обычного окна плеера за заголовок — см.
-    // подробное объяснение почему через LocationChanged, а не WM_MOVING (как у
-    // MiniPlayerWindow), в комментарии у поля _isApplyingSnap выше. См. AppSettings.
-    // MainPlayerSnapToEdges (страница "Окно" в настройках) — включено по умолчанию.
+    // подробное объяснение всей схемы в комментарии у поля _isDraggingMainWindow выше. См.
+    // AppSettings.MainPlayerSnapToEdges (страница "Окно" в настройках) — включено по умолчанию.
     private void MainWindow_LocationChanged(object? sender, EventArgs e)
     {
         if (_isApplyingSnap) return;
+        if (!_isDraggingMainWindow) return;
+        TrySnapToScreenEdges();
+    }
+
+    // Простые уведомления без контракта на возврат значения (в отличие от WM_MOVING) — только
+    // чтобы надёжно знать, идёт ли сейчас интерактивное перетаскивание этого окна, независимо
+    // от того, как оно было начато (HTCAPTION от ui:TitleBar или как-то иначе).
+    private IntPtr MainWindowDragStateWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        switch (msg)
+        {
+            case WindowSnapHelper.WM_ENTERSIZEMOVE:
+                _isDraggingMainWindow = true;
+                break;
+
+            case WindowSnapHelper.WM_EXITSIZEMOVE:
+                _isDraggingMainWindow = false;
+                // Гарантированная финальная проверка на отпускание кнопки мыши — на случай,
+                // если за время перетаскивания LocationChanged успел долететь не на каждый
+                // кадр движения, а только под конец (см. подробности у поля выше).
+                TrySnapToScreenEdges();
+                break;
+        }
+
+        return IntPtr.Zero;
+    }
+
+    private void TrySnapToScreenEdges()
+    {
+        if (_isApplyingSnap) return;
         if (!_settings.MainPlayerSnapToEdges) return;
-        if (System.Windows.Input.Mouse.LeftButton != System.Windows.Input.MouseButtonState.Pressed) return;
         if (WindowState != WindowState.Normal) return;
 
         // Left/Top/ActualWidth/ActualHeight — DIP-единицы (96 DPI), а WindowSnapHelper (общий
@@ -1060,7 +1100,7 @@ public partial class MainWindow : FluentWindow
             // разных механизма композиции окна, одновременно они не нужны и могут
             // конфликтовать, поэтому сначала гарантированно выключаем системный.
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
-            WindowBlurHelper.EnableBlur(hwnd);
+            WindowBlurHelper.EnableBlur(hwnd, _settings.IsLightThemeResolved());
         }
         else
         {
