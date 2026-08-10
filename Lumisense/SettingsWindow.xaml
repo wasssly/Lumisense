@@ -559,6 +559,19 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- См. AppSettings.ProgressBarStyle / WaveformView / WaveformGenerator. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Полоса воспроизведения" Margin="0,0,0,8" />
+                                <RadioButton x:Name="ProgressBarSliderRadio" Content="Обычная (по умолчанию)"
+                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,8" />
+                                <RadioButton x:Name="ProgressBarWaveformRadio" Content="Waveform (форма звука, как в SoundCloud)"
+                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,4" />
+                                <TextBlock Text="Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Уведомления — раньше жили на странице "Воспроизведение", вынесены на

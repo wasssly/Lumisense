@@ -483,6 +483,15 @@
                         Minimum="0" Maximum="1" Value="0"
                         ValueChanged="ProgressSlider_ValueChanged" />
 
+                <!-- Альтернативный вид полосы — форма звука вместо сплошной заливки, см.
+                     AppSettings.ProgressBarStyle/MainWindow.ApplyProgressBarStyle. Показывается
+                     вместо ProgressSlider (Visibility переключается в коде), а не вместе с ним —
+                     но сам ProgressSlider всё равно остаётся источником истины для позиции
+                     (Value/Maximum) и перемотки, просто визуально скрыт. -->
+                <local:WaveformView x:Name="ProgressWaveform" Height="28" IsHitTestVisible="False"
+                                     Visibility="Collapsed"
+                                     UnplayedBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+
                 <!-- Прозрачный слой поверх слайдера: сам обрабатывает мышь целиком,
                      чтобы не зависеть от того, куда именно попал клик — на трек или на шарик -->
                 <Border Background="Transparent" Height="24"

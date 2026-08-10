@@ -98,6 +98,13 @@ public class AppSettings
     // закрываются слишком быстро, чтобы разница была заметна, а держать в актуальном состоянии
     // подложку у полутора десятков разных окон ради этого не стоит усилий.
     public string WindowBackdropType { get; set; } = "Mica";
+
+    // Вид полосы воспроизведения на главном окне — "Slider" (по умолчанию, как было всегда:
+    // обычная сплошная полоса-прогресс) или "Waveform" (форма звука по всей длине трека, как в
+    // SoundCloud — см. WaveformView/WaveformGenerator). На мини-плеер не влияет: там полоса
+    // всего 4px высотой, полноценная форма волны на такой высоте всё равно неразличима.
+    public string ProgressBarStyle { get; set; } = "Slider";
+
     public bool AlwaysOnTop { get; set; }                  // Держать окно поверх остальных
     public bool RememberVolume { get; set; } = true;       // Запоминать громкость между запусками
     public double SavedVolume { get; set; } = 0.3;

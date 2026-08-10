@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Windows;
 using System.Windows.Interop;
 using System.Windows.Media;
@@ -47,6 +48,21 @@ public partial class MainWindow : FluentWindow
     private EqualizerSampleProvider? _equalizer;
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+
+    // ---------- Waveform-полоса воспроизведения (см. AppSettings.ProgressBarStyle) ----------
+    // Кэш уже посчитанных пиков по пути файла — тот же трек может грузиться повторно (повтор,
+    // возврат назад по плейлисту, просто повторное открытие), пересчитывать форму волны заново
+    // каждый раз незачем. Ограничен по размеру (см. WaveformCacheLimit) — это просто кэш для
+    // текущей сессии, а не постоянное хранилище.
+    private readonly Dictionary<string, float[]> _waveformCache = new();
+    private readonly Queue<string> _waveformCacheOrder = new();
+    private const int WaveformCacheLimit = 40;
+
+    // Отменяет ещё не завершившийся расчёт формы волны для ПРЕДЫДУЩЕГО трека, если пользователь
+    // успел переключиться на следующий раньше, чем расчёт закончился — без этого результат
+    // устаревшего расчёта мог прилететь и перезаписать уже верно показанную форму волны нового
+    // трека (естественная гонка двух async-операций, ничем, кроме отмены, не разрешаемая).
+    private CancellationTokenSource? _waveformCts;
 
     // Прослушивание засчитывается не в момент старта трека, а только когда реально
     // воспроизведена (не просто перемотана) как минимум половина композиции — см.
@@ -846,6 +862,7 @@ public partial class MainWindow : FluentWindow
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();
+        ApplyProgressBarStyle();
 
         if (_settings.AlwaysOnTop)
             Topmost = true;
@@ -857,6 +874,78 @@ public partial class MainWindow : FluentWindow
         SetRepeatMode(Enum.TryParse<RepeatMode>(_settings.RepeatMode, out var savedRepeatMode)
             ? savedRepeatMode
             : RepeatMode.Off);
+    }
+
+    // Переключает вид полосы воспроизведения (см. AppSettings.ProgressBarStyle) — вызывается на
+    // старте и заново из окна настроек при переключении этой настройки (см.
+    // SettingsWindow.ProgressBarStyleRadio_Changed), пока плеер уже открыт. ProgressSlider
+    // остаётся источником истины для позиции/перемотки в любом случае — переключается только
+    // то, что видно (см. подробный комментарий в MainWindow.xaml у ProgressWaveform).
+    public void ApplyProgressBarStyle()
+    {
+        bool isWaveform = _settings.ProgressBarStyle == "Waveform";
+
+        ProgressSlider.Visibility = isWaveform ? Visibility.Collapsed : Visibility.Visible;
+        ProgressWaveform.Visibility = isWaveform ? Visibility.Visible : Visibility.Collapsed;
+
+        if (isWaveform)
+            _ = EnsureWaveformForCurrentTrackAsync();
+    }
+
+    // Считает (или достаёт из кэша) форму волны для трека, который сейчас загружен — вызывается
+    // и из LoadAndPlay при каждой новой загрузке трека (если в этот момент уже выбран режим
+    // "Waveform"), и из ApplyProgressBarStyle при переключении НА этот режим для уже играющего
+    // трека (до этого момента считать было незачем — режим мог быть выключен всю сессию).
+    private async Task EnsureWaveformForCurrentTrackAsync()
+    {
+        string? filePath = _currentTrackPath;
+        if (filePath == null)
+        {
+            ProgressWaveform.Peaks = null;
+            return;
+        }
+
+        if (_waveformCache.TryGetValue(filePath, out var cached))
+        {
+            ProgressWaveform.Peaks = cached;
+            return;
+        }
+
+        // Пока считаем — показываем заглушку (WaveformView сама рисует плоскую линию для
+        // null), а не форму волны предыдущего трека: иначе на секунду-другую казалось бы, что
+        // полоса уже готова, но просто "залипла" на старом треке.
+        ProgressWaveform.Peaks = null;
+
+        _waveformCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _waveformCts = cts;
+
+        float[]? peaks;
+        try
+        {
+            peaks = await WaveformGenerator.GenerateAsync(filePath, cts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return; // трек уже переключили ещё раз — результат больше не нужен
+        }
+
+        // Тот же самый трек мог успеть смениться, пока мы ждали (переключение до завершения
+        // расчёта, но БЕЗ отмены — например, если это был запрос на другой файл, который сам
+        // тоже прошёл проверку кэша выше и создал свой собственный cts, не отменяя этот). На
+        // практике оба места отменяют предыдущий cts перед стартом нового расчёта, так что
+        // это скорее defensive-проверка на будущее, чем реально достижимый сейчас случай.
+        if (_currentTrackPath != filePath) return;
+
+        if (peaks != null)
+        {
+            _waveformCache[filePath] = peaks;
+            _waveformCacheOrder.Enqueue(filePath);
+            while (_waveformCacheOrder.Count > WaveformCacheLimit)
+                _waveformCache.Remove(_waveformCacheOrder.Dequeue());
+        }
+
+        ProgressWaveform.Peaks = peaks;
     }
 
     // Применяет акцентный цвет из настроек (см. AppSettings.AccentColorMode/AccentColorHex) —
@@ -953,6 +1042,7 @@ public partial class MainWindow : FluentWindow
     {
         PlayPauseButton.Icon = IconResources.MakeOnAccent(_isPlaying ? "IconPause" : "IconPlay", 15);
         PlayPauseButton.Background = new SolidColorBrush(GetResolvedAccentColor()); // всегда акцентная, не переключается
+        ProgressWaveform.PlayedBrush = new SolidColorBrush(GetResolvedAccentColor());
 
         SetAccentButtonActive(ShuffleButton, _isShuffleEnabled);
         IconResources.SetOnAccent(ShuffleIcon, _isShuffleEnabled);
@@ -2437,6 +2527,12 @@ public partial class MainWindow : FluentWindow
 
         LoadAlbumArt(filePath, albumArtDirection);
 
+        // Форма волны считается только если сейчас вообще выбран этот вид полосы — не тратим
+        // время на декодирование всего файла впустую, если пользователь показывает обычный
+        // Slider (по умолчанию).
+        if (_settings.ProgressBarStyle == "Waveform")
+            _ = EnsureWaveformForCurrentTrackAsync();
+
         // Позиция старта: восстановленная (сохранённая между запусками) либо начало трека.
         // Раньше при переключении трека на паузе слайдер и время не сбрасывались и
         // показывали позицию прежнего трека — сбрасываем явно на каждую загрузку.
@@ -2447,6 +2543,10 @@ public partial class MainWindow : FluentWindow
         _audioFile.CurrentTime = position;
         ProgressSlider.Value = position.TotalSeconds;
         CurrentTimeText.Text = position.ToString(@"mm\:ss");
+        ProgressWaveform.Progress = _audioFile.TotalTime.TotalSeconds > 0
+            ? position.TotalSeconds / _audioFile.TotalTime.TotalSeconds
+            : 0;
+
 
         _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
         TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
@@ -2857,6 +2957,7 @@ public partial class MainWindow : FluentWindow
         {
             ProgressSlider.Value = 0;
             CurrentTimeText.Text = "00:00";
+            ProgressWaveform.Peaks = null;
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Stopped);
             PlaybackStateChanged?.Invoke(false);
@@ -3725,6 +3826,11 @@ public partial class MainWindow : FluentWindow
     private void ProgressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         CurrentTimeText.Text = TimeSpan.FromSeconds(e.NewValue).ToString(@"mm\:ss");
+
+        // Общая точка для ЛЮБОГО изменения позиции — ручная перемотка, таймер прогресса или
+        // SeekBy — поэтому проще синхронизировать сюда прогресс waveform-полосы один раз, чем
+        // дублировать это же присваивание в каждом из тех мест по отдельности.
+        ProgressWaveform.Progress = ProgressSlider.Maximum > 0 ? e.NewValue / ProgressSlider.Maximum : 0;
 
         // Пропускаем seek, если это сам таймер обновил слайдер под текущую позицию воспроизведения —
         // иначе будет лишняя перемотка 4 раза в секунду даже когда никто не трогает ползунок
