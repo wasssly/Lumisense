@@ -94,4 +94,36 @@ public static class LumiProfileIO
             prop.SetValue(live, prop.GetValue(imported));
         }
     }
+
+    // Дополнительные исключения для кнопки "Сбросить плеер" (SettingsWindow.
+    // ResetPlayerButton_Click) — те же самые, что и ExcludedProperties выше (плейлист,
+    // избранное, последний трек и т.п. — не трогаем при сбросе, это не "настройки поведения
+    // плеера"), плюс накопленная статистика прослушиваний и пользовательские пресеты
+    // эквалайзера: это данные, которые пользователь накопил сам, а не настройки внешнего
+    // вида/поведения, к которым относится сама кнопка сброса.
+    private static readonly HashSet<string> ResetExcludedProperties = new(ExcludedProperties)
+    {
+        nameof(AppSettings.TotalListenSeconds),
+        nameof(AppSettings.StatsStartedAt),
+        nameof(AppSettings.EqualizerPresets),
+        nameof(AppSettings.SkippedUpdateVersion),
+    };
+
+    // Возвращает все настройки плеера (тема, акцент, подложка окна, вид/размер окна, громкость,
+    // шафл/повтор, мини-плеер, горячие клавиши, тосты, эквалайзер-кривую и т.д.) к значениям
+    // AppSettings по умолчанию — то есть к тому же состоянию, в котором объект AppSettings
+    // оказался бы при самом первом запуске. Библиотеку, статистику и пресеты эквалайзера
+    // не трогает (см. ResetExcludedProperties выше).
+    public static void ResetToDefaults(AppSettings live)
+    {
+        var defaults = new AppSettings();
+
+        foreach (PropertyInfo prop in typeof(AppSettings).GetProperties())
+        {
+            if (!prop.CanRead || !prop.CanWrite) continue;
+            if (ResetExcludedProperties.Contains(prop.Name)) continue;
+
+            prop.SetValue(live, prop.GetValue(defaults));
+        }
+    }
 }

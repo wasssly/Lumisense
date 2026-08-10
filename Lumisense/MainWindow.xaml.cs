@@ -128,28 +128,6 @@ public partial class MainWindow : FluentWindow
     private NowPlayingIntegration? _nowPlaying;
     private MiniPlayerWindow? _miniPlayerWindow;
 
-    // ---------- Прилипание к краям экрана для обычного окна плеера ----------
-    // В отличие от MiniPlayerWindow (та вызывает DragMove() сама, из своего собственного
-    // MouseLeftButtonDown — см. Header_MouseLeftButtonDown), перетаскивание этого окна за
-    // заголовок целиком обрабатывает ui:TitleBar на уровне Win32 (WM_NCHITTEST → HTCAPTION,
-    // см. комментарий у самого TitleBar в MainWindow.xaml) — WPF-обработчики мыши в его
-    // границах вообще не срабатывают. Модификация предлагаемого прямоугольника через WM_MOVING
-    // (как в WindowSnapHelper/MiniPlayerWindow) для такого перетаскивания на практике оказалась
-    // ненадёжной — похоже, из-за композитинга DWM у окна с Mica/Acrylic-подложкой и
-    // ExtendsContentIntoTitleBar правки WM_MOVING либо не долетают, либо не применяются. Поэтому
-    // здесь два гибридных механизма вместо одного:
-    //   1) WM_ENTERSIZEMOVE/WM_EXITSIZEMOVE (простые уведомления без контракта на возврат
-    //      значения, надёжно приходят при ЛЮБОМ интерактивном перетаскивании независимо от
-    //      способа) — только чтобы знать, идёт ли сейчас перетаскивание;
-    //   2) LocationChanged (чисто WPF-событие) — правит Left/Top уже ПОСЛЕ того, как окно
-    //      реально сдвинулось, пока идёт перетаскивание (см. п.1), и ещё раз гарантированно на
-    //      WM_EXITSIZEMOVE — на случай, если за время перетаскивания LocationChanged успел
-    //      долететь не на каждый кадр, а только под конец.
-    // _isApplyingSnap — защита от повторного входа: сама подгонка Left/Top ниже тоже порождает
-    // LocationChanged, её не нужно обрабатывать повторно.
-    private bool _isDraggingMainWindow;
-    private bool _isApplyingSnap;
-
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
     private TrackChangeToastWindow? _trackChangeToastWindow;
@@ -246,7 +224,6 @@ public partial class MainWindow : FluentWindow
 
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
-        LocationChanged += MainWindow_LocationChanged;
 
         // Повторно применяем акцент уже ПОСЛЕ того, как окно реально отрисовано (см.
         // MainWindow_Loaded) — иначе на некоторых машинах при запуске приложения с системным
@@ -671,17 +648,6 @@ public partial class MainWindow : FluentWindow
     {
         base.OnSourceInitialized(e);
 
-        // ApplySettingsOnStartup (конструктор) вызывает ApplyWindowBackdrop до того, как у окна
-        // появляется нативный HWND — для Mica/Acrylic это не проблема (WindowBackdropType сам
-        // применяется отложенно, когда источник готов), а вот WindowBlurHelper.EnableBlur нужен
-        // реальный хендл прямо сейчас, поэтому переприменяем здесь, когда он уже точно есть.
-        ApplyWindowBackdrop();
-
-        if (PresentationSource.FromVisual(this) is HwndSource hwndSource)
-        {
-            hwndSource.AddHook(MainWindowDragStateWndProc);
-        }
-
         // Глобальные медиаклавиши (Play/Pause, Next, Prev, Stop) — работают даже без фокуса на окне
         _mediaHotKeys = new GlobalMediaHotKeys(this);
         _mediaHotKeys.PlayPausePressed += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
@@ -734,84 +700,6 @@ public partial class MainWindow : FluentWindow
         _trayIconManager.ApplyTheme(isLight: _settings.IsLightThemeResolved());
 
         ApplyPlaybackButtonsVisibility();
-    }
-
-    // Прилипание к краям экрана при перетаскивании обычного окна плеера за заголовок — см.
-    // подробное объяснение всей схемы в комментарии у поля _isDraggingMainWindow выше. См.
-    // AppSettings.MainPlayerSnapToEdges (страница "Окно" в настройках) — включено по умолчанию.
-    private void MainWindow_LocationChanged(object? sender, EventArgs e)
-    {
-        if (_isApplyingSnap) return;
-        if (!_isDraggingMainWindow) return;
-        TrySnapToScreenEdges();
-    }
-
-    // Простые уведомления без контракта на возврат значения (в отличие от WM_MOVING) — только
-    // чтобы надёжно знать, идёт ли сейчас интерактивное перетаскивание этого окна, независимо
-    // от того, как оно было начато (HTCAPTION от ui:TitleBar или как-то иначе).
-    private IntPtr MainWindowDragStateWndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
-    {
-        switch (msg)
-        {
-            case WindowSnapHelper.WM_ENTERSIZEMOVE:
-                _isDraggingMainWindow = true;
-                break;
-
-            case WindowSnapHelper.WM_EXITSIZEMOVE:
-                _isDraggingMainWindow = false;
-                // Гарантированная финальная проверка на отпускание кнопки мыши — на случай,
-                // если за время перетаскивания LocationChanged успел долететь не на каждый
-                // кадр движения, а только под конец (см. подробности у поля выше).
-                TrySnapToScreenEdges();
-                break;
-        }
-
-        return IntPtr.Zero;
-    }
-
-    private void TrySnapToScreenEdges()
-    {
-        if (_isApplyingSnap) return;
-        if (!_settings.MainPlayerSnapToEdges) return;
-        if (WindowState != WindowState.Normal) return;
-
-        // Left/Top/ActualWidth/ActualHeight — DIP-единицы (96 DPI), а WindowSnapHelper (общий
-        // с MiniPlayerWindow) считает в физических пикселях, как и его исходный источник —
-        // Win32 RECT. TransformToDevice — тот же самый матричный пересчёт, которым WPF сам
-        // переводит DIP в пиксели при отрисовке на текущем мониторе, поэтому результат корректен
-        // и на мониторах с масштабированием, отличным от 100%.
-        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return;
-
-        var transform = target.TransformToDevice;
-        var topLeft = transform.Transform(new Point(Left, Top));
-        var size = transform.Transform(new Point(ActualWidth, ActualHeight));
-
-        var rect = new WindowSnapHelper.RECT
-        {
-            Left = (int)Math.Round(topLeft.X),
-            Top = (int)Math.Round(topLeft.Y),
-        };
-        rect.Right = rect.Left + (int)Math.Round(size.X);
-        rect.Bottom = rect.Top + (int)Math.Round(size.Y);
-
-        var before = rect;
-        WindowSnapHelper.SnapToScreenEdges(ref rect);
-        if (rect.Left == before.Left && rect.Top == before.Top) return; // уже не рядом с краем — трогать нечего
-
-        var deviceToDip = transform;
-        deviceToDip.Invert(); // Matrix — struct, копия; Invert() меняет её в месте, а не возвращает новую
-        var newTopLeft = deviceToDip.Transform(new Point(rect.Left, rect.Top));
-
-        _isApplyingSnap = true;
-        try
-        {
-            Left = newTopLeft.X;
-            Top = newTopLeft.Y;
-        }
-        finally
-        {
-            _isApplyingSnap = false;
-        }
     }
 
     // Экспериментальная настройка (Settings.HidePlaybackButtons, страница "Экспериментальное"
@@ -1087,35 +975,14 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.RefreshAccentButtons();
     }
 
-    // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте (и
-    // ещё раз из OnSourceInitialized, см. там) и заново из окна настроек при переключении этой
-    // настройки (см. SettingsWindow.WindowBackdropRadio_Changed), пока главное окно уже открыто.
-    // Также заново вызывается из ApplyAccentColor (см. вызовы там) — если сейчас выбран именно
-    // "AccentBlur", тонировка подложки зависит от акцента, и при его смене подложку нужно
-    // перекрасить, а не только сами элементы управления.
+    // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте и
+    // заново из окна настроек при переключении этой настройки (см.
+    // SettingsWindow.WindowBackdropRadio_Changed), пока главное окно уже открыто.
     public void ApplyWindowBackdrop()
     {
-        IntPtr hwnd = new WindowInteropHelper(this).Handle;
-
-        if (_settings.WindowBackdropType is "Blur" or "AccentBlur")
-        {
-            // Системный backdrop (Mica/Acrylic через DWM) и классический blur-behind — два
-            // разных механизма композиции окна, одновременно они не нужны и могут
-            // конфликтовать, поэтому сначала гарантированно выключаем системный.
-            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
-
-            if (_settings.WindowBackdropType == "AccentBlur")
-                WindowBlurHelper.EnableAccentBlur(hwnd, GetResolvedAccentColor(), _settings.IsLightThemeResolved());
-            else
-                WindowBlurHelper.EnableBlur(hwnd, _settings.IsLightThemeResolved());
-        }
-        else
-        {
-            WindowBlurHelper.DisableBlur(hwnd);
-            WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
-                ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
-                : Wpf.Ui.Controls.WindowBackdropType.Mica;
-        }
+        WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
+            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
+            : Wpf.Ui.Controls.WindowBackdropType.Mica;
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettingsWindow();
@@ -1411,11 +1278,6 @@ public partial class MainWindow : FluentWindow
             ApplyContentScale(square || _isFullscreenLayout);
             SetPlaylistVisibility(true);
 
-            // Снимок того, к каким краям рабочей области окно прилегало ДО ресайза (само по
-            // себе или через прилипание — WindowSnapHelper даёт один и тот же порог что для
-            // мини-плеера, что для этого окна) — см. ReapplyEdgeAnchors ниже, зачем это нужно.
-            var edgeAnchors = CaptureEdgeAnchors();
-
             if (square)
             {
                 // Крупный контент квадратного вида занимает больше места, чем обычная
@@ -1441,13 +1303,14 @@ public partial class MainWindow : FluentWindow
             // Квадратный вид ощутимо шире и/или выше прямоугольного (см. SquareContentMaxWidth
             // и запас SquareMinHeightWithPlaylist выше) — MakeWindowSquare/RestoreRectangularWidth
             // меняют только Width/Height, оставляя Left/Top как есть, поэтому окно растёт
-            // строго вправо-вниз от текущего верхнего левого угла. Если до переключения вида
-            // окно стояло вплотную к правому и/или нижнему краю экрана — выросшее окно вылезало
-            // за пределы рабочей области именно этой стороной, оставаясь прилипшим только к
-            // противоположной. ReapplyEdgeAnchors удерживает те же самые края прилегающими (а
-            // заодно, независимо от того, было ли раньше прилипание — на всякий случай не даёт
-            // окну оказаться частично за пределами экрана вообще).
-            ReapplyEdgeAnchors(edgeAnchors);
+            // строго вправо-вниз от текущего верхнего левого угла. Если окно стояло у самого
+            // правого и/или нижнего края экрана — выросшее окно могло вылезти за пределы
+            // рабочей области именно этой стороной. ClampWindowToWorkArea просто не даёт окну
+            // оказаться частично за пределами экрана после ресайза — без какого-либо
+            // "магнитного" примагничивания к краю, чтобы не спутать с прилипанием при
+            // перетаскивании (которого у этого окна больше нет, см. AppSettings — раньше была
+            // ненадёжная попытка сделать именно это).
+            ClampWindowToWorkArea();
 
             // Считаем ширину контента ПОСЛЕ того, как Width/Height уже приведены к новому
             // виду (MakeWindowSquare/RestoreRectangularWidth выше) — иначе для квадратного
@@ -1485,107 +1348,45 @@ public partial class MainWindow : FluentWindow
         Width = DefaultWindowWidth;
     }
 
-    // ---------- Удержание окна у краёв экрана при смене вида (Квадрат/Прямоугольный) ----------
-    // См. вызовы в SetPlayerViewMode. Работает в физических пикселях через тот же
-    // WindowSnapHelper.RECT/SnapMarginPx, что и TrySnapToScreenEdges — чтобы порог "у самого
-    // края" был одним и тем же независимо от того, тащат окно мышью или меняют вид плеера.
-
-    private readonly struct EdgeAnchors
+    // ---------- Не даём окну вылезти за экран при смене вида (Квадрат/Прямоугольный) ----------
+    // См. вызов в SetPlayerViewMode. MakeWindowSquare/RestoreRectangularWidth меняют только
+    // Width/Height, оставляя Left/Top как есть — окно растёт строго вправо-вниз от текущего
+    // угла, и если оно стояло у самого правого/нижнего края экрана, выросшее окно могло
+    // оказаться частично за пределами рабочей области. Это простой безусловный клэмп в
+    // границы экрана — никакого "магнитного" примагничивания к краю тут нет и не было, только
+    // гарантия, что окно останется полностью видимым и доступным для мыши.
+    private void ClampWindowToWorkArea()
     {
-        public readonly bool Left, Top, Right, Bottom;
-        public EdgeAnchors(bool left, bool top, bool right, bool bottom)
-        {
-            Left = left; Top = top; Right = right; Bottom = bottom;
-        }
-    }
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return;
+        if (WindowState != WindowState.Normal) return;
 
-    // DIP → физические пиксели того же вида, что и в TrySnapToScreenEdges (TransformToDevice
-    // для текущего монитора) — общий кусок вынесен сюда, чтобы Capture/Reapply не могли
-    // незаметно разъехаться в арифметике.
-    private bool TryGetDeviceRect(out WindowSnapHelper.RECT rect, out Matrix transform)
-    {
-        rect = default;
-        transform = default;
-
-        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return false;
-
-        transform = target.TransformToDevice;
+        // Left/Top/ActualWidth/ActualHeight — DIP-единицы (96 DPI), Screen.WorkingArea —
+        // физические пиксели; TransformToDevice — тот же пересчёт, которым WPF сам переводит
+        // DIP в пиксели при отрисовке на текущем мониторе, поэтому клэмп корректен и на
+        // мониторах с масштабированием, отличным от 100%.
+        var transform = target.TransformToDevice;
         var topLeft = transform.Transform(new Point(Left, Top));
         var size = transform.Transform(new Point(ActualWidth, ActualHeight));
 
-        rect = new WindowSnapHelper.RECT
-        {
-            Left = (int)Math.Round(topLeft.X),
-            Top = (int)Math.Round(topLeft.Y),
-        };
-        rect.Right = rect.Left + (int)Math.Round(size.X);
-        rect.Bottom = rect.Top + (int)Math.Round(size.Y);
-        return true;
-    }
+        int left = (int)Math.Round(topLeft.X);
+        int top = (int)Math.Round(topLeft.Y);
+        int width = (int)Math.Round(size.X);
+        int height = (int)Math.Round(size.Y);
 
-    // Вызывается ДО того, как MakeWindowSquare/RestoreRectangularWidth поменяют Width/Height —
-    // запоминает, к каким именно краям рабочей области окно прилегало на момент переключения
-    // вида (сама по себе позиция или предыдущее прилипание — неважно, порог тот же
-    // SnapMarginPx, что и при перетаскивании).
-    private EdgeAnchors CaptureEdgeAnchors()
-    {
-        if (!TryGetDeviceRect(out var rect, out _)) return default;
-
-        var winBounds = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
+        var winBounds = new System.Drawing.Rectangle(left, top, width, height);
         var workArea = System.Windows.Forms.Screen.FromRectangle(winBounds).WorkingArea;
 
-        return new EdgeAnchors(
-            left: Math.Abs(rect.Left - workArea.Left) <= WindowSnapHelper.SnapMarginPx,
-            top: Math.Abs(rect.Top - workArea.Top) <= WindowSnapHelper.SnapMarginPx,
-            right: Math.Abs(rect.Right - workArea.Right) <= WindowSnapHelper.SnapMarginPx,
-            bottom: Math.Abs(rect.Bottom - workArea.Bottom) <= WindowSnapHelper.SnapMarginPx);
-    }
+        int clampedLeft = Math.Clamp(left, workArea.Left, Math.Max(workArea.Left, workArea.Right - width));
+        int clampedTop = Math.Clamp(top, workArea.Top, Math.Max(workArea.Top, workArea.Bottom - height));
 
-    // Вызывается ПОСЛЕ того, как Width/Height уже приведены к новому виду (MakeWindowSquare/
-    // RestoreRectangularWidth) — двигает Left/Top так, чтобы стороны, отмеченные в anchors,
-    // остались прилегающими к тем же краям рабочей области, что и до ресайза. Заодно (уже
-    // безусловно, вне зависимости от anchors) не даёт окну в принципе оказаться частично за
-    // пределами рабочей области — например, если оно стояло чуть дальше SnapMarginPx от края,
-    // но всё равно недостаточно далеко, чтобы вместить выросшее окно целиком.
-    private void ReapplyEdgeAnchors(EdgeAnchors anchors)
-    {
-        if (!TryGetDeviceRect(out var rect, out var transform)) return;
-
-        var winBounds = new System.Drawing.Rectangle(rect.Left, rect.Top, rect.Right - rect.Left, rect.Bottom - rect.Top);
-        var workArea = System.Windows.Forms.Screen.FromRectangle(winBounds).WorkingArea;
-
-        int width = rect.Right - rect.Left;
-        int height = rect.Bottom - rect.Top;
-
-        if (anchors.Right) rect.Left = workArea.Right - width;
-        else if (anchors.Left) rect.Left = workArea.Left;
-
-        if (anchors.Bottom) rect.Top = workArea.Bottom - height;
-        else if (anchors.Top) rect.Top = workArea.Top;
-
-        // Безусловный запасной клэмп — держит окно в пределах рабочей области экрана даже
-        // тогда, когда ни один из anchors выше не сработал.
-        rect.Left = Math.Clamp(rect.Left, workArea.Left, Math.Max(workArea.Left, workArea.Right - width));
-        rect.Top = Math.Clamp(rect.Top, workArea.Top, Math.Max(workArea.Top, workArea.Bottom - height));
+        if (clampedLeft == left && clampedTop == top) return; // уже полностью на экране — трогать нечего
 
         var deviceToDip = transform;
         deviceToDip.Invert(); // Matrix — struct, копия; Invert() меняет её на месте, а не возвращает новую
-        var newTopLeft = deviceToDip.Transform(new Point(rect.Left, rect.Top));
+        var newTopLeft = deviceToDip.Transform(new Point(clampedLeft, clampedTop));
 
-        // _isApplyingSnap — та же защита от повторного входа через LocationChanged, что и в
-        // TrySnapToScreenEdges (см. комментарий у поля выше в файле): сама подгонка Left/Top
-        // здесь тоже порождает LocationChanged, и его не нужно обрабатывать как новое
-        // перетаскивание.
-        _isApplyingSnap = true;
-        try
-        {
-            Left = newTopLeft.X;
-            Top = newTopLeft.Y;
-        }
-        finally
-        {
-            _isApplyingSnap = false;
-        }
+        Left = newTopLeft.X;
+        Top = newTopLeft.Y;
     }
 
     // Обработчик всех трёх пунктов контекстного меню вида плеера — какой именно вид
@@ -4042,11 +3843,12 @@ public partial class MainWindow : FluentWindow
     private void MuteButton_Click(object sender, RoutedEventArgs e) => ToggleMute();
 
     // Живо переприменяет только самые заметные настройки сразу после импорта .lumi-профиля
-    // (см. LumiProfileIO.Apply) — тему, акцент, подложку окна. Остальное (хоткеи, эквалайзер,
-    // поведение трея, мини-плеера и т.п.) читается только при старте соответствующих подсистем
-    // — тянуть живое обновление для всего сразу ради разового действия "импортировать
-    // настройки" себя не окупает, поэтому SettingsWindow дополнительно предлагает
-    // перезапустить плеер.
+    // (см. LumiProfileIO.Apply) или сброса плеера к настройкам по умолчанию (см.
+    // LumiProfileIO.ResetToDefaults, SettingsWindow.ResetPlayerButton_Click) — тему, акцент,
+    // подложку окна. Остальное (хоткеи, эквалайзер, поведение трея, мини-плеера и т.п.)
+    // читается только при старте соответствующих подсистем — тянуть живое обновление для всего
+    // сразу ради разового действия себя не окупает, поэтому SettingsWindow в обоих случаях
+    // дополнительно предлагает перезапустить плеер.
     public void ApplyImportedSettingsLive()
     {
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);

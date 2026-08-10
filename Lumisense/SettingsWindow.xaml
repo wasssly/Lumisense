@@ -350,12 +350,8 @@
                                 <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
                                 <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
-                                <RadioButton x:Name="BackdropBlurRadio" Content="Blur (размытие без системного эффекта Windows 11)"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
-                                <RadioButton x:Name="BackdropAccentBlurRadio" Content="AccentBlur (то же размытие, но с оттенком акцентного цвета)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,4" />
-                                <TextBlock Text="Применяется к главному окну, окну настроек и статистике — на остальных, мелких окнах разницы почти не видно. Blur и AccentBlur работают и на Windows 10, в отличие от Mica/Acrylic."
+                                <TextBlock Text="Применяется к главному окну, окну настроек и статистике."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
                         </Border>
@@ -518,13 +514,7 @@
                                           Checked="AlwaysOnTopCheckBox_Changed" Unchecked="AlwaysOnTopCheckBox_Changed"
                                           Margin="0,0,0,8" />
                                 <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Сворачивать в трей при закрытии"
-                                          Checked="MinimizeToTrayCheckBox_Changed" Unchecked="MinimizeToTrayCheckBox_Changed"
-                                          Margin="0,0,0,8" />
-                                <!-- См. AppSettings.MainPlayerSnapToEdges / WindowSnapHelper. -->
-                                <CheckBox x:Name="MainSnapToEdgesCheckBox" Content="Прилипание к краям экрана"
-                                          Checked="MainSnapToEdgesCheckBox_Changed" Unchecked="MainSnapToEdgesCheckBox_Changed" />
-                                <TextBlock Text="При перетаскивании окно мышью «магнитится» к ближайшему краю экрана, если оказывается рядом с ним."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                          Checked="MinimizeToTrayCheckBox_Changed" Unchecked="MinimizeToTrayCheckBox_Changed" />
                             </StackPanel>
                         </Border>
 
@@ -1162,6 +1152,34 @@
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="Импортировать настройки…" FontWeight="SemiBold" />
                                     <TextBlock Text="Из .lumi-файла, экспортированного на другом компьютере" FontSize="12" Opacity="0.6" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
+
+                        <!-- См. SettingsWindow.ResetPlayerButton_Click / AppSettings.ResetToDefaults. -->
+                        <TextBlock Text="Сброс" Style="{StaticResource PageTitleStyle}" FontSize="16" Margin="0,24,0,8" />
+                        <TextBlock Text="Возвращает тему, акцент, подложку окна, вид и размер плеера, громкость, шафл/повтор, горячие клавиши, мини-плеер и остальные переключатели к значениям по умолчанию. Плейлист, избранное, история прослушиваний, статистика и сохранённые пресеты эквалайзера не затрагиваются."
+                                   Opacity="0.6" FontSize="12" Margin="0,0,0,16" TextWrapping="Wrap" />
+
+                        <ui:Button x:Name="ResetPlayerButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Click="ResetPlayerButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconRefresh" Size="16"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Сбросить плеер к исходному состоянию" FontWeight="SemiBold" />
+                                    <TextBlock Text="Настройки внешнего вида и поведения — к значениям по умолчанию" FontSize="12" Opacity="0.6" />
                                 </StackPanel>
                             </Grid>
                         </ui:Button>

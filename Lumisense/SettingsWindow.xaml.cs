@@ -54,49 +54,25 @@ public partial class SettingsWindow : FluentWindow
 
     // То же самое, что и MainWindow.ApplyWindowBackdrop — этому окну нужна собственная копия,
     // а не вызов чужого метода, потому что применяется к его СОБСТВЕННОМУ HWND, а не к HWND
-    // главного окна. См. её же подробный комментарий для сути "почему через System.None +
-    // WindowBlurHelper, а не просто WindowBackdropType.Blur" (в WPF-UI такого значения нет —
-    // Blur здесь не системный DWM backdrop, а старая техника AccentBlurBehind).
-    private void ApplyWindowBackdrop(AppSettings settings, MainWindow owner)
+    // главного окна.
+    private void ApplyWindowBackdrop(AppSettings settings)
     {
-        IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-
-        if (settings.WindowBackdropType is "Blur" or "AccentBlur")
-        {
-            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
-
-            if (settings.WindowBackdropType == "AccentBlur")
-                WindowBlurHelper.EnableAccentBlur(hwnd, owner.GetResolvedAccentColor(), settings.IsLightThemeResolved());
-            else
-                WindowBlurHelper.EnableBlur(hwnd, settings.IsLightThemeResolved());
-        }
-        else
-        {
-            WindowBlurHelper.DisableBlur(hwnd);
-            WindowBackdropType = settings.WindowBackdropType == "Acrylic"
-                ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
-                : Wpf.Ui.Controls.WindowBackdropType.Mica;
-        }
+        WindowBackdropType = settings.WindowBackdropType == "Acrylic"
+            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
+            : Wpf.Ui.Controls.WindowBackdropType.Mica;
     }
 
-    // ApplyWindowBackdrop из конструктора выполняется до того, как у окна появляется нативный
-    // HWND (см. тот же порядок вызовов в MainWindow.ApplySettingsOnStartup/OnSourceInitialized)
-    // — для Mica/Acrylic это не важно, а WindowBlurHelper.EnableBlur/EnableAccentBlur нужен
-    // реальный хендл, поэтому переприменяем здесь, когда он уже точно есть. К этому моменту
-    // _settings/_owner (в отличие от вызова прямо из конструктора, см. ниже) уже гарантированно
-    // присвоены — OnSourceInitialized срабатывает при первом Show(), то есть уже после того, как
-    // конструктор полностью отработал.
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
-        ApplyWindowBackdrop(_settings, _owner);
+        ApplyWindowBackdrop(_settings);
     }
 
     public SettingsWindow(AppSettings settings, MainWindow owner, string? initialPage = null)
     {
         InitializeComponent();
 
-        ApplyWindowBackdrop(settings, owner);
+        ApplyWindowBackdrop(settings);
 
         // Выбираем стартовую страницу здесь, а не через IsChecked="True" в XAML — на этот
         // момент все страницы (PageAppearance, PageWindow и т.д.) уже гарантированно созданы,
@@ -149,11 +125,7 @@ public partial class SettingsWindow : FluentWindow
         RefreshAccentSwatchSelection();
 
         BackdropAcrylicRadio.IsChecked = _settings.WindowBackdropType == "Acrylic";
-        BackdropBlurRadio.IsChecked = _settings.WindowBackdropType == "Blur";
-        BackdropAccentBlurRadio.IsChecked = _settings.WindowBackdropType == "AccentBlur";
-        BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault()
-                                       && !BackdropBlurRadio.IsChecked.GetValueOrDefault()
-                                       && !BackdropAccentBlurRadio.IsChecked.GetValueOrDefault();
+        BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault();
 
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
@@ -162,7 +134,6 @@ public partial class SettingsWindow : FluentWindow
         InitializeToastPositionAndSize();
         InitializeToastMonitorCombo();
         MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
-        MainSnapToEdgesCheckBox.IsChecked = _settings.MainPlayerSnapToEdges;
 
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
         // чекбокс всегда показывает то, что реально настроено, а не могло устареть.
@@ -431,7 +402,6 @@ public partial class SettingsWindow : FluentWindow
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
-        Add("Прилипание к краям экрана", "Окно", "Window", MainSnapToEdgesCheckBox, "прилипание магнит края экран snap edge окно window");
         Add("Запускать вместе с Windows", "Окно", "Window", LaunchOnStartupCheckBox, "автозапуск запуск windows автозагрузка startup");
         Add("Запускать свёрнутым в трей", "Окно", "Window", StartHiddenInTrayCheckBox, "запуск свёрнутым трей автозапуск скрыто hidden startup tray");
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
@@ -460,6 +430,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Убрать фон у кнопок управления воспроизведением", "Оформление", "Appearance", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
         Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
+        Add("Сбросить плеер к исходному состоянию", "Профиль", "Profile", ResetPlayerButton, "сброс сбросить умолчание reset default настройки factory");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
@@ -559,13 +530,6 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyAccentColor(); // акцент пересчитывает светлые/тёмные варианты под новую тему
         _owner.ApplyTrayTheme(_settings.IsLightThemeResolved());
         _owner.ApplyMiniPlayerThemeLive();
-
-        // Подложка "Blur"/"AccentBlur" (см. WindowBlurHelper) сама не переключает свою
-        // тонировку под тему — она задаётся ровно в момент вызова EnableBlur/EnableAccentBlur
-        // (settings.IsLightThemeResolved() читается один раз внутри), в отличие от Mica/Acrylic
-        // (те — системный DWM backdrop, сам следящий за темой). Перепримеяем на обоих окнах,
-        // где подложка вообще применяется живьём.
-        RefreshAccentBlurBackdropLive();
     }
 
     private void AccentModeRadio_Changed(object sender, RoutedEventArgs e)
@@ -576,18 +540,6 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.AccentColorMode = AccentManualRadio.IsChecked == true ? "Manual" : "System";
         _owner.ApplyAccentColor();
-        RefreshAccentBlurBackdropLive();
-    }
-
-    // И тема, и акцент могут влиять на реальный цвет подложки, если сейчас выбран именно
-    // "AccentBlur" (см. WindowBlurHelper.EnableAccentBlur) — ApplyWindowBackdrop сам по себе
-    // недорогой (пара Win32-вызовов) и сам разбирается, какая подложка сейчас выбрана, поэтому
-    // проще перепримянять его безусловно при любом изменении темы/акцента, чем дублировать
-    // здесь ещё раз проверку "а вдруг сейчас AccentBlur".
-    private void RefreshAccentBlurBackdropLive()
-    {
-        _owner.ApplyWindowBackdrop();
-        ApplyWindowBackdrop(_settings, _owner);
     }
 
     private static readonly string[] AccentPresetHexes =
@@ -632,7 +584,6 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _owner.ApplyAccentColor();
-        RefreshAccentBlurBackdropLive();
     }
 
     // Подсвечивает рамкой тот пресет-квадратик, который совпадает с текущим AccentColorHex —
@@ -665,13 +616,10 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? "Acrylic"
-            : BackdropBlurRadio.IsChecked == true ? "Blur"
-            : BackdropAccentBlurRadio.IsChecked == true ? "AccentBlur"
-            : "Mica";
+        _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? "Acrylic" : "Mica";
 
         _owner.ApplyWindowBackdrop();
-        ApplyWindowBackdrop(_settings, _owner); // то же самое — и у этого окна настроек тоже
+        ApplyWindowBackdrop(_settings); // то же самое — и у этого окна настроек тоже
     }
 
     private void AlwaysOnTopCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -806,13 +754,6 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.MinimizeToTrayOnClose = MinimizeToTrayCheckBox.IsChecked == true;
-    }
-
-    private void MainSnapToEdgesCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.MainPlayerSnapToEdges = MainSnapToEdgesCheckBox.IsChecked == true;
     }
 
     private void LaunchOnStartupCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -1218,6 +1159,31 @@ public partial class SettingsWindow : FluentWindow
         // после импорта они не переприменяются сами. Проще переоткрыть окно (переиспользует
         // уже готовый MainWindow.ShowSettingsWindow), чем гоняться за каждым изменившимся
         // полем формы по отдельности.
+        Close();
+        _owner.ShowSettingsWindow("Profile");
+    }
+
+    // См. AppSettings/LumiProfileIO.ResetToDefaults и кнопку ResetPlayerButton в
+    // SettingsWindow.xaml (страница "Профиль"). Того же типа необратимое массовое изменение
+    // настроек, что и импорт чужого профиля выше — поэтому и обработчик устроен так же:
+    // подтверждение, сброс, сохранение, частичное живое применение с предупреждением о
+    // перезапуске для остального, переоткрытие этого окна.
+    private void ResetPlayerButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = System.Windows.MessageBox.Show(this,
+            "Сбросить тему, акцент, подложку окна, вид и размер плеера, громкость, шафл/повтор, горячие клавиши, мини-плеер и остальные настройки к значениям по умолчанию?\n\n" +
+            "Плейлист, избранное, история прослушиваний, статистика и сохранённые пресеты эквалайзера затронуты не будут.",
+            "Сбросить плеер?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        LumiProfileIO.ResetToDefaults(_settings);
+        _owner.ApplyImportedSettingsLive();
+        SettingsManager.Save(_settings);
+
+        System.Windows.MessageBox.Show(this,
+            "Плеер сброшен к исходным настройкам.\n\nЧасть из них (хоткеи, эквалайзер, поведение трея и мини-плеера, размер и положение окна) применится полностью после перезапуска плеера.",
+            "Сброс завершён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+
         Close();
         _owner.ShowSettingsWindow("Profile");
     }
