@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
@@ -33,6 +34,20 @@ public sealed class UpdateCheckResult
     public string? ReleaseNotes { get; init; }
 
     public string? ErrorMessage { get; init; }
+}
+
+// Одна запись из полного списка релизов (см. UpdateChecker.GetAllReleasesAsync) — то же самое,
+// что и UpdateCheckResult, но без Status/CurrentVersion (список сразу про несколько релизов —
+// "актуальна ли эта версия" каждый элемент списка не знает и не должен, это решает вызывающая
+// сторона, сравнивая Version с UpdateChecker.GetCurrentVersion()).
+public sealed class ReleaseListItem
+{
+    public string Version { get; init; } = "";
+    public string? DownloadUrl { get; init; }
+    public string? ReleaseNotesUrl { get; init; }
+    public string? ReleaseNotes { get; init; }
+    public System.DateTimeOffset? PublishedAt { get; init; }
+    public bool IsPrerelease { get; init; }
 }
 
 // Проверка обновлений через GitHub Releases API без токена — публичных запросов заведомо
@@ -145,6 +160,69 @@ public static class UpdateChecker
         }
     }
 
+    // Полный список релизов репозитория (см. SettingsWindow — страница "О плеере", аккордеон
+    // "Все версии") — в отличие от CheckAsync выше (только /releases/latest), берёт сразу все,
+    // чтобы пользователь мог откатиться на более старую версию или поставить конкретную нужную,
+    // а не только обновиться на самую свежую. per_page=100 — с большим запасом: у обычного
+    // проекта столько релизов не наберётся ещё очень долго, а если наберётся — GitHub всё равно
+    // отдаст не больше 100 за один запрос, это его собственный максимум, не наш выбор.
+    //
+    // Черновики (draft) не показываем — они не опубликованы и не предназначены для скачивания
+    // кем-либо, кроме автора в самом GitHub. Пререлизы (prerelease) — наоборот, показываем, но
+    // помечаем: это осознанный выбор пользователя, устанавливать что-то нестабильное или нет.
+    public static async Task<(List<ReleaseListItem> Releases, string? ErrorMessage)> GetAllReleasesAsync(CancellationToken ct = default)
+    {
+        try
+        {
+            string url = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases?per_page=100";
+            using var response = await Http.GetAsync(url, ct);
+
+            if (!response.IsSuccessStatusCode)
+                return (new List<ReleaseListItem>(), $"GitHub вернул код {(int)response.StatusCode}");
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+
+            if (doc.RootElement.ValueKind != JsonValueKind.Array)
+                return (new List<ReleaseListItem>(), "Неожиданный ответ GitHub — ожидался список релизов.");
+
+            var releases = new List<ReleaseListItem>();
+
+            foreach (var releaseEl in doc.RootElement.EnumerateArray())
+            {
+                bool isDraft = releaseEl.TryGetProperty("draft", out var draftEl) && draftEl.GetBoolean();
+                if (isDraft) continue;
+
+                string tagName = releaseEl.TryGetProperty("tag_name", out var tagEl) ? tagEl.GetString() ?? "" : "";
+                string version = tagName.TrimStart('v', 'V');
+                if (string.IsNullOrEmpty(version)) continue;
+
+                System.DateTimeOffset? publishedAt = null;
+                if (releaseEl.TryGetProperty("published_at", out var pubEl) && pubEl.ValueKind == JsonValueKind.String
+                    && System.DateTimeOffset.TryParse(pubEl.GetString(), out var parsedDate))
+                {
+                    publishedAt = parsedDate;
+                }
+
+                releases.Add(new ReleaseListItem
+                {
+                    Version = version,
+                    DownloadUrl = FindZipAssetUrl(releaseEl),
+                    ReleaseNotesUrl = releaseEl.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null,
+                    ReleaseNotes = releaseEl.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() : null,
+                    PublishedAt = publishedAt,
+                    IsPrerelease = releaseEl.TryGetProperty("prerelease", out var preEl) && preEl.GetBoolean(),
+                });
+            }
+
+            return (releases, null);
+        }
+        catch (System.Exception ex)
+        {
+            return (new List<ReleaseListItem>(), ex.Message);
+        }
+    }
+
     // Ищет .zip среди Assets релиза. Если их несколько (маловероятно при том, как релиз
     // собирает workflow, но в принципе возможно для ручных релизов) — предпочитает тот, что
     // явно назван в честь приложения, иначе берёт первый попавшийся: лучше попытаться
@@ -173,8 +251,10 @@ public static class UpdateChecker
 
     // Версия программы берётся из того же changelog.json, что и карточка "О плеере" в
     // настройках (см. SettingsWindow.RefreshAppVersionText) — единственное место, где она
-    // задаётся, чтобы номер нигде не мог разойтись.
-    private static string GetCurrentVersion()
+    // задаётся, чтобы номер нигде не мог разойтись. Публичный — переиспользуется списком всех
+    // версий в настройках (см. GetAllReleasesAsync/SettingsWindow), чтобы пометить в нём
+    // текущую версию, не выясняя её ещё раз каким-то другим способом.
+    public static string GetCurrentVersion()
     {
         var entries = ChangelogLoader.Load();
         var current = entries.FirstOrDefault(e => e.IsCurrent) ?? entries.FirstOrDefault();

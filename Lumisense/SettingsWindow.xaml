@@ -1271,6 +1271,52 @@
                             </StackPanel>
                         </Expander>
 
+                        <!-- 3.5. "Все версии" — список всех релизов с GitHub, каждый со своей
+                             кнопкой "Установить": можно поставить не только последнюю версию, но
+                             и любую предыдущую (откатиться) или любую вышедшую (например,
+                             пропущенный пререлиз). Список подгружается лениво — только при первом
+                             раскрытии этого аккордеона, а не сразу при каждом открытии настроек. -->
+                        <Expander x:Name="AllVersionsExpanderControl" Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch"
+                                  Margin="0,12,0,0" Expanded="AllVersionsExpander_Expanded">
+                            <Expander.Header>
+                                <TextBlock Text="Все версии" FontSize="14" FontWeight="SemiBold" />
+                            </Expander.Header>
+                            <StackPanel>
+                                <TextBlock Text="Полный список версий плеера с GitHub — можно поставить не только последнюю, но и любую другую, в том числе более старую."
+                                           TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
+
+                                <TextBlock x:Name="AllVersionsLoadingText" Text="Загружаем список версий…"
+                                           FontSize="12" Opacity="0.6" />
+                                <TextBlock x:Name="AllVersionsErrorText" Text="" Visibility="Collapsed"
+                                           TextWrapping="Wrap" FontSize="12" Opacity="0.6" />
+
+                                <ItemsControl x:Name="AllVersionsList">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                    CornerRadius="8" Padding="12,10" Margin="0,0,0,6">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+
+                                                    <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,12,0">
+                                                        <TextBlock Text="{Binding TitleText}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap" />
+                                                        <TextBlock Text="{Binding SubtitleText}" FontSize="11" Opacity="0.6" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                                    </StackPanel>
+
+                                                    <ui:Button Grid.Column="1" Content="{Binding ActionText}" Appearance="Secondary"
+                                                               IsEnabled="{Binding CanInstall}" Padding="12,6" VerticalAlignment="Center"
+                                                               Click="VersionListItem_Click" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Expander>
+
                         <!-- 4. "Разработчик" — тоже аккордеон, тоже свёрнут по умолчанию: ссылки на
                              автора любопытны, но далеко не первое, что человек ищет в настройках
                              плеера — прятать их за один клик логичнее, чем держать всегда на виду

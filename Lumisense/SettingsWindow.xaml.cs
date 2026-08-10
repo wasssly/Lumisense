@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Globalization;
 using System.Linq;
 using System.Windows;
 using System.Windows.Input;
@@ -388,6 +389,90 @@ public partial class SettingsWindow : FluentWindow
         _settings.UpdateDownloadSource = key;
     }
 
+    // ---------- "Все версии" (страница "О плеере") ----------
+    // Один элемент списка версий (см. AllVersionsList в XAML) — обёртка над ReleaseListItem
+    // с уже готовыми под UI строками, чтобы DataTemplate был просто набором биндингов без
+    // конвертеров.
+    private sealed record VersionListItemViewModel(
+        string TitleText, string SubtitleText, string ActionText, bool CanInstall, ReleaseListItem Release);
+
+    private bool _allVersionsLoaded;
+
+    // Список подгружается лениво — только при первом реальном раскрытии аккордеона (а не сразу
+    // при каждом открытии окна настроек, где эта страница даже не обязательно будет открыта) —
+    // и только один раз за время жизни окна: повторные раскрытия/схлопывания уже не бьют по сети
+    // заново.
+    private async void AllVersionsExpander_Expanded(object sender, RoutedEventArgs e)
+    {
+        if (_allVersionsLoaded) return;
+        _allVersionsLoaded = true;
+
+        var (releases, errorMessage) = await UpdateChecker.GetAllReleasesAsync();
+
+        AllVersionsLoadingText.Visibility = Visibility.Collapsed;
+
+        if (errorMessage != null)
+        {
+            AllVersionsErrorText.Text = $"Не удалось загрузить список версий: {errorMessage}";
+            AllVersionsErrorText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        if (releases.Count == 0)
+        {
+            AllVersionsErrorText.Text = "На GitHub пока нет ни одного опубликованного релиза.";
+            AllVersionsErrorText.Visibility = Visibility.Visible;
+            return;
+        }
+
+        string currentVersion = UpdateChecker.GetCurrentVersion();
+
+        AllVersionsList.ItemsSource = releases
+            // GitHub отдаёт релизы уже в порядке "сначала новые", но не гарантирует это явно —
+            // сортируем сами по дате публикации, чтобы порядок не зависел от их API.
+            .OrderByDescending(r => r.PublishedAt ?? System.DateTimeOffset.MinValue)
+            .Select(r =>
+            {
+                bool isCurrent = string.Equals(r.Version, currentVersion, System.StringComparison.OrdinalIgnoreCase);
+
+                string title = $"v{r.Version}" + (isCurrent ? " · текущая версия" : "") + (r.IsPrerelease ? " · пререлиз" : "");
+                string subtitle = r.PublishedAt is { } published
+                    ? published.LocalDateTime.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("ru-RU"))
+                    : "Дата публикации неизвестна";
+
+                bool canInstall = !string.IsNullOrEmpty(r.DownloadUrl);
+                if (!canInstall) subtitle += " · в релизе нет ZIP-архива";
+
+                string action = isCurrent ? "Переустановить" : "Установить";
+
+                return new VersionListItemViewModel(title, subtitle, action, canInstall, r);
+            })
+            .ToList();
+    }
+
+    // Тот же диалог, что и при обнаружении обновления по кнопке выше (UpdateAvailableWindow) —
+    // он не проверяет, действительно ли выбранная версия новее текущей, поэтому одинаково
+    // подходит и для обновления, и для отката на более старую версию. CurrentVersion в
+    // результате — настоящая текущая версия (а не версия из списка) специально: диалог сам
+    // покажет и её, и выбранную рядом ("Версия 1.2.0 (у вас 1.4.2)"), это и есть то самое
+    // предупреждение об откате, отдельного диалога подтверждения ради этого не потребовалось.
+    private void VersionListItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: VersionListItemViewModel item }) return;
+
+        var result = new UpdateCheckResult
+        {
+            Status = UpdateCheckStatus.UpdateAvailable,
+            CurrentVersion = UpdateChecker.GetCurrentVersion(),
+            LatestVersion = item.Release.Version,
+            DownloadUrl = item.Release.DownloadUrl,
+            ReleaseNotesUrl = item.Release.ReleaseNotesUrl,
+            ReleaseNotes = item.Release.ReleaseNotes,
+        };
+
+        new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
+    }
+
     // ---------- Поиск настроек ----------
 
     private void BuildSearchIndex()
@@ -433,6 +518,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Сбросить плеер к исходному состоянию", "Профиль", "Profile", ResetPlayerButton, "сброс сбросить умолчание reset default настройки factory");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
+        Add("Все версии", "О плеере", "About", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить");
         Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
         Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты");
