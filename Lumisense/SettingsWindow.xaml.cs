@@ -162,6 +162,7 @@ public partial class SettingsWindow : FluentWindow
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
         ProgressBarSliderRadio.IsChecked = !ProgressBarWaveformRadio.IsChecked.GetValueOrDefault();
+        ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
         HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
         AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled;
         AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
@@ -517,6 +518,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
         Add("Полоса воспроизведения", "Воспроизведение", "Playback", ProgressBarWaveformRadio, "waveform форма звука soundcloud полоса прогресс seek слайдер");
+        Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
@@ -1195,6 +1197,15 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.ProgressBarStyle = ProgressBarWaveformRadio.IsChecked == true ? "Waveform" : "Slider";
         _owner.ApplyProgressBarStyle();
+    }
+
+    // См. AppSettings.ReplayGainEnabled / ReplayGainReader.
+    private void ReplayGainCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ReplayGainEnabled = ReplayGainCheckBox.IsChecked == true;
+        _owner.RefreshReplayGain();
     }
 
     private void HidePlaybackButtonsCheckBox_Changed(object sender, RoutedEventArgs e)

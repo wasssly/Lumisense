@@ -78,6 +78,17 @@ public class IsFavoriteMultiConverter : IMultiValueConverter
         => throw new NotSupportedException();
 }
 
+// То же самое, что и IsFavoriteMultiConverter выше, только про закрепление трека наверху
+// "Избранного" (см. FavoritesManager.TogglePin, TrackPinIcon в MainWindow.xaml).
+public class IsPinnedMultiConverter : IMultiValueConverter
+{
+    public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
+        => values.Length > 0 && values[0] is string path && FavoritesManager.IsPinned(path);
+
+    public object?[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}
+
 // Видимость строки трека при поиске по плейлисту. values[0] — FilePath, values[1] —
 // PlaylistSearchState.Instance.Epoch (тот же приём, что в IsFavoriteMultiConverter).
 // Фильтрует через Visibility контейнера, а не ICollectionView.Filter на самой коллекции —

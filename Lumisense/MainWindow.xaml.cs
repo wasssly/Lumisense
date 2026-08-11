@@ -39,6 +39,17 @@ public partial class MainWindow : FluentWindow
 
     // AudioFileReader умеет читать mp3/wav/wma и сразу даёт регулировку громкости
     private AudioFileReader? _audioFile;
+
+    // Создаётся ОДИН раз (лениво, при первой загрузке трека) и живёт до самого закрытия
+    // приложения (см. OnClosed) — при переключении треков StopPlayback теперь останавливает
+    // это же устройство (WaveOutEvent.Stop()) и переиспользует его, а LoadAndPlay заново вызывает
+    // на нём Init(...) с новой цепочкой ISampleProvider, вместо того, чтобы каждый раз пересоздавать
+    // (new WaveOutEvent()) и уничтожать устройство целиком. Раньше именно это пересоздание — сама
+    // операция закрытия и повторного открытия аудиоустройства на уровне драйвера — было причиной
+    // тихого щелчка в начале КАЖДОГО трека при переключении (отдельно от щелчка "холодного
+    // старта" эквалайзера, который маскирует fade-in чуть ниже в LoadAndPlay, — это был второй,
+    // самостоятельный источник щелчка, и настоящий fade-in для одного лишь провайдера не решал
+    // ничего, если сам вывод звука пересоздавался заново).
     private WaveOutEvent? _outputDevice;
 
     // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
@@ -48,6 +59,14 @@ public partial class MainWindow : FluentWindow
     private EqualizerSampleProvider? _equalizer;
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+
+    // Линейный множитель громкости из ReplayGain-тегов текущего трека (см. ReplayGainReader,
+    // AppSettings.ReplayGainEnabled) — 1.0, если выключено в настройках, тегов нет, или файл не
+    // прочитался. Домножается на обычную громкость пользователя в ComputeAudioFileVolume, а не
+    // хранится как отдельный ISampleProvider в цепочке — ровно то же место в конвейере, что и
+    // сама громкость (AudioFileReader.Volume, ДО эквалайзера), так что не нужен ни отдельный
+    // провайдер, ни лишний проход по сэмплам.
+    private double _replayGainFactor = 1.0;
 
     // ---------- Waveform-полоса воспроизведения (см. AppSettings.ProgressBarStyle) ----------
     // Кэш уже посчитанных пиков по пути файла — тот же трек может грузиться повторно (повтор,
@@ -226,7 +245,7 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         InitializeComponent();
-        FavoritesManager.Initialize(_settings.FavoriteTracks);
+        FavoritesManager.Initialize(_settings.FavoriteTracks, _settings.PinnedFavoriteTracks);
         PlayCountManager.Initialize(_settings.PlayCounts);
 
         _progressTimer.Tick += ProgressTimer_Tick;
@@ -1520,6 +1539,70 @@ public partial class MainWindow : FluentWindow
 
     // ---------- Добавление файлов и папок ----------
 
+    // Drag & Drop файлов/папок из Проводника — тот же результат, что и кнопки "Добавить" выше:
+    // папки становятся отдельными группами плейлиста (см. AddFolderPath), отдельные файлы —
+    // собираются в общую группу "Отдельные файлы" (см. AddLooseFiles). Можно бросить и то, и
+    // другое одним движением, вперемешку. DragEnter используется и для DragOver (см. XAML) —
+    // WPF не запоминает e.Effects между вызовами, каждый DragOver должен выставлять его заново,
+    // иначе курсор почти сразу покажет "нельзя" даже над принимаемым содержимым.
+    private void MainWindow_DragEnter(object sender, System.Windows.DragEventArgs e)
+    {
+        bool hasFiles = e.Data.GetDataPresent(DataFormats.FileDrop);
+        e.Effects = hasFiles ? DragDropEffects.Copy : DragDropEffects.None;
+        DragDropOverlay.Visibility = hasFiles ? Visibility.Visible : Visibility.Collapsed;
+        e.Handled = true;
+    }
+
+    // DragLeave срабатывает и при уходе курсора с окна совсем, и просто при переходе между
+    // дочерними элементами внутри самого окна (тем не менее AllowDrop стоит только на корневом
+    // ui:FluentWindow, а не на каком-то из его детей, так что здесь это равнозначно "курсор
+    // покинул окно целиком") — прятать оверлей в обоих случаях правильно.
+    private void MainWindow_DragLeave(object sender, System.Windows.DragEventArgs e)
+    {
+        DragDropOverlay.Visibility = Visibility.Collapsed;
+    }
+
+    private void MainWindow_Drop(object sender, System.Windows.DragEventArgs e)
+    {
+        DragDropOverlay.Visibility = Visibility.Collapsed;
+
+        if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
+
+        var newFiles = new List<string>();
+        bool foundAnyFolder = false;
+        bool foundAnything = false;
+
+        foreach (var path in paths)
+        {
+            if (Directory.Exists(path))
+            {
+                foundAnyFolder = true;
+                foundAnything = AddFolderPath(path) || foundAnything;
+            }
+            else if (File.Exists(path) && SupportedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant()))
+            {
+                newFiles.Add(path);
+                foundAnything = true;
+            }
+            // Прочие файлы (не аудио, не папка) — молча пропускаем: пользователь вполне мог
+            // задеть при перетаскивании что-то лишнее вместе с музыкой, отдельно ругаться на
+            // каждый такой файл не стоит, итоговое сообщение "ничего не найдено" ниже покрывает
+            // только случай, когда В ИТОГЕ не добавилось вообще ничего.
+        }
+
+        if (newFiles.Count > 0)
+            AddLooseFiles(newFiles);
+
+        if (!foundAnything)
+        {
+            string message = foundAnyFolder
+                ? "В перетащенных папках не найдено поддерживаемых аудиофайлов."
+                : "Среди перетащенного не найдено ни поддерживаемых аудиофайлов, ни папок.";
+            System.Windows.MessageBox.Show(this, message,
+                "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        }
+    }
+
     // Клик по объединённой кнопке "Добавить" открывает её собственное контекстное меню
     // (выбор "Файлы…" / "Папку…") прямо под кнопкой, как обычное выпадающее меню.
     private void AddButton_Click(object sender, RoutedEventArgs e)
@@ -1916,6 +1999,35 @@ public partial class MainWindow : FluentWindow
     private void ToggleFavoriteAndRefresh(string filePath)
     {
         FavoritesManager.Toggle(filePath);
+
+        if (_isFavoritesView)
+            RefreshFavoritesTrackList();
+    }
+
+    // Закрепление трека наверху "Избранного" (см. FavoritesManager.TogglePin) — кнопка и пункт
+    // меню видны только в самом "Избранном" (Folder.IsFavoritesGroup, см. привязку Visibility в
+    // MainWindow.xaml), закреплять что-либо в обычном плейлисте нельзя и незачем: смысл
+    // закрепления — порядок показа именно на странице "Избранное".
+    private void PinButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PlaylistTrackRow row }) return;
+        TogglePinAndRefresh(row.FilePath);
+    }
+
+    private void PinMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        TogglePinAndRefresh(row.FilePath);
+    }
+
+    // Тот же принцип минимального обновления UI, что и у ToggleFavoriteAndRefresh выше —
+    // FavoritesChangeNotifier сам поднимает перерисовку иконки закрепления (см.
+    // IsPinnedMultiConverter/TrackPinIcon в MainWindow.xaml), а вот сам ПОРЯДОК строк
+    // "Избранного" от закрепления меняется, поэтому список нужно пересобрать явно — так же,
+    // как и при добавлении/удалении из избранного.
+    private void TogglePinAndRefresh(string filePath)
+    {
+        FavoritesManager.TogglePin(filePath);
 
         if (_isFavoritesView)
             RefreshFavoritesTrackList();
@@ -2480,7 +2592,13 @@ public partial class MainWindow : FluentWindow
 
         try
         {
-            _audioFile = new AudioFileReader(filePath) { Volume = ToOutputVolume(VolumeSlider.Value) };
+            // Читается синхронно (как и открытие самого AudioFileReader ниже, и LoadAlbumArt
+            // дальше по методу) — TagLibSharp разбирает только заголовок/теги файла, а не весь
+            // файл целиком, так что при нормальных файлах это доли миллисекунды, заметной
+            // просадки отзывчивости при переключении трека это не даёт.
+            _replayGainFactor = _settings.ReplayGainEnabled ? ReplayGainReader.GetTrackGainLinear(filePath) : 1.0;
+
+            _audioFile = new AudioFileReader(filePath) { Volume = ComputeAudioFileVolume(VolumeSlider.Value) };
 
             _equalizer = new EqualizerSampleProvider(_audioFile) { Enabled = _settings.EqualizerEnabled };
             ApplyEqualizerGainsFromSettings();
@@ -2506,7 +2624,16 @@ public partial class MainWindow : FluentWindow
             var fadeIn = new FadeInOutSampleProvider(_equalizer, initiallySilent: true);
             fadeIn.BeginFadeIn(70);
 
-            _outputDevice = new WaveOutEvent();
+            // Устройство вывода — ОДНО на всё время работы приложения (см. подробный
+            // комментарий у поля _outputDevice выше), не пересоздаётся на каждый трек. Заново
+            // пересоздавать WaveOutEvent на каждое переключение — то есть каждый раз заново
+            // открывать и закрывать аудиоустройство на уровне драйвера — было отдельным (помимо
+            // "холодного старта" эквалайзера выше) источником тихого щелчка в начале трека,
+            // который fade-in сам по себе не маскировал: щелчок относился к самому устройству
+            // вывода, а не к сигналу, который через него проходит. Init(...) на уже
+            // существующем WaveOutEvent — штатный, документированный NAudio способ поменять
+            // источник воспроизведения без пересоздания устройства.
+            _outputDevice ??= new WaveOutEvent();
             _outputDevice.Init(fadeIn);
             _outputDevice.PlaybackStopped += OutputDevice_PlaybackStopped;
         }
@@ -2874,7 +3001,11 @@ public partial class MainWindow : FluentWindow
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
-        if (_outputDevice == null)
+        // _audioFile, а не _outputDevice — устройство вывода теперь живёт всю сессию
+        // приложения и не обнуляется между треками (см. подробный комментарий у поля
+        // _outputDevice в начале файла), так что null у него означал бы буквально "ничего не
+        // загружали ни разу с самого запуска", а не "сейчас ничего не загружено".
+        if (_audioFile == null)
         {
             var active = FlattenActive();
             if (active.Count > 0)
@@ -2886,7 +3017,7 @@ public partial class MainWindow : FluentWindow
 
         if (_isPlaying)
         {
-            _outputDevice.Pause();
+            _outputDevice?.Pause();
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
             StopProgressTimerAndAnimation();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
@@ -2898,7 +3029,7 @@ public partial class MainWindow : FluentWindow
         }
         else
         {
-            _outputDevice.Play();
+            _outputDevice?.Play();
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
             _progressTimer.Start();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
@@ -2945,10 +3076,13 @@ public partial class MainWindow : FluentWindow
         if (_outputDevice != null)
             _outputDevice.PlaybackStopped -= OutputDevice_PlaybackStopped;
 
+        // Само устройство вывода (_outputDevice) здесь НЕ останавливается через Dispose и не
+        // обнуляется — см. подробный комментарий у поля _outputDevice в начале файла: оно живёт
+        // до самого закрытия приложения (см. OnClosed) и переиспользуется для следующего трека
+        // через повторный Init(...) в LoadAndPlay, вместо пересоздания. Здесь только Stop() —
+        // без него следующий Init() получал бы новый провайдер поверх ещё играющего старого.
         _outputDevice?.Stop();
-        _outputDevice?.Dispose();
         _audioFile?.Dispose();
-        _outputDevice = null;
         _audioFile = null;
         _equalizer = null;
         _isPlaying = false;
@@ -3894,7 +4028,27 @@ public partial class MainWindow : FluentWindow
     public void RefreshVolumeCurve()
     {
         if (_audioFile != null)
-            _audioFile.Volume = ToOutputVolume(VolumeSlider.Value);
+            _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
+    }
+
+    // Домножает обычную громкость (пользовательский ползунок, с поправкой на логарифмическую
+    // шкалу — см. ToOutputVolume) на _replayGainFactor — то же самое место конвейера, что и
+    // раньше (AudioFileReader.Volume, до эквалайзера), просто с ещё одним множителем.
+    private float ComputeAudioFileVolume(double sliderValue) => (float)(ToOutputVolume(sliderValue) * _replayGainFactor);
+
+    // Вызывается из окна настроек сразу при переключении чекбокса "ReplayGain" (см.
+    // AppSettings.ReplayGainEnabled) — пересчитывает множитель для уже играющего трека и сразу
+    // применяет его к громкости, не дожидаясь следующего переключения трека (тег ReplayGain
+    // самого текущего трека при включении/выключении настройки не меняется, только то, учитывать
+    // его или нет).
+    public void RefreshReplayGain()
+    {
+        _replayGainFactor = _settings.ReplayGainEnabled && _currentTrackPath != null
+            ? ReplayGainReader.GetTrackGainLinear(_currentTrackPath)
+            : 1.0;
+
+        if (_audioFile != null)
+            _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
     }
 
     // Прокрутка колесом мыши над строкой громкости (ползунок, кнопка без звука, подпись
@@ -3925,7 +4079,7 @@ public partial class MainWindow : FluentWindow
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_audioFile != null)
-            _audioFile.Volume = ToOutputVolume(e.NewValue);
+            _audioFile.Volume = ComputeAudioFileVolume(e.NewValue);
 
         if (VolumeValueText != null)
             VolumeValueText.Text = $"{(int)Math.Round(e.NewValue * 100)}%";
@@ -3993,7 +4147,8 @@ public partial class MainWindow : FluentWindow
         _settings.PlayerViewMode = _viewMode.ToString();
         _settings.IsShuffleEnabled = _isShuffleEnabled;
         _settings.RepeatMode = _repeatMode.ToString();
-        _settings.FavoriteTracks = FavoritesManager.GetAll();
+        _settings.FavoriteTracks = FavoritesManager.GetOrder();
+        _settings.PinnedFavoriteTracks = FavoritesManager.GetPinnedPaths();
         _settings.PlayCounts = PlayCountManager.GetAll();
 
         SettingsManager.Save(_settings);
@@ -4011,6 +4166,12 @@ public partial class MainWindow : FluentWindow
         // PersistPlaybackAndPlaylistState читает текущую позицию именно из него.
         PersistPlaybackAndPlaylistState();
         StopPlayback(disposeOnly: true);
+
+        // Настоящая, финальная утилизация устройства вывода — единственное место, где это
+        // вообще происходит (см. подробный комментарий у поля _outputDevice в начале файла:
+        // между треками StopPlayback теперь только останавливает его, не уничтожая).
+        _outputDevice?.Dispose();
+        _outputDevice = null;
 
         _mediaHotKeys?.Dispose();
         _trayIconManager?.Dispose();

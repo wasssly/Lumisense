@@ -10,6 +10,11 @@
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
         WindowStartupLocation="CenterScreen"
+        AllowDrop="True"
+        DragEnter="MainWindow_DragEnter"
+        DragOver="MainWindow_DragEnter"
+        DragLeave="MainWindow_DragLeave"
+        Drop="MainWindow_Drop"
         PreviewKeyDown="MainWindow_PreviewKeyDown">
 
     <Window.Resources>
@@ -17,6 +22,7 @@
         <local:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
         <local:ExpandChevronConverter x:Key="ExpandChevronConverter" />
         <local:IsFavoriteMultiConverter x:Key="IsFavoriteMultiConverter" />
+        <local:IsPinnedMultiConverter x:Key="IsPinnedMultiConverter" />
         <local:PlayCountMultiConverter x:Key="PlayCountMultiConverter" />
         <local:TrackMatchesSearchMultiConverter x:Key="TrackMatchesSearchMultiConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -46,6 +52,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Grid.ContextMenu>
                     <ContextMenu>
@@ -57,6 +64,14 @@
                         <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconHeart" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <!-- Видно только в самом "Избранном" — см. подробный комментарий у
+                             TrackFavoriteButton/TrackPinButton ниже про Folder.IsFavoritesGroup. -->
+                        <MenuItem Header="Закрепить/открепить в избранном" Click="PinMenuItem_Click"
+                                  Visibility="{Binding Folder.IsFavoritesGroup, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconPin" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
@@ -149,6 +164,23 @@
                                            Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                     </ui:Button.Icon>
                 </ui:Button>
+
+                <!-- Кнопка закрепления — видна только в самом "Избранном" (Folder.IsFavoritesGroup;
+                     в обычном плейлисте закреплять нечего и незачем, см. тот же комментарий у
+                     пункта контекстного меню "Закрепить/открепить в избранном" выше). Цвет —
+                     тёплый янтарный, а не красный (как у избранного) и не акцентный синий
+                     приложения, чтобы закрепление визуально не путалось ни с тем, ни с другим —
+                     это самостоятельный, третий признак трека. -->
+                <ui:Button x:Name="TrackPinButton" Grid.Column="4" Appearance="Transparent"
+                           Width="26" Height="26" Padding="0" Margin="2,0,0,0"
+                           Click="PinButton_Click" FocusVisualStyle="{x:Null}"
+                           ToolTip="Закрепить/открепить в избранном"
+                           Visibility="{Binding Folder.IsFavoritesGroup, Converter={StaticResource BoolToVisibilityConverter}}">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon x:Name="TrackPinIcon" Icon="IconPin" Size="13" Opacity="0.5"
+                                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                    </ui:Button.Icon>
+                </ui:Button>
             </Grid>
             <DataTemplate.Triggers>
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsMouseOver}" Value="True">
@@ -178,6 +210,20 @@
                     <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#E53935" />
                     <Setter TargetName="TrackFavoriteIcon" Property="Opacity" Value="1" />
                 </DataTrigger>
+                <!-- Закреплённый трек — та же MultiBinding-механика, что и у сердечка выше, тот
+                     же FavoritesChangeNotifier (TogglePin тоже вызывает Bump, см. FavoritesManager) —
+                     заводить для этого отдельный notifier не нужно, "избранное поменялось" и
+                     "закрепление поменялось" для целей перерисовки строки — один и тот же повод. -->
+                <DataTrigger Value="True">
+                    <DataTrigger.Binding>
+                        <MultiBinding Converter="{StaticResource IsPinnedMultiConverter}">
+                            <Binding Path="FilePath" />
+                            <Binding Source="{x:Static local:FavoritesChangeNotifier.Instance}" Path="Epoch" />
+                        </MultiBinding>
+                    </DataTrigger.Binding>
+                    <Setter TargetName="TrackPinIcon" Property="Foreground" Value="#F5A623" />
+                    <Setter TargetName="TrackPinIcon" Property="Opacity" Value="1" />
+                </DataTrigger>
                 <!-- Контурное (НЕ избранное) сердечко на выделенной строке — см. подробный
                      комментарий выше, у TrackFavoriteButton. Второе условие
                      (IsFavoriteMultiConverter = False) — чтобы не перебивать явный красный
@@ -200,6 +246,26 @@
                         </Condition>
                     </MultiDataTrigger.Conditions>
                     <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#141414" />
+                </MultiDataTrigger>
+                <!-- То же самое, тем же поводом, для незакреплённого контурного значка
+                     закрепления на выделенной строке — см. комментарий у MultiDataTrigger выше. -->
+                <MultiDataTrigger>
+                    <MultiDataTrigger.Conditions>
+                        <Condition Value="True">
+                            <Condition.Binding>
+                                <Binding RelativeSource="{RelativeSource AncestorType=ListViewItem}" Path="IsSelected" />
+                            </Condition.Binding>
+                        </Condition>
+                        <Condition Value="False">
+                            <Condition.Binding>
+                                <MultiBinding Converter="{StaticResource IsPinnedMultiConverter}">
+                                    <Binding Path="FilePath" />
+                                    <Binding Source="{x:Static local:FavoritesChangeNotifier.Instance}" Path="Epoch" />
+                                </MultiBinding>
+                            </Condition.Binding>
+                        </Condition>
+                    </MultiDataTrigger.Conditions>
+                    <Setter TargetName="TrackPinIcon" Property="Foreground" Value="#141414" />
                 </MultiDataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
@@ -856,6 +922,24 @@
             </Grid>
         </Border>
             </Grid>
+        </Border>
+
+        <!-- Оверлей "перетащите файлы сюда" — виден только пока идёт активный drag&drop с
+             файлами/папками из Проводника (см. MainWindow_DragEnter/DragLeave/Drop). Grid.RowSpan
+             — перекрывает и заголовок, и тело окна целиком, а не только "тело" (Grid.Row="1"),
+             чтобы было явно видно, что бросить файл можно куда угодно на окне, а не только в
+             область плейлиста. IsHitTestVisible="False" — сам оверлей ничего не должен ловить,
+             все события drag&drop обрабатывает окно целиком (AllowDrop на самом ui:FluentWindow). -->
+        <Border x:Name="DragDropOverlay" Grid.Row="0" Grid.RowSpan="2"
+                Background="#B0000000" IsHitTestVisible="False" Visibility="Collapsed">
+            <Border Background="{DynamicResource AccentFillColorDefaultBrush}" CornerRadius="12"
+                    Padding="28,20" HorizontalAlignment="Center" VerticalAlignment="Center">
+                <StackPanel Orientation="Horizontal">
+                    <local:SvgPathIcon Icon="IconAddFile" Size="22" Foreground="White" VerticalAlignment="Center" />
+                    <TextBlock Text="Отпустите, чтобы добавить в плейлист" Foreground="White"
+                               FontSize="14" FontWeight="SemiBold" VerticalAlignment="Center" Margin="10,0,0,0" />
+                </StackPanel>
+            </Border>
         </Border>
     </Grid>
 </ui:FluentWindow>

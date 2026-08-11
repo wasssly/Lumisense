@@ -584,6 +584,16 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- См. AppSettings.ReplayGainEnabled / ReplayGainReader. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="ReplayGainCheckBox" Content="ReplayGain"
+                                          Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
+                                <TextBlock Text="Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <!-- Уведомления — раньше жили на странице "Воспроизведение", вынесены на
