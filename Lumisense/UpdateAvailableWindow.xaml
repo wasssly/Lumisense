@@ -15,12 +15,15 @@
 
     <!-- Диалог "доступно обновление" — показывается и автоматически при старте (если давно не
          отклоняли эту же версию, см. AppSettings.SkippedUpdateVersion), и по кнопке "Проверить
-         обновления" на странице "О плеере" в настройках. Скачивает ZIP-архив новой версии,
-         распаковывает его и передаёт Updater'у — отдельному маленькому приложению, которое
-         дожидается закрытия плеера, копирует новые файлы поверх старой установки и запускает
-         обновлённый Lumisense.exe (см. подробный комментарий в UpdateChecker и в
-         Updater/Program.cs). Установщик (Lumisense_Setup.exe, Inno Setup) здесь больше не
-         используется — он остаётся только для самой первой установки "с нуля". -->
+         обновления" на странице "Обновления" в настройках, и по кнопке "Установить" в списке
+         "Все версии" там же. Два способа установки (см. InstallMethodPanel и
+         InstallButton_Click в коде):
+         — ZIP: скачивается и распаковывается, дальше всё делает Updater — отдельное маленькое
+           приложение, которое дожидается закрытия плеера, копирует новые файлы поверх старой
+           установки и запускает обновлённый Lumisense.exe (см. подробный комментарий в
+           UpdateChecker и в Updater/Program.cs). Быстрее и без отдельного мастера установки.
+         — .exe: обычный установщик (Inno Setup) — тот же, что и для самой первой установки "с
+           нуля", просто закачанный и запущенный поверх уже стоящей версии. -->
 
     <Grid>
         <Grid.RowDefinitions>
@@ -35,6 +38,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
@@ -68,17 +72,32 @@
                            Text="" />
             </ScrollViewer>
 
-            <ProgressBar x:Name="DownloadProgressBar" Grid.Row="3" Height="4" Margin="0,10,0,0"
+            <!-- Выбор способа установки — показывается, только если у релиза есть ОБА варианта
+                 (см. RefreshInstallMethodUi в коде): ZIP через встроенный автообновлятор
+                 (Updater.exe, без отдельного мастера установки) или обычный .exe-установщик
+                 (Inno Setup, с собственным мастером). Если доступен только один — выбирать
+                 не из чего, этот блок скрыт целиком. -->
+            <StackPanel x:Name="InstallMethodPanel" Grid.Row="3" Orientation="Horizontal"
+                        Margin="0,10,0,0" Visibility="Collapsed">
+                <TextBlock Text="Установить через:" FontSize="12" Opacity="0.7"
+                           VerticalAlignment="Center" Margin="0,0,8,0" />
+                <RadioButton x:Name="InstallMethodZipRadio" Content="ZIP (быстрее)" GroupName="InstallMethod"
+                             IsChecked="True" Margin="0,0,12,0" VerticalAlignment="Center" />
+                <RadioButton x:Name="InstallMethodExeRadio" Content="Установщик (.exe)" GroupName="InstallMethod"
+                             VerticalAlignment="Center" />
+            </StackPanel>
+
+            <ProgressBar x:Name="DownloadProgressBar" Grid.Row="4" Height="4" Margin="0,10,0,0"
                          Minimum="0" Maximum="1" Visibility="Collapsed" />
 
-            <TextBlock x:Name="PhaseText" Grid.Row="3" Margin="0,4,0,0" FontSize="12" Opacity="0.6"
+            <TextBlock x:Name="PhaseText" Grid.Row="4" Margin="0,4,0,0" FontSize="12" Opacity="0.6"
                        Visibility="Collapsed" />
 
-            <TextBlock x:Name="StatusText" Grid.Row="3" Margin="0,10,0,0" FontSize="12"
+            <TextBlock x:Name="StatusText" Grid.Row="4" Margin="0,10,0,0" FontSize="12"
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        TextWrapping="Wrap" Visibility="Collapsed" />
 
-            <StackPanel Grid.Row="4" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
                 <ui:Button x:Name="LaterButton" Content="Позже" Appearance="Secondary"
                            Width="88" Margin="0,0,8,0" Click="LaterButton_Click" />
                 <ui:Button x:Name="MoreButton" Content="Подробнее" Appearance="Secondary"

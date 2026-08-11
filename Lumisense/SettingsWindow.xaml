@@ -226,6 +226,18 @@
 
                     <Separator Margin="4,8" Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
 
+                    <!-- Вынесено в отдельную страницу из "О плеере" — проверка обновлений,
+                         выбор источника загрузки и полный список версий разрослись до трёх
+                         самостоятельных блоков, которым тесно соседствовать с описанием
+                         приложения и карточкой разработчика на одной странице. -->
+                    <RadioButton x:Name="NavUpdates" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Updates" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconRefresh" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Обновления" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
                     <RadioButton x:Name="NavAbout" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="About" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -1198,43 +1210,15 @@
                         </ui:Button>
                     </StackPanel>
 
-                    <!-- О плеере (+ Патчноуты) -->
-                    <StackPanel x:Name="PageAbout" Visibility="Collapsed">
-                        <TextBlock Text="О плеере" Style="{StaticResource PageTitleStyle}" />
+                    <!-- Обновления — вынесены в отдельную страницу из "О плеере": проверка
+                         обновлений, выбор источника загрузки и полный список версий разрослись
+                         до трёх самостоятельных блоков. -->
+                    <StackPanel x:Name="PageUpdates" Visibility="Collapsed">
+                        <TextBlock Text="Обновления" Style="{StaticResource PageTitleStyle}" />
 
-                        <!-- 1. Описание приложения — без изменений -->
-                        <Border Style="{StaticResource SettingsCardStyle}" x:Name="AboutInfoCard">
-                            <StackPanel>
-                                <Grid Margin="0,0,0,4">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-
-                                    <Image Grid.Column="0" Source="/Icons/app/lumisense.png" Width="44" Height="44"
-                                           Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
-                                           Margin="0,0,12,0" />
-
-                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <TextBlock Text="Lumisense" FontSize="16" FontWeight="SemiBold" />
-                                        <TextBlock x:Name="AppVersionText" Text="Версия" Opacity="0.6" FontSize="12" />
-                                    </StackPanel>
-                                </Grid>
-
-                                <TextBlock Text="Аудиоплеер в стиле Fluent Design для Windows 11: плейлисты по папкам с избранным и поиском, 10-полосный эквалайзер, три вида окна — включая мини-плеер с закреплением, прилипанием к краям экрана и настраиваемой прозрачностью, — светлая и тёмная тема, редактирование тегов и обложек, глобальные горячие клавиши и интеграция с «Сейчас воспроизводится»."
-                                           TextWrapping="Wrap" Opacity="0.85" Margin="0,12,0,12" />
-
-                                <TextBlock Text="Собрано на .NET 8, WPF-UI и NAudio." TextWrapping="Wrap"
-                                           FontSize="12" Opacity="0.6" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- 2. "Проверить обновления" — сразу после описания (раньше была ниже, под
-                             отдельным заголовком "Обновления"; сам заголовок убран за ненадобностью —
-                             кнопка теперь и так стоит на видном месте прямо под описанием) -->
                         <ui:Button x:Name="CheckUpdatesButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                   Padding="16,14" Margin="0,20,0,0" Click="CheckUpdatesButton_Click">
+                                   Padding="16,14" Click="CheckUpdatesButton_Click">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -1255,15 +1239,15 @@
                             </Grid>
                         </ui:Button>
 
-                        <!-- 3. "Источник загрузки обновлений" — теперь аккордеон, свёрнут по
-                             умолчанию (IsExpanded не задан → false): выбор зеркала — не то, что
-                             нужно видеть/трогать большинству, кому GitHub и так доступен напрямую. -->
+                        <!-- "Источник загрузки обновлений" — аккордеон, свёрнут по умолчанию
+                             (IsExpanded не задан → false): выбор зеркала — не то, что нужно
+                             видеть/трогать большинству, кому GitHub и так доступен напрямую. -->
                         <Expander Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch" Margin="0,20,0,0">
                             <Expander.Header>
                                 <TextBlock Text="Источник загрузки обновлений" FontSize="14" FontWeight="SemiBold" />
                             </Expander.Header>
                             <StackPanel>
-                                <TextBlock Text="Откуда скачивать ZIP-архив обновления. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из зеркал gh-proxy. На саму проверку версии эта настройка не влияет."
+                                <TextBlock Text="Откуда скачивать обновление. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из зеркал gh-proxy. На саму проверку версии эта настройка не влияет."
                                            TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
 
                                 <RadioButton x:Name="UpdateSourceGitHubRadio" GroupName="UpdateSource" Tag="GitHub"
@@ -1284,11 +1268,11 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- 3.5. "Все версии" — список всех релизов с GitHub, каждый со своей
-                             кнопкой "Установить": можно поставить не только последнюю версию, но
-                             и любую предыдущую (откатиться) или любую вышедшую (например,
-                             пропущенный пререлиз). Список подгружается лениво — только при первом
-                             раскрытии этого аккордеона, а не сразу при каждом открытии настроек. -->
+                        <!-- "Все версии" — список всех релизов с GitHub, каждый со своей кнопкой
+                             "Установить": можно поставить не только последнюю версию, но и любую
+                             предыдущую (откатиться) или любую вышедшую (например, пропущенный
+                             пререлиз). Список подгружается лениво — только при первом раскрытии
+                             этого аккордеона, а не сразу при каждом открытии настроек. -->
                         <Expander x:Name="AllVersionsExpanderControl" Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch"
                                   Margin="0,12,0,0" Expanded="AllVersionsExpander_Expanded">
                             <Expander.Header>
@@ -1329,65 +1313,81 @@
                                 </ItemsControl>
                             </StackPanel>
                         </Expander>
+                    </StackPanel>
 
-                        <!-- 4. "Разработчик" — тоже аккордеон, тоже свёрнут по умолчанию: ссылки на
-                             автора любопытны, но далеко не первое, что человек ищет в настройках
-                             плеера — прятать их за один клик логичнее, чем держать всегда на виду
-                             сразу под описанием и обновлениями. -->
-                        <Expander Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch" Margin="0,12,0,0">
-                            <Expander.Header>
-                                <TextBlock Text="Разработчик" FontSize="14" FontWeight="SemiBold" />
-                            </Expander.Header>
+                    <!-- О плеере (+ Патчноуты) -->
+                    <StackPanel x:Name="PageAbout" Visibility="Collapsed">
+                        <TextBlock Text="О плеере" Style="{StaticResource PageTitleStyle}" />
+
+                        <!-- 1. Описание приложения — без изменений -->
+                        <Border Style="{StaticResource SettingsCardStyle}" x:Name="AboutInfoCard">
                             <StackPanel>
-                                <ui:Button x:Name="DeveloperGitHubButton" Appearance="Secondary"
-                                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                           Padding="16,14" Click="DeveloperGitHubButton_Click">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
+                                <Grid Margin="0,0,0,4">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
 
-                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
-                                                Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
-                                                Margin="0,0,12,0">
-                                            <local:SvgPathIcon Icon="IconGitHub" Size="16"
-                                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Border>
+                                    <Image Grid.Column="0" Source="/Icons/app/lumisense.png" Width="44" Height="44"
+                                           Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                                           Margin="0,0,12,0" />
 
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="GitHub" FontWeight="SemiBold" />
-                                            <TextBlock Text="github.com/wasssly" FontSize="12" Opacity="0.6" />
-                                        </StackPanel>
-                                    </Grid>
-                                </ui:Button>
+                                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <TextBlock Text="Lumisense" FontSize="16" FontWeight="SemiBold" />
+                                        <TextBlock x:Name="AppVersionText" Text="Версия" Opacity="0.6" FontSize="12" />
+                                    </StackPanel>
+                                </Grid>
 
-                                <ui:Button x:Name="DeveloperTelegramButton" Appearance="Secondary"
-                                           HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                           Padding="16,14" Margin="0,8,0,0" Click="DeveloperTelegramButton_Click">
-                                    <Grid>
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="Auto" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
+                                <TextBlock Text="Аудиоплеер в стиле Fluent Design для Windows 11: плейлисты по папкам с избранным и поиском, 10-полосный эквалайзер, три вида окна — включая мини-плеер с закреплением, прилипанием к краям экрана и настраиваемой прозрачностью, — светлая и тёмная тема, редактирование тегов и обложек, глобальные горячие клавиши и интеграция с «Сейчас воспроизводится»."
+                                           TextWrapping="Wrap" Opacity="0.85" Margin="0,12,0,12" />
 
-                                        <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
-                                                Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
-                                                Margin="0,0,12,0">
-                                            <local:SvgPathIcon Icon="IconTelegram" Size="16"
-                                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Border>
-
-                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="Telegram" FontWeight="SemiBold" />
-                                            <TextBlock Text="t.me/dontwritetoblame" FontSize="12" Opacity="0.6" />
-                                        </StackPanel>
-                                    </Grid>
-                                </ui:Button>
+                                <TextBlock Text="Собрано на .NET 8, WPF-UI и NAudio." TextWrapping="Wrap"
+                                           FontSize="12" Opacity="0.6" />
                             </StackPanel>
-                        </Expander>
+                        </Border>
 
-                        <!-- 5. "Список изменений" — перенесён в самый низ страницы -->
+                        <!-- 2. Разработчик — компактная карточка (аватар, ник, иконки-ссылки),
+                             раньше был аккордеон с двумя большими кнопками-строками; см.
+                             SettingsWindow.LoadDeveloperAvatar/DeveloperGitHubButton_Click. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24"
+                                        ClipToBounds="True" Margin="0,0,12,0">
+                                    <Image x:Name="DeveloperAvatarImage" Stretch="UniformToFill"
+                                           Source="/Icons/app/developer-avatar-placeholder.png" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Разработчик" FontSize="12" Opacity="0.6" />
+                                    <TextBlock Text="wasssly" FontWeight="SemiBold" FontSize="15" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <ui:Button x:Name="DeveloperGitHubButton" Appearance="Secondary"
+                                               Width="38" Height="38" Margin="0,0,8,0"
+                                               Click="DeveloperGitHubButton_Click" ToolTip="github.com/wasssly">
+                                        <ui:Button.Icon>
+                                            <local:SvgPathIcon Icon="IconGitHub" Size="15" />
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                    <ui:Button x:Name="DeveloperTelegramButton" Appearance="Secondary"
+                                               Width="38" Height="38"
+                                               Click="DeveloperTelegramButton_Click" ToolTip="t.me/dontwritetoblame">
+                                        <ui:Button.Icon>
+                                            <local:SvgPathIcon Icon="IconTelegram" Size="15" />
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- 3. "Список изменений" — в самом низу страницы -->
                         <TextBlock Text="Список изменений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
 
                         <ui:Button x:Name="ChangelogButton" Appearance="Secondary"

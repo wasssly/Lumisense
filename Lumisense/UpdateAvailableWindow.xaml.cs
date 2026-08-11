@@ -35,6 +35,19 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
 
         MoreButton.Visibility = string.IsNullOrEmpty(result.ReleaseNotesUrl) ? Visibility.Collapsed : Visibility.Visible;
+
+        // Выбор способа установки виден, только если у релиза реально есть оба варианта — если
+        // только один, показывать не из чего выбирать (см. также подробный комментарий в XAML
+        // у InstallMethodPanel). Если нет ни одного — InstallButton_Click сам покажет понятную
+        // ошибку при попытке нажать "Установить", отдельно предупреждать здесь не нужно.
+        bool hasBoth = !string.IsNullOrEmpty(result.ZipDownloadUrl) && !string.IsNullOrEmpty(result.ExeDownloadUrl);
+        InstallMethodPanel.Visibility = hasBoth ? Visibility.Visible : Visibility.Collapsed;
+
+        // Если доступен только .exe (например, релиз собран без ZIP) — сразу выставляем этот
+        // единственный вариант, а не оставляем радиокнопку "ZIP" выбранной по умолчанию
+        // молча указывающей на несуществующий файл.
+        if (string.IsNullOrEmpty(result.ZipDownloadUrl) && !string.IsNullOrEmpty(result.ExeDownloadUrl))
+            InstallMethodExeRadio.IsChecked = true;
     }
 
     private void LaterButton_Click(object sender, RoutedEventArgs e)
@@ -66,7 +79,25 @@ public partial class UpdateAvailableWindow : FluentWindow
 
     private async void InstallButton_Click(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrEmpty(_result.DownloadUrl))
+        // Тот же выбор, что был бы виден в InstallMethodPanel, если бы оба варианта были
+        // доступны — если панель скрыта (доступен только один вариант), IsChecked радиокнопок
+        // уже выставлен на единственно возможный (см. конструктор), так что читать его отсюда
+        // безопасно в любом случае.
+        bool useExe = InstallMethodExeRadio.IsChecked == true;
+
+        if (useExe)
+        {
+            await InstallViaExeAsync();
+        }
+        else
+        {
+            await InstallViaZipAsync();
+        }
+    }
+
+    private async Task InstallViaZipAsync()
+    {
+        if (string.IsNullOrEmpty(_result.ZipDownloadUrl))
         {
             ShowError("Не удалось найти ZIP-архив обновления в этом релизе.");
             return;
@@ -84,7 +115,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         try
         {
             string source = _settings?.UpdateDownloadSource ?? "GitHub";
-            string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.DownloadUrl, source);
+            string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.ZipDownloadUrl, source);
 
             string zipPath = await UpdateChecker.DownloadUpdateZipAsync(downloadUrl, sessionDir, progress, _downloadCts.Token);
 
@@ -109,11 +140,60 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
     }
 
+    // Второй способ установки — скачать .exe-установщик и запустить его, вместо распаковки
+    // ZIP через Updater. Проще ZIP-варианта: готовить и запускать отдельный процесс-помощник
+    // не нужно, сам установщик уже умеет закрыть плеер, заменить файлы и предложить запуск
+    // обновлённой версии — ровно то же самое, что он делает при обычной первой установке.
+    private async Task InstallViaExeAsync()
+    {
+        if (string.IsNullOrEmpty(_result.ExeDownloadUrl))
+        {
+            ShowError("Не удалось найти .exe-установщик в этом релизе.");
+            return;
+        }
+
+        SetDownloading(true);
+
+        _downloadCts = new CancellationTokenSource();
+        var progress = new Progress<double>(p => DownloadProgressBar.Value = p);
+
+        string sessionDir = UpdateChecker.CreateUpdateSession();
+
+        try
+        {
+            string source = _settings?.UpdateDownloadSource ?? "GitHub";
+            string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.ExeDownloadUrl, source);
+
+            string exePath = await UpdateChecker.DownloadUpdateExeAsync(downloadUrl, sessionDir, progress, _downloadCts.Token);
+
+            // Перед запуском самого установщика тоже показываем "Подготовка…" — по сути пауза
+            // тут почти нулевая (просто передать управление Process.Start), но без этой фазы
+            // прогресс-бар так же "зависал" бы на 100% на те доли секунды, что окно ещё
+            // остаётся открытым.
+            SetPreparing();
+
+            // В отличие от ZIP-варианта, sessionDir с самим .exe-установщиком НЕ удаляем —
+            // установщик ещё не запустился и не закончил работу к моменту завершения этого
+            // метода (UseShellExecute запускает его асинхронно), удалить папку из-под него было
+            // бы преждевременно. Здесь это не проблема: один установщик на несколько МБ во
+            // временной папке не накопится в сколько-нибудь заметный мусор, в отличие от того,
+            // что уже расчищает после себя сам Updater для сценария ZIP.
+            UpdateChecker.LaunchInstallerAndExit(exePath);
+        }
+        catch (Exception ex)
+        {
+            SetDownloading(false);
+            ShowError($"Не удалось скачать установщик: {ex.Message}");
+        }
+    }
+
     private void SetDownloading(bool isDownloading)
     {
         InstallButton.IsEnabled = !isDownloading;
         LaterButton.IsEnabled = !isDownloading;
         MoreButton.IsEnabled = !isDownloading;
+        InstallMethodZipRadio.IsEnabled = !isDownloading;
+        InstallMethodExeRadio.IsEnabled = !isDownloading;
         DownloadProgressBar.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
         DownloadProgressBar.IsIndeterminate = false;
         DownloadProgressBar.Value = 0;

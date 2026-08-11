@@ -21,10 +21,16 @@ public sealed class UpdateCheckResult
     public string? LatestVersion { get; init; }
 
     // Прямая ссылка на ZIP-ассет релиза (например Lumisense.zip — весь плеер целиком, plus
-    // Updater.exe внутри, см. подробный комментарий у ExtractUpdatePayload) — то, что реально
-    // скачивается и распаковывается при обновлении. Установщик (.exe, Inno Setup) при
-    // обновлении больше не используется, только при самой первой установке.
-    public string? DownloadUrl { get; init; }
+    // Updater.exe внутри, см. подробный комментарий у ExtractUpdatePayload) — то, что
+    // распаковывается поверх текущей установки при автообновлении через Updater.exe.
+    public string? ZipDownloadUrl { get; init; }
+
+    // Прямая ссылка на .exe-установщик релиза (Inno Setup) — раньше использовался только для
+    // самой первой установки, теперь им можно установить (или переустановить/откатить) и через
+    // UpdateAvailableWindow: часть релизов может не публиковать ZIP вовсе, а для кого-то
+    // обычный установщик просто привычнее автообновления. См. UpdateAvailableWindow —
+    // выбор между этими двумя способами показывается, только если у релиза есть оба ассета.
+    public string? ExeDownloadUrl { get; init; }
 
     // Страница релиза на GitHub — на неё ведёт "Подробнее" в диалоге.
     public string? ReleaseNotesUrl { get; init; }
@@ -43,7 +49,8 @@ public sealed class UpdateCheckResult
 public sealed class ReleaseListItem
 {
     public string Version { get; init; } = "";
-    public string? DownloadUrl { get; init; }
+    public string? ZipDownloadUrl { get; init; }
+    public string? ExeDownloadUrl { get; init; }
     public string? ReleaseNotesUrl { get; init; }
     public string? ReleaseNotes { get; init; }
     public System.DateTimeOffset? PublishedAt { get; init; }
@@ -113,15 +120,16 @@ public static class UpdateChecker
             string latestVersion = tagName.TrimStart('v', 'V');
 
             string? downloadUrl = FindZipAssetUrl(root);
+            string? exeDownloadUrl = FindExeAssetUrl(root);
 
             string? notes = root.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() : null;
             string? htmlUrl = root.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null;
 
             bool hasNewer = !string.IsNullOrEmpty(latestVersion) && IsNewer(latestVersion, currentVersion);
 
-            if (hasNewer && downloadUrl == null)
+            if (hasNewer && downloadUrl == null && exeDownloadUrl == null)
             {
-                // Новая версия по тегу есть, но в её Assets нет ни одного .zip — либо релиз
+                // Новая версия по тегу есть, но в её Assets нет ни .zip, ни .exe — либо релиз
                 // ещё собирается (workflow не успел прикрепить файлы), либо релиз собран
                 // неправильно. Молчать тут нельзя: без этого сообщения обновление выглядело
                 // бы просто как "нет обновлений", хотя на самом деле оно есть, но его нечем
@@ -132,7 +140,7 @@ public static class UpdateChecker
                     Status = UpdateCheckStatus.Error,
                     CurrentVersion = currentVersion,
                     LatestVersion = latestVersion,
-                    ErrorMessage = $"Вышла новая версия {latestVersion}, но в релизе на GitHub не найден ZIP-архив с обновлением."
+                    ErrorMessage = $"Вышла новая версия {latestVersion}, но в релизе на GitHub не найдено ни ZIP-архива, ни .exe-установщика."
                 };
             }
 
@@ -141,7 +149,8 @@ public static class UpdateChecker
                 Status = hasNewer ? UpdateCheckStatus.UpdateAvailable : UpdateCheckStatus.UpToDate,
                 CurrentVersion = currentVersion,
                 LatestVersion = string.IsNullOrEmpty(latestVersion) ? null : latestVersion,
-                DownloadUrl = downloadUrl,
+                ZipDownloadUrl = downloadUrl,
+                ExeDownloadUrl = exeDownloadUrl,
                 ReleaseNotesUrl = htmlUrl,
                 ReleaseNotes = notes
             };
@@ -207,7 +216,8 @@ public static class UpdateChecker
                 releases.Add(new ReleaseListItem
                 {
                     Version = version,
-                    DownloadUrl = FindZipAssetUrl(releaseEl),
+                    ZipDownloadUrl = FindZipAssetUrl(releaseEl),
+                    ExeDownloadUrl = FindExeAssetUrl(releaseEl),
                     ReleaseNotesUrl = releaseEl.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null,
                     ReleaseNotes = releaseEl.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() : null,
                     PublishedAt = publishedAt,
@@ -227,24 +237,29 @@ public static class UpdateChecker
     // собирает workflow, но в принципе возможно для ручных релизов) — предпочитает тот, что
     // явно назван в честь приложения, иначе берёт первый попавшийся: лучше попытаться
     // обновиться не тем архивом, чем безосновательно отказаться при доступном обновлении.
-    private static string? FindZipAssetUrl(JsonElement releaseRoot)
+    private static string? FindZipAssetUrl(JsonElement releaseRoot) => FindAssetUrl(releaseRoot, ".zip");
+
+    // То же самое, но для .exe-установщика (Inno Setup) — см. UpdateCheckResult.ExeDownloadUrl.
+    private static string? FindExeAssetUrl(JsonElement releaseRoot) => FindAssetUrl(releaseRoot, ".exe");
+
+    private static string? FindAssetUrl(JsonElement releaseRoot, string extension)
     {
         if (!releaseRoot.TryGetProperty("assets", out var assetsEl) || assetsEl.ValueKind != JsonValueKind.Array)
             return null;
 
-        var zipAssets = assetsEl.EnumerateArray()
+        var matchingAssets = assetsEl.EnumerateArray()
             .Where(a => a.TryGetProperty("name", out var n) &&
-                        (n.GetString() ?? "").EndsWith(".zip", System.StringComparison.OrdinalIgnoreCase))
+                        (n.GetString() ?? "").EndsWith(extension, System.StringComparison.OrdinalIgnoreCase))
             .ToList();
 
-        if (zipAssets.Count == 0) return null;
+        if (matchingAssets.Count == 0) return null;
 
-        var best = zipAssets.FirstOrDefault(a =>
+        var best = matchingAssets.FirstOrDefault(a =>
             a.TryGetProperty("name", out var n) &&
             (n.GetString() ?? "").Contains("lumisense", System.StringComparison.OrdinalIgnoreCase));
 
         if (best.ValueKind != JsonValueKind.Object)
-            best = zipAssets[0];
+            best = matchingAssets[0];
 
         return best.TryGetProperty("browser_download_url", out var urlEl) ? urlEl.GetString() : null;
     }
@@ -317,17 +332,25 @@ public static class UpdateChecker
         Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "Lumisense_Update", System.Guid.NewGuid().ToString("N"))).FullName;
 
     // Скачивает ZIP-архив обновления во временную папку сессии, докладывая прогресс от 0 до 1
-    public static async Task<string> DownloadUpdateZipAsync(string downloadUrl, string sessionDir, System.IProgress<double>? progress, CancellationToken ct)
-    {
-        string zipPath = Path.Combine(sessionDir, "update.zip");
+    public static Task<string> DownloadUpdateZipAsync(string downloadUrl, string sessionDir, System.IProgress<double>? progress, CancellationToken ct) =>
+        DownloadToFileAsync(downloadUrl, Path.Combine(sessionDir, "update.zip"), progress, ct);
 
+    // То же самое, но для .exe-установщика (см. UpdateAvailableWindow — вариант "установить
+    // через установщик" вместо автообновления через Updater.exe). Отдельный метод только ради
+    // говорящего имени на месте вызова — сама логика скачивания полностью общая, см.
+    // DownloadToFileAsync.
+    public static Task<string> DownloadUpdateExeAsync(string downloadUrl, string sessionDir, System.IProgress<double>? progress, CancellationToken ct) =>
+        DownloadToFileAsync(downloadUrl, Path.Combine(sessionDir, "LumisenseSetup.exe"), progress, ct);
+
+    private static async Task<string> DownloadToFileAsync(string downloadUrl, string destinationPath, System.IProgress<double>? progress, CancellationToken ct)
+    {
         using var response = await Http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
 
         long? totalBytes = response.Content.Headers.ContentLength;
 
         await using var httpStream = await response.Content.ReadAsStreamAsync(ct);
-        await using (var fileStream = File.Create(zipPath))
+        await using (var fileStream = File.Create(destinationPath))
         {
             var buffer = new byte[81920];
             long readTotal = 0;
@@ -341,7 +364,7 @@ public static class UpdateChecker
             }
         }
 
-        return zipPath;
+        return destinationPath;
     }
 
     // Распаковывает скачанный архив и возвращает путь к папке, где реально лежит
@@ -428,6 +451,32 @@ public static class UpdateChecker
         startInfo.ArgumentList.Add(installDir);
         startInfo.ArgumentList.Add(PlayerExeName);
         startInfo.ArgumentList.Add(sessionDir);
+
+        Process.Start(startInfo);
+
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    // Запускает скачанный .exe-установщик и сразу завершает плеер — в отличие от
+    // LaunchUpdaterAndExit выше, дальше ничего готовить не нужно: сам установщик (Inno Setup)
+    // умеет и закрыть/дождаться запущенный плеер, и заменить файлы, и предложить запустить
+    // обновлённую версию по завершении — весь этот сценарий уже реализован в самом инсталляторе
+    // для случая первой установки, для обновления он работает точно так же.
+    //
+    // Verb="runas" — по тем же причинам, что и у Updater'а: установка обычно идёт в Program
+    // Files, куда без прав администратора не записать. Сам установщик, скорее всего, и так
+    // запросил бы повышение через собственный манифест — но полагаться на это не стоит: не все
+    // инсталляторы Inno Setup собираются с privilegesRequired=admin по умолчанию, а без него
+    // Process.Start только с UseShellExecute здесь бы тихо запустил его без прав и установка
+    // впоследствии могла бы просто отказать в доступе к файлам.
+    public static void LaunchInstallerAndExit(string installerExePath)
+    {
+        var startInfo = new ProcessStartInfo(installerExePath)
+        {
+            UseShellExecute = true,
+            Verb = "runas",
+            WorkingDirectory = Path.GetDirectoryName(installerExePath)!
+        };
 
         Process.Start(startInfo);
 

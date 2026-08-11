@@ -6,6 +6,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
@@ -42,6 +43,7 @@ public partial class SettingsWindow : FluentWindow
         (pageKey switch
         {
             "About" => NavAbout,
+            "Updates" => NavUpdates,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
             "Notifications" => NavNotifications,
@@ -201,6 +203,7 @@ public partial class SettingsWindow : FluentWindow
         BuildSearchIndex();
 
         RefreshAppVersionText();
+        LoadDeveloperAvatar();
 
         _isInitializing = false;
     }
@@ -442,8 +445,8 @@ public partial class SettingsWindow : FluentWindow
                     ? published.LocalDateTime.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("ru-RU"))
                     : "Дата публикации неизвестна";
 
-                bool canInstall = !string.IsNullOrEmpty(r.DownloadUrl);
-                if (!canInstall) subtitle += " · в релизе нет ZIP-архива";
+                bool canInstall = !string.IsNullOrEmpty(r.ZipDownloadUrl) || !string.IsNullOrEmpty(r.ExeDownloadUrl);
+                if (!canInstall) subtitle += " · в релизе нет ни ZIP, ни .exe";
 
                 string action = isCurrent ? "Переустановить" : "Установить";
 
@@ -458,6 +461,8 @@ public partial class SettingsWindow : FluentWindow
     // результате — настоящая текущая версия (а не версия из списка) специально: диалог сам
     // покажет и её, и выбранную рядом ("Версия 1.2.0 (у вас 1.4.2)"), это и есть то самое
     // предупреждение об откате, отдельного диалога подтверждения ради этого не потребовалось.
+    // Выбор ZIP/.exe (если у релиза есть оба) диалог тоже предложит сам — см.
+    // UpdateAvailableWindow.InstallMethodPanel.
     private void VersionListItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: VersionListItemViewModel item }) return;
@@ -467,7 +472,8 @@ public partial class SettingsWindow : FluentWindow
             Status = UpdateCheckStatus.UpdateAvailable,
             CurrentVersion = UpdateChecker.GetCurrentVersion(),
             LatestVersion = item.Release.Version,
-            DownloadUrl = item.Release.DownloadUrl,
+            ZipDownloadUrl = item.Release.ZipDownloadUrl,
+            ExeDownloadUrl = item.Release.ExeDownloadUrl,
             ReleaseNotesUrl = item.Release.ReleaseNotesUrl,
             ReleaseNotes = item.Release.ReleaseNotes,
         };
@@ -520,11 +526,11 @@ public partial class SettingsWindow : FluentWindow
         Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
         Add("Сбросить плеер к исходному состоянию", "Профиль", "Profile", ResetPlayerButton, "сброс сбросить умолчание reset default настройки factory");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
-        Add("Источник загрузки обновлений", "О плеере", "About", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
-        Add("Все версии", "О плеере", "About", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить");
-        Add("Проверить обновления", "О плеере", "About", CheckUpdatesButton, "обновление update github версия проверить");
+        Add("Источник загрузки обновлений", "Обновления", "Updates", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
+        Add("Все версии", "Обновления", "Updates", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
+        Add("Проверить обновления", "Обновления", "Updates", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
-        Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты");
+        Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты аватар");
     }
 
     private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -568,6 +574,7 @@ public partial class SettingsWindow : FluentWindow
             "MiniPlayer" => NavMiniPlayer,
             "Hotkeys" => NavHotkeys,
             "Profile" => NavProfile,
+            "Updates" => NavUpdates,
             "About" => NavAbout,
             _ => NavAppearance
         };
@@ -580,7 +587,7 @@ public partial class SettingsWindow : FluentWindow
         // прокручиваем к нужному элементу и подсвечиваем его
         Dispatcher.InvokeAsync(() =>
         {
-            // Некоторые результаты поиска (см. "Разработчик" и "Источник загрузки обновлений")
+            // Некоторые результаты поиска (см. "Источник загрузки обновлений" и "Все версии")
             // лежат внутри Expander (см. FluentExpanderStyle в App.xaml), свёрнутого по
             // умолчанию — BringIntoView и подсветка элемента, который сейчас физически скрыт
             // (Visibility=Collapsed у содержимого свёрнутого аккордеона), ничего не покажут
@@ -1311,6 +1318,7 @@ public partial class SettingsWindow : FluentWindow
         PageMiniPlayer.Visibility = key == "MiniPlayer" ? Visibility.Visible : Visibility.Collapsed;
         PageHotkeys.Visibility = key == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
         PageProfile.Visibility = key == "Profile" ? Visibility.Visible : Visibility.Collapsed;
+        PageUpdates.Visibility = key == "Updates" ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = key == "About" ? Visibility.Visible : Visibility.Collapsed;
 
         // Один и тот же ScrollViewer используется для всех страниц (см. комментарий в
@@ -1336,6 +1344,32 @@ public partial class SettingsWindow : FluentWindow
     private void DeveloperGitHubButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly");
 
     private void DeveloperTelegramButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://t.me/dontwritetoblame");
+
+    // Настоящий аватар вместо статичной заглушки (та уже стоит в XAML как Source по умолчанию,
+    // на случай если этот запрос не пройдёт) — грузится асинхронно и заменяет её только по
+    // факту успешной загрузки. ?size=96 — GitHub сам отдаёт уменьшенную версию, не полноразмерный
+    // оригинал: карточка показывает аватар всего 48×96 DIP, тянуть исходник в разы больше ни к
+    // чему. BitmapImage с Uri на http(s)-адрес качается в фоне сам по себе, без ручных await —
+    // тут ничего не блокирует поток интерфейса, разбор просто продолжится по DownloadCompleted.
+    private void LoadDeveloperAvatar()
+    {
+        try
+        {
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.UriSource = new Uri("https://github.com/wasssly.png?size=96", UriKind.Absolute);
+            bitmap.DownloadCompleted += (_, _) => DeveloperAvatarImage.Source = bitmap;
+            // DownloadFailed (нет сети, GitHub недоступен и т.п.) — молча оставляем плейсхолдер,
+            // уже стоящий в XAML: недоступность чужого аватара с GitHub — не ошибка самого
+            // плеера, отдельно сообщать о ней пользователю незачем.
+            bitmap.DownloadFailed += (_, _) => { };
+            bitmap.EndInit();
+        }
+        catch
+        {
+            // Нет сети/DNS и т.п. ещё до начала асинхронной загрузки — тот же случай, тоже молча.
+        }
+    }
 
     private static void OpenUrl(string url)
     {

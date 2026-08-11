@@ -43,6 +43,7 @@
     <Resource Include="Icons\app\lumisense.png" />
     <Resource Include="Icons\app\lumisense-settings.ico" />
     <Resource Include="Icons\app\lumisense-settings.png" />
+    <Resource Include="Icons\app\developer-avatar-placeholder.png" />
   </ItemGroup>
 
   <ItemGroup>
