@@ -106,7 +106,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         SetDownloading(true);
 
         _downloadCts = new CancellationTokenSource();
-        var progress = new Progress<double>(p => DownloadProgressBar.Value = p);
+        var progress = new Progress<UpdateChecker.DownloadProgressInfo>(UpdateDownloadProgressUi);
 
         // Сессионная временная папка на эту конкретную попытку обновления — сюда попадёт и
         // сам скачанный ZIP, и распакованные из него файлы (см. UpdateChecker.CreateUpdateSession).
@@ -155,7 +155,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         SetDownloading(true);
 
         _downloadCts = new CancellationTokenSource();
-        var progress = new Progress<double>(p => DownloadProgressBar.Value = p);
+        var progress = new Progress<UpdateChecker.DownloadProgressInfo>(UpdateDownloadProgressUi);
 
         string sessionDir = UpdateChecker.CreateUpdateSession();
 
@@ -195,10 +195,47 @@ public partial class UpdateAvailableWindow : FluentWindow
         InstallMethodZipRadio.IsEnabled = !isDownloading;
         InstallMethodExeRadio.IsEnabled = !isDownloading;
         DownloadProgressBar.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
-        DownloadProgressBar.IsIndeterminate = false;
+        // Неопределённый — пока не пришёл первый отчёт о прогрессе с известным общим размером
+        // (см. UpdateDownloadProgressUi); пустая полоса на 0% в первые доли секунды скачивания
+        // выглядела как зависание сильнее, чем честная "думающая" анимация.
+        DownloadProgressBar.IsIndeterminate = isDownloading;
         DownloadProgressBar.Value = 0;
-        PhaseText.Visibility = Visibility.Collapsed;
+        PhaseText.Text = isDownloading ? "Скачивание…" : "";
+        PhaseText.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
         StatusText.Visibility = Visibility.Collapsed;
+    }
+
+    // Живое обновление текста и прогресс-бара во время скачивания (см. UpdateChecker.
+    // DownloadProgressInfo/DownloadToFileAsync) — "12,4 МБ из 45,2 МБ (27%) — 3,1 МБ/с", а не
+    // голый процент, как было раньше.
+    private void UpdateDownloadProgressUi(UpdateChecker.DownloadProgressInfo info)
+    {
+        bool knowsTotal = info.TotalBytes is > 0;
+
+        DownloadProgressBar.IsIndeterminate = !knowsTotal;
+        if (knowsTotal) DownloadProgressBar.Value = info.Fraction;
+
+        string receivedText = FormatBytes(info.BytesReceived);
+        string? speedText = info.BytesPerSecond > 0 ? $"{FormatBytes((long)info.BytesPerSecond)}/с" : null;
+
+        string text = knowsTotal
+            ? $"Скачивается {receivedText} из {FormatBytes(info.TotalBytes!.Value)} ({info.Fraction:P0})"
+            : $"Скачивается {receivedText}";
+
+        if (speedText != null) text += $" — {speedText}";
+
+        PhaseText.Text = text;
+        PhaseText.Visibility = Visibility.Visible;
+    }
+
+    private static string FormatBytes(long bytes)
+    {
+        const double kb = 1024;
+        const double mb = kb * 1024;
+
+        if (bytes >= mb) return $"{bytes / mb:F1} МБ";
+        if (bytes >= kb) return $"{bytes / kb:F0} КБ";
+        return $"{bytes} Б";
     }
 
     // Между "скачано" и "плеер вот-вот закроется на обновление" — короткая, но заметная пауза

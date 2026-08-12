@@ -24,12 +24,31 @@ public partial class MiniPlayerWindow : Window
     // чтобы на её месте не оставалось пустого пространства.
     private const double ProgressRowHeight = 24;
 
+    // Нижний отступ HeaderPanel (обложка+название) — в XAML он задан как "14,10,14,2" (верхний
+    // отступ 10, нижний всего 2): при видимой полосе прогресса это осознанная асимметрия — она
+    // визуально "утягивает" заголовок к прогресс-бару под ним, оставляя более просторный отступ
+    // только сверху, от самого края окна. Без полосы прогресса эта же асимметрия становится
+    // заметной проблемой — под заголовком просто пусто, и 2px снизу против 10px сверху выглядят
+    // явно неровно. Поэтому нижний отступ увеличивается до тех же 10px, когда полоса скрыта —
+    // см. ApplyProgressBarVisibility.
+    private const double HeaderBottomMarginWithProgress = 2;
+    private const double HeaderBottomMarginWithoutProgress = 10;
+
     // Из настроек (см. ApplyProgressBarVisibility) — CollapsedHeight/ExpandedHeight ниже
     // считают отсюда, показывать полосу прогресса сейчас или нет.
     private bool _showProgress = true;
 
-    private double CollapsedHeight => _showProgress ? CollapsedHeightWithProgress : CollapsedHeightWithProgress - ProgressRowHeight;
-    private double ExpandedHeight => _showProgress ? ExpandedHeightWithProgress : ExpandedHeightWithProgress - ProgressRowHeight;
+    // При скрытой полосе прогресса высота окна уменьшается не ровно на ProgressRowHeight, а на
+    // ProgressRowHeight МИНУС дополнительный нижний отступ HeaderPanel (см. его комментарий
+    // выше) — иначе выросший нижний отступ забирал бы место, для которого constants ниже уже не
+    // предусмотрели запаса, и итоговая высота оказалась бы на 8px меньше нужной.
+    private double CollapsedHeight => _showProgress
+        ? CollapsedHeightWithProgress
+        : CollapsedHeightWithProgress - ProgressRowHeight + (HeaderBottomMarginWithoutProgress - HeaderBottomMarginWithProgress);
+
+    private double ExpandedHeight => _showProgress
+        ? ExpandedHeightWithProgress
+        : ExpandedHeightWithProgress - ProgressRowHeight + (HeaderBottomMarginWithoutProgress - HeaderBottomMarginWithProgress);
 
     // ---------- Прилипание к краям экрана ----------
     // Сама механика (перехват WM_MOVING, арифметика прилипания) — в WindowSnapHelper, общем
@@ -750,6 +769,13 @@ public partial class MiniPlayerWindow : Window
     {
         _showProgress = _mainWindow.Settings.MiniPlayerShowProgress;
         ProgressRow.Visibility = _showProgress ? Visibility.Visible : Visibility.Collapsed;
+
+        // См. комментарий у HeaderBottomMarginWithProgress/WithoutProgress выше — без полосы
+        // прогресса под заголовком увеличиваем его нижний отступ до того же значения, что и
+        // верхний (14,10,14,10 вместо 14,10,14,2), чтобы вокруг заголовка стало поровну места,
+        // а не заметно больше сверху, чем снизу.
+        HeaderPanel.Margin = new Thickness(14, 10, 14,
+            _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress);
 
         // Пересчитываем текущую высоту окна под новое состояние CollapsedHeight/ExpandedHeight
         // (обе зависят от _showProgress, см. их объявление выше) — тем же способом, что и

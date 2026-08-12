@@ -331,23 +331,51 @@ public static class UpdateChecker
     public static string CreateUpdateSession() =>
         Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), "Lumisense_Update", System.Guid.NewGuid().ToString("N"))).FullName;
 
-    // Скачивает ZIP-архив обновления во временную папку сессии, докладывая прогресс от 0 до 1
-    public static Task<string> DownloadUpdateZipAsync(string downloadUrl, string sessionDir, System.IProgress<double>? progress, CancellationToken ct) =>
+    // Подробности о ходе скачивания — сколько уже получено, сколько всего (если сервер вообще
+    // прислал Content-Length — не гарантировано, но GitHub для ассетов релизов отдаёт его
+    // почти всегда), доля от 0 до 1 и текущая скорость. См. UpdateAvailableWindow —
+    // показывает это пользователю вместо голого процента.
+    public sealed class DownloadProgressInfo
+    {
+        public long BytesReceived { get; init; }
+        public long? TotalBytes { get; init; }
+        public double Fraction { get; init; }
+        public double BytesPerSecond { get; init; }
+    }
+
+    // Скачивает ZIP-архив обновления во временную папку сессии, докладывая подробный прогресс
+    // (см. DownloadProgressInfo).
+    public static Task<string> DownloadUpdateZipAsync(string downloadUrl, string sessionDir, System.IProgress<DownloadProgressInfo>? progress, CancellationToken ct) =>
         DownloadToFileAsync(downloadUrl, Path.Combine(sessionDir, "update.zip"), progress, ct);
 
     // То же самое, но для .exe-установщика (см. UpdateAvailableWindow — вариант "установить
     // через установщик" вместо автообновления через Updater.exe). Отдельный метод только ради
     // говорящего имени на месте вызова — сама логика скачивания полностью общая, см.
     // DownloadToFileAsync.
-    public static Task<string> DownloadUpdateExeAsync(string downloadUrl, string sessionDir, System.IProgress<double>? progress, CancellationToken ct) =>
+    public static Task<string> DownloadUpdateExeAsync(string downloadUrl, string sessionDir, System.IProgress<DownloadProgressInfo>? progress, CancellationToken ct) =>
         DownloadToFileAsync(downloadUrl, Path.Combine(sessionDir, "LumisenseSetup.exe"), progress, ct);
 
-    private static async Task<string> DownloadToFileAsync(string downloadUrl, string destinationPath, System.IProgress<double>? progress, CancellationToken ct)
+    private static async Task<string> DownloadToFileAsync(string downloadUrl, string destinationPath, System.IProgress<DownloadProgressInfo>? progress, CancellationToken ct)
     {
         using var response = await Http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
         response.EnsureSuccessStatusCode();
 
         long? totalBytes = response.Content.Headers.ContentLength;
+
+        // Скорость считается не от самого начала скачивания, а с момента последнего отчёта —
+        // "средняя скорость за весь файл" на медленном старте (например, пока прогревается
+        // TCP-соединение) была бы занижена и потом медленно "разгонялась" бы к реальной, а не
+        // отражала бы её сразу после первого же интервала.
+        var stopwatch = Stopwatch.StartNew();
+        var lastReportElapsed = TimeSpan.Zero;
+        long lastReportBytes = 0;
+
+        // Отчёты не на каждый прочитанный кусок (для файла в десятки МБ их были бы сотни —
+        // Progress<T> перекладывает каждый Report на UI-поток через Dispatcher, незачем грузить
+        // его настолько часто), а не чаще, чем раз в ~150мс — этого более чем достаточно, чтобы
+        // цифры на экране выглядели "живыми", а не заметно чаще человеческий глаз всё равно не
+        // считывает.
+        const double reportIntervalMs = 150;
 
         await using var httpStream = await response.Content.ReadAsStreamAsync(ct);
         await using (var fileStream = File.Create(destinationPath))
@@ -359,9 +387,36 @@ public static class UpdateChecker
             {
                 await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
                 readTotal += read;
-                if (totalBytes is > 0)
-                    progress?.Report((double)readTotal / totalBytes.Value);
+
+                var elapsed = stopwatch.Elapsed;
+                if (progress != null && (elapsed - lastReportElapsed).TotalMilliseconds >= reportIntervalMs)
+                {
+                    double intervalSeconds = (elapsed - lastReportElapsed).TotalSeconds;
+                    double bytesPerSecond = intervalSeconds > 0 ? (readTotal - lastReportBytes) / intervalSeconds : 0;
+
+                    progress.Report(new DownloadProgressInfo
+                    {
+                        BytesReceived = readTotal,
+                        TotalBytes = totalBytes,
+                        Fraction = totalBytes is > 0 ? (double)readTotal / totalBytes.Value : 0,
+                        BytesPerSecond = bytesPerSecond
+                    });
+
+                    lastReportElapsed = elapsed;
+                    lastReportBytes = readTotal;
+                }
             }
+
+            // Финальный отчёт — гарантирует ровно 100% (readTotal == totalBytes) на экране в
+            // момент завершения, даже если цикл выше закончился между двумя плановыми отчётами
+            // и последнее увиденное пользователем значение было чуть меньше.
+            progress?.Report(new DownloadProgressInfo
+            {
+                BytesReceived = readTotal,
+                TotalBytes = totalBytes,
+                Fraction = totalBytes is > 0 ? (double)readTotal / totalBytes.Value : 1,
+                BytesPerSecond = 0
+            });
         }
 
         return destinationPath;
