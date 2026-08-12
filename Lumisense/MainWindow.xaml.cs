@@ -242,6 +242,24 @@ public partial class MainWindow : FluentWindow
     private string? _currentAlbumArtMimeType;
     private TagLib.PictureType? _currentAlbumArtPictureType;
 
+    // Оборачивает fire-and-forget async-вызовы (несколько мест в этом файле: восстановление
+    // плейлиста, проверка обновлений при старте, фоновая проверка существования файлов, расчёт
+    // формы волны) логированием исключения сразу же, а не только когда сборщик мусора когда-
+    // нибудь уничтожит забытую задачу (TaskScheduler.UnobservedTaskException в App.xaml.cs —
+    // тот тоже сработает, но не гарантированно быстро, а иногда и вовсе не успевает до
+    // закрытия процесса).
+    private static async void FireAndForget(Task task, string operationName)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Ошибка в фоновой операции \"{operationName}\"", ex);
+        }
+    }
+
     public MainWindow()
     {
         InitializeComponent();
@@ -255,7 +273,7 @@ public partial class MainWindow : FluentWindow
         // Не await — намеренно "запустили и забыли": файловая проверка треков и загрузка
         // последнего трека идут в фоне, окно тем временем показывается сразу, без ожидания
         // (см. подробный комментарий над RestoreSavedPlaylistAsync).
-        _ = RestoreSavedPlaylistAsync();
+        FireAndForget(RestoreSavedPlaylistAsync(), "RestoreSavedPlaylistAsync");
 
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
@@ -438,7 +456,7 @@ public partial class MainWindow : FluentWindow
             ForceForeground(this);
         }
 
-        _ = CheckForUpdatesOnStartupAsync();
+        FireAndForget(CheckForUpdatesOnStartupAsync(), "CheckForUpdatesOnStartupAsync");
     }
 
     // Windows не всегда даёт свежезапущенному процессу забрать фокус и оказаться поверх уже
@@ -618,7 +636,7 @@ public partial class MainWindow : FluentWindow
         // Запускаем и НЕ ждём (fire-and-forget) — удаление устаревших записей не должно
         // задерживать ни появление плейлиста (он уже показан к этому моменту), ни загрузку
         // последнего трека чуть ниже.
-        _ = VerifyTrackExistenceInBackgroundAsync(foldersThatWereNonEmpty);
+        FireAndForget(VerifyTrackExistenceInBackgroundAsync(foldersThatWereNonEmpty), "VerifyTrackExistenceInBackgroundAsync");
 
         if (_folders.Count == 0) return;
 
@@ -683,21 +701,33 @@ public partial class MainWindow : FluentWindow
     {
         base.OnSourceInitialized(e);
 
-        // Глобальные медиаклавиши (Play/Pause, Next, Prev, Stop) — работают даже без фокуса на окне
-        _mediaHotKeys = new GlobalMediaHotKeys(this);
-        _mediaHotKeys.PlayPausePressed += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
-        _mediaHotKeys.NextPressed += () => Dispatcher.Invoke(HandleHotkeyNext);
-        _mediaHotKeys.PreviousPressed += () => Dispatcher.Invoke(HandleHotkeyPrevious);
-        _mediaHotKeys.StopPressed += () => Dispatcher.Invoke(() => StopButton_Click(this, new RoutedEventArgs()));
-        _mediaHotKeys.VolumeUpPressed += () => Dispatcher.Invoke(() => ChangeVolumeBy(0.02));
-        _mediaHotKeys.VolumeDownPressed += () => Dispatcher.Invoke(() => ChangeVolumeBy(-0.02));
-        _mediaHotKeys.MutePressed += () => Dispatcher.Invoke(ToggleMute);
-        _mediaHotKeys.ShufflePressed += () => Dispatcher.Invoke(() => ShuffleButton_Click(this, new RoutedEventArgs()));
-        _mediaHotKeys.RepeatPressed += () => Dispatcher.Invoke(() => RepeatButton_Click(this, new RoutedEventArgs()));
-        _mediaHotKeys.DeleteTrackPressed += () => Dispatcher.Invoke(DeleteCurrentTrackFromDiskHotkey);
-        _mediaHotKeys.SeekForwardPressed += () => Dispatcher.Invoke(() => SeekBy(5));
-        _mediaHotKeys.SeekBackwardPressed += () => Dispatcher.Invoke(() => SeekBy(-5));
-        _mediaHotKeys.ApplyCustomHotkeys(_settings);
+        // Глобальные медиаклавиши (Play/Pause, Next, Prev, Stop) — работают даже без фокуса на окне.
+        // В try/catch — RegisterHotKey может отказать, если тот же самый хоткей уже занят другим
+        // приложением (не редкость для медиаклавиш и особенно для пользовательских комбинаций из
+        // настроек); раньше необработанное исключение здесь роняло весь плеер ещё до того, как
+        // он успевал показаться на экране.
+        try
+        {
+            _mediaHotKeys = new GlobalMediaHotKeys(this);
+            _mediaHotKeys.PlayPausePressed += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
+            _mediaHotKeys.NextPressed += () => Dispatcher.Invoke(HandleHotkeyNext);
+            _mediaHotKeys.PreviousPressed += () => Dispatcher.Invoke(HandleHotkeyPrevious);
+            _mediaHotKeys.StopPressed += () => Dispatcher.Invoke(() => StopButton_Click(this, new RoutedEventArgs()));
+            _mediaHotKeys.VolumeUpPressed += () => Dispatcher.Invoke(() => ChangeVolumeBy(0.02));
+            _mediaHotKeys.VolumeDownPressed += () => Dispatcher.Invoke(() => ChangeVolumeBy(-0.02));
+            _mediaHotKeys.MutePressed += () => Dispatcher.Invoke(ToggleMute);
+            _mediaHotKeys.ShufflePressed += () => Dispatcher.Invoke(() => ShuffleButton_Click(this, new RoutedEventArgs()));
+            _mediaHotKeys.RepeatPressed += () => Dispatcher.Invoke(() => RepeatButton_Click(this, new RoutedEventArgs()));
+            _mediaHotKeys.DeleteTrackPressed += () => Dispatcher.Invoke(DeleteCurrentTrackFromDiskHotkey);
+            _mediaHotKeys.SeekForwardPressed += () => Dispatcher.Invoke(() => SeekBy(5));
+            _mediaHotKeys.SeekBackwardPressed += () => Dispatcher.Invoke(() => SeekBy(-5));
+            _mediaHotKeys.ApplyCustomHotkeys(_settings);
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось зарегистрировать глобальные горячие клавиши — возможно, какая-то из комбинаций уже занята другим приложением", ex);
+            _mediaHotKeys = null;
+        }
 
         // Интеграция с Now Playing Windows 11 (панель задач, блокировка экрана, наушники с кнопками)
         try
@@ -715,24 +745,35 @@ public partial class MainWindow : FluentWindow
             _nowPlaying.PreviousRequested += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
             _nowPlaying.StopRequested += () => Dispatcher.Invoke(() => StopButton_Click(this, new RoutedEventArgs()));
         }
-        catch
+        catch (Exception ex)
         {
             // SMTC недоступен в некоторых окружениях (например, без нужного Windows SDK
             // на машине сборки) — в этом случае просто отключаем интеграцию, плеер работает дальше
+            Logger.Error("Не удалось включить интеграцию с Now Playing (SMTC)", ex);
             _nowPlaying = null;
         }
 
-        // Системный трей
-        _trayIconManager = new TrayIconManager();
-        _trayIconManager.OpenRequested += RestoreFromTray;
-        _trayIconManager.ExitRequested += ExitApplicationCompletely;
-        _trayIconManager.PlayPauseRequested += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
-        _trayIconManager.NextRequested += () => Dispatcher.Invoke(PlayNextTrack);
-        _trayIconManager.PreviousRequested += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
-        PlaybackStateChanged += isPlaying => _trayIconManager?.SetPlayingState(isPlaying);
-        TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
-        _trayIconManager.SetPlayingState(_isPlaying);
-        _trayIconManager.ApplyTheme(isLight: _settings.IsLightThemeResolved());
+        // Системный трей — тоже в try/catch, по той же причине, что и два блока выше: иконка в
+        // трее не критична для работы плеера как такового, а вот необработанное исключение
+        // здесь роняло бы всё окно ещё до первого показа.
+        try
+        {
+            _trayIconManager = new TrayIconManager();
+            _trayIconManager.OpenRequested += RestoreFromTray;
+            _trayIconManager.ExitRequested += ExitApplicationCompletely;
+            _trayIconManager.PlayPauseRequested += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
+            _trayIconManager.NextRequested += () => Dispatcher.Invoke(PlayNextTrack);
+            _trayIconManager.PreviousRequested += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
+            PlaybackStateChanged += isPlaying => _trayIconManager?.SetPlayingState(isPlaying);
+            TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
+            _trayIconManager.SetPlayingState(_isPlaying);
+            _trayIconManager.ApplyTheme(isLight: _settings.IsLightThemeResolved());
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось создать значок в трее", ex);
+            _trayIconManager = null;
+        }
 
         ApplyPlaybackButtonsVisibility();
     }
@@ -908,7 +949,7 @@ public partial class MainWindow : FluentWindow
         ProgressWaveform.Visibility = isWaveform ? Visibility.Visible : Visibility.Collapsed;
 
         if (isWaveform)
-            _ = EnsureWaveformForCurrentTrackAsync();
+            FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
     }
 
     // Считает (или достаёт из кэша) форму волны для трека, который сейчас загружен — вызывается
@@ -2639,6 +2680,7 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
+            Logger.Error($"Не удалось открыть аудиофайл: {filePath}", ex);
             System.Windows.MessageBox.Show(this, $"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
             return;
@@ -2658,7 +2700,7 @@ public partial class MainWindow : FluentWindow
         // время на декодирование всего файла впустую, если пользователь показывает обычный
         // Slider (по умолчанию).
         if (_settings.ProgressBarStyle == "Waveform")
-            _ = EnsureWaveformForCurrentTrackAsync();
+            FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
 
         // Позиция старта: восстановленная (сохранённая между запусками) либо начало трека.
         // Раньше при переключении трека на паузе слайдер и время не сбрасывались и
@@ -3017,7 +3059,21 @@ public partial class MainWindow : FluentWindow
 
         if (_isPlaying)
         {
-            _outputDevice?.Pause();
+            try
+            {
+                _outputDevice?.Pause();
+            }
+            catch (Exception ex)
+            {
+                // Устройство вывода могло исчезнуть прямо во время работы (наушники/колонки
+                // отключили, драйвер упал) — такие ошибки NAudio не редкость, и раньше
+                // необработанное исключение здесь прямо из обработчика клика по кнопке
+                // приводило к падению всего плеера. Логируем и продолжаем — состояние UI
+                // (иконка, таймер) всё равно переключаем ниже, даже если сама пауза на
+                // устройстве не удалась.
+                Logger.Error("Не удалось поставить воспроизведение на паузу", ex);
+            }
+
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
             StopProgressTimerAndAnimation();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
@@ -3029,7 +3085,21 @@ public partial class MainWindow : FluentWindow
         }
         else
         {
-            _outputDevice?.Play();
+            try
+            {
+                _outputDevice?.Play();
+            }
+            catch (Exception ex)
+            {
+                // См. комментарий у Pause() выше — та же защита от падения из-за проблем с
+                // самим устройством вывода, а не с плеером как таковым.
+                Logger.Error("Не удалось запустить воспроизведение", ex);
+                System.Windows.MessageBox.Show(this,
+                    $"Не удалось запустить воспроизведение — возможно, устройство вывода звука недоступно.\n\n{ex.Message}",
+                    "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                return;
+            }
+
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
             _progressTimer.Start();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
@@ -3540,6 +3610,13 @@ public partial class MainWindow : FluentWindow
     public void ApplyMiniPlayerButtonsLayoutLive()
     {
         _miniPlayerWindow?.ApplyButtonsLayoutMode();
+    }
+
+    // Аналог ApplyMiniPlayerSecondaryButtonLive для настройки "показывать полосу прогресса"
+    // (см. AppSettings.MiniPlayerShowProgress).
+    public void ApplyMiniPlayerProgressBarVisibilityLive()
+    {
+        _miniPlayerWindow?.ApplyProgressBarVisibility();
     }
 
     // Аналог ApplyMiniPlayerSecondaryButtonLive для настройки "что показывать во второй

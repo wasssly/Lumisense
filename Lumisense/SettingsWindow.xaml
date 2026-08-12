@@ -902,6 +902,16 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.MiniPlayerShowProgress и MiniPlayerWindow.ApplyProgressBarVisibility. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="MiniShowProgressCheckBox" Content="Показывать полосу прогресса"
+                                          Checked="MiniShowProgressCheckBox_Changed" Unchecked="MiniShowProgressCheckBox_Changed" />
+                                <TextBlock Text="Окно мини-плеера становится немного компактнее, если полоса не нужна. Перемотка кликом по обложке/названию по-прежнему недоступна — только сама полоса."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.MiniPlayerInfoMode и MiniPlayerWindow.UpdateSecondaryLine.
                              Название трека видно всегда, вне зависимости от этого выбора — тут только
                              про вторую строку под ним. -->
@@ -1355,6 +1365,33 @@
                                            FontSize="12" Opacity="0.6" />
                             </StackPanel>
                         </Border>
+
+                        <!-- Логи — см. Logger.cs. Диагностика на случай сбоев/падений: файл на
+                             сессию в %AppData%\Lumisense\logs, кнопка ниже просто открывает эту
+                             папку в Проводнике, чтобы её было легко найти и приложить куда-нибудь
+                             при сообщении о проблеме. -->
+                        <ui:Button x:Name="OpenLogsButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Margin="0,12,0,0" Click="OpenLogsButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconWrench" Size="16"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Открыть папку с логами" FontWeight="SemiBold" />
+                                    <TextBlock Text="Пригодится, если плеер упал или повёл себя странно" FontSize="12" Opacity="0.6" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
 
                         <!-- 2. Разработчик — компактная карточка (аватар, ник, иконки-ссылки),
                              раньше был аккордеон с двумя большими кнопками-строками; см.

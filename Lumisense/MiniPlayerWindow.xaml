@@ -214,8 +214,12 @@
                 </StackPanel>
             </StackPanel>
 
-            <!-- Прогресс (простая полоса + прозрачный слой для перемотки кликом/перетаскиванием) -->
-            <Grid Grid.Row="1" Margin="14,4,14,0" Height="20">
+            <!-- Прогресс (простая полоса + прозрачный слой для перемотки кликом/перетаскиванием).
+                 См. AppSettings.MiniPlayerShowProgress/ApplyProgressBarVisibility — скрывается
+                 целиком через Visibility, высота строки (Auto) при этом схлопывается сама, окно
+                 дополнительно уменьшается на ProgressRowHeight в самом ApplyProgressBarVisibility,
+                 чтобы не оставалось пустого места на месте спрятанной полосы. -->
+            <Grid x:Name="ProgressRow" Grid.Row="1" Margin="14,4,14,0" Height="20">
                 <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
                         Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
                 <Border x:Name="ProgressFill" Height="4" CornerRadius="2" Width="0"

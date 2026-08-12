@@ -245,6 +245,10 @@ public class AppSettings
     // См. MiniPlayerWindow.ApplyButtonsLayoutMode.
     public string MiniPlayerButtonsLayout { get; set; } = "Below";
 
+    // Показывать ли полосу прогресса в мини-плеере — по умолчанию включено (прежнее
+    // поведение). См. MiniPlayerWindow.ApplyProgressBarVisibility.
+    public bool MiniPlayerShowProgress { get; set; } = true;
+
     // Место на экране, куда пользователь перетащил мини-плеер в последний раз.
     // null означает "ещё ни разу не задавалось" — тогда используется положение по умолчанию.
     public double? MiniPlayerLeft { get; set; }

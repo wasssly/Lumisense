@@ -15,8 +15,21 @@ public partial class MiniPlayerWindow : Window
     private readonly MainWindow _mainWindow;
     private bool _isDraggingProgress;
 
-    private const double CollapsedHeight = 82;
-    private const double ExpandedHeight = 140;
+    private const double CollapsedHeightWithProgress = 82;
+    private const double ExpandedHeightWithProgress = 140;
+
+    // Высота строки прогресса вместе с её верхним отступом (Height="20" + Margin="14,4,14,0" —
+    // см. ProgressRow в MiniPlayerWindow.xaml) — вычитается из высоты окна, когда полоса
+    // прогресса скрыта (см. AppSettings.MiniPlayerShowProgress/ApplyProgressBarVisibility),
+    // чтобы на её месте не оставалось пустого пространства.
+    private const double ProgressRowHeight = 24;
+
+    // Из настроек (см. ApplyProgressBarVisibility) — CollapsedHeight/ExpandedHeight ниже
+    // считают отсюда, показывать полосу прогресса сейчас или нет.
+    private bool _showProgress = true;
+
+    private double CollapsedHeight => _showProgress ? CollapsedHeightWithProgress : CollapsedHeightWithProgress - ProgressRowHeight;
+    private double ExpandedHeight => _showProgress ? ExpandedHeightWithProgress : ExpandedHeightWithProgress - ProgressRowHeight;
 
     // ---------- Прилипание к краям экрана ----------
     // Сама механика (перехват WM_MOVING, арифметика прилипания) — в WindowSnapHelper, общем
@@ -65,6 +78,7 @@ public partial class MiniPlayerWindow : Window
 
         Height = CollapsedHeight;
         ApplyButtonsLayoutMode();
+        ApplyProgressBarVisibility();
 
         // Сразу отображаем текущее состояние плеера
         OnTrackInfoChanged(_mainWindow.CurrentTitle, _mainWindow.CurrentArtist, _mainWindow.CurrentArtBrush);
@@ -725,6 +739,25 @@ public partial class MiniPlayerWindow : Window
         HeaderPanel.Visibility = Visibility.Visible;
         ControlsPanel.Visibility = Visibility.Collapsed;
         Height = CollapsedHeight;
+    }
+
+    // Показывает/прячет полосу прогресса (см. AppSettings.MiniPlayerShowProgress, страница
+    // "Мини-плеер" в настройках) — вызывается при открытии мини-плеера и повторно, если
+    // пользователь переключил настройку прямо сейчас, пока мини-плеер открыт (см.
+    // MainWindow.ApplyMiniPlayerProgressBarVisibilityLive), по той же схеме, что и
+    // ApplyButtonsLayoutMode выше.
+    public void ApplyProgressBarVisibility()
+    {
+        _showProgress = _mainWindow.Settings.MiniPlayerShowProgress;
+        ProgressRow.Visibility = _showProgress ? Visibility.Visible : Visibility.Collapsed;
+
+        // Пересчитываем текущую высоту окна под новое состояние CollapsedHeight/ExpandedHeight
+        // (обе зависят от _showProgress, см. их объявление выше) — тем же способом, что и
+        // RootBorder_MouseEnter/Leave: "развёрнуто" здесь означает "сейчас видны кнопки
+        // управления в режиме Below" — то есть ТЕ ЖЕ самые условия, при которых используется
+        // именно ExpandedHeight, а не CollapsedHeight.
+        bool isExpanded = !_buttonsOverlayMode && ControlsPanel.Visibility == Visibility.Visible;
+        Height = isExpanded ? ExpandedHeight : CollapsedHeight;
     }
 
     private void RootBorder_MouseEnter(object sender, MouseEventArgs e)

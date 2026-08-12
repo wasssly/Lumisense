@@ -158,6 +158,7 @@ public partial class SettingsWindow : FluentWindow
                                               && !MiniSecondaryFavoriteRadio.IsChecked.GetValueOrDefault();
         MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
         MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
+        MiniShowProgressCheckBox.IsChecked = _settings.MiniPlayerShowProgress;
         MiniInfoOnlyTitleRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleOnly";
         MiniInfoRemainingRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleRemaining";
         MiniInfoArtistRadio.IsChecked = !MiniInfoOnlyTitleRadio.IsChecked.GetValueOrDefault()
@@ -510,6 +511,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Закрепить положение (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniPinnedCheckBox, "закрепить перетаскивание pin мини плеер");
         Add("Прилипание к краям экрана (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniSnapToEdgesCheckBox, "прилипание магнит края экран snap edge мини плеер");
         Add("Вторая кнопка в мини-плеере", "Мини-плеер", "MiniPlayer", MiniSecondaryRepeatRadio, "вторая кнопка повтор перемешать избранное сердечко favorite shuffle repeat мини плеер");
+        Add("Показывать полосу прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowProgressCheckBox, "полоса прогресс progress bar скрыть мини плеер");
         Add("Пуск / пауза", "Горячие клавиши", "Hotkeys", HotkeyPlayPauseButton, "play pause горячая клавиша");
         Add("Следующий трек", "Горячие клавиши", "Hotkeys", HotkeyNextButton, "next горячая клавиша");
         Add("Предыдущий трек", "Горячие клавиши", "Hotkeys", HotkeyPreviousButton, "previous горячая клавиша");
@@ -537,6 +539,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Проверить обновления", "Обновления", "Updates", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
         Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты аватар");
+        Add("Открыть папку с логами", "О плеере", "About", OpenLogsButton, "логи log ошибка краш crash диагностика");
     }
 
     private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -959,6 +962,14 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyMiniPlayerButtonsLayoutLive();
     }
 
+    private void MiniShowProgressCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerShowProgress = MiniShowProgressCheckBox.IsChecked == true;
+        _owner.ApplyMiniPlayerProgressBarVisibilityLive();
+    }
+
     private void MiniInfoModeRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -1359,6 +1370,8 @@ public partial class SettingsWindow : FluentWindow
     private void DeveloperGitHubButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly");
 
     private void DeveloperTelegramButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://t.me/dontwritetoblame");
+
+    private void OpenLogsButton_Click(object sender, RoutedEventArgs e) => Logger.OpenLogsFolder();
 
     // Настоящий аватар вместо статичной заглушки (та уже стоит в XAML как Source по умолчанию,
     // на случай если этот запрос не пройдёт) — грузится асинхронно и заменяет её только по
