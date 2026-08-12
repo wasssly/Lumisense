@@ -1386,7 +1386,7 @@ public partial class SettingsWindow : FluentWindow
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.UriSource = new Uri("https://github.com/wasssly.png?size=96", UriKind.Absolute);
-            bitmap.DownloadCompleted += (_, _) => DeveloperAvatarImage.Source = bitmap;
+            bitmap.DownloadCompleted += (_, _) => DeveloperAvatarBrush.ImageSource = bitmap;
             // DownloadFailed (нет сети, GitHub недоступен и т.п.) — молча оставляем плейсхолдер,
             // уже стоящий в XAML: недоступность чужого аватара с GitHub — не ошибка самого
             // плеера, отдельно сообщать о ней пользователю незачем.
@@ -1394,7 +1394,7 @@ public partial class SettingsWindow : FluentWindow
             bitmap.EndInit();
 
             // Держим ссылку на объект в поле, пока идёт асинхронная загрузка — иначе он не
-            // "закреплён" нигде (DeveloperAvatarImage.Source ещё указывает на плейсхолдер, а не
+            // "закреплён" нигде (DeveloperAvatarBrush.ImageSource ещё указывает на плейсхолдер, а не
             // на bitmap, до самого DownloadCompleted), и подписка на собственное же событие
             // DownloadCompleted этому не помогает — делегат, хранящийся на самом объекте, не
             // защищает сам объект от сборки мусора. Без этого поля bitmap реально мог быть

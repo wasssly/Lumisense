@@ -2555,8 +2555,28 @@ public partial class MainWindow : FluentWindow
     {
         var trackName = Path.GetFileName(filePath);
 
+        // Владелец диалога — то из окон приложения, что сейчас реально видно на экране.
+        // Обычно это само MainWindow, но в мини-режиме оно спрятано (см. Hide() в
+        // ShowMiniPlayer) — диалог, привязанный к невидимому окну, не может нормально выйти
+        // на передний план сам по себе, каким бы owner'ом он ни был. Берём мини-плеер в
+        // качестве владельца в этом случае — это и есть то, что сейчас видно.
+        Window ownerWindow = _isMiniMode && _miniPlayerWindow != null ? _miniPlayerWindow : this;
+
+        // Один из двух путей сюда — глобальный хоткей удаления трека (см.
+        // DeleteCurrentTrackFromDiskHotkey), который срабатывает независимо от того, какое
+        // окно сейчас активно — то есть плеер в момент нажатия почти наверняка НЕ в фокусе.
+        // Обычный MessageBox.Show с таким владельцем в этом случае надёжно оказывается ПОД
+        // активным окном другого приложения: Windows защищает от "кражи" фокуса фоновыми
+        // процессами (foreground lock) и не считает сам факт владения диалогом достаточным
+        // основанием вывести его наверх, если владелец в этот момент не в фокусе. Тот же
+        // самый приём (кратковременно включить Topmost, затем Activate), которым уже решается
+        // ровно эта же проблема при разворачивании мини-плеера, исправляет и этот диалог.
+        // Для обычного пути (пункт контекстного меню — окно и так уже в фокусе, раз по нему
+        // только что кликнули) это просто безвредный no-op.
+        ForceForeground(ownerWindow);
+
         var confirm = System.Windows.MessageBox.Show(
-            this,
+            ownerWindow,
             $"Удалить файл «{trackName}» с диска?\n\nФайл будет перемещён в корзину, а трек — убран из всех плейлистов.",
             "Удаление трека с диска",
             System.Windows.MessageBoxButton.YesNo,
@@ -2599,7 +2619,7 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
+            System.Windows.MessageBox.Show(ownerWindow, $"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка удаления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             return;
         }

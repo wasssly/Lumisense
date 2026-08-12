@@ -1291,10 +1291,12 @@
                         <!-- "Все версии" — список всех релизов с GitHub, каждый со своей кнопкой
                              "Установить": можно поставить не только последнюю версию, но и любую
                              предыдущую (откатиться) или любую вышедшую (например, пропущенный
-                             пререлиз). Список подгружается лениво — только при первом раскрытии
-                             этого аккордеона, а не сразу при каждом открытии настроек. -->
+                             пререлиз). Раскрыт по умолчанию (IsExpanded="True") — список всё
+                             равно подгружается по тому же самому событию Expanded, что и раньше
+                             при ручном раскрытии, но раз аккордеон открыт сразу, загрузка
+                             стартует сразу при открытии страницы "Обновления", а не по клику. -->
                         <Expander x:Name="AllVersionsExpanderControl" Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch"
-                                  Margin="0,12,0,0" Expanded="AllVersionsExpander_Expanded">
+                                  Margin="0,12,0,0" IsExpanded="True" Expanded="AllVersionsExpander_Expanded">
                             <Expander.Header>
                                 <TextBlock Text="Все версии" FontSize="14" FontWeight="SemiBold" />
                             </Expander.Header>
@@ -1404,10 +1406,17 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24"
-                                        ClipToBounds="True" Margin="0,0,12,0">
-                                    <Image x:Name="DeveloperAvatarImage" Stretch="UniformToFill"
-                                           Source="/Icons/app/developer-avatar-placeholder.png" />
+                                <!-- ImageBrush на Background, а не дочерний Image — у Border с
+                                     CornerRadius скругляются края только СОБСТВЕННОЙ заливки
+                                     (Background/BorderBrush), ClipToBounds на дочерних элементах
+                                     клипует лишь по прямоугольным границам, а не по скруглённой
+                                     геометрии. Дочерний Image поверх такого Border выглядел
+                                     обычным квадратом, торчащим из-под скруглённых углов. -->
+                                <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24" Margin="0,0,12,0">
+                                    <Border.Background>
+                                        <ImageBrush x:Name="DeveloperAvatarBrush" Stretch="UniformToFill"
+                                                    ImageSource="/Icons/app/developer-avatar-placeholder.png" />
+                                    </Border.Background>
                                 </Border>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
