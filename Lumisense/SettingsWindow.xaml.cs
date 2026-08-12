@@ -21,6 +21,10 @@ public partial class SettingsWindow : FluentWindow
     private readonly MainWindow _owner;
     private bool _isInitializing = true;
 
+    // См. LoadDeveloperAvatar — держит BitmapImage живым на время асинхронной загрузки, чтобы
+    // его не собрал GC до того, как скачивание завершится.
+    private BitmapImage? _developerAvatarBitmap;
+
     // Пока не None — окно "слушает" следующее нажатие клавиш и запишет его как новую комбинацию
     private HotkeyTarget _recordingTarget = HotkeyTarget.None;
 
@@ -1375,6 +1379,17 @@ public partial class SettingsWindow : FluentWindow
             // плеера, отдельно сообщать о ней пользователю незачем.
             bitmap.DownloadFailed += (_, _) => { };
             bitmap.EndInit();
+
+            // Держим ссылку на объект в поле, пока идёт асинхронная загрузка — иначе он не
+            // "закреплён" нигде (DeveloperAvatarImage.Source ещё указывает на плейсхолдер, а не
+            // на bitmap, до самого DownloadCompleted), и подписка на собственное же событие
+            // DownloadCompleted этому не помогает — делегат, хранящийся на самом объекте, не
+            // защищает сам объект от сборки мусора. Без этого поля bitmap реально мог быть
+            // собран GC ещё до завершения загрузки — именно это, судя по всему, и было
+            // причиной того, что аватар иногда/почти всегда не загружался: скачивание не
+            // обязательно падало с ошибкой (DownloadFailed мог и не сработать), оно просто
+            // никогда не долетало до конца, потому что сам объект переставал существовать.
+            _developerAvatarBitmap = bitmap;
         }
         catch
         {

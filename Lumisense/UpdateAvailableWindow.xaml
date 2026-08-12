@@ -5,8 +5,8 @@
         xmlns:local="clr-namespace:AudioPlayer"
         Title="Lumisense"
         Icon="/Icons/app/lumisense.ico"
-        Height="360" Width="420"
-        MinHeight="360" MinWidth="380"
+        Height="360" Width="600"
+        MinHeight="360" MinWidth="560"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
         WindowStartupLocation="CenterOwner"
@@ -97,14 +97,25 @@
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        TextWrapping="Wrap" Visibility="Collapsed" />
 
-            <StackPanel Grid.Row="5" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
-                <ui:Button x:Name="LaterButton" Content="Позже" Appearance="Secondary"
-                           Width="88" Margin="0,0,8,0" Click="LaterButton_Click" />
-                <ui:Button x:Name="MoreButton" Content="Подробнее" Appearance="Secondary"
-                           Width="96" Margin="0,0,8,0" Click="MoreButton_Click" />
-                <ui:Button x:Name="InstallButton" Content="Скачать и установить" Appearance="Primary"
-                           Padding="14,0" Click="InstallButton_Click" />
-            </StackPanel>
+            <!-- Все три кнопки одной ширины (см. запрос пользователя) — через равные Grid-колонки,
+                 а не фиксированный Width на каждой: подгоняется под фактическую ширину окна,
+                 вместо того чтобы держать наугад подобранное число пикселей, которое могло бы
+                 обрезать самый длинный текст ("Скачать и установить") при других настройках
+                 масштабирования Windows. -->
+            <Grid Grid.Row="5" Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <ui:Button x:Name="LaterButton" Grid.Column="0" Content="Позже" Appearance="Secondary"
+                           HorizontalAlignment="Stretch" Margin="0,0,8,0" Click="LaterButton_Click" />
+                <ui:Button x:Name="MoreButton" Grid.Column="1" Content="Подробнее" Appearance="Secondary"
+                           HorizontalAlignment="Stretch" Margin="0,0,8,0" Click="MoreButton_Click" />
+                <ui:Button x:Name="InstallButton" Grid.Column="2" Content="Скачать и установить" Appearance="Primary"
+                           HorizontalAlignment="Stretch" Click="InstallButton_Click" />
+            </Grid>
         </Grid>
     </Grid>
 </ui:FluentWindow>
