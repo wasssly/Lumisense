@@ -3265,27 +3265,38 @@ public partial class MainWindow : FluentWindow
     // Вместо загрузки каждого промежуточного трека по очереди: первое нажатие в серии
     // применяется сразу (обычный однократный тап остаётся мгновенным), а если следующее
     // нажатие пришло раньше HotkeyTrackStepThrottleMs — это, скорее всего, автоповтор зажатой
-    // клавиши, и вместо немедленной загрузки мы просто продвигаем "отложенную" целевую
-    // позицию (дёшево, без декодирования) и откладываем реальную загрузку на
-    // _hotkeyTrackStepTimer. Итог: пока клавиша зажата, реально грузится только конечный
-    // трек, один раз, вскоре после того как нажатия прекратились.
+    // клавиши, и вместо немедленной загрузки мы просто накапливаем "сколько шагов вперёд/назад
+    // отложено" (дёшево, без декодирования и — важно — без обращения к ComputeNextTrackPath/
+    // ComputePreviousTrackPath) и откладываем и вычисление целевого трека, и саму загрузку на
+    // _hotkeyTrackStepTimer. Итог: пока клавиша зажата, реально вычисляется и грузится только
+    // конечный трек, один раз, вскоре после того как нажатия прекратились.
+    //
+    // ВАЖНО (это чинит реальный баг, а не только производительность): ComputeNextTrackPath/
+    // ComputePreviousTrackPath в режиме шафла — не чистые функции, а мутируют
+    // _shuffleHistory/_shuffleBag на каждый вызов (двигают позицию в истории, при необходимости
+    // тянут новый случайный трек из колоды и дописывают его в историю). Раньше эта пара
+    // функций вызывалась на КАЖДОЕ отдельное нажатие в серии, включая те, что не доходили до
+    // реальной загрузки (см. комментарий выше — грузится только последний трек серии) — то есть
+    // история шафла реально продвигалась на N шагов при быстрой серии из N нажатий, а
+    // проигрывался и попадал в историю как "текущий" только последний из них. Остальные N-1
+    // "теневых" шагов всё равно оставались записаны в _shuffleHistory как будто бы реально
+    // проигранные — из-за этого последующие "назад"/"вперёд" после такой серии показывали
+    // треки, которые пользователь никогда не слышал. Теперь во время серии копится только
+    // целое число шагов (_pendingHotkeyNetSteps), а сама история продвигается ровно на
+    // фактическое количество нажатий только один раз, в момент коммита — см.
+    // CommitPendingHotkeyTrackStep.
     private const int HotkeyTrackStepThrottleMs = 200;
     private readonly DispatcherTimer _hotkeyTrackStepTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
-    private string? _pendingHotkeyTrackStepPath;
-    private AlbumArtTransitionDirection _pendingHotkeyTrackStepDirection = AlbumArtTransitionDirection.Next;
+    private int _pendingHotkeyNetSteps;
     private DateTime _lastHotkeyTrackStepCommit = DateTime.MinValue;
 
-    private void HandleHotkeyNext() => HandleHotkeyTrackStep(ComputeNextTrackPath, AlbumArtTransitionDirection.Next);
+    private void HandleHotkeyNext() => HandleHotkeyTrackStep(+1);
 
-    private void HandleHotkeyPrevious() => HandleHotkeyTrackStep(ComputePreviousTrackPath, AlbumArtTransitionDirection.Previous);
+    private void HandleHotkeyPrevious() => HandleHotkeyTrackStep(-1);
 
-    private void HandleHotkeyTrackStep(Func<string?, string?> computeNext, AlbumArtTransitionDirection direction)
+    private void HandleHotkeyTrackStep(int stepDirection)
     {
-        string? fromPath = _pendingHotkeyTrackStepPath ?? GetCurrentTrackPath();
-        if (computeNext(fromPath) is not { } targetPath) return;
-
-        _pendingHotkeyTrackStepPath = targetPath;
-        _pendingHotkeyTrackStepDirection = direction;
+        _pendingHotkeyNetSteps += stepDirection;
         _hotkeyTrackStepTimer.Stop();
 
         bool looksLikeHeldKeyRepeat =
@@ -3302,9 +3313,29 @@ public partial class MainWindow : FluentWindow
         _hotkeyTrackStepTimer.Stop();
         _lastHotkeyTrackStepCommit = DateTime.UtcNow;
 
-        if (_pendingHotkeyTrackStepPath is not { } path) return;
-        _pendingHotkeyTrackStepPath = null;
-        LoadAndPlay(path, autoPlay: _isPlaying, albumArtDirection: _pendingHotkeyTrackStepDirection);
+        int steps = _pendingHotkeyNetSteps;
+        _pendingHotkeyNetSteps = 0;
+        if (steps == 0) return;
+
+        // Реально продвигаем историю шафла (или обычный индекс плейлиста — вне шафла обе
+        // функции ниже чистые, повторный вызов подряд безвреден) ровно на |steps| шагов, по
+        // одному за раз, начиная от текущего трека — то есть ровно то же самое, как если бы
+        // пользователь нажимал Next/Previous по одному разу и дожидался загрузки между
+        // нажатиями, просто без промежуточных загрузок аудио.
+        var direction = steps > 0 ? AlbumArtTransitionDirection.Next : AlbumArtTransitionDirection.Previous;
+        string? path = GetCurrentTrackPath();
+        string? targetPath = null;
+
+        for (int i = 0; i < Math.Abs(steps); i++)
+        {
+            string? next = steps > 0 ? ComputeNextTrackPath(path) : ComputePreviousTrackPath(path);
+            if (next == null) break; // плейлист пуст/кончился — дальше двигаться некуда, останавливаемся на последнем валидном шаге
+            targetPath = next;
+            path = next;
+        }
+
+        if (targetPath == null) return;
+        LoadAndPlay(targetPath, autoPlay: _isPlaying, albumArtDirection: direction);
     }
 
     private string GetRandomTrack(List<string> activeTracks, string? excludePath)
