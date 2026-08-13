@@ -2649,6 +2649,13 @@ public partial class MainWindow : FluentWindow
     private void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
         AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next)
     {
+        // Короткая "хлебная крошка", не для повседневного чтения, а на случай, если плеер
+        // упадёт где-то в процессе (особенно если это будет нативный сбой — например, в
+        // недрах NAudio/аудиодрайвера — такие Logger в принципе не может поймать как
+        // исключение, .NET-обработчики на них попросту не срабатывают). Тогда в логе будет
+        // видно хотя бы то, какой трек грузился последним перед тем, как записи прекратились.
+        Logger.Info($"Загрузка трека: {Path.GetFileName(filePath)}");
+
         StopPlayback(disposeOnly: true);
 
         try

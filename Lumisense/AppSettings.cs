@@ -388,6 +388,7 @@ public static class SettingsManager
         catch
         {
             // Повреждённый или недоступный файл настроек — просто используем значения по умолчанию
+            Logger.Warn($"Не удалось прочитать settings.json ({SettingsFilePath}) — используются значения по умолчанию");
         }
 
         return new AppSettings();
@@ -422,9 +423,10 @@ public static class SettingsManager
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
             File.WriteAllText(SettingsFilePath, json);
         }
-        catch
+        catch (Exception ex)
         {
             // Нет прав на запись и т.п. — тихо игнорируем, это не критично для работы плеера
+            Logger.Warn($"Не удалось сохранить settings.json ({SettingsFilePath}): {ex.Message}");
         }
     }
 }

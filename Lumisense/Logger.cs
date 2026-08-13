@@ -34,7 +34,7 @@ public static class Logger
     // Держим только последние MaxLogFiles файлов — иначе за месяцы использования папка logs
     // накопила бы сотни файлов. Каждый файл сам по себе небольшой (текстовые строки за одну
     // сессию), поэтому ограничение по количеству, а не по суммарному размеру, вполне достаточно.
-    private const int MaxLogFiles = 20;
+    private const int MaxLogFiles = 50;
 
     private static void EnsureInitialized()
     {

@@ -113,9 +113,38 @@ public partial class App : Application
 
         _toggleViewEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ToggleViewEventName);
 
-        var window = new MainWindow();
+        // На случай, если конструктор MainWindow бросит исключение ещё до того, как окно
+        // вообще успело появиться (например, повреждённый settings.json провоцирует where-то
+        // внутри необработанное исключение, до которого не добрались более точечные try/catch
+        // внутри самого MainWindow) — тут это ловится максимально широко: логируем, показываем
+        // сообщение вместо тихого падения без единого следа, и корректно завершаемся, а не
+        // остаёмся в неопределённом полуживом состоянии.
+        MainWindow window;
+        try
+        {
+            window = new MainWindow();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось создать главное окно — плеер не может запуститься", ex);
+
+            try
+            {
+                System.Windows.MessageBox.Show(
+                    $"Lumisense не удалось запуститься.\n\nПодробности сохранены в лог-файл (%AppData%\\Lumisense\\logs).\n\n{ex.Message}",
+                    "Lumisense — ошибка запуска",
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            }
+            catch { /* см. аналогичный catch в DispatcherUnhandledException выше */ }
+
+            Shutdown();
+            return;
+        }
+
         MainWindow = window;
         window.StartupPresent();
+
+        Logger.Info("Главное окно создано и показано — запуск завершён успешно.");
 
         WaitForToggleSignal(window);
     }

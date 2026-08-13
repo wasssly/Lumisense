@@ -41,6 +41,8 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Margin="0,0,0,4">
@@ -87,13 +89,19 @@
                              VerticalAlignment="Center" />
             </StackPanel>
 
+            <!-- Раньше DownloadProgressBar/PhaseText/StatusText делили одну и ту же строку Grid
+                 (Grid.Row="4") без какого-либо разделения — при обычной, короткой фазе
+                 "Подготовка…" это почти не было заметно, но с подробным текстом хода
+                 скачивания (см. UpdateDownloadProgressUi в коде), который теперь виден все
+                 скачивание целиком, а не долю секунды, текст и полоса прогресса всё это время
+                 отрисовывались друг поверх друга. Теперь у каждого своя строка. -->
             <ProgressBar x:Name="DownloadProgressBar" Grid.Row="4" Height="4" Margin="0,10,0,0"
                          Minimum="0" Maximum="1" Visibility="Collapsed" />
 
-            <TextBlock x:Name="PhaseText" Grid.Row="4" Margin="0,4,0,0" FontSize="12" Opacity="0.6"
+            <TextBlock x:Name="PhaseText" Grid.Row="5" Margin="0,6,0,0" FontSize="12" Opacity="0.6"
                        Visibility="Collapsed" />
 
-            <TextBlock x:Name="StatusText" Grid.Row="4" Margin="0,10,0,0" FontSize="12"
+            <TextBlock x:Name="StatusText" Grid.Row="6" Margin="0,10,0,0" FontSize="12"
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        TextWrapping="Wrap" Visibility="Collapsed" />
 
@@ -102,7 +110,7 @@
                  вместо того чтобы держать наугад подобранное число пикселей, которое могло бы
                  обрезать самый длинный текст ("Скачать и установить") при других настройках
                  масштабирования Windows. -->
-            <Grid Grid.Row="5" Margin="0,16,0,0">
+            <Grid Grid.Row="7" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />

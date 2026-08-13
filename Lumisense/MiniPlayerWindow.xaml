@@ -161,7 +161,7 @@
                 </MenuItem>
             </ContextMenu>
         </Border.ContextMenu>
-        <Grid>
+        <Grid x:Name="ContentGrid">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
