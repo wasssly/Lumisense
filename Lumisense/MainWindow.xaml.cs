@@ -2105,20 +2105,13 @@ public partial class MainWindow : FluentWindow
     }
 
     // ---------- Удаление выбранных треков клавишей Delete + отмена (Ctrl+Z) ----------
+    // SelectionMode="Extended" у обоих ListView — можно выделять несколько строк (Ctrl+клик,
+    // Shift+клик, Ctrl+A), при этом "текущий играющий трек" как единственный SelectedItem не
+    // страдает: LoadAndPlay просто переприсваивает SelectedItem, WPF сам снимает выделение с
+    // остальных.
     //
-    // SelectionMode="Extended" у обоих ListView (см. MainWindow.xaml) — раньше выделение
-    // строки было по сути однозначным (SelectedItem всегда одна и та же строка, см. подробный
-    // комментарий у ScrollPlaylistToCurrentTrack), поэтому множественное выделение мышью/
-    // Ctrl+A и не работало. С Extended выделять можно сколько угодно строк как обычно
-    // (Ctrl+клик, Shift+клик, Ctrl+A — последнее уже встроено в стандартный ListBox, отдельно
-    // реализовывать не нужно), а "текущий играющий трек" как был единственной строкой в
-    // SelectedItem, так и остался: LoadAndPlay при смене трека просто переприсваивает
-    // SelectedItem нужной строке, а WPF сам снимает с остальных выделение при таком
-    // присваивании — никакого конфликта с множественным выбором тут нет.
-    //
-    // Стек отмены — только для этого одного действия (удаления треков из плейлиста), не
-    // общий undo-фреймворк на всё приложение. Каждый Delete кладёт в стек ОДНО замыкание,
-    // которое полностью восстанавливает удалённое; Ctrl+Z снимает и выполняет верхнее.
+    // Стек отмены — только для удаления треков, не общий undo-фреймворк. Каждый Delete кладёт
+    // одно замыкание, полностью восстанавливающее удалённое; Ctrl+Z снимает и выполняет верхнее.
     private readonly Stack<Action> _playlistDeleteUndoStack = new();
 
     private void PlaylistTrackList_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -2133,13 +2126,9 @@ public partial class MainWindow : FluentWindow
         DeleteTracksFromPlaylist(rows);
     }
 
-    // Убирает переданные строки из плейлиста (тот же смысл, что и "Убрать из плейлиста" в
-    // контекстном меню — см. RemoveTrackMenuItem_Click, — просто пачкой сразу по всем
-    // выделенным) и кладёт в _playlistDeleteUndoStack одно действие, полностью откатывающее
-    // именно эту пачку. Если выделить все треки (Ctrl+A) и нажать Delete — по факту это и есть
-    // "очистить весь плейлист", просто через обычное построчное удаление, а не через отдельную
-    // кнопку "Очистить плейлист" (та стирает вообще все папки списком и останавливает
-    // воспроизведение — здесь так резко не поступаем, см. ниже).
+    // Убирает переданные строки из плейлиста пачкой (тот же смысл, что и "Убрать из плейлиста"
+    // в контекстном меню, см. RemoveTrackMenuItem_Click) и кладёт в _playlistDeleteUndoStack
+    // одно действие, откатывающее именно эту пачку.
     private void DeleteTracksFromPlaylist(IReadOnlyList<PlaylistTrackRow> rows)
     {
         var undoActions = new List<Action>();
@@ -2149,9 +2138,8 @@ public partial class MainWindow : FluentWindow
         {
             var folder = group.Key;
 
-            // В виртуальной группе "Избранное" своего списка треков нет — она пересобирается
-            // из FavoritesManager (см. комментарий в RemoveTrackMenuItem_Click), поэтому здесь
-            // "удалить" значит "снять сердечко", а отменить — поставить обратно.
+            // В виртуальной группе "Избранное" своего списка треков нет — "удалить" значит
+            // "снять сердечко", а отменить — поставить обратно.
             if (folder.IsFavoritesGroup)
             {
                 foreach (var row in group)
@@ -2164,11 +2152,8 @@ public partial class MainWindow : FluentWindow
                 continue;
             }
 
-            // Индексы считаем ДО удаления — после каждого RemoveAt индексы последующих
-            // элементов сдвигаются, поэтому сперва собираем все пары (индекс, путь), затем
-            // удаляем по убыванию индекса (более ранние индексы остаются верными), а
-            // восстанавливаем при отмене — по возрастанию (иначе более ранняя вставка сбила
-            // бы индекс, рассчитанный для более поздней).
+            // Индексы считаем ДО удаления — после RemoveAt они сдвигаются, поэтому удаляем по
+            // убыванию индекса, а восстанавливаем при отмене по возрастанию.
             var indexed = group
                 .Select(row => (Index: folder.Tracks.IndexOf(row.FilePath), row.FilePath))
                 .Where(entry => entry.Index >= 0)
@@ -2185,9 +2170,8 @@ public partial class MainWindow : FluentWindow
                 var capturedPath = path;
                 undoActions.Add(() =>
                 {
-                    // Min на случай, если между удалением и отменой список этой папки успел
-                    // ещё уменьшиться (например, тем же Delete ещё раз) — вставляем не дальше
-                    // текущего конца списка, а не падаем с ArgumentOutOfRangeException.
+                    // Min — на случай, если список этой папки успел ещё уменьшиться между
+                    // удалением и отменой.
                     int insertAt = Math.Min(capturedIndex, capturedFolder.Tracks.Count);
                     capturedFolder.Tracks.Insert(insertAt, capturedPath);
                 });
@@ -2209,11 +2193,9 @@ public partial class MainWindow : FluentWindow
         });
     }
 
-    // Ctrl+Z — на уровне всего окна (см. PreviewKeyDown у корневого FluentWindow в
-    // MainWindow.xaml), а не только у списков плейлиста: сама отмена не привязана к тому, что
-    // сейчас в фокусе список треков (человек мог кликнуть куда угодно между удалением и Ctrl+Z).
-    // Пропускаем, если фокус сейчас в текстовом поле (поиск по плейлисту и т.п.) — там Ctrl+Z
-    // должен работать как обычная отмена ввода текста, а не как отмена удаления треков.
+    // Ctrl+Z — на уровне всего окна, не только списков плейлиста, т.к. фокус между удалением
+    // и Ctrl+Z мог уйти куда угодно. Пропускаем, если фокус в текстовом поле — там Ctrl+Z должен
+    // работать как отмена ввода текста.
     private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         bool isCtrl = System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control);
@@ -2226,17 +2208,9 @@ public partial class MainWindow : FluentWindow
     }
 
     // ---------- Контекстное меню трека (правый клик по строке в плейлисте) ----------
-    //
-    // У каждого пункта меню DataContext унаследован от ContextMenu.PlacementTarget (Grid —
-    // корень TrackItemTemplate) — это обычное наследование DataContext по логическому дереву,
-    // которое WPF пробрасывает и через границу Popup, которым фактически является ContextMenu
-    // (в отличие от RelativeSource/поиска предков по визуальному дереву, который через эту
-    // границу не проходит). DataContext строки — сам PlaylistTrackRow (см. PlaylistTrackRow.cs
-    // и подробный комментарий у TrackItemTemplate в MainWindow.xaml), то есть путь к файлу
-    // (row.FilePath) и его папка (row.Folder) приходят вместе, одним объектом — без Tag/
-    // PlacementTarget/CommandParameter-трюков, которые раньше были нужны только чтобы отдельно
-    // дотянуться до DataContext охватывающего ListView (пока у каждой папки был свой отдельный
-    // ListView).
+    // DataContext каждого пункта меню унаследован от ContextMenu.PlacementTarget по логическому
+    // дереву (WPF пробрасывает его и через Popup) — это сам PlaylistTrackRow (row.FilePath и
+    // row.Folder приходят вместе, без Tag/CommandParameter-трюков).
 
     private void PlayTrackMenuItem_Click(object sender, RoutedEventArgs e)
     {
