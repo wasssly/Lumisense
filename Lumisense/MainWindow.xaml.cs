@@ -1766,23 +1766,10 @@ public partial class MainWindow : FluentWindow
         TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
     }
 
-    // Обычный плейлист всегда привязан к _folders, независимо от того, открыто ли сейчас
-    // "Избранное" — переключается только видимость, PlaylistFoldersControl и
-    // FavoritesTrackListView независимые элементы. Раньше этот метод при открытом "Избранном"
-    // перепривязывал ItemsSource то к _folders, то к списку избранного — вызывался на каждый
-    // клик по сердечку, пересобирая контейнеры всех папок и треков ради одной иконки. Теперь
-    // вызывается только когда реально меняется сам список _folders.
-    //
-    // PlaylistFoldersControl.ItemsSource — плоский список из PlaylistFolder (заголовки) и
-    // PlaylistTrackRow (строки треков) вперемешку; шаблон/стиль контейнера для каждого
-    // элемента решают PlaylistDisplayItemTemplateSelector/PlaylistDisplayItemContainerStyleSelector
-    // по CLR-типу (PlaylistDisplaySelectors.cs). Свёрнутые папки добавляют свой заголовок
-    // (иначе не по чему кликнуть), но физически не кладут в ItemsSource ни одной строки трека —
-    // иначе виртуализирующий список тратил бы время на "перешагивание" через скрытые строки.
-    //
-    // Полный пересбор списка при каждом изменении — нормально и дёшево именно благодаря
-    // виртуализации: реассайн ItemsSource не создаёт контейнеры для всех элементов заново,
-    // только для тех, что попадают в видимую область.
+    // Полный пересбор списка при каждом изменении _folders — дёшево благодаря виртуализации
+    // (PlaylistFoldersControl.ItemsSource — плоский список PlaylistFolder/PlaylistTrackRow,
+    // см. PlaylistDisplaySelectors.cs), реассайн не создаёт контейнеры для всех элементов, а
+    // только для видимых. Свёрнутые папки не кладут строки треков в список вовсе.
     private void RefreshPlaylistView()
     {
         var items = new List<object>();
@@ -1817,15 +1804,10 @@ public partial class MainWindow : FluentWindow
 
     private void FavoritesButton_Click(object sender, RoutedEventArgs e) => SetFavoritesViewActive(!_isFavoritesView);
 
-    // Переключает панель между обычным плейлистом (PlaylistFoldersControl, привязан к _folders)
-    // и "Избранным" (FavoritesTrackListView) — оба лежат в разметке друг на друге, переключается
-    // только Visibility, PlaylistFoldersControl не трогается. Раньше был один общий ItemsControl,
-    // который при каждом переходе перепривязывался то к _folders, то к избранному — WPF
-    // пересоздавал контейнеры всех папок и треков заново, на большой библиотеке заметно подвешивая
-    // интерфейс на каждый переход.
-    //
-    // Кнопки "Добавить"/"Очистить" в режиме избранного скрыты — в виртуальную группу нельзя
-    // добавлять файлы напрямую и нечего "очищать" (это производная от сердечек, а не своя группа)
+    // Оба списка лежат в разметке друг на друге, переключается только Visibility —
+    // PlaylistFoldersControl не перепривязывается и не пересоздаёт контейнеры.
+    // "Добавить"/"Очистить" скрыты в режиме избранного — в виртуальную группу нельзя добавлять
+    // файлы напрямую, а "очищать" там нечего.
     private void SetFavoritesViewActive(bool active)
     {
         _isFavoritesView = active;
@@ -1884,15 +1866,10 @@ public partial class MainWindow : FluentWindow
         ToggleFavoriteAndRefresh(row.FilePath);
     }
 
-    // Переключает избранное и обновляет UI МИНИМАЛЬНО необходимым способом. Сердечки во всех
-    // сейчас показанных строках плейлиста (и обычного, и "Избранного") перерисовываются сами —
-    // это делает FavoritesChangeNotifier, на который завязан DataTrigger сердечка в
-    // TrackItemTemplate (см. MainWindow.xaml и IsFavoriteMultiConverter в Converters.cs).
-    // Полный пересбор ItemsSource здесь не нужен и раньше был главной причиной подвисания
-    // плеера при каждом клике по сердечку. Единственное, что действительно нужно пересобрать
-    // вручную, — сам СПИСОК виртуального плейлиста "Избранное" (не сердечки в нём, а то, какие
-    // строки там вообще есть), и то только пока он открыт: трек должен тут же исчезнуть из
-    // него, как только с него сняли сердечко.
+    // Переключает избранное и обновляет UI минимально: сердечки во всех показанных строках
+    // перерисовываются сами через FavoritesChangeNotifier (см. DataTrigger в TrackItemTemplate,
+    // MainWindow.xaml). Вручную пересобирается только список виртуального плейлиста
+    // "Избранное" — и то лишь пока он открыт, чтобы трек тут же исчез при снятии сердечка.
     private void ToggleFavoriteAndRefresh(string filePath)
     {
         FavoritesManager.Toggle(filePath);
@@ -1942,16 +1919,11 @@ public partial class MainWindow : FluentWindow
         RefreshPlaylistView();
     }
 
-    // Раньше был один PlaylistScrollViewer, обёрнутый снаружи вокруг ItemsControl папок —
-    // именно эта обёртка мешала виртуализации (ScrollViewer всегда измеряет содержимое
-    // с бесконечной доступной высотой).
-    //
-    // Теперь PlaylistFoldersControl/FavoritesTrackListView — самостоятельные скроллящиеся
-    // ListView (VerticalScrollBarVisibility="Hidden", а не "Disabled" — список скроллится сам,
-    // просто без родного скроллбара), а "общий скролл" визуально сохраняется тем, что оба списка
-    // показывают один и тот же кастомный PlaylistScrollTrack/PlaylistScrollThumb, подключённый
-    // к ScrollViewer текущего видимого списка. Сам ScrollViewer не именованный элемент XAML,
-    // а часть стандартного шаблона — достаём через обход визуального дерева и кэшируем.
+    // PlaylistFoldersControl/FavoritesTrackListView — самостоятельные ListView со своим
+    // скроллом (VerticalScrollBarVisibility="Hidden"); "общий скролл" визуально сохраняется тем,
+    // что оба показывают один и тот же кастомный PlaylistScrollTrack/Thumb, подключённый к
+    // ScrollViewer текущего видимого списка. ScrollViewer не именован в XAML — достаём и кэшируем
+    // через обход визуального дерева.
     private System.Windows.Controls.ScrollViewer? _playlistFoldersScrollViewer;
     private System.Windows.Controls.ScrollViewer? _favoritesScrollViewer;
 
@@ -1960,11 +1932,9 @@ public partial class MainWindow : FluentWindow
             ? _favoritesScrollViewer ??= FindVisualChild<System.Windows.Controls.ScrollViewer>(FavoritesTrackListView)
             : _playlistFoldersScrollViewer ??= FindVisualChild<System.Windows.Controls.ScrollViewer>(PlaylistFoldersControl);
 
-    // PreviewMouseWheel виснет прямо на самом ListView (PlaylistFoldersControl/
-    // FavoritesTrackListView) и идёт "сверху вниз" по дереву РАНЬШЕ, чем обычное (bubbling)
-    // MouseWheel, на которое реагирует встроенный скролл внутреннего ScrollViewer — e.Handled
-    // здесь не даёт этому встроенному, более резкому (~3 строки за деление) скроллу сработать
-    // ВДОБАВОК к нашему, и прокрутка колесом остаётся плавной и предсказуемой.
+    // PreviewMouseWheel идёт по дереву раньше bubbling MouseWheel, на которое реагирует
+    // встроенный скролл — e.Handled не даёт этому более резкому (~3 строки за деление) скроллу
+    // сработать вдобавок к нашему.
     private void PlaylistTrackList_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
         var scrollViewer = GetActivePlaylistScrollViewer();
@@ -1972,53 +1942,34 @@ public partial class MainWindow : FluentWindow
 
         e.Handled = true;
 
-        // e.Delta приходит ~120 за одно деление колеса — если использовать его как есть,
-        // список плейлиста скачет резкими рывками по ~120px за раз. Обычный ScrollViewer
-        // в такой ситуации сам конвертирует его в несколько строк плавной прокрутки;
-        // повторяем то же самое здесь вручную, чтобы прокрутка ощущалась так же плавно,
-        // как перетаскивание слайдера громкости, а не резкими скачками.
+        // e.Delta приходит ~120 за деление колеса — переводим в пиксели сами, чтобы прокрутка
+        // была плавной, а не резкими скачками по ~120px.
         const double pixelsPerNotch = 48.0;
         double offsetDelta = e.Delta / 120.0 * pixelsPerNotch;
         scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - offsetDelta);
     }
 
     // ---------- Свой скроллбар плейлиста (с нуля, без ScrollBar/Track) ----------
-    //
-    // Никаких встроенных ScrollBar/Track — только PlaylistScrollTrack (дорожка, Grid)
-    // и PlaylistScrollThumb (ползунок, Border) из XAML. Вся логика — здесь:
-    //  - PlaylistScrollViewer_ScrollChanged / PlaylistScrollTrack_SizeChanged
-    //    пересчитывают высоту и позицию ползунка при любом изменении контента/офсета/размера;
-    //  - клик по дорожке мимо ползунка мгновенно прыгает туда, куда кликнули;
+    // PlaylistScrollTrack (дорожка) и PlaylistScrollThumb (ползунок) из XAML:
+    //  - PlaylistScrollViewer_ScrollChanged/PlaylistScrollTrack_SizeChanged пересчитывают
+    //    высоту и позицию ползунка при изменении контента/офсета/размера;
+    //  - клик по дорожке мимо ползунка прыгает туда, куда кликнули;
     //  - перетаскивание ползунка двигает прокрутку один в один за мышью (ручной MouseCapture).
     private bool _isDraggingPlaylistThumb;
     private double _playlistThumbDragStartMouseY;
     private double _playlistThumbDragStartOffset;
 
-    // ScrollChanged — routed (bubbling) событие: достаточно повесить его на сам ListView в
-    // XAML (ScrollViewer.ScrollChanged="..."), оно долетит от внутреннего ScrollViewer наружу
-    // само, без явной подписки в коде.
     private void PlaylistScrollViewer_ScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e)
     {
         UpdatePlaylistScrollThumb();
     }
 
-    // ScrollViewer сам по себе ничего не скругляет — по умолчанию он просто обрезает
-    // содержимое строго прямоугольно по своим границам. Пока список не прокручен, это
-    // незаметно: сверху/снизу видимой области ещё нет ни одной карточки впритык к краю,
-    // прямой обрез спрятан внутри отступа (Margin="4") до скруглённой рамки PlaylistBorder
-    // вокруг (CornerRadius="10"). Но стоит начать прокручивать — карточки папок и строки
-    // треков оказываются ровно у верхнего/нижнего края видимой области, и там становится
-    // виден чёткий прямоугольный обрез, визуально спорящий со скруглённой рамкой вокруг.
-    // Задаём собственный Clip с закруглёнными углами вместо обычного прямоугольного —
-    // тогда даже карточка, обрезанная у самого края во время прокрутки, выглядит аккуратно
-    // скруглённой, а не квадратно "срезанной". Радиус (8) — тот же, что и у самих карточек
-    // папок/треков (CornerRadius="8"), а не как у внешней рамки (10) — она снаружи этого
-    // ScrollViewer на 4px (Margin), так что при таком же радиусе скругление визуально не
-    // концентрично внешнему и слегка режет edge-case по углам; 8 ближе к своим внутренним
-    // соседям и не создаёт заметного разнобоя на глаз.
-    //
-    // Общий обработчик на оба ListView (PlaylistFoldersControl и FavoritesTrackListView) —
-    // клипует ЦЕЛЕВОЙ элемент (sender), а не какой-то один именованный, раз их теперь два.
+    // ScrollViewer обрезает содержимое прямоугольно по своим границам — незаметно, пока список
+    // не прокручен, но при прокрутке карточки у края становятся видны с чётким прямоугольным
+    // обрезом, спорящим со скруглённой рамкой PlaylistBorder вокруг. Свой Clip со скруглением
+    // решает это. Радиус 8 — как у самих карточек, а не как у внешней рамки (10), иначе
+    // скругление не концентрично и режет по углам. Общий обработчик на оба ListView — клипует
+    // sender, а не именованный элемент.
     private void PlaylistScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (sender is not FrameworkElement element) return;
