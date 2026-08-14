@@ -79,6 +79,12 @@ public partial class UpdateAvailableWindow : FluentWindow
 
     private async void InstallButton_Click(object sender, RoutedEventArgs e)
     {
+        if (_isDownloading)
+        {
+            _downloadCts?.Cancel();
+            return;
+        }
+
         // Тот же выбор, что был бы виден в InstallMethodPanel, если бы оба варианта были
         // доступны — если панель скрыта (доступен только один вариант), IsChecked радиокнопок
         // уже выставлен на единственно возможный (см. конструктор), так что читать его отсюда
@@ -133,6 +139,10 @@ public partial class UpdateAvailableWindow : FluentWindow
             // освободились и Updater мог их заменить (см. UpdateChecker.LaunchUpdaterAndExit).
             UpdateChecker.LaunchUpdaterAndExit(updaterRunnerPath, payloadRoot, sessionDir);
         }
+        catch (OperationCanceledException)
+        {
+            SetDownloading(false);
+        }
         catch (Exception ex)
         {
             SetDownloading(false);
@@ -180,6 +190,10 @@ public partial class UpdateAvailableWindow : FluentWindow
             // что уже расчищает после себя сам Updater для сценария ZIP.
             UpdateChecker.LaunchInstallerAndExit(exePath);
         }
+        catch (OperationCanceledException)
+        {
+            SetDownloading(false);
+        }
         catch (Exception ex)
         {
             SetDownloading(false);
@@ -187,9 +201,16 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
     }
 
+    // Отмена переиспользует саму кнопку "Скачать и установить" (меняет подпись/поведение на
+    // время скачивания) вместо отдельной кнопки — во время скачивания она и так единственная
+    // активная в ряду.
+    private bool _isDownloading;
+
     private void SetDownloading(bool isDownloading)
     {
-        InstallButton.IsEnabled = !isDownloading;
+        _isDownloading = isDownloading;
+        InstallButton.Content = isDownloading ? "Отмена" : "Скачать и установить";
+        InstallButton.Appearance = isDownloading ? ControlAppearance.Secondary : ControlAppearance.Primary;
         LaterButton.IsEnabled = !isDownloading;
         MoreButton.IsEnabled = !isDownloading;
         InstallMethodZipRadio.IsEnabled = !isDownloading;
