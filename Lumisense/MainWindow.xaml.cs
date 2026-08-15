@@ -2989,15 +2989,11 @@ public partial class MainWindow : FluentWindow
 
     // ---------- Быстрое переключение треков зажатой хоткей-клавишей ----------
     // GlobalMediaHotKeys не ставит MOD_NOREPEAT, поэтому зажатая клавиша шлёт WM_HOTKEY 20-30
-    // раз в секунду — быстрее, чем успевает отрабатывать полная загрузка трека. Быстрые
-    // повторы копятся здесь как счётчик шагов (_pendingHotkeyNetSteps) и коммитятся одним
-    // прыжком по таймеру, а не по одному треку на нажатие.
-    //
-    // Раньше ComputeNextTrackPath/ComputePreviousTrackPath вызывались на каждое нажатие в
-    // серии — в режиме шафла это не чистые функции, они мутируют _shuffleHistory, поэтому
-    // непроигранные "теневые" шаги всё равно оставались в истории и портили последующую
-    // навигацию назад/вперёд. Теперь они вызываются только один раз при коммите — см.
-    // CommitPendingHotkeyTrackStep.
+    // раз в секунду — быстрее, чем успевает отрабатывать полная загрузка трека. Повторы копятся
+    // как счётчик шагов (_pendingHotkeyNetSteps) и коммитятся одним прыжком по таймеру.
+    // ComputeNextTrackPath/ComputePreviousTrackPath мутируют _shuffleHistory в режиме шафла,
+    // поэтому вызываются только один раз при коммите (см. CommitPendingHotkeyTrackStep), а не
+    // на каждое нажатие — иначе непроигранные шаги портили последующую навигацию.
     private const int HotkeyTrackStepThrottleMs = 200;
     private readonly DispatcherTimer _hotkeyTrackStepTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
     private int _pendingHotkeyNetSteps;
@@ -3409,13 +3405,10 @@ public partial class MainWindow : FluentWindow
     }
 
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
-    //
-    // Настройки читаются/пишутся здесь, а не прямо из SettingsWindow, по той же причине, что и
-    // у остальных "живых" настроек в этом файле: EqualizerSampleProvider существует только
-    // пока что-то играет (пересоздаётся в LoadAndPlay при каждой смене трека), а
+    // Настройки читаются/пишутся здесь, а не прямо из SettingsWindow — EqualizerSampleProvider
+    // существует только пока что-то играет (пересоздаётся в LoadAndPlay), а
     // AppSettings.EqualizerEnabled/EqualizerBandGainsDb должны сохраняться и применяться даже
-    // если сейчас ничего не воспроизводится — окно настроек не обязано знать, есть ли сейчас
-    // активный _equalizer или нет.
+    // без активного воспроизведения.
 
     // Заполняет только что созданный _equalizer сохранёнными настройками — вызывается из
     // LoadAndPlay при каждой смене трека, потому что сам _equalizer живёт не дольше трека.
