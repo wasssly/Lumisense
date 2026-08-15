@@ -373,11 +373,11 @@
                             <StackPanel>
                                 <TextBlock Text="Анимация смены обложки" Margin="0,0,0,8" />
                                 <RadioButton x:Name="AlbumArtTransitionOnRadio" Content="С анимацией" GroupName="AlbumArtTransition"
-                                             Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,8" />
-                                <RadioButton x:Name="AlbumArtTransitionOffRadio" Content="Без анимации" GroupName="AlbumArtTransition"
                                              Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,4" />
                                 <TextBlock Text="При переключении трека старая обложка «улетает» в сторону, а новая «влетает» с противоположной — как в iTunes."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,8" />
+                                <RadioButton x:Name="AlbumArtTransitionOffRadio" Content="Без анимации" GroupName="AlbumArtTransition"
+                                             Checked="AlbumArtTransitionRadio_Changed" />
                             </StackPanel>
                         </Border>
 
