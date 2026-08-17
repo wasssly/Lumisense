@@ -681,9 +681,9 @@ public partial class MiniPlayerWindow : Window
     // "Below" (по умолчанию): ControlsPanel — отдельная строка под прогресс-баром, окно
     // подрастает при наведении (CollapsedHeight → ExpandedHeight). "Overlay": ControlsPanel
     // переносится в ту же строку, что и HeaderPanel — при наведении HeaderPanel прячется и её
-    // место занимают кнопки, без роста окна. Margin у ControlsPanel в Overlay сдвинут ниже
-    // относительно Below, но сумма отступов та же (18px), так что высота строки не меняется.
-    private static readonly Thickness ControlsPanelMarginBelow = new(0, 8, 0, 10);
+    // место занимают кнопки, без роста окна. В режиме Below верхний отступ уменьшен,
+    // чтобы кнопки были ближе к информации о треке.
+    private static readonly Thickness ControlsPanelMarginBelow = new(0, 2, 0, 10);
     private static readonly Thickness ControlsPanelMarginOverlay = new(0, 12, 0, 6);
 
     public void ApplyButtonsLayoutMode()
