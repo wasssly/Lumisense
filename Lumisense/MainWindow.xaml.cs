@@ -70,6 +70,7 @@ public partial class MainWindow : FluentWindow
     // чем расчёт закончился — иначе устаревший результат может перезаписать уже показанную
     // форму волны нового трека.
     private CancellationTokenSource? _waveformCts;
+    private readonly CancellationTokenSource _lifetimeCts = new();
 
     // Прослушивание засчитывается только когда реально воспроизведена (не перемотана) как
     // минимум половина композиции — см. ProgressTimer_Tick. Сбрасывается на каждую новую
@@ -424,17 +425,23 @@ public partial class MainWindow : FluentWindow
     {
         try
         {
-            await System.Threading.Tasks.Task.Delay(System.TimeSpan.FromSeconds(3));
+            await System.Threading.Tasks.Task.Delay(System.TimeSpan.FromSeconds(3), _lifetimeCts.Token);
+            if (_isExiting) return;
 
             var result = await UpdateChecker.CheckAsync();
-            if (result.Status != UpdateCheckStatus.UpdateAvailable) return;
+            if (_isExiting || result.Status != UpdateCheckStatus.UpdateAvailable) return;
             if (result.LatestVersion != null && result.LatestVersion == _settings.SkippedUpdateVersion) return;
 
+            if (_isExiting || !IsVisible) return;
             var dialog = new UpdateAvailableWindow(result, _settings);
             // Owner можно ставить только на уже показанное окно (актуально, если старт был в
             // мини-режиме — см. StartupPresent, тогда IsVisible всё ещё false).
             if (IsVisible) dialog.Owner = this;
             dialog.ShowDialog();
+        }
+        catch (OperationCanceledException)
+        {
+            // Нормальный путь при закрытии окна.
         }
         catch
         {
@@ -573,9 +580,10 @@ public partial class MainWindow : FluentWindow
             if (tracksSnapshot.Count == 0) continue;
 
             var missing = await System.Threading.Tasks.Task.Run(() =>
-                tracksSnapshot.AsParallel().Where(f => !File.Exists(f)).ToList());
+                tracksSnapshot.AsParallel().Where(f => !File.Exists(f)).ToList(), _lifetimeCts.Token);
 
-            if (missing.Count == 0 || !_folders.Contains(folder)) continue;
+            _lifetimeCts.Token.ThrowIfCancellationRequested();
+            if (missing.Count == 0 || !_folders.Contains(folder) || _isExiting) continue;
 
             foreach (var path in missing)
                 folder.Tracks.Remove(path);
@@ -607,18 +615,18 @@ public partial class MainWindow : FluentWindow
         try
         {
             _mediaHotKeys = new GlobalMediaHotKeys(this);
-            _mediaHotKeys.PlayPausePressed += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.NextPressed += () => Dispatcher.Invoke(HandleHotkeyNext);
-            _mediaHotKeys.PreviousPressed += () => Dispatcher.Invoke(HandleHotkeyPrevious);
-            _mediaHotKeys.StopPressed += () => Dispatcher.Invoke(() => StopButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.VolumeUpPressed += () => Dispatcher.Invoke(() => ChangeVolumeBy(0.02));
-            _mediaHotKeys.VolumeDownPressed += () => Dispatcher.Invoke(() => ChangeVolumeBy(-0.02));
-            _mediaHotKeys.MutePressed += () => Dispatcher.Invoke(ToggleMute);
-            _mediaHotKeys.ShufflePressed += () => Dispatcher.Invoke(() => ShuffleButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.RepeatPressed += () => Dispatcher.Invoke(() => RepeatButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.DeleteTrackPressed += () => Dispatcher.Invoke(DeleteCurrentTrackFromDiskHotkey);
-            _mediaHotKeys.SeekForwardPressed += () => Dispatcher.Invoke(() => SeekBy(5));
-            _mediaHotKeys.SeekBackwardPressed += () => Dispatcher.Invoke(() => SeekBy(-5));
+            _mediaHotKeys.PlayPausePressed += () => Dispatcher.BeginInvoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
+            _mediaHotKeys.NextPressed += () => Dispatcher.BeginInvoke(HandleHotkeyNext);
+            _mediaHotKeys.PreviousPressed += () => Dispatcher.BeginInvoke(HandleHotkeyPrevious);
+            _mediaHotKeys.StopPressed += () => Dispatcher.BeginInvoke(() => StopButton_Click(this, new RoutedEventArgs()));
+            _mediaHotKeys.VolumeUpPressed += () => Dispatcher.BeginInvoke(() => ChangeVolumeBy(0.02));
+            _mediaHotKeys.VolumeDownPressed += () => Dispatcher.BeginInvoke(() => ChangeVolumeBy(-0.02));
+            _mediaHotKeys.MutePressed += () => Dispatcher.BeginInvoke(ToggleMute);
+            _mediaHotKeys.ShufflePressed += () => Dispatcher.BeginInvoke(() => ShuffleButton_Click(this, new RoutedEventArgs()));
+            _mediaHotKeys.RepeatPressed += () => Dispatcher.BeginInvoke(() => RepeatButton_Click(this, new RoutedEventArgs()));
+            _mediaHotKeys.DeleteTrackPressed += () => Dispatcher.BeginInvoke(DeleteCurrentTrackFromDiskHotkey);
+            _mediaHotKeys.SeekForwardPressed += () => Dispatcher.BeginInvoke(() => SeekBy(5));
+            _mediaHotKeys.SeekBackwardPressed += () => Dispatcher.BeginInvoke(() => SeekBy(-5));
             _mediaHotKeys.ApplyCustomHotkeys(_settings);
         }
         catch (Exception ex)
@@ -631,17 +639,17 @@ public partial class MainWindow : FluentWindow
         try
         {
             _nowPlaying = new NowPlayingIntegration(this);
-            _nowPlaying.PlayRequested += () => Dispatcher.Invoke(() =>
+            _nowPlaying.PlayRequested += () => Dispatcher.BeginInvoke(() =>
             {
                 if (!_isPlaying) PlayPauseButton_Click(this, new RoutedEventArgs());
             });
-            _nowPlaying.PauseRequested += () => Dispatcher.Invoke(() =>
+            _nowPlaying.PauseRequested += () => Dispatcher.BeginInvoke(() =>
             {
                 if (_isPlaying) PlayPauseButton_Click(this, new RoutedEventArgs());
             });
-            _nowPlaying.NextRequested += () => Dispatcher.Invoke(PlayNextTrack);
-            _nowPlaying.PreviousRequested += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
-            _nowPlaying.StopRequested += () => Dispatcher.Invoke(() => StopButton_Click(this, new RoutedEventArgs()));
+            _nowPlaying.NextRequested += () => Dispatcher.BeginInvoke(PlayNextTrack);
+            _nowPlaying.PreviousRequested += () => Dispatcher.BeginInvoke(() => PrevButton_Click(this, new RoutedEventArgs()));
+            _nowPlaying.StopRequested += () => Dispatcher.BeginInvoke(() => StopButton_Click(this, new RoutedEventArgs()));
         }
         catch (Exception ex)
         {
@@ -659,9 +667,9 @@ public partial class MainWindow : FluentWindow
             _trayIconManager = new TrayIconManager();
             _trayIconManager.OpenRequested += RestoreFromTray;
             _trayIconManager.ExitRequested += ExitApplicationCompletely;
-            _trayIconManager.PlayPauseRequested += () => Dispatcher.Invoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
-            _trayIconManager.NextRequested += () => Dispatcher.Invoke(PlayNextTrack);
-            _trayIconManager.PreviousRequested += () => Dispatcher.Invoke(() => PrevButton_Click(this, new RoutedEventArgs()));
+            _trayIconManager.PlayPauseRequested += () => Dispatcher.BeginInvoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
+            _trayIconManager.NextRequested += () => Dispatcher.BeginInvoke(PlayNextTrack);
+            _trayIconManager.PreviousRequested += () => Dispatcher.BeginInvoke(() => PrevButton_Click(this, new RoutedEventArgs()));
             PlaybackStateChanged += isPlaying => _trayIconManager?.SetPlayingState(isPlaying);
             TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
             _trayIconManager.SetPlayingState(_isPlaying);
@@ -713,7 +721,7 @@ public partial class MainWindow : FluentWindow
 
     private void RestoreFromTray()
     {
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             // Если сейчас активен мини-плеер, у MainWindow нет валидного показанного состояния
             // (оно скрыто через Hide() — см. EnterMiniMode) — обычный Show() здесь показал бы
@@ -735,7 +743,7 @@ public partial class MainWindow : FluentWindow
 
     private void ExitApplicationCompletely()
     {
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             _isExiting = true;
             Close();
@@ -751,7 +759,7 @@ public partial class MainWindow : FluentWindow
     // не превращая это в переключение в мини-режим.
     public void ToggleMiniOrMainFromExternalActivation()
     {
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             if (_isMiniMode)
             {
@@ -851,7 +859,7 @@ public partial class MainWindow : FluentWindow
         ProgressWaveform.Peaks = null;
 
         _waveformCts?.Cancel();
-        var cts = new CancellationTokenSource();
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
         _waveformCts = cts;
 
         float[]? peaks;
@@ -1466,7 +1474,7 @@ public partial class MainWindow : FluentWindow
         DragDropOverlay.Visibility = Visibility.Collapsed;
     }
 
-    private void MainWindow_Drop(object sender, System.Windows.DragEventArgs e)
+    private async void MainWindow_Drop(object sender, System.Windows.DragEventArgs e)
     {
         DragDropOverlay.Visibility = Visibility.Collapsed;
 
@@ -1481,7 +1489,7 @@ public partial class MainWindow : FluentWindow
             if (Directory.Exists(path))
             {
                 foundAnyFolder = true;
-                foundAnything = AddFolderPath(path) || foundAnything;
+                foundAnything = await AddFolderPathAsync(path) || foundAnything;
             }
             else if (File.Exists(path) && SupportedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant()))
             {
@@ -1494,6 +1502,7 @@ public partial class MainWindow : FluentWindow
             // только случай, когда В ИТОГЕ не добавилось вообще ничего.
         }
 
+        if (_isExiting) return;
         if (newFiles.Count > 0)
             AddLooseFiles(newFiles);
 
@@ -1583,7 +1592,7 @@ public partial class MainWindow : FluentWindow
 
     // ---------- Добавление папки (рекурсивно), в том числе нескольких сразу ----------
 
-    private void AddFolderMenuItem_Click(object sender, RoutedEventArgs e)
+    private async void AddFolderMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog
         {
@@ -1595,8 +1604,11 @@ public partial class MainWindow : FluentWindow
 
         // Каждая выбранная папка становится отдельной группой плейлиста, которую
         // потом можно независимо включать/выключать
-        bool foundAnything = dialog.FolderNames.Aggregate(false, (found, folderPath) => AddFolderPath(folderPath) || found);
+        bool foundAnything = false;
+        foreach (var folderPath in dialog.FolderNames)
+            foundAnything = await AddFolderPathAsync(folderPath) || foundAnything;
 
+        if (_isExiting) return;
         if (!foundAnything)
         {
             System.Windows.MessageBox.Show(this, "В выбранной папке не найдено поддерживаемых аудиофайлов.",
@@ -1608,26 +1620,37 @@ public partial class MainWindow : FluentWindow
     // Возвращает false, если в ней не нашлось ни одного поддерживаемого аудиофайла
     // (например, нет доступа или папка пустая) — используется, чтобы решить, показывать
     // ли предупреждение "ничего не найдено".
-    private bool AddFolderPath(string folderPath)
+    private async Task<bool> AddFolderPathAsync(string folderPath)
     {
-        List<string> filesInFolder;
         try
         {
-            filesInFolder = Directory.EnumerateFiles(folderPath, "*.*", SearchOption.AllDirectories)
+            var filesInFolder = await Task.Run(() => Directory.EnumerateFiles(folderPath, "*.*", SearchOption.AllDirectories)
                 .Where(f => SupportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+                .ToList(), _lifetimeCts.Token);
+
+            if (filesInFolder.Count == 0) return false;
+            AddFolderGroup(folderPath, filesInFolder);
+            return true;
+        }
+        catch (OperationCanceledException)
+        {
+            return false;
         }
         catch (UnauthorizedAccessException)
         {
-            // Нет доступа (например, системная папка) — считаем как "ничего не нашли"
             return false;
         }
-
-        if (filesInFolder.Count == 0) return false;
-
-        AddFolderGroup(folderPath, filesInFolder);
-        return true;
+        catch (PathTooLongException ex)
+        {
+            Logger.Warn($"Слишком длинный путь при сканировании {folderPath}: {ex.Message}");
+            return false;
+        }
+        catch (IOException ex)
+        {
+            Logger.Warn($"Не удалось просканировать папку {folderPath}: {ex.Message}");
+            return false;
+        }
     }
 
     // Добавляет папку как отдельную группу плейлиста. Если такая папка (по пути) уже есть
@@ -1707,13 +1730,14 @@ public partial class MainWindow : FluentWindow
     // она попала в плейлист — раньше это дополнительно делалось тихо на каждом старте, что на
     // большой/сетевой библиотеке ощущалось как лишнее фоновое сканирование. Переиспользует
     // AddFolderPath — он и так умеет добавлять только недостающие файлы.
-    private void RescanFolderButton_Click(object sender, RoutedEventArgs e)
+    private async void RescanFolderButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
         if (folder.SourcePath == null) return;
 
         int before = folder.Tracks.Count;
-        bool foundAnything = AddFolderPath(folder.SourcePath);
+        bool foundAnything = await AddFolderPathAsync(folder.SourcePath);
+        if (_isExiting) return;
         int addedCount = folder.Tracks.Count - before;
 
         if (!foundAnything || addedCount <= 0)
@@ -2363,9 +2387,11 @@ public partial class MainWindow : FluentWindow
         bool isCurrentlyLoaded = filePath == _currentTrackPath && _audioFile != null;
         string? nextPath = null;
         bool wasPlaying = false;
+        TimeSpan previousPosition = TimeSpan.Zero;
 
         if (isCurrentlyLoaded)
         {
+            previousPosition = _audioFile!.CurrentTime;
             wasPlaying = _isPlaying;
 
             // Считаем "следующий трек в очереди" ДО того, как уберём удаляемый из плейлиста
@@ -2394,6 +2420,12 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
+            // StopPlayback был нужен для освобождения file handle, но при ошибке удаления
+            // пользовательский трек всё ещё существует. Возвращаем его на прежнюю позицию,
+            // чтобы не превращать временную ошибку корзины/прав доступа в потерю воспроизведения.
+            if (isCurrentlyLoaded && File.Exists(filePath))
+                LoadAndPlay(filePath, autoPlay: wasPlaying, startPosition: previousPosition);
+
             System.Windows.MessageBox.Show(ownerWindow, $"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка удаления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             return;
@@ -2458,6 +2490,16 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
+            // После частично успешной инициализации reader/output устройство могло остаться
+            // открытым. Полная очистка важнее сохранения устаревшей строки трека: иначе UI
+            // показывает старый трек, а фактически аудиоконтур уже остановлен.
+            StopPlayback();
+            _currentTrackPath = null;
+            _replayGainFactor = 1.0;
+            SetTrackInfoText("Файл не выбран", "—");
+            TotalTimeText.Text = "00:00";
+            ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
+
             Logger.Error($"Не удалось открыть аудиофайл: {filePath}", ex);
             System.Windows.MessageBox.Show(this, $"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
@@ -2757,7 +2799,7 @@ public partial class MainWindow : FluentWindow
         // Сравнение по времени с секундным запасом, а не байтовое ("Position >= Length - 1") —
         // из-за выравнивания по блокам сэмплов реальная позиция на естественной остановке почти
         // всегда на пару байт меньше Length, и байтовое условие часто было ложным.
-        Dispatcher.Invoke(() =>
+        Dispatcher.BeginInvoke(() =>
         {
             if (_audioFile != null && _audioFile.TotalTime - _audioFile.CurrentTime <= TimeSpan.FromMilliseconds(750))
             {
@@ -3763,7 +3805,7 @@ public partial class MainWindow : FluentWindow
         if (++_ticksSinceLastAutoSave >= AutoSaveEveryNTicks)
         {
             _ticksSinceLastAutoSave = 0;
-            PersistPlaybackAndPlaylistState();
+            PersistPlaybackAndPlaylistState(asyncSave: true);
         }
     }
 
@@ -3897,7 +3939,7 @@ public partial class MainWindow : FluentWindow
     // умолчанию, обычное закрытие крестиком просто прячет окно в трей, и до настоящего
     // "Выход" могло не доходить месяцами. Теперь дополнительно вызывается при сворачивании в
     // трей, на паузе и периодически во время игры.
-    private void PersistPlaybackAndPlaylistState()
+    private void PersistPlaybackAndPlaylistState(bool asyncSave = false)
     {
         if (_settings.RememberVolume)
             _settings.SavedVolume = VolumeSlider.Value;
@@ -3923,7 +3965,10 @@ public partial class MainWindow : FluentWindow
         _settings.PinnedFavoriteTracks = FavoritesManager.GetPinnedPaths();
         _settings.PlayCounts = PlayCountManager.GetAll();
 
-        SettingsManager.Save(_settings);
+        if (asyncSave)
+            FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        else
+            SettingsManager.Save(_settings);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -3933,6 +3978,8 @@ public partial class MainWindow : FluentWindow
         // случай выставляем здесь и так, чтобы Closed-обработчик ShowChangelogWindow ниже
         // точно не попытался открыть окно настроек заново посреди выключения программы.
         _isExiting = true;
+        _lifetimeCts.Cancel();
+        _waveformCts?.Cancel();
 
         // Сохраняем состояние ДО остановки — StopPlayback ниже обнуляет _audioFile, а
         // PersistPlaybackAndPlaylistState читает текущую позицию именно из него.
@@ -3953,6 +4000,8 @@ public partial class MainWindow : FluentWindow
         _trackChangeToastWindow?.Close();
         _changelogWindow?.Close();
         _coverArtWindow?.Close();
+        _waveformCts?.Dispose();
+        _lifetimeCts.Dispose();
 
         base.OnClosed(e);
     }

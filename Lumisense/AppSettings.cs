@@ -1,5 +1,7 @@
 using System.IO;
 using System.Text.Json;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Win32;
 
 namespace AudioPlayer;
@@ -343,6 +345,9 @@ public class AppSettings
 // Загрузка и сохранение настроек в %AppData%\Lumisense\settings.json
 public static class SettingsManager
 {
+    private static readonly SemaphoreSlim SaveGate = new(1, 1);
+    private static long NextSaveRevision;
+    private static long LastWrittenRevision;
     private static readonly string SettingsFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Lumisense", "settings.json");
@@ -400,17 +405,52 @@ public static class SettingsManager
     {
         try
         {
-            var directory = Path.GetDirectoryName(SettingsFilePath);
-            if (directory != null)
-                Directory.CreateDirectory(directory);
-
             var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
-            File.WriteAllText(SettingsFilePath, json);
+            WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
         }
         catch (Exception ex)
         {
-            // Нет прав на запись и т.п. — тихо игнорируем, это не критично для работы плеера
             Logger.Warn($"Не удалось сохранить settings.json ({SettingsFilePath}): {ex.Message}");
+        }
+    }
+
+    // Сериализация snapshot остаётся короткой операцией на вызывающем потоке, а файловая запись
+    // и замена файла выполняются в фоне. SemaphoreSlim не даёт двум автосохранениям поменять
+    // местами результаты. Финальный Save() при закрытии остаётся синхронным.
+    public static async Task SaveAsync(AppSettings settings)
+    {
+        string json;
+        try
+        {
+            json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            var revision = Interlocked.Increment(ref NextSaveRevision);
+            await Task.Run(() => WriteJsonAtomic(json, revision)).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось асинхронно сохранить settings.json ({SettingsFilePath}): {ex.Message}");
+        }
+    }
+
+    private static void WriteJsonAtomic(string json, long revision)
+    {
+        var directory = Path.GetDirectoryName(SettingsFilePath);
+        if (directory != null)
+            Directory.CreateDirectory(directory);
+
+        SaveGate.Wait();
+        try
+        {
+            if (revision < LastWrittenRevision) return;
+
+            var tempPath = SettingsFilePath + ".tmp";
+            File.WriteAllText(tempPath, json);
+            File.Move(tempPath, SettingsFilePath, overwrite: true);
+            LastWrittenRevision = revision;
+        }
+        finally
+        {
+            SaveGate.Release();
         }
     }
 }
