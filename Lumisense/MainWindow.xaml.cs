@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.Json;
 using System.Threading;
@@ -52,6 +53,7 @@ public partial class MainWindow : FluentWindow
     private EqualizerSampleProvider? _equalizer;
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private readonly Stopwatch _playbackClock = new();
 
     // Множитель громкости из ReplayGain-тегов текущего трека (см. ReplayGainReader,
     // AppSettings.ReplayGainEnabled), 1.0 если выключено/тегов нет. Домножается на обычную
@@ -98,6 +100,9 @@ public partial class MainWindow : FluentWindow
     // PlaylistFoldersControl, и на то, какой список треков используют "Далее"/"Назад"/шафл
     // (см. FlattenAll/FlattenActive).
     private bool _isFavoritesView;
+    private List<string>? _allTracksCache;
+    private List<string>? _activeTracksCache;
+    private bool _trackCachesAreFavoritesView;
 
     private readonly Random _random = new();
 
@@ -510,11 +515,29 @@ public partial class MainWindow : FluentWindow
     // шафл и автопереход к следующему треку должны листать именно его, а не основной плейлист,
     // который в этот момент даже не показан на экране — поэтому обе "плоские" версии плейлиста,
     // от которых зависит вся навигация по трекам, подменяются списком избранного целиком.
-    private List<string> FlattenAll() =>
-        _isFavoritesView ? FavoritesManager.GetAll() : _folders.SelectMany(f => f.Tracks).ToList();
+    private List<string> FlattenAll()
+    {
+        if (_allTracksCache != null && _trackCachesAreFavoritesView == _isFavoritesView)
+            return _allTracksCache;
 
-    private List<string> FlattenActive() =>
-        _isFavoritesView ? FavoritesManager.GetAll() : _folders.Where(f => f.IsEnabled).SelectMany(f => f.Tracks).ToList();
+        _trackCachesAreFavoritesView = _isFavoritesView;
+        _allTracksCache = _isFavoritesView
+            ? FavoritesManager.GetAll()
+            : _folders.SelectMany(f => f.Tracks).ToList();
+        return _allTracksCache;
+    }
+
+    private List<string> FlattenActive()
+    {
+        if (_activeTracksCache != null && _trackCachesAreFavoritesView == _isFavoritesView)
+            return _activeTracksCache;
+
+        _trackCachesAreFavoritesView = _isFavoritesView;
+        _activeTracksCache = _isFavoritesView
+            ? FavoritesManager.GetAll()
+            : _folders.Where(f => f.IsEnabled).SelectMany(f => f.Tracks).ToList();
+        return _activeTracksCache;
+    }
 
     private string? GetCurrentTrackPath() => _currentTrackPath;
 
@@ -1624,7 +1647,12 @@ public partial class MainWindow : FluentWindow
     {
         try
         {
-            var filesInFolder = await Task.Run(() => Directory.EnumerateFiles(folderPath, "*.*", SearchOption.AllDirectories)
+            var filesInFolder = await Task.Run(() => Directory.EnumerateFiles(folderPath, "*.*", new EnumerationOptions
+                {
+                    RecurseSubdirectories = true,
+                    IgnoreInaccessible = true,
+                    ReturnSpecialDirectories = false
+                })
                 .Where(f => SupportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
                 .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
                 .ToList(), _lifetimeCts.Token);
@@ -1796,6 +1824,9 @@ public partial class MainWindow : FluentWindow
     // только для видимых. Свёрнутые папки не кладут строки треков в список вовсе.
     private void RefreshPlaylistView()
     {
+        _allTracksCache = null;
+        _activeTracksCache = null;
+
         var items = new List<object>();
 
         foreach (var folder in _folders)
@@ -2494,6 +2525,8 @@ public partial class MainWindow : FluentWindow
             // открытым. Полная очистка важнее сохранения устаревшей строки трека: иначе UI
             // показывает старый трек, а фактически аудиоконтур уже остановлен.
             StopPlayback();
+            _outputDevice?.Dispose();
+            _outputDevice = null;
             _currentTrackPath = null;
             _replayGainFactor = 1.0;
             SetTrackInfoText("Файл не выбран", "—");
@@ -2551,6 +2584,7 @@ public partial class MainWindow : FluentWindow
             _isPlaying = true;
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
             _progressTimer.Start();
+            _playbackClock.Start();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
             PlaybackStateChanged?.Invoke(true);
             ShowTrackChangeToast();
@@ -2894,6 +2928,8 @@ public partial class MainWindow : FluentWindow
                 // См. комментарий у Pause() выше — та же защита от падения из-за проблем с
                 // самим устройством вывода, а не с плеером как таковым.
                 Logger.Error("Не удалось запустить воспроизведение", ex);
+                _outputDevice?.Dispose();
+                _outputDevice = null;
                 System.Windows.MessageBox.Show(this,
                     $"Не удалось запустить воспроизведение — возможно, устройство вывода звука недоступно.\n\n{ex.Message}",
                     "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
@@ -2902,6 +2938,7 @@ public partial class MainWindow : FluentWindow
 
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
             _progressTimer.Start();
+            _playbackClock.Start();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
             PlaybackStateChanged?.Invoke(true);
         }
@@ -3765,7 +3802,16 @@ public partial class MainWindow : FluentWindow
     private void StopProgressTimerAndAnimation()
     {
         _progressTimer.Stop();
+        FlushPlaybackClock();
         _isSyncingProgressFromPlayback = false;
+    }
+
+    private void FlushPlaybackClock()
+    {
+        if (!_playbackClock.IsRunning) return;
+        _playbackClock.Stop();
+        _settings.TotalListenSeconds += _playbackClock.Elapsed.TotalSeconds;
+        _playbackClock.Reset();
     }
 
     private void ProgressTimer_Tick(object? sender, EventArgs e)
@@ -3785,7 +3831,8 @@ public partial class MainWindow : FluentWindow
         // вокруг пауз), поэтому просто прибавляем длину тика — надёжнее, чем пытаться
         // вычислить это позже из длительностей файлов и счётчиков (перемотка/повторы и так
         // никак не искажают эту сумму, ведь она набирается по факту реального проигрывания).
-        _settings.TotalListenSeconds += _progressTimer.Interval.TotalSeconds;
+        // DispatcherTimer используется только для отображения. Статистика начисляется через
+        // Stopwatch в StopProgressTimerAndAnimation, поэтому задержки UI не искажают время.
         _settings.StatsStartedAt ??= DateTime.Now.ToString("O");
 
         // Прослушивание засчитывается не при старте трека, а только когда реально
@@ -3983,6 +4030,7 @@ public partial class MainWindow : FluentWindow
 
         // Сохраняем состояние ДО остановки — StopPlayback ниже обнуляет _audioFile, а
         // PersistPlaybackAndPlaylistState читает текущую позицию именно из него.
+        FlushPlaybackClock();
         PersistPlaybackAndPlaylistState();
         StopPlayback(disposeOnly: true);
 
