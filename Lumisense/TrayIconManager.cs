@@ -25,6 +25,11 @@ public sealed class TrayIconManager : IDisposable
     private readonly NotifyIcon _notifyIcon;
     private readonly RoundedContextMenuStrip _menu;
     private readonly ToolStripMenuItem _headerItem;
+    private readonly Font _headerFont;
+    private readonly Font _nowPlayingFont;
+    private readonly Font _menuFont;
+    private readonly Icon? _ownedAppIcon;
+    private bool _disposed;
     private readonly ToolStripMenuItem _nowPlayingItem;
     private readonly ToolStripMenuItem _playPauseItem;
     private readonly ToolStripMenuItem _openItem;
@@ -47,10 +52,14 @@ public sealed class TrayIconManager : IDisposable
 
     public TrayIconManager()
     {
+        _headerFont = new Font("Segoe UI Semibold", 9.5f);
+        _nowPlayingFont = new Font("Segoe UI", 8.25f);
+        _menuFont = new Font("Segoe UI", 9f);
+
         _headerItem = new ToolStripMenuItem("Lumisense")
         {
             Enabled = false,
-            Font = new Font("Segoe UI Semibold", 9.5f),
+            Font = _headerFont,
             Image = TrayIcons.Logo(Accent),
             ImageScaling = ToolStripItemImageScaling.None
         };
@@ -58,7 +67,7 @@ public sealed class TrayIconManager : IDisposable
         _nowPlayingItem = new ToolStripMenuItem("Ничего не играет")
         {
             Enabled = false,
-            Font = new Font("Segoe UI", 8.25f),
+            Font = _nowPlayingFont,
             AutoToolTip = false
         };
 
@@ -71,7 +80,7 @@ public sealed class TrayIconManager : IDisposable
         _menu = new RoundedContextMenuStrip(CornerRadius)
         {
             ShowImageMargin = true,
-            Font = new Font("Segoe UI", 9f),
+            Font = _menuFont,
             Padding = new Padding(4, 6, 4, 6)
         };
         _menu.Items.Add(_headerItem);
@@ -85,9 +94,11 @@ public sealed class TrayIconManager : IDisposable
         _menu.Items.Add(new ToolStripSeparator());
         _menu.Items.Add(_exitItem);
 
+        var appIcon = LoadAppIcon(out var ownsAppIcon);
+        _ownedAppIcon = ownsAppIcon ? appIcon : null;
         _notifyIcon = new NotifyIcon
         {
-            Icon = LoadAppIcon(),
+            Icon = appIcon,
             Text = "Lumisense",
             Visible = false,
             ContextMenuStrip = _menu
@@ -101,8 +112,9 @@ public sealed class TrayIconManager : IDisposable
     // из запущенного исполняемого файла, поэтому не зависим от того, лежит ли .ico-файл
     // рядом при разных вариантах публикации (single-file и т.п.). SystemIcons.Application —
     // запасной вариант на случай, если извлечь иконку почему-то не удалось.
-    private static Icon LoadAppIcon()
+    private static Icon LoadAppIcon(out bool ownsIcon)
     {
+        ownsIcon = false;
         try
         {
             var path = Assembly.GetExecutingAssembly().Location;
@@ -110,7 +122,11 @@ public sealed class TrayIconManager : IDisposable
                 path = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
 
             var extracted = Icon.ExtractAssociatedIcon(path);
-            if (extracted != null) return extracted;
+            if (extracted != null)
+            {
+                ownsIcon = true;
+                return extracted;
+            }
         }
         catch
         {
@@ -125,7 +141,7 @@ public sealed class TrayIconManager : IDisposable
     public void SetPlayingState(bool isPlaying)
     {
         _playPauseItem.Text = isPlaying ? "Пауза" : "Продолжить";
-        _playPauseItem.Image = TrayIcons.PlayPause(isPlaying, ForegroundColor);
+        ReplaceMenuImage(_playPauseItem, TrayIcons.PlayPause(isPlaying, ForegroundColor));
     }
 
     // Название/исполнитель + миниатюра обложки прямо в меню трея, как в мини-плеере.
@@ -154,10 +170,11 @@ public sealed class TrayIconManager : IDisposable
     {
         if (artBytes is null || artBytes.Length == 0) return null;
 
+        Bitmap? thumbnail = null;
         try
         {
             using var source = new Bitmap(new MemoryStream(artBytes));
-            var thumbnail = new Bitmap(ArtThumbnailSize, ArtThumbnailSize);
+            thumbnail = new Bitmap(ArtThumbnailSize, ArtThumbnailSize);
 
             using (var g = Graphics.FromImage(thumbnail))
             {
@@ -179,6 +196,7 @@ public sealed class TrayIconManager : IDisposable
         }
         catch
         {
+            thumbnail?.Dispose();
             return null;
         }
     }
@@ -239,12 +257,18 @@ public sealed class TrayIconManager : IDisposable
 
     private void DisposeMenuImages()
     {
+        var currentThumbnail = _currentArtThumbnail;
+        _currentArtThumbnail = null;
+
         foreach (ToolStripItem item in _menu.Items)
         {
             var image = item.Image;
             item.Image = null;
-            image?.Dispose();
+            if (image is not null && !ReferenceEquals(image, currentThumbnail))
+                image.Dispose();
         }
+
+        currentThumbnail?.Dispose();
     }
 
     public void Show(string? tooltipText = null)
@@ -264,11 +288,24 @@ public sealed class TrayIconManager : IDisposable
 
     public void Dispose()
     {
+        if (_disposed) return;
+        _disposed = true;
+
         _notifyIcon.Visible = false;
-        DisposeMenuImages();
+        _notifyIcon.ContextMenuStrip = null;
+        _notifyIcon.Icon = null;
         _notifyIcon.Dispose();
-        _currentArtThumbnail?.Dispose();
-        _currentArtThumbnail = null;
+
+        DisposeMenuImages();
+        _headerItem.Font = null;
+        _nowPlayingItem.Font = null;
+        _menu.Font = null;
+        _menu.Dispose();
+
+        _headerFont.Dispose();
+        _nowPlayingFont.Dispose();
+        _menuFont.Dispose();
+        _ownedAppIcon?.Dispose();
     }
 
     // Тёмный вариант в стиле Fluent/Mica (тёмно-серые фоны, акцентная подсветка),
@@ -386,7 +423,9 @@ public sealed class TrayIconManager : IDisposable
             path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
             path.CloseFigure();
 
+            var previousRegion = Region;
             Region = new Region(path);
+            previousRegion?.Dispose();
         }
     }
 
