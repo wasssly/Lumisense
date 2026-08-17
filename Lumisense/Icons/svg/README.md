@@ -51,7 +51,7 @@ IconResources.Make("ИмяФайла")
 
 Большинство иконок — из набора Google Material Symbols (Apache 2.0), 20 штук,
 залиты как есть. Ещё 7 файлов (`IconAddFolder`, `IconDismiss`, `IconExpand`,
-`IconMinimizeWindow`, `IconMusicNote`, `IconRestoreWindow`, `IconSpeaker`)
+`IconMusicNote`, `IconSpeaker`)
 восстановлены как настоящие `.svg` из прежних Fluent UI System Icons
 (Microsoft, MIT), которые использовались в проекте раньше — чтобы приложение
 не потеряло эти иконки при переходе на новую систему.
@@ -63,8 +63,6 @@ IconResources.Make("ИмяФайла")
 поэтому у них другой viewBox (`0 0 24 24` вместо `0 -960 960 960`), что не мешает: SvgPathIcon
 и SharpVectors одинаково хорошо рендерят оба формата.
 
-Четыре иконки — `IconRepeat`, `IconShuffleOn`, `IconSpeaker1`, `IconSpeaker2` —
-пока лежат про запас: в текущей разметке они нигде не используются (например,
-приложение сейчас переключает только `IconSpeaker` / `IconSpeakerMute`, без
-промежуточных уровней громкости), но уже готовы, если решишь их подключить —
-просто впиши `Icon="IconSpeaker1"` и т.п. в нужном месте.
+Две иконки — `IconShuffleOn` и `IconSpeaker1` — пока лежат про запас: если они
+понадобятся в будущем, их можно подключить через `Icon="IconShuffleOn"` или
+`Icon="IconSpeaker1"` в нужном месте.
