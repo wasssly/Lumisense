@@ -215,6 +215,13 @@ public partial class ChangelogWindow : FluentWindow
         _detailsScrollAnimationTimer.Start();
     }
 
+    protected override void OnClosed(EventArgs e)
+    {
+        _detailsScrollAnimationTimer?.Stop();
+        _detailsScrollAnimationTimer = null;
+        base.OnClosed(e);
+    }
+
     // ---------- Свой скроллбар списка версий (с нуля, без ScrollBar/Track) ----------
     // Тот же приём, что и у плейлиста в главном окне (см. MainWindow.xaml.cs): ScrollViewer
     // со скрытым системным скроллбаром + отдельная дорожка (VersionsScrollTrack) и ползунок

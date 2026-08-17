@@ -1310,6 +1310,46 @@ public partial class SettingsWindow : FluentWindow
         // прокрутит к конкретному найденному элементу через отложенный Dispatcher.InvokeAsync —
         // тот вызов случится позже этого и просто переопределит позицию, никакого конфликта.
         PART_ContentScroll.ScrollToTop();
+
+        FrameworkElement? activePage = key switch
+        {
+            "Appearance" => PageAppearance,
+            "Window" => PageWindow,
+            "Playback" => PagePlayback,
+            "Notifications" => PageNotifications,
+            "Equalizer" => PageEqualizer,
+            "MiniPlayer" => PageMiniPlayer,
+            "Hotkeys" => PageHotkeys,
+            "Profile" => PageProfile,
+            "Updates" => PageUpdates,
+            "About" => PageAbout,
+            _ => null
+        };
+        if (activePage is not null)
+            AnimateSettingsPage(activePage);
+    }
+
+    private static void AnimateSettingsPage(FrameworkElement page)
+    {
+        page.Opacity = 0;
+        var translate = new System.Windows.Media.TranslateTransform(0, 10);
+        page.RenderTransform = translate;
+        page.RenderTransformOrigin = new Point(0.5, 0);
+
+        var easing = new System.Windows.Media.Animation.CubicEase
+        {
+            EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+        };
+        page.BeginAnimation(UIElement.OpacityProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = easing
+            });
+        translate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(260))
+            {
+                EasingFunction = easing
+            });
     }
 
     // ---------- Список изменений ----------

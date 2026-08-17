@@ -72,7 +72,35 @@ public partial class MainWindow : FluentWindow
     // чем расчёт закончился — иначе устаревший результат может перезаписать уже показанную
     // форму волны нового трека.
     private CancellationTokenSource? _waveformCts;
+    private CancellationTokenSource? _trackLoadCts;
+    private CancellationTokenSource? _replayGainCts;
+    private int _trackLoadGeneration;
     private readonly CancellationTokenSource _lifetimeCts = new();
+
+    private sealed class PreparedTrack : IDisposable
+    {
+        public required AudioFileReader AudioFile { get; init; }
+        public required EqualizerSampleProvider Equalizer { get; init; }
+        public required double ReplayGainFactor { get; init; }
+        public string? Title { get; init; }
+        public string? Artist { get; init; }
+        public BitmapImage? AlbumArt { get; init; }
+        public byte[]? AlbumArtBytes { get; init; }
+        public string? AlbumArtMimeType { get; init; }
+        public TagLib.PictureType? AlbumArtPictureType { get; init; }
+
+        public void Dispose()
+        {
+            try
+            {
+                AudioFile.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Не удалось освободить подготовленный AudioFileReader", ex);
+            }
+        }
+    }
 
     // Прослушивание засчитывается только когда реально воспроизведена (не перемотана) как
     // минимум половина композиции — см. ProgressTimer_Tick. Сбрасывается на каждую новую
@@ -864,6 +892,8 @@ public partial class MainWindow : FluentWindow
     private async Task EnsureWaveformForCurrentTrackAsync()
     {
         string? filePath = _currentTrackPath;
+        _waveformCts?.Cancel();
+
         if (filePath == null)
         {
             ProgressWaveform.Peaks = null;
@@ -876,51 +906,43 @@ public partial class MainWindow : FluentWindow
             return;
         }
 
-        // Пока считаем — показываем заглушку (WaveformView сама рисует плоскую линию для
-        // null), а не форму волны предыдущего трека: иначе на секунду-другую казалось бы, что
-        // полоса уже готова, но просто "залипла" на старом треке.
+        // Пока считаем — показываем заглушку, а не форму волны предыдущего трека.
         ProgressWaveform.Peaks = null;
-
-        _waveformCts?.Cancel();
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
         _waveformCts = cts;
 
-        float[]? peaks;
         try
         {
-            peaks = await WaveformGenerator.GenerateAsync(filePath, cts.Token);
+            float[]? peaks = await WaveformGenerator.GenerateAsync(filePath, cts.Token);
+            cts.Token.ThrowIfCancellationRequested();
+
+            // Защита от устаревшего результата даже при изменении pipeline в будущем.
+            if (_currentTrackPath != filePath || !ReferenceEquals(_waveformCts, cts)) return;
+
+            if (peaks != null)
+            {
+                _waveformCache[filePath] = peaks;
+                _waveformCacheOrder.Enqueue(filePath);
+                while (_waveformCacheOrder.Count > WaveformCacheLimit)
+                    _waveformCache.Remove(_waveformCacheOrder.Dequeue());
+            }
+            ProgressWaveform.Peaks = peaks;
         }
         catch (OperationCanceledException)
         {
-            if (ReferenceEquals(_waveformCts, cts)) _waveformCts = null;
-            cts.Dispose();
-            return; // трек уже переключили ещё раз — результат больше не нужен
+            // Новый трек или shutdown отменил расчёт; результат больше не нужен.
         }
-
-        // Тот же самый трек мог успеть смениться, пока мы ждали (переключение до завершения
-        // расчёта, но БЕЗ отмены — например, если это был запрос на другой файл, который сам
-        // тоже прошёл проверку кэша выше и создал свой собственный cts, не отменяя этот). На
-        // практике оба места отменяют предыдущий cts перед стартом нового расчёта, так что
-        // это скорее defensive-проверка на будущее, чем реально достижимый сейчас случай.
-        if (_currentTrackPath != filePath)
+        catch (Exception ex)
+        {
+            Logger.Error($"Не удалось построить waveform для файла: {filePath}", ex);
+        }
+        finally
         {
             if (ReferenceEquals(_waveformCts, cts)) _waveformCts = null;
             cts.Dispose();
-            return;
         }
-
-        if (peaks != null)
-        {
-            _waveformCache[filePath] = peaks;
-            _waveformCacheOrder.Enqueue(filePath);
-            while (_waveformCacheOrder.Count > WaveformCacheLimit)
-                _waveformCache.Remove(_waveformCacheOrder.Dequeue());
-        }
-
-        ProgressWaveform.Peaks = peaks;
-        if (ReferenceEquals(_waveformCts, cts)) _waveformCts = null;
-        cts.Dispose();
     }
+
 
     // Применяет акцентный цвет из настроек (см. AppSettings.AccentColorMode/AccentColorHex) —
     // вызывается при старте (ApplySettingsOnStartup) и заново при каждой смене этой настройки
@@ -2493,46 +2515,97 @@ public partial class MainWindow : FluentWindow
 
     // ---------- Загрузка и воспроизведение ----------
 
-    private void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
+    private async void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
         AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next)
     {
+        var previousLoad = Interlocked.Exchange(ref _trackLoadCts, null);
+        previousLoad?.Cancel();
+        var previousGain = Interlocked.Exchange(ref _replayGainCts, null);
+        previousGain?.Cancel();
         StopPlayback(disposeOnly: true);
+
+        int generation = Interlocked.Increment(ref _trackLoadGeneration);
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _trackLoadCts = cts;
+        PreparedTrack? prepared = null;
 
         try
         {
-            // Читается синхронно (как и открытие самого AudioFileReader ниже, и LoadAlbumArt
-            // дальше по методу) — TagLibSharp разбирает только заголовок/теги файла, а не весь
-            // файл целиком, так что при нормальных файлах это доли миллисекунды, заметной
-            // просадки отзывчивости при переключении трека это не даёт.
-            _replayGainFactor = _settings.ReplayGainEnabled ? ReplayGainReader.GetTrackGainLinear(filePath) : 1.0;
+            double volumeSliderValue = VolumeSlider.Value;
+            bool replayGainEnabled = _settings.ReplayGainEnabled;
+            bool equalizerEnabled = _settings.EqualizerEnabled;
+            double[] equalizerGains = (double[])_settings.EqualizerBandGainsDb.Clone();
 
-            _audioFile = new AudioFileReader(filePath) { Volume = ComputeAudioFileVolume(VolumeSlider.Value) };
+            prepared = await PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
+                equalizerEnabled, equalizerGains, cts.Token);
+            cts.Token.ThrowIfCancellationRequested();
+            if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
+                return;
 
-            _equalizer = new EqualizerSampleProvider(_audioFile) { Enabled = _settings.EqualizerEnabled };
-            ApplyEqualizerGainsFromSettings();
+            _audioFile = prepared.AudioFile;
+            _equalizer = prepared.Equalizer;
+            _replayGainFactor = prepared.ReplayGainFactor;
+            PreparedTrack loaded = prepared;
+            prepared = null;
 
-            // Fade-in маскирует щелчок от "холодного старта" BiQuad-фильтров эквалайзера — их
-            // внутреннее состояние начинается с нуля, а не с реального сигнала, и даёт короткий
-            // переходный процесс. Для самой нижней полосы (31 Гц, Q=0.9) он длится ~40-50 мс,
-            // поэтому 70 мс здесь взято с запасом (15 мс, что стояли раньше, хватало не для всех
-            // полос).
-            var fadeIn = new FadeInOutSampleProvider(_equalizer, initiallySilent: true);
+            string title = string.IsNullOrWhiteSpace(loaded.Title) ? Path.GetFileNameWithoutExtension(filePath) : loaded.Title;
+            string artist = string.IsNullOrWhiteSpace(loaded.Artist)
+                ? (Path.GetDirectoryName(filePath) is { } dir ? Path.GetFileName(dir) : "—")
+                : loaded.Artist;
+            SetTrackInfoText(title, artist);
+            TotalTimeText.Text = _audioFile.TotalTime.ToString(@"mm\:ss");
+            ProgressSlider.Maximum = Math.Max(_audioFile.TotalTime.TotalSeconds, 0.01);
+            _currentTrackPath = filePath;
+            _halfPlayCounted = false;
+            ApplyPreparedAlbumArt(loaded, albumArtDirection);
+
+            if (_settings.ProgressBarStyle == "Waveform")
+                FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
+
+            var position = startPosition.HasValue && startPosition.Value < _audioFile.TotalTime
+                ? startPosition.Value
+                : TimeSpan.Zero;
+            _audioFile.CurrentTime = position;
+            ProgressSlider.Value = position.TotalSeconds;
+            CurrentTimeText.Text = position.ToString(@"mm\:ss");
+            ProgressWaveform.Progress = _audioFile.TotalTime.TotalSeconds > 0
+                ? position.TotalSeconds / _audioFile.TotalTime.TotalSeconds
+                : 0;
+            _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
+            TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
+            ProgressChanged?.Invoke(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+
+            var fadeIn = new FadeInOutSampleProvider(_equalizer!, initiallySilent: true);
             fadeIn.BeginFadeIn(70);
-
-            // Устройство вывода живёт одно на всё время работы приложения (см. поле
-            // _outputDevice) — пересоздание WaveOutEvent на каждый трек само по себе давало
-            // щелчок при открытии аудиоустройства на уровне драйвера, отдельно от щелчка
-            // эквалайзера выше. Init(...) на существующем устройстве — штатный способ NAudio
-            // сменить источник без пересоздания.
             _outputDevice ??= new WaveOutEvent();
             _outputDevice.Init(fadeIn);
             _outputDevice.PlaybackStopped += OutputDevice_PlaybackStopped;
+            if (autoPlay)
+            {
+                _outputDevice.Play();
+                _isPlaying = true;
+                PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
+                _progressTimer.Start();
+                _playbackClock.Start();
+                _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
+                PlaybackStateChanged?.Invoke(true);
+                ShowTrackChangeToast();
+            }
+            else
+            {
+                _isPlaying = false;
+                PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
+                _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
+                PlaybackStateChanged?.Invoke(false);
+            }
+            ScrollPlaylistToCurrentTrack();
+        }
+        catch (OperationCanceledException)
+        {
+            // A newer track request or application shutdown superseded this load.
         }
         catch (Exception ex)
         {
-            // После частично успешной инициализации reader/output устройство могло остаться
-            // открытым. Полная очистка важнее сохранения устаревшей строки трека: иначе UI
-            // показывает старый трек, а фактически аудиоконтур уже остановлен.
             StopPlayback();
             _outputDevice?.Dispose();
             _outputDevice = null;
@@ -2541,74 +2614,93 @@ public partial class MainWindow : FluentWindow
             SetTrackInfoText("Файл не выбран", "—");
             TotalTimeText.Text = "00:00";
             ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
-
             Logger.Error($"Не удалось открыть аудиофайл: {filePath}", ex);
-            System.Windows.MessageBox.Show(this, $"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
-                "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
-            return;
+            if (!_isExiting)
+                System.Windows.MessageBox.Show(this, $"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
+                    "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
-
-        SetTrackInfoText(Path.GetFileNameWithoutExtension(filePath),
-            Path.GetDirectoryName(filePath) is { } dir ? Path.GetFileName(dir) : "—");
-        TotalTimeText.Text = _audioFile.TotalTime.ToString(@"mm\:ss");
-        ProgressSlider.Maximum = Math.Max(_audioFile.TotalTime.TotalSeconds, 0.01);
-
-        _currentTrackPath = filePath;
-        _halfPlayCounted = false;
-
-        LoadAlbumArt(filePath, albumArtDirection);
-
-        // Форма волны считается только если сейчас вообще выбран этот вид полосы — не тратим
-        // время на декодирование всего файла впустую, если пользователь показывает обычный
-        // Slider (по умолчанию).
-        if (_settings.ProgressBarStyle == "Waveform")
-            FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
-
-        // Позиция старта: восстановленная (сохранённая между запусками) либо начало трека.
-        // Раньше при переключении трека на паузе слайдер и время не сбрасывались и
-        // показывали позицию прежнего трека — сбрасываем явно на каждую загрузку.
-        var position = startPosition.HasValue && startPosition.Value < _audioFile.TotalTime
-            ? startPosition.Value
-            : TimeSpan.Zero;
-
-        _audioFile.CurrentTime = position;
-        ProgressSlider.Value = position.TotalSeconds;
-        CurrentTimeText.Text = position.ToString(@"mm\:ss");
-        ProgressWaveform.Progress = _audioFile.TotalTime.TotalSeconds > 0
-            ? position.TotalSeconds / _audioFile.TotalTime.TotalSeconds
-            : 0;
-
-
-        _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
-        TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
-
-        // Мини-плеер узнаёт о прогрессе только через это событие — без него его полоса
-        // прогресса осталась бы показывать позицию предыдущего трека до первого тика таймера
-        // (а на паузе таймер вообще не запускается).
-        ProgressChanged?.Invoke(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
-
-        if (autoPlay)
+        finally
         {
-            _outputDevice.Play();
-            _isPlaying = true;
-            PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
-            _progressTimer.Start();
-            _playbackClock.Start();
-            _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
-            PlaybackStateChanged?.Invoke(true);
-            ShowTrackChangeToast();
+            prepared?.Dispose();
+            if (ReferenceEquals(_trackLoadCts, cts)) _trackLoadCts = null;
+            cts.Dispose();
         }
-        else
-        {
-            // Восстановление состояния без автозапуска: трек загружен и готов, но на паузе
-            _isPlaying = false;
-            PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
-            _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
-            PlaybackStateChanged?.Invoke(false);
-        }
-
-        ScrollPlaylistToCurrentTrack();
     }
+
+    private async Task<PreparedTrack> PrepareTrackAsync(string filePath, double volumeSliderValue,
+        bool replayGainEnabled, bool equalizerEnabled, double[] equalizerGains, CancellationToken token)
+    {
+        return await Task.Run(() =>
+        {
+            token.ThrowIfCancellationRequested();
+            double replayGain = replayGainEnabled ? ReplayGainReader.GetTrackGainLinear(filePath) : 1.0;
+            token.ThrowIfCancellationRequested();
+
+            string? title = null;
+            string? artist = null;
+            BitmapImage? albumArt = null;
+            byte[]? albumArtBytes = null;
+            string? albumArtMimeType = null;
+            TagLib.PictureType? albumArtPictureType = null;
+
+            try
+            {
+                using var tagFile = TagLib.File.Create(filePath);
+                title = tagFile.Tag.Title;
+                artist = tagFile.Tag.FirstPerformer;
+                if (tagFile.Tag.Pictures.Length > 0)
+                {
+                    var picture = tagFile.Tag.Pictures[0];
+                    albumArtBytes = picture.Data.Data;
+                    using var stream = new MemoryStream(albumArtBytes);
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.StreamSource = stream;
+                    bitmap.EndInit();
+                    bitmap.Freeze();
+                    albumArt = bitmap;
+                    albumArtMimeType = string.IsNullOrWhiteSpace(picture.MimeType) ? "image/jpeg" : picture.MimeType;
+                    albumArtPictureType = picture.Type;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Не удалось прочитать metadata или embedded cover для файла {filePath}: {ex.Message}");
+            }
+
+            token.ThrowIfCancellationRequested();
+            var reader = new AudioFileReader(filePath)
+            {
+                Volume = ComputeAudioFileVolume(volumeSliderValue, replayGain)
+            };
+            try
+            {
+                var equalizer = new EqualizerSampleProvider(reader) { Enabled = equalizerEnabled };
+                for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+                    equalizer.SetBandGain(band, band < equalizerGains.Length ? equalizerGains[band] : 0);
+
+                return new PreparedTrack
+                {
+                    AudioFile = reader,
+                    Equalizer = equalizer,
+                    ReplayGainFactor = replayGain,
+                    Title = title,
+                    Artist = artist,
+                    AlbumArt = albumArt,
+                    AlbumArtBytes = albumArtBytes,
+                    AlbumArtMimeType = albumArtMimeType,
+                    AlbumArtPictureType = albumArtPictureType
+                };
+            }
+            catch
+            {
+                reader.Dispose();
+                throw;
+            }
+        }, token).ConfigureAwait(true);
+    }
+
 
     // ---------- Подсветка и автопрокрутка плейлиста к текущему треку ----------
     // Подсветка — обычное выделение строки (ListViewItem.IsSelected), то же самое, что при
@@ -2694,6 +2786,22 @@ public partial class MainWindow : FluentWindow
     {
         TrackTitleText.Text = title;
         TrackArtistText.Text = artist;
+    }
+
+    private void ApplyPreparedAlbumArt(PreparedTrack loaded, AlbumArtTransitionDirection direction)
+    {
+        if (loaded.AlbumArt is not null)
+        {
+            ApplyAlbumArtBrush(new ImageBrush(loaded.AlbumArt) { Stretch = Stretch.UniformToFill }, direction);
+            _currentAlbumArt = loaded.AlbumArt;
+            _currentAlbumArtBytes = loaded.AlbumArtBytes;
+            _currentAlbumArtMimeType = loaded.AlbumArtMimeType;
+            _currentAlbumArtPictureType = loaded.AlbumArtPictureType;
+        }
+        else
+        {
+            ResetAlbumArtPlaceholder(direction);
+        }
     }
 
     private void LoadAlbumArt(string filePath, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
@@ -2835,20 +2943,40 @@ public partial class MainWindow : FluentWindow
 
     private void OutputDevice_PlaybackStopped(object? sender, StoppedEventArgs e)
     {
-        // Срабатывает и на естественное завершение трека, и на ручную остановку — но
-        // StopPlayback() заранее отписывается от этого события перед любой ручной остановкой,
-        // так что если обработчик вызвался, это всегда естественное завершение.
-        //
-        // Сравнение по времени с секундным запасом, а не байтовое ("Position >= Length - 1") —
-        // из-за выравнивания по блокам сэмплов реальная позиция на естественной остановке почти
-        // всегда на пару байт меньше Length, и байтовое условие часто было ложным.
-        Dispatcher.BeginInvoke(() =>
+        // Сохраняем generation и путь именно того reader, который остановился. Callback
+        // приходит с audio thread, а Dispatcher может выполнить его уже после быстрой загрузки
+        // следующего трека.
+        int generation = Volatile.Read(ref _trackLoadGeneration);
+        string? stoppedPath = _currentTrackPath;
+        if (_isExiting || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
+
+        try
         {
-            if (_audioFile != null && _audioFile.TotalTime - _audioFile.CurrentTime <= TimeSpan.FromMilliseconds(750))
+            Dispatcher.BeginInvoke(() =>
             {
-                HandleTrackFinishedNaturally();
-            }
-        });
+                try
+                {
+                    if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) ||
+                        !string.Equals(stoppedPath, _currentTrackPath, StringComparison.Ordinal))
+                        return;
+
+                    if (_audioFile != null && _audioFile.TotalTime - _audioFile.CurrentTime <= TimeSpan.FromMilliseconds(750))
+                        HandleTrackFinishedNaturally();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error("Ошибка обработки завершения воспроизведения в Dispatcher callback", ex);
+                }
+            });
+        }
+        catch (InvalidOperationException) when (Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+        {
+            // Dispatcher закрывается одновременно с audio callback.
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось поставить PlaybackStopped callback в Dispatcher", ex);
+        }
     }
 
     private void HandleTrackFinishedNaturally()
@@ -2937,11 +3065,15 @@ public partial class MainWindow : FluentWindow
                 // См. комментарий у Pause() выше — та же защита от падения из-за проблем с
                 // самим устройством вывода, а не с плеером как таковым.
                 Logger.Error("Не удалось запустить воспроизведение", ex);
-                _outputDevice?.Dispose();
-                _outputDevice = null;
-                System.Windows.MessageBox.Show(this,
-                    $"Не удалось запустить воспроизведение — возможно, устройство вывода звука недоступно.\n\n{ex.Message}",
-                    "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                StopPlayback();
+                DisposeOutputDeviceSafely();
+                _currentTrackPath = null;
+                _replayGainFactor = 1.0;
+                ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
+                if (!_isExiting)
+                    System.Windows.MessageBox.Show(this,
+                        $"Не удалось запустить воспроизведение — возможно, устройство вывода звука недоступно.\n\n{ex.Message}",
+                        "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                 return;
             }
 
@@ -2955,6 +3087,24 @@ public partial class MainWindow : FluentWindow
     }
 
     private void StopButton_Click(object sender, RoutedEventArgs e) => StopPlayback();
+
+    private void DisposeOutputDeviceSafely()
+    {
+        if (_outputDevice is null) return;
+
+        try
+        {
+            _outputDevice.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось освободить WaveOutEvent", ex);
+        }
+        finally
+        {
+            _outputDevice = null;
+        }
+    }
 
     // См. TrackTagsWindow.SaveButton_Click — координация с внешней записью в файл (изменение
     // тегов/обложки), пока он может быть открыт живым NAudio-потоком на чтение. Возвращает
@@ -2989,9 +3139,27 @@ public partial class MainWindow : FluentWindow
 
         // _outputDevice не останавливается через Dispose и не обнуляется — живёт до закрытия
         // приложения (см. OnClosed) и переиспользуется через Init(...) в LoadAndPlay.
-        _outputDevice?.Stop();
-        _audioFile?.Dispose();
-        _audioFile = null;
+        try
+        {
+            _outputDevice?.Stop();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось корректно остановить устройство вывода", ex);
+        }
+
+        try
+        {
+            _audioFile?.Dispose();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось освободить AudioFileReader", ex);
+        }
+        finally
+        {
+            _audioFile = null;
+        }
         _equalizer = null;
         _isPlaying = false;
 
@@ -3933,17 +4101,59 @@ public partial class MainWindow : FluentWindow
 
     // Домножает обычную громкость (см. ToOutputVolume) на _replayGainFactor — то же место
     // конвейера (AudioFileReader.Volume, до эквалайзера).
-    private float ComputeAudioFileVolume(double sliderValue) => (float)(ToOutputVolume(sliderValue) * _replayGainFactor);
+    private float ComputeAudioFileVolume(double sliderValue) => ComputeAudioFileVolume(sliderValue, _replayGainFactor);
+
+    private float ComputeAudioFileVolume(double sliderValue, double replayGainFactor) =>
+        (float)(ToOutputVolume(sliderValue) * replayGainFactor);
 
     public void RefreshReplayGain()
     {
-        _replayGainFactor = _settings.ReplayGainEnabled && _currentTrackPath != null
-            ? ReplayGainReader.GetTrackGainLinear(_currentTrackPath)
-            : 1.0;
+        var previous = Interlocked.Exchange(ref _replayGainCts, null);
+        previous?.Cancel();
 
-        if (_audioFile != null)
-            _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
+        string? path = _currentTrackPath;
+        if (!_settings.ReplayGainEnabled || path == null)
+        {
+            _replayGainFactor = 1.0;
+            if (_audioFile != null)
+                _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
+            return;
+        }
+
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _replayGainCts = cts;
+        int generation = Volatile.Read(ref _trackLoadGeneration);
+        FireAndForget(RefreshReplayGainAsync(path, generation, cts), "RefreshReplayGainAsync");
     }
+
+    private async Task RefreshReplayGainAsync(string path, int generation, CancellationTokenSource cts)
+    {
+        try
+        {
+            double gain = await Task.Run(() => ReplayGainReader.GetTrackGainLinear(path), cts.Token);
+            cts.Token.ThrowIfCancellationRequested();
+            if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) ||
+                !string.Equals(path, _currentTrackPath, StringComparison.Ordinal)) return;
+
+            _replayGainFactor = gain;
+            if (_audioFile != null)
+                _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
+        }
+        catch (OperationCanceledException)
+        {
+            // Новая загрузка, настройка или shutdown отменили устаревший расчёт.
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Не удалось обновить ReplayGain для файла: {path}", ex);
+        }
+        finally
+        {
+            if (ReferenceEquals(_replayGainCts, cts)) _replayGainCts = null;
+            cts.Dispose();
+        }
+    }
+
 
     // Одно деление колеса = 5%, как и хоткеи громкости. e.Delta положителен при прокрутке "от себя".
     private void VolumeRow_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
@@ -4041,6 +4251,8 @@ public partial class MainWindow : FluentWindow
         // точно не попытался открыть окно настроек заново посреди выключения программы.
         _isExiting = true;
         _lifetimeCts.Cancel();
+        _trackLoadCts?.Cancel();
+        _replayGainCts?.Cancel();
         _waveformCts?.Cancel();
 
         // Сохраняем состояние ДО остановки — StopPlayback ниже обнуляет _audioFile, а
@@ -4052,8 +4264,7 @@ public partial class MainWindow : FluentWindow
         // Настоящая, финальная утилизация устройства вывода — единственное место, где это
         // вообще происходит (см. подробный комментарий у поля _outputDevice в начале файла:
         // между треками StopPlayback теперь только останавливает его, не уничтожая).
-        _outputDevice?.Dispose();
-        _outputDevice = null;
+        DisposeOutputDeviceSafely();
 
         _mediaHotKeys?.Dispose();
         _nowPlaying?.Dispose();
@@ -4064,7 +4275,9 @@ public partial class MainWindow : FluentWindow
         _trackChangeToastWindow?.Close();
         _changelogWindow?.Close();
         _coverArtWindow?.Close();
-        _waveformCts?.Dispose();
+        // Track-load, ReplayGain и waveform tasks владеют своими CTS и освобождают их
+        // в собственных finally-блоках после отмены. Не Dispose здесь, пока task ещё может
+        // обращаться к TokenSource.
         _lifetimeCts.Dispose();
 
         base.OnClosed(e);
