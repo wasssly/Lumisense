@@ -1,4 +1,5 @@
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 
 namespace AudioPlayer;
 
@@ -43,7 +44,11 @@ internal static class AuthenticodeVerifier
                 Marshal.StructureToPtr(fileInfo, trustData.FileInfo, false);
                 var actionIdentifier = GenericVerifyV2;
                 uint status = WinVerifyTrust(IntPtr.Zero, ref actionIdentifier, ref trustData);
-                return status == 0;
+                if (status != 0) return false;
+
+                using var certificate = new X509Certificate2(X509Certificate.CreateFromSignedFile(filePath));
+                string signer = certificate.GetNameInfo(X509NameType.SimpleName, false);
+                return signer.Contains("Lumisense", StringComparison.OrdinalIgnoreCase);
             }
             finally
             {

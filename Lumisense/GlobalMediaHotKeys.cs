@@ -46,6 +46,7 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private readonly IntPtr _handle;
     private readonly HwndSource _source;
 
+    private int _disposed;
     private bool _customPlayPauseRegistered;
     private bool _customNextRegistered;
     private bool _customPreviousRegistered;
@@ -215,6 +216,7 @@ public sealed class GlobalMediaHotKeys : IDisposable
 
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
         UnregisterHotKey(_handle, IdNext);
         UnregisterHotKey(_handle, IdPrev);
         UnregisterHotKey(_handle, IdStop);

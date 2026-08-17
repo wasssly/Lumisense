@@ -1,5 +1,4 @@
 using System.IO;
-using System.Reflection;
 using System.Text.Json;
 
 namespace AudioPlayer;
@@ -32,22 +31,6 @@ public static class LumiProfileIO
         MaxDepth = MaxJsonDepth
     };
 
-    // Поля AppSettings, которые НЕ переносятся при экспорте/импорте — плейлист и избранное
-    // (перенос профиля ограничен только настройками, см. LumiProfile), а также чисто
-    // сессионные/локальные для конкретного компьютера данные, которым нет смысла
-    // путешествовать между машинами (и которые опасно затирать чужими значениями при импорте
-    // на уже используемый профиль).
-    private static readonly HashSet<string> ExcludedProperties = new()
-    {
-        nameof(AppSettings.SavedPlaylistFolders),
-        nameof(AppSettings.SavedPlaylist),
-        nameof(AppSettings.FavoriteTracks),
-        nameof(AppSettings.LastTrackPath),
-        nameof(AppSettings.LastPositionSeconds),
-        nameof(AppSettings.WasMiniPlayerOnClose),
-        nameof(AppSettings.PlayCounts),
-    };
-
     public static void Export(string filePath, AppSettings liveSettings)
     {
         var profile = new LumiProfile { Settings = CloneSettingsForExport(liveSettings) };
@@ -55,7 +38,7 @@ public static class LumiProfileIO
     }
 
     // JSON-рандтрип, а не ручное копирование полей — простой и надёжный способ полного клона
-    // без риска случайно расшарить те же самые вложенные списки/объекты с живыми настройками
+    // без риска случайно расшарить те же самые вложенные списки/объекты с живими настройками
     // приложения.
     private static AppSettings CloneSettingsForExport(AppSettings source)
     {
@@ -111,49 +94,78 @@ public static class LumiProfileIO
             p.GainsDb.Length <= 32 && p.GainsDb.All(double.IsFinite) && p.GainsDb.All(g => g >= -100 && g <= 100));
     }
 
-    // Копирует поля "предпочтений" (все, кроме ExcludedProperties) из imported поверх live —
-    // рефлексией по всем публичным read/write свойствам AppSettings, а не десятками ручных
-    // присваиваний, чтобы не забыть перенести какое-нибудь новое поле, добавленное позже.
+    // Явный allowlist намеренно не использует reflection: добавление нового свойства в
+    // AppSettings не должно автоматически сделать его импортируемым или сбрасываемым.
     public static void Apply(AppSettings imported, AppSettings live)
     {
-        foreach (PropertyInfo prop in typeof(AppSettings).GetProperties())
-        {
-            if (!prop.CanRead || !prop.CanWrite) continue;
-            if (ExcludedProperties.Contains(prop.Name)) continue;
-
-            prop.SetValue(live, prop.GetValue(imported));
-        }
+        CopyTransferableSettings(imported, live, preserveRuntimeData: true);
     }
 
-    // Дополнительные исключения для кнопки "Сбросить плеер" (SettingsWindow.
-    // ResetPlayerButton_Click) — те же самые, что и ExcludedProperties выше (плейлист,
-    // избранное, последний трек и т.п. — не трогаем при сбросе, это не "настройки поведения
-    // плеера"), плюс накопленная статистика прослушиваний и пользовательские пресеты
-    // эквалайзера: это данные, которые пользователь накопил сам, а не настройки внешнего
-    // вида/поведения, к которым относится сама кнопка сброса.
-    private static readonly HashSet<string> ResetExcludedProperties = new(ExcludedProperties)
-    {
-        nameof(AppSettings.TotalListenSeconds),
-        nameof(AppSettings.StatsStartedAt),
-        nameof(AppSettings.EqualizerPresets),
-        nameof(AppSettings.SkippedUpdateVersion),
-    };
-
-    // Возвращает все настройки плеера (тема, акцент, подложка окна, вид/размер окна, громкость,
-    // шафл/повтор, мини-плеер, горячие клавиши, тосты, эквалайзер-кривую и т.д.) к значениям
-    // AppSettings по умолчанию — то есть к тому же состоянию, в котором объект AppSettings
-    // оказался бы при самом первом запуске. Библиотеку, статистику и пресеты эквалайзера
-    // не трогает (см. ResetExcludedProperties выше).
+    // Сбрасывает только настройки поведения и интерфейса, сохраняя пользовательские данные,
+    // статистику, пресеты и состояние текущего сеанса.
     public static void ResetToDefaults(AppSettings live)
     {
-        var defaults = new AppSettings();
+        CopyTransferableSettings(new AppSettings(), live, preserveRuntimeData: true);
+    }
 
-        foreach (PropertyInfo prop in typeof(AppSettings).GetProperties())
+    private static void CopyTransferableSettings(AppSettings source, AppSettings target, bool preserveRuntimeData)
+    {
+        target.Theme = source.Theme;
+        target.AccentColorMode = source.AccentColorMode;
+        target.AccentColorHex = source.AccentColorHex;
+        target.WindowBackdropType = source.WindowBackdropType;
+        target.ProgressBarStyle = source.ProgressBarStyle;
+        target.AlwaysOnTop = source.AlwaysOnTop;
+        target.RememberVolume = source.RememberVolume;
+        target.SavedVolume = source.SavedVolume;
+        target.UseLogarithmicVolume = source.UseLogarithmicVolume;
+        target.ReplayGainEnabled = source.ReplayGainEnabled;
+        target.MinimizeToTrayOnClose = source.MinimizeToTrayOnClose;
+        target.StartHiddenInTray = source.StartHiddenInTray;
+        target.IsPlaylistVisible = source.IsPlaylistVisible;
+        target.PlayerViewMode = source.PlayerViewMode;
+        target.IsShuffleEnabled = source.IsShuffleEnabled;
+        target.RepeatMode = source.RepeatMode;
+        target.AlbumArtTransitionEnabled = source.AlbumArtTransitionEnabled;
+        target.MiniPlayerOpacity = source.MiniPlayerOpacity;
+        target.MiniPlayerAlwaysOnTop = source.MiniPlayerAlwaysOnTop;
+        target.MiniPlayerPinned = source.MiniPlayerPinned;
+        target.MiniPlayerSnapToEdges = source.MiniPlayerSnapToEdges;
+        target.MiniPlayerSecondaryButton = source.MiniPlayerSecondaryButton;
+        target.MiniPlayerInfoMode = source.MiniPlayerInfoMode;
+        target.ShowTrackChangeToast = source.ShowTrackChangeToast;
+        target.TrackChangeToastPosition = source.TrackChangeToastPosition;
+        target.TrackChangeToastMonitor = source.TrackChangeToastMonitor;
+        target.TrackChangeToastSize = source.TrackChangeToastSize;
+        target.TrackChangeToastWidth = source.TrackChangeToastWidth;
+        target.MiniPlayerButtonsLayout = source.MiniPlayerButtonsLayout;
+        target.MiniPlayerShowProgress = source.MiniPlayerShowProgress;
+        target.MiniPlayerLeft = source.MiniPlayerLeft;
+        target.MiniPlayerTop = source.MiniPlayerTop;
+        target.SettingsWindowLeft = source.SettingsWindowLeft;
+        target.SettingsWindowTop = source.SettingsWindowTop;
+        target.HotkeyPlayPause = source.HotkeyPlayPause;
+        target.HotkeyNext = source.HotkeyNext;
+        target.HotkeyPrevious = source.HotkeyPrevious;
+        target.HotkeyStop = source.HotkeyStop;
+        target.HotkeyVolumeUp = source.HotkeyVolumeUp;
+        target.HotkeyVolumeDown = source.HotkeyVolumeDown;
+        target.HotkeyMute = source.HotkeyMute;
+        target.HotkeyShuffle = source.HotkeyShuffle;
+        target.HotkeyRepeat = source.HotkeyRepeat;
+        target.HotkeySeekForward = source.HotkeySeekForward;
+        target.HotkeySeekBackward = source.HotkeySeekBackward;
+        target.HotkeyDeleteTrack = source.HotkeyDeleteTrack;
+        target.UseImprovedShuffle = source.UseImprovedShuffle;
+        target.HidePlaybackButtons = source.HidePlaybackButtons;
+        target.UpdateDownloadSource = source.UpdateDownloadSource;
+        target.EqualizerEnabled = source.EqualizerEnabled;
+        target.EqualizerBandGainsDb = source.EqualizerBandGainsDb.ToArray();
+
+        if (!preserveRuntimeData)
         {
-            if (!prop.CanRead || !prop.CanWrite) continue;
-            if (ResetExcludedProperties.Contains(prop.Name)) continue;
-
-            prop.SetValue(live, prop.GetValue(defaults));
+            target.WasMiniPlayerOnClose = source.WasMiniPlayerOnClose;
+            target.SkippedUpdateVersion = source.SkippedUpdateVersion;
         }
     }
 }

@@ -161,8 +161,13 @@ public partial class App : Application
                 while (!_shutdownCts.IsCancellationRequested)
                 {
                     if (!_toggleViewEvent!.WaitOne(500)) continue;
-                    if (_shutdownCts.IsCancellationRequested) break;
-                    Dispatcher.Invoke(window.ToggleMiniOrMainFromExternalActivation);
+                    if (_shutdownCts.IsCancellationRequested || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                        break;
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (!_shutdownCts.IsCancellationRequested && !Dispatcher.HasShutdownStarted && !Dispatcher.HasShutdownFinished)
+                            window.ToggleMiniOrMainFromExternalActivation();
+                    });
                 }
             }
             catch (AbandonedMutexException) { }

@@ -353,6 +353,13 @@ public static class UpdateChecker
         }
     }
 
+    internal static bool IsTrustedReleaseNotesUrl(string value)
+    {
+        return Uri.TryCreate(value, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps &&
+               uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase) &&
+               uri.AbsolutePath.StartsWith("/wasssly/Lumisense/", StringComparison.OrdinalIgnoreCase);
+    }
+
     private static bool TryValidateDownloadUrl(string value, out Uri uri)
     {
         if (!Uri.TryCreate(value, UriKind.Absolute, out uri!) || uri.Scheme != Uri.UriSchemeHttps ||

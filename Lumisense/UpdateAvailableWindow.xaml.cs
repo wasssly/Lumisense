@@ -53,7 +53,8 @@ public partial class UpdateAvailableWindow : FluentWindow
 
     private void MoreButton_Click(object sender, RoutedEventArgs e)
     {
-        if (string.IsNullOrEmpty(_result.ReleaseNotesUrl)) return;
+        if (string.IsNullOrEmpty(_result.ReleaseNotesUrl) ||
+            !UpdateChecker.IsTrustedReleaseNotesUrl(_result.ReleaseNotesUrl)) return;
 
         try
         {
