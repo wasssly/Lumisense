@@ -147,7 +147,6 @@ public partial class SettingsWindow : FluentWindow
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
         ProgressBarSliderRadio.IsChecked = !ProgressBarWaveformRadio.IsChecked.GetValueOrDefault();
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
-        HidePlaybackButtonsCheckBox.IsChecked = _settings.HidePlaybackButtons;
         AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled;
         AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
 
@@ -491,7 +490,6 @@ public partial class SettingsWindow : FluentWindow
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
         Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
-        Add("Убрать фон у кнопок управления воспроизведением", "Оформление", "Appearance", HidePlaybackButtonsCheckBox, "скрыть фон кнопки перемешать повтор предыдущий следующий пуск пауза стоп мини плеер play pause next previous shuffle repeat stop mini");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
         Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
         Add("Сбросить плеер к исходному состоянию", "Профиль", "Profile", ResetPlayerButton, "сброс сбросить умолчание reset default настройки factory");
@@ -1178,14 +1176,6 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.ReplayGainEnabled = ReplayGainCheckBox.IsChecked == true;
         _owner.RefreshReplayGain();
-    }
-
-    private void HidePlaybackButtonsCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.HidePlaybackButtons = HidePlaybackButtonsCheckBox.IsChecked == true;
-        _owner.ApplyPlaybackButtonsVisibility();
     }
 
     private void AlbumArtTransitionRadio_Changed(object sender, RoutedEventArgs e)
