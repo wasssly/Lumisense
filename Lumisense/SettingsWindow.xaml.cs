@@ -416,8 +416,8 @@ public partial class SettingsWindow : FluentWindow
                     ? published.LocalDateTime.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("ru-RU"))
                     : "Дата публикации неизвестна";
 
-                bool canInstall = !string.IsNullOrEmpty(r.ZipDownloadUrl) || !string.IsNullOrEmpty(r.ExeDownloadUrl);
-                if (!canInstall) subtitle += " · в релизе нет ни ZIP, ни .exe";
+                bool canInstall = !string.IsNullOrEmpty(r.ExeDownloadUrl);
+                if (!canInstall) subtitle += " · в релизе нет .exe-установщика";
 
                 string action = isCurrent ? "Переустановить" : "Установить";
 
@@ -439,8 +439,7 @@ public partial class SettingsWindow : FluentWindow
             Status = UpdateCheckStatus.UpdateAvailable,
             CurrentVersion = UpdateChecker.GetCurrentVersion(),
             LatestVersion = item.Release.Version,
-            ZipDownloadUrl = item.Release.ZipDownloadUrl,
-            ExeDownloadUrl = item.Release.ExeDownloadUrl,
+            DownloadUrl = item.Release.ExeDownloadUrl,
             ReleaseNotesUrl = item.Release.ReleaseNotesUrl,
             ReleaseNotes = item.Release.ReleaseNotes,
         };

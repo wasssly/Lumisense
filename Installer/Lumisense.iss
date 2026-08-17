@@ -78,13 +78,6 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; сборка ломалась на любой другой машине, включая CI (см. .github/workflows/release.yml).
 Source: "..\Lumisense\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
-; Updater.exe — тем же способом публикуется отдельный проект Updater (см. Updater\Updater.csproj).
-; Устанавливается заранее вместе с самим плеером, чтобы уже при первом обновлении через
-; ZIP-архив (см. UpdateChecker/UpdateAvailableWindow) в папке программы точно был свежий
-; Updater, способный это обновление применить — скачивать его отдельно не нужно, он сам
-; обновляется вместе с остальными файлами при каждом следующем обновлении.
-Source: "..\Updater\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
-
 ; Иконка отдельно (если не попала в publish)
 Source: "..\Lumisense\Icons\app\lumisense.ico"; DestDir: "{app}"; Flags: ignoreversion
 

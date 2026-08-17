@@ -4,20 +4,15 @@
 # GitHub — см. workflow_dispatch ниже, удобно для проверки без реального релиза).
 #
 # Что делает:
-#   1. Собирает Lumisense (dotnet publish, self-contained win-x64 — см. Lumisense.csproj) и
-#      Updater — маленький отдельный помощник для применения ZIP-обновлений (см.
-#      Updater/Updater.csproj и подробный комментарий в Updater/Program.cs).
-#   2. Упаковывает оба вместе в Lumisense.zip — именно его находит и скачивает UpdateChecker.cs
-#      в уже установленной копии плеера при проверке обновлений (см. FindZipAssetUrl).
-#   3. Также собирает установщик Installer/Lumisense.iss (Inno Setup), передавая ему номер
-#      версии из тега через /DMyAppVersion — см. #ifndef MyAppVersion в самом .iss. Установщик
-#      нужен только для самой первой установки "с нуля" — обновление уже установленной копии
-#      теперь всегда идёт через Lumisense.zip и Updater, а не через него.
-#   4. Достаёт текст изменений для этой версии из Changelog/changelog.json (берётся самая
+#   1. Собирает Lumisense (dotnet publish, self-contained win-x64 — см. Lumisense.csproj).
+#   2. Собирает установщик Installer/Lumisense.iss (Inno Setup), передавая ему номер версии
+#      из тега через /DMyAppVersion — см. #ifndef MyAppVersion в самом .iss.
+#   3. Достаёт текст изменений для этой версии из Changelog/changelog.json (берётся самая
 #      последняя запись в общем порядке — датированные по возрастанию даты, затем
 #      недатированные в порядке файла; та же логика, что и в самом приложении, см.
 #      ChangelogLoader.AssignComputedFields) и использует как описание релиза.
-#   5. Публикует релиз на GitHub с прикреплёнными Lumisense.zip и Lumisense_Setup.exe.
+#   4. Публикует релиз на GitHub с прикреплённым Lumisense_Setup.exe — его и находит
+#      UpdateChecker.cs в самом плеере при проверке обновлений.
 #
 # ВАЖНО перед тем как поставить тег: добавьте в Changelog/changelog.json новую запись со
 # списком изменений (дату указывать больше не обязательно — см. комментарий в
@@ -67,24 +62,6 @@ jobs:
       - name: Publish Lumisense (self-contained win-x64)
         run: dotnet publish Lumisense/Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.ver.outputs.version }}
 
-      - name: Publish Updater (self-contained win-x64)
-        run: dotnet publish Updater/Updater.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.ver.outputs.version }}
-
-      - name: Package Lumisense.zip (update payload)
-        shell: pwsh
-        run: |
-          # Содержимое архива — то же самое, что попадает в установленную копию (см. [Files] в
-          # Installer/Lumisense.iss): весь publish-вывод Lumisense плюс Updater.exe рядом с ним
-          # в одной папке. UpdateChecker.ExtractUpdatePayload и Updater/Program.cs ожидают
-          # именно такую плоскую раскладку — Lumisense.exe и Updater.exe на одном уровне.
-          $stagingDir = "staging"
-          New-Item -ItemType Directory -Path $stagingDir | Out-Null
-
-          Copy-Item "Lumisense\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\*" -Destination $stagingDir -Recurse
-          Copy-Item "Updater\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish\Updater.exe" -Destination $stagingDir
-
-          Compress-Archive -Path "$stagingDir\*" -DestinationPath "Lumisense.zip" -CompressionLevel Optimal
-
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
@@ -130,15 +107,11 @@ jobs:
         with:
           name: "Lumisense ${{ steps.ver.outputs.version }}"
           body_path: release_notes.md
-          files: |
-            Lumisense.zip
-            Lumisense_Setup.exe
+          files: Lumisense_Setup.exe
 
-      - name: Upload build artifacts (manual test run)
+      - name: Upload build artifact (manual test run)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v4
         with:
-          name: Lumisense_${{ steps.ver.outputs.version }}
-          path: |
-            Lumisense.zip
-            Lumisense_Setup.exe
+          name: Lumisense_Setup
+          path: Lumisense_Setup.exe
