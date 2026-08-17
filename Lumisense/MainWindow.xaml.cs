@@ -51,6 +51,7 @@ public partial class MainWindow : FluentWindow
     // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
     // громкость (AudioFileReader.Volume) применяется ДО эквалайзера, он только красит частоты.
     private EqualizerSampleProvider? _equalizer;
+    private FadeInOutSampleProvider? _activeFade;
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly Stopwatch _playbackClock = new();
@@ -2522,7 +2523,6 @@ public partial class MainWindow : FluentWindow
         previousLoad?.Cancel();
         var previousGain = Interlocked.Exchange(ref _replayGainCts, null);
         previousGain?.Cancel();
-        StopPlayback(disposeOnly: true);
 
         int generation = Interlocked.Increment(ref _trackLoadGeneration);
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
@@ -2531,6 +2531,10 @@ public partial class MainWindow : FluentWindow
 
         try
         {
+            await FadeOutBeforeTrackChangeAsync(cts.Token);
+            if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
+                return;
+
             double volumeSliderValue = VolumeSlider.Value;
             bool replayGainEnabled = _settings.ReplayGainEnabled;
             bool equalizerEnabled = _settings.EqualizerEnabled;
@@ -2577,6 +2581,7 @@ public partial class MainWindow : FluentWindow
 
             var fadeIn = new FadeInOutSampleProvider(_equalizer!, initiallySilent: true);
             fadeIn.BeginFadeIn(70);
+            _activeFade = fadeIn;
             _outputDevice ??= new WaveOutEvent();
             _outputDevice.Init(fadeIn);
             _outputDevice.PlaybackStopped += OutputDevice_PlaybackStopped;
@@ -3088,6 +3093,27 @@ public partial class MainWindow : FluentWindow
 
     private void StopButton_Click(object sender, RoutedEventArgs e) => StopPlayback();
 
+    private async Task FadeOutBeforeTrackChangeAsync(CancellationToken token)
+    {
+        if (_activeFade is not null && _isPlaying)
+        {
+            // Даем текущему аудиографу завершить короткий fade-out, чтобы не обрывать
+            // ненулевой сэмпл перед Stop()/Init() нового reader. Delay асинхронный и не
+            // блокирует Dispatcher.
+            _activeFade.BeginFadeOut(24);
+            try
+            {
+                await Task.Delay(30, token);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+        }
+
+        StopPlayback(disposeOnly: true);
+    }
+
     private void DisposeOutputDeviceSafely()
     {
         if (_outputDevice is null) return;
@@ -3161,6 +3187,7 @@ public partial class MainWindow : FluentWindow
             _audioFile = null;
         }
         _equalizer = null;
+        _activeFade = null;
         _isPlaying = false;
 
         if (!disposeOnly)
