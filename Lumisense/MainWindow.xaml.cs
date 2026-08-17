@@ -892,6 +892,8 @@ public partial class MainWindow : FluentWindow
         }
         catch (OperationCanceledException)
         {
+            if (ReferenceEquals(_waveformCts, cts)) _waveformCts = null;
+            cts.Dispose();
             return; // трек уже переключили ещё раз — результат больше не нужен
         }
 
@@ -900,7 +902,12 @@ public partial class MainWindow : FluentWindow
         // тоже прошёл проверку кэша выше и создал свой собственный cts, не отменяя этот). На
         // практике оба места отменяют предыдущий cts перед стартом нового расчёта, так что
         // это скорее defensive-проверка на будущее, чем реально достижимый сейчас случай.
-        if (_currentTrackPath != filePath) return;
+        if (_currentTrackPath != filePath)
+        {
+            if (ReferenceEquals(_waveformCts, cts)) _waveformCts = null;
+            cts.Dispose();
+            return;
+        }
 
         if (peaks != null)
         {
@@ -911,6 +918,8 @@ public partial class MainWindow : FluentWindow
         }
 
         ProgressWaveform.Peaks = peaks;
+        if (ReferenceEquals(_waveformCts, cts)) _waveformCts = null;
+        cts.Dispose();
     }
 
     // Применяет акцентный цвет из настроек (см. AppSettings.AccentColorMode/AccentColorHex) —
@@ -4041,6 +4050,7 @@ public partial class MainWindow : FluentWindow
         _outputDevice = null;
 
         _mediaHotKeys?.Dispose();
+        _nowPlaying?.Dispose();
         _trayIconManager?.Dispose();
         _miniPlayerWindow?.Close();
         _settingsWindow?.Close();
