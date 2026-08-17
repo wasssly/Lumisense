@@ -14,6 +14,7 @@ public partial class App : Application
     // держим живыми на всё время работы приложения, иначе GC может собрать их раньше времени
     private Mutex? _singleInstanceMutex;
     private EventWaitHandle? _toggleViewEvent;
+    private readonly CancellationTokenSource _shutdownCts = new();
 
     // WinExe не создаёт консоль сам — без этого Console.WriteLine никуда не пишет, даже
     // при запуске из cmd/PowerShell. Подключаемся к консоли родителя, если она есть;
@@ -155,11 +156,18 @@ public partial class App : Application
     {
         var thread = new Thread(() =>
         {
-            while (true)
+            try
             {
-                _toggleViewEvent!.WaitOne();
-                Dispatcher.Invoke(window.ToggleMiniOrMainFromExternalActivation);
+                while (!_shutdownCts.IsCancellationRequested)
+                {
+                    if (!_toggleViewEvent!.WaitOne(500)) continue;
+                    if (_shutdownCts.IsCancellationRequested) break;
+                    Dispatcher.Invoke(window.ToggleMiniOrMainFromExternalActivation);
+                }
             }
+            catch (AbandonedMutexException) { }
+            catch (ObjectDisposedException) { }
+            catch (InvalidOperationException) when (_shutdownCts.IsCancellationRequested) { }
         })
         {
             IsBackground = true,
@@ -172,9 +180,15 @@ public partial class App : Application
     {
         Logger.Info($"Lumisense завершается (код выхода {e.ApplicationExitCode})");
 
-        // Явный ReleaseMutex — иначе следующий запуск ещё некоторое время видит Mutex занятым,
-        // хотя окно уже закрыто (он живёт, пока процесс не завершит ОС)
-        _singleInstanceMutex?.ReleaseMutex();
+        _shutdownCts.Cancel();
+        try { _toggleViewEvent?.Set(); } catch (ObjectDisposedException) { }
+        _toggleViewEvent?.Dispose();
+        _toggleViewEvent = null;
+
+        try { _singleInstanceMutex?.ReleaseMutex(); } catch (ApplicationException) { }
+        _singleInstanceMutex?.Dispose();
+        _singleInstanceMutex = null;
+        _shutdownCts.Dispose();
         base.OnExit(e);
     }
 }

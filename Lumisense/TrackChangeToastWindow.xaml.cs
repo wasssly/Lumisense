@@ -29,11 +29,7 @@ public partial class TrackChangeToastWindow : Window
         InitializeComponent();
 
         _hideTimer = new DispatcherTimer { Interval = VisibleDuration };
-        _hideTimer.Tick += (_, _) =>
-        {
-            _hideTimer.Stop();
-            FadeOutAndHide();
-        };
+        _hideTimer.Tick += HideTimer_Tick;
     }
 
     // isLightTheme — та же логика, что и у MiniPlayerWindow.ApplyTheme: карточка не связана
@@ -88,6 +84,20 @@ public partial class TrackChangeToastWindow : Window
         var fadeOut = new DoubleAnimation(0, FadeDuration);
         fadeOut.Completed += (_, _) => Hide();
         RootBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        _hideTimer.Stop();
+        _hideTimer.Tick -= HideTimer_Tick;
+        RootBorder.BeginAnimation(UIElement.OpacityProperty, null);
+        base.OnClosed(e);
+    }
+
+    private void HideTimer_Tick(object? sender, EventArgs e)
+    {
+        _hideTimer.Stop();
+        FadeOutAndHide();
     }
 
     // Три готовых размера карточки — высота, размер обложки, размер шрифтов и запас, который

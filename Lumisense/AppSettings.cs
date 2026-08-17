@@ -345,6 +345,8 @@ public class AppSettings
 // Загрузка и сохранение настроек в %AppData%\Lumisense\settings.json
 public static class SettingsManager
 {
+    private const long MaxSettingsBytes = 8L * 1024 * 1024;
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, MaxDepth = 16 };
     private static readonly SemaphoreSlim SaveGate = new(1, 1);
     private static long NextSaveRevision;
     private static long LastWrittenRevision;
@@ -363,10 +365,10 @@ public static class SettingsManager
     {
         try
         {
-            if (File.Exists(SettingsFilePath))
+            if (File.Exists(SettingsFilePath) && new FileInfo(SettingsFilePath).Length <= MaxSettingsBytes)
             {
                 var json = File.ReadAllText(SettingsFilePath);
-                var settings = JsonSerializer.Deserialize<AppSettings>(json);
+                var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
                 if (settings != null)
                 {
                     MigrateOldFlatPlaylist(settings);
@@ -405,7 +407,7 @@ public static class SettingsManager
     {
         try
         {
-            var json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            var json = JsonSerializer.Serialize(settings, JsonOptions);
             WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
         }
         catch (Exception ex)
@@ -422,7 +424,7 @@ public static class SettingsManager
         string json;
         try
         {
-            json = JsonSerializer.Serialize(settings, new JsonSerializerOptions { WriteIndented = true });
+            json = JsonSerializer.Serialize(settings, JsonOptions);
             var revision = Interlocked.Increment(ref NextSaveRevision);
             await Task.Run(() => WriteJsonAtomic(json, revision)).ConfigureAwait(false);
         }
@@ -443,9 +445,17 @@ public static class SettingsManager
         {
             if (revision < LastWrittenRevision) return;
 
-            var tempPath = SettingsFilePath + ".tmp";
-            File.WriteAllText(tempPath, json);
-            File.Move(tempPath, SettingsFilePath, overwrite: true);
+            var tempPath = SettingsFilePath + $".{revision}.{Guid.NewGuid():N}.tmp";
+            try
+            {
+                File.WriteAllText(tempPath, json);
+                File.Move(tempPath, SettingsFilePath, overwrite: true);
+            }
+            finally
+            {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); }
+                catch { /* best-effort cleanup after an I/O failure */ }
+            }
             LastWrittenRevision = revision;
         }
         finally

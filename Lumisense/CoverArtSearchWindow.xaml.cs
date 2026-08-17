@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -27,6 +28,12 @@ namespace AudioPlayer;
 // личный Client Access Token — без ключа от пользователя не заработает.
 public partial class CoverArtSearchWindow : FluentWindow
 {
+    private const int MaxApiJsonBytes = 2 * 1024 * 1024;
+    private const int MaxImageBytes = 10 * 1024 * 1024;
+    private static readonly HashSet<string> TrustedImageHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "mzstatic.com", "apple.com", "deezer.com", "dzcdn.net"
+    };
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
 
     // Заполняется только если пользователь кликнул по одному из найденных вариантов —
@@ -165,7 +172,7 @@ public partial class CoverArtSearchWindow : FluentWindow
             var url = $"https://itunes.apple.com/search?term={Uri.EscapeDataString(query)}&entity=song&limit=16";
             using var response = await Http.GetAsync(url, token);
             response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync(token);
+            var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
             return ParseItunesResults(json);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -231,7 +238,7 @@ public partial class CoverArtSearchWindow : FluentWindow
             var url = $"https://api.deezer.com/search?q={Uri.EscapeDataString(query)}&limit=16";
             using var response = await Http.GetAsync(url, token);
             response.EnsureSuccessStatusCode();
-            var json = await response.Content.ReadAsStringAsync(token);
+            var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
             return ParseDeezerResults(json);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
@@ -306,7 +313,7 @@ public partial class CoverArtSearchWindow : FluentWindow
         byte[] thumbBytes;
         try
         {
-            thumbBytes = await Http.GetByteArrayAsync(entry.ThumbUrl, token);
+            thumbBytes = await GetImageBytesAsync(entry.ThumbUrl, token);
         }
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
@@ -377,7 +384,7 @@ public partial class CoverArtSearchWindow : FluentWindow
         ResultsPanel.IsEnabled = false;
         try
         {
-            var bytes = await Http.GetByteArrayAsync(fullUrl);
+            var bytes = await GetImageBytesAsync(fullUrl, CancellationToken.None);
 
             SelectedImageBytes = bytes;
             SelectedImageMimeType = "image/jpeg"; // оба источника отдают JPEG для таких URL
@@ -402,6 +409,36 @@ public partial class CoverArtSearchWindow : FluentWindow
         _searchCts?.Cancel();
         _searchCts?.Dispose();
         base.OnClosed(e);
+    }
+
+    private static async Task<byte[]> GetImageBytesAsync(string url, CancellationToken token)
+    {
+        if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps ||
+            !TrustedImageHosts.Any(host => uri.Host.Equals(host, StringComparison.OrdinalIgnoreCase) ||
+                                           uri.Host.EndsWith("." + host, StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidDataException("Источник изображения не входит в список доверенных HTTPS-доменов.");
+
+        using var response = await Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, token);
+        response.EnsureSuccessStatusCode();
+        return await ReadBytesWithLimitAsync(response.Content, MaxImageBytes, token);
+    }
+
+    private static async Task<byte[]> ReadBytesWithLimitAsync(HttpContent content, int maxBytes, CancellationToken token)
+    {
+        if (content.Headers.ContentLength is long contentLength && contentLength > maxBytes)
+            throw new InvalidDataException("Ответ превышает допустимый размер.");
+
+        await using var stream = await content.ReadAsStreamAsync(token);
+        using var memory = new MemoryStream();
+        var buffer = new byte[81920];
+        int read;
+        while ((read = await stream.ReadAsync(buffer, token)) > 0)
+        {
+            if (memory.Length + read > maxBytes)
+                throw new InvalidDataException("Ответ превышает допустимый размер.");
+            await memory.WriteAsync(buffer.AsMemory(0, read), token);
+        }
+        return memory.ToArray();
     }
 
     private static BitmapImage BytesToBitmap(byte[] bytes)

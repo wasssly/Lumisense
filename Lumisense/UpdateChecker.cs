@@ -66,6 +66,13 @@ public static class UpdateChecker
     private const string RepoOwner = "wasssly";
     private const string RepoName = "Lumisense";
 
+    private const long MaxInstallerBytes = 250L * 1024 * 1024;
+    private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "github.com", "objects.githubusercontent.com", "gh-proxy.org", "v4.gh-proxy.org",
+        "v6.gh-proxy.org", "cdn.gh-proxy.org"
+    };
+
     private static readonly HttpClient Http = CreateClient();
 
     private static HttpClient CreateClient()
@@ -276,60 +283,101 @@ public static class UpdateChecker
         System.IProgress<DownloadProgressInfo>? progress,
         CancellationToken ct)
     {
-        string tempPath = Path.Combine(Path.GetTempPath(), "Lumisense_Setup.exe");
+        if (!TryValidateDownloadUrl(downloadUrl, out var uri))
+            throw new InvalidOperationException("Источник обновления не входит в список доверенных HTTPS-адресов.");
 
-        using var response = await Http.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, ct);
-        response.EnsureSuccessStatusCode();
-
-        long? totalBytes = response.Content.Headers.ContentLength;
-        await using var httpStream = await response.Content.ReadAsStreamAsync(ct);
-        await using (var fileStream = File.Create(tempPath))
+        string tempPath = Path.Combine(Path.GetTempPath(), $"Lumisense_Setup_{Guid.NewGuid():N}.part");
+        bool completed = false;
+        try
         {
-            var buffer = new byte[81920];
-            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
-            long readTotal = 0;
-            long lastReportBytes = 0;
-            var lastReportAt = stopwatch.Elapsed;
-            int read;
+            using var response = await Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
+            response.EnsureSuccessStatusCode();
 
-            while ((read = await httpStream.ReadAsync(buffer, ct)) > 0)
+            long? totalBytes = response.Content.Headers.ContentLength;
+            if (totalBytes is > MaxInstallerBytes)
+                throw new InvalidDataException("Размер установщика превышает допустимый лимит.");
+
+            await using var httpStream = await response.Content.ReadAsStreamAsync(ct);
+            await using (var fileStream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {
-                await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
-                readTotal += read;
+                var buffer = new byte[81920];
+                var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+                long readTotal = 0;
+                long lastReportBytes = 0;
+                var lastReportAt = stopwatch.Elapsed;
+                int read;
 
-                var now = stopwatch.Elapsed;
-                if ((now - lastReportAt).TotalMilliseconds >= 150 || (totalBytes is > 0 && readTotal == totalBytes.Value))
+                while ((read = await httpStream.ReadAsync(buffer, ct)) > 0)
                 {
-                    double seconds = (now - lastReportAt).TotalSeconds;
-                    double speed = seconds > 0 ? (readTotal - lastReportBytes) / seconds : 0;
-                    progress?.Report(new DownloadProgressInfo
+                    readTotal += read;
+                    if (readTotal > MaxInstallerBytes)
+                        throw new InvalidDataException("Размер установщика превышает допустимый лимит.");
+
+                    await fileStream.WriteAsync(buffer.AsMemory(0, read), ct);
+
+                    var now = stopwatch.Elapsed;
+                    if ((now - lastReportAt).TotalMilliseconds >= 150 || (totalBytes is > 0 && readTotal == totalBytes.Value))
                     {
-                        BytesReceived = readTotal,
-                        TotalBytes = totalBytes,
-                        Fraction = totalBytes is > 0 ? (double)readTotal / totalBytes.Value : 0,
-                        BytesPerSecond = speed
-                    });
-                    lastReportBytes = readTotal;
-                    lastReportAt = now;
+                        double seconds = (now - lastReportAt).TotalSeconds;
+                        double speed = seconds > 0 ? (readTotal - lastReportBytes) / seconds : 0;
+                        progress?.Report(new DownloadProgressInfo
+                        {
+                            BytesReceived = readTotal,
+                            TotalBytes = totalBytes,
+                            Fraction = totalBytes is > 0 ? (double)readTotal / totalBytes.Value : 0,
+                            BytesPerSecond = speed
+                        });
+                        lastReportBytes = readTotal;
+                        lastReportAt = now;
+                    }
                 }
+
+                progress?.Report(new DownloadProgressInfo
+                {
+                    BytesReceived = readTotal,
+                    TotalBytes = totalBytes,
+                    Fraction = totalBytes is > 0 ? 1 : 0,
+                    BytesPerSecond = 0
+                });
             }
 
-            progress?.Report(new DownloadProgressInfo
-            {
-                BytesReceived = readTotal,
-                TotalBytes = totalBytes,
-                Fraction = totalBytes is > 0 ? 1 : 0,
-                BytesPerSecond = 0
-            });
+            string finalPath = Path.ChangeExtension(tempPath, ".exe");
+            File.Move(tempPath, finalPath);
+            completed = true;
+            return finalPath;
         }
+        finally
+        {
+            if (!completed)
+                TryDelete(tempPath);
+        }
+    }
 
-        return tempPath;
+    private static bool TryValidateDownloadUrl(string value, out Uri uri)
+    {
+        if (!Uri.TryCreate(value, UriKind.Absolute, out uri!) || uri.Scheme != Uri.UriSchemeHttps ||
+            !TrustedDownloadHosts.Contains(uri.Host))
+            return false;
+
+        if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
+            return uri.AbsolutePath.StartsWith("/wasssly/Lumisense/releases/download/", StringComparison.OrdinalIgnoreCase);
+
+        return uri.Host.EndsWith("gh-proxy.org", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static void TryDelete(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); }
+        catch { /* cleanup is best-effort after cancellation/failure */ }
     }
 
     // Запускает установщик через оболочку (Inno Setup сам запросит права администратора)
     // и завершает текущий процесс, чтобы установщик мог перезаписать используемые им файлы
     public static void LaunchInstallerAndExit(string installerPath)
     {
+        if (!File.Exists(installerPath) || !AuthenticodeVerifier.IsValid(installerPath))
+            throw new InvalidDataException("Цифровая подпись установщика недействительна или отсутствует.");
+
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
         {
             UseShellExecute = true

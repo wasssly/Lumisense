@@ -545,9 +545,9 @@ public partial class MainWindow : FluentWindow
     // обращения к диску — раньше File.Exists по каждому треку выполнялся синхронно до показа
     // окна и был основной причиной долгого "чёрного экрана" при запуске. Устаревшие записи
     // тихо убираются позже, уже после показа (см. VerifyTrackExistenceInBackgroundAsync).
-    private async System.Threading.Tasks.Task RestoreSavedPlaylistAsync()
+    private System.Threading.Tasks.Task RestoreSavedPlaylistAsync()
     {
-        if (_settings.SavedPlaylistFolders.Count == 0) return;
+        if (_settings.SavedPlaylistFolders.Count == 0) return System.Threading.Tasks.Task.CompletedTask;
 
         var foldersThatWereNonEmpty = new HashSet<PlaylistFolder>();
 
@@ -573,17 +573,17 @@ public partial class MainWindow : FluentWindow
         // плейлиста (уже показан), ни загрузку последнего трека чуть ниже.
         FireAndForget(VerifyTrackExistenceInBackgroundAsync(foldersThatWereNonEmpty), "VerifyTrackExistenceInBackgroundAsync");
 
-        if (_folders.Count == 0) return;
-
-        if (string.IsNullOrEmpty(_settings.LastTrackPath)) return;
+        if (_folders.Count == 0) return System.Threading.Tasks.Task.CompletedTask;
+        if (string.IsNullOrEmpty(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
 
         var all = FlattenAll();
-        if (!all.Contains(_settings.LastTrackPath)) return;
-        if (!File.Exists(_settings.LastTrackPath)) return; // единичная дешёвая проверка ОДНОГО файла — не массовое сканирование
+        if (!all.Contains(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
+        if (!File.Exists(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask; // единичная дешёвая проверка ОДНОГО файла — не массовое сканирование
 
         LoadAndPlay(_settings.LastTrackPath, autoPlay: false,
             startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)),
             albumArtDirection: AlbumArtTransitionDirection.None);
+        return System.Threading.Tasks.Task.CompletedTask;
     }
 
     // Единственное место, где восстановленный плейлист трогает диск — запускается уже после
@@ -3603,18 +3603,24 @@ public partial class MainWindow : FluentWindow
     // Возвращает null, если файл повреждён или не похож на пресет.
     public EqualizerPreset? ImportEqualizerPresetFromFile(string filePath)
     {
+        const long maxPresetBytes = 512 * 1024;
         EqualizerPreset? preset;
         try
         {
+            if (!File.Exists(filePath) || new FileInfo(filePath).Length > maxPresetBytes)
+                return null;
+
             string json = File.ReadAllText(filePath);
-            preset = JsonSerializer.Deserialize<EqualizerPreset>(json);
+            preset = JsonSerializer.Deserialize<EqualizerPreset>(json, new JsonSerializerOptions { MaxDepth = 8 });
         }
         catch
         {
             return null;
         }
 
-        if (preset == null || string.IsNullOrWhiteSpace(preset.Name) || preset.GainsDb.Length == 0)
+        if (preset == null || string.IsNullOrWhiteSpace(preset.Name) || preset.Name.Length > 200 ||
+            preset.GainsDb is null || preset.GainsDb.Length == 0 || preset.GainsDb.Length > 32 ||
+            preset.GainsDb.Any(g => !double.IsFinite(g) || g < -100 || g > 100))
             return null;
 
         string baseName = preset.Name.Trim();

@@ -24,7 +24,13 @@ public static class LumiProfileIO
     public const string FileExtension = ".lumi";
     public const string FileFilter = "Профиль Lumisense (*.lumi)|*.lumi";
 
-    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    private const long MaxProfileBytes = 4L * 1024 * 1024;
+    private const int MaxJsonDepth = 16;
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        WriteIndented = true,
+        MaxDepth = MaxJsonDepth
+    };
 
     // Поля AppSettings, которые НЕ переносятся при экспорте/импорте — плейлист и избранное
     // (перенос профиля ограничен только настройками, см. LumiProfile), а также чисто
@@ -72,13 +78,37 @@ public static class LumiProfileIO
     {
         try
         {
+            if (!File.Exists(filePath) || new FileInfo(filePath).Length > MaxProfileBytes)
+                return null;
+
             var json = File.ReadAllText(filePath);
-            return JsonSerializer.Deserialize<LumiProfile>(json, JsonOptions);
+            var profile = JsonSerializer.Deserialize<LumiProfile>(json, JsonOptions);
+            return profile is not null && profile.FormatVersion == 1 && IsSafeSettings(profile.Settings)
+                ? profile
+                : null;
         }
         catch
         {
             return null;
         }
+    }
+
+    private static bool IsSafeSettings(AppSettings settings)
+    {
+        if ((settings.AccentColorHex?.Length ?? 0) > 32 || (settings.WindowBackdropType?.Length ?? 0) > 32 ||
+            (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
+            (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32)
+            return false;
+
+        if ((settings.EqualizerPresets?.Count ?? int.MaxValue) > 100 ||
+            (settings.SavedPlaylistFolders?.Count ?? int.MaxValue) > 100 ||
+            (settings.HotkeyPlayPause?.Key?.Length ?? 0) > 64 || (settings.HotkeyNext?.Key?.Length ?? 0) > 64 ||
+            (settings.HotkeyPrevious?.Key?.Length ?? 0) > 64 || (settings.HotkeyStop?.Key?.Length ?? 0) > 64)
+            return false;
+
+        return settings.EqualizerPresets is not null && settings.EqualizerPresets.All(p =>
+            p is not null && (p.Name?.Length ?? int.MaxValue) <= 200 && p.GainsDb is not null &&
+            p.GainsDb.Length <= 32 && p.GainsDb.All(double.IsFinite) && p.GainsDb.All(g => g >= -100 && g <= 100));
     }
 
     // Копирует поля "предпочтений" (все, кроме ExcludedProperties) из imported поверх live —

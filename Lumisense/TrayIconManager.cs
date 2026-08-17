@@ -117,9 +117,8 @@ public sealed class TrayIconManager : IDisposable
         ownsIcon = false;
         try
         {
-            var path = Assembly.GetExecutingAssembly().Location;
-            if (string.IsNullOrEmpty(path))
-                path = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ?? "";
+            var path = System.Diagnostics.Process.GetCurrentProcess().MainModule?.FileName ??
+                       Path.Combine(AppContext.BaseDirectory, "Lumisense.exe");
 
             var extracted = Icon.ExtractAssociatedIcon(path);
             if (extracted != null)
