@@ -3,6 +3,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
@@ -16,6 +17,11 @@ public partial class ChangelogWindow : FluentWindow
     private readonly ObservableCollection<ChangelogEntryViewModel> _visibleEntries = new();
 
     private bool _sortDescending = true;
+    private System.Windows.Threading.DispatcherTimer? _detailsScrollAnimationTimer;
+    private double _detailsScrollAnimationStart;
+    private double _detailsScrollAnimationTarget;
+    private DateTime _detailsScrollAnimationStartedUtc;
+    private const double DetailsScrollAnimationDurationMs = 360;
 
     // RadioButton.IsChecked="True" в XAML (у SortByVersionToggle) вызывает Checked ещё во время
     // InitializeComponent(), до того как _allEntries вообще загружен — этот флаг не даёт
@@ -120,6 +126,93 @@ public partial class ChangelogWindow : FluentWindow
         // открывалась не с начала. Сбрасываем скролл наверх при каждой смене выбора.
         if (hasSelection)
             DetailsScroll.ScrollToHome();
+    }
+
+    private void SummaryGroup_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: ChangeGroupViewModel group })
+        {
+            e.Handled = true;
+            ScrollToGroup(group);
+        }
+    }
+
+    private void ScrollToGroup(ChangeGroupViewModel group)
+    {
+        if (GroupSectionsItemsControl.ItemContainerGenerator.ContainerFromItem(group) is not FrameworkElement container)
+        {
+            Dispatcher.BeginInvoke(new Action(() => ScrollToGroup(group)),
+                System.Windows.Threading.DispatcherPriority.Loaded);
+            return;
+        }
+
+        var point = container.TransformToAncestor(DetailsScroll).Transform(new Point(0, 0));
+        StartDetailsSmoothScroll(Math.Max(0, DetailsScroll.VerticalOffset + point.Y - 12));
+    }
+
+    private void ChangeCard_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Border card || card.Tag is true) return;
+        card.Tag = true;
+
+        int index = 0;
+        if (FindVisualParent<ContentPresenter>(card) is ContentPresenter presenter &&
+            FindVisualParent<ItemsControl>(card) is ItemsControl itemsControl)
+        {
+            index = Math.Max(0, itemsControl.ItemContainerGenerator.IndexFromContainer(presenter));
+        }
+
+        var animation = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(240))
+        {
+            BeginTime = TimeSpan.FromMilliseconds(Math.Min(index * 35, 280)),
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        };
+        card.BeginAnimation(UIElement.OpacityProperty, animation);
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? child) where T : DependencyObject
+    {
+        while (child is not null)
+        {
+            if (child is T match) return match;
+            child = VisualTreeHelper.GetParent(child);
+        }
+        return null;
+    }
+
+    private void DetailsScroll_ScrollChanged(object sender, ScrollChangedEventArgs e)
+    {
+        DetailsScrollTopButton.Visibility = DetailsScroll.VerticalOffset > 80
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+    }
+
+    private void DetailsScrollTopButton_Click(object sender, RoutedEventArgs e)
+    {
+        StartDetailsSmoothScroll(0);
+    }
+
+    private void StartDetailsSmoothScroll(double targetOffset)
+    {
+        _detailsScrollAnimationTimer?.Stop();
+        _detailsScrollAnimationStart = DetailsScroll.VerticalOffset;
+        _detailsScrollAnimationTarget = Math.Clamp(targetOffset, 0, DetailsScroll.ScrollableHeight);
+        _detailsScrollAnimationStartedUtc = DateTime.UtcNow;
+        _detailsScrollAnimationTimer = new System.Windows.Threading.DispatcherTimer(
+            TimeSpan.FromMilliseconds(16), System.Windows.Threading.DispatcherPriority.Render, (_, _) =>
+            {
+                double elapsed = (DateTime.UtcNow - _detailsScrollAnimationStartedUtc).TotalMilliseconds;
+                double t = Math.Clamp(elapsed / DetailsScrollAnimationDurationMs, 0, 1);
+                double eased = 1 - Math.Pow(1 - t, 3);
+                DetailsScroll.ScrollToVerticalOffset(_detailsScrollAnimationStart +
+                    (_detailsScrollAnimationTarget - _detailsScrollAnimationStart) * eased);
+                if (t >= 1)
+                {
+                    _detailsScrollAnimationTimer?.Stop();
+                    _detailsScrollAnimationTimer = null;
+                }
+            }, Dispatcher);
+        _detailsScrollAnimationTimer.Start();
     }
 
     // ---------- Свой скроллбар списка версий (с нуля, без ScrollBar/Track) ----------

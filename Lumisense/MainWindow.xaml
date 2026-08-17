@@ -419,7 +419,11 @@
                     Background="Transparent" Cursor="Hand" Padding="16,0,4,0"
                     MouseLeftButtonUp="TitleClickArea_MouseLeftButtonUp"
                     ToolTip="Вид плеера">
-                <TextBlock Text="Lumisense" FontSize="12" VerticalAlignment="Center" Opacity="0.9" />
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Image Source="/Icons/app/lumisense.ico" Width="14" Height="14" Margin="0,0,6,0"
+                           Stretch="Uniform" />
+                    <TextBlock Text="Lumisense" FontSize="12" VerticalAlignment="Center" Opacity="0.9" />
+                </StackPanel>
                 <Border.ContextMenu>
                     <ContextMenu Placement="Bottom">
                         <MenuItem x:Name="SquareViewMenuItem" Header="Обычный (квадратный)"

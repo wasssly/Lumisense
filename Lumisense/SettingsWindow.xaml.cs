@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.Net.Http;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
@@ -1328,27 +1330,57 @@ public partial class SettingsWindow : FluentWindow
 
     private void OpenLogsButton_Click(object sender, RoutedEventArgs e) => Logger.OpenLogsFolder();
 
-    // Настоящий аватар вместо статичной заглушки, грузится асинхронно и заменяет её только по
-    // факту успешной загрузки. ?size=96 — GitHub сам отдаёт уменьшенную версию.
-    private void LoadDeveloperAvatar()
+    // Загружает аватар один раз и сохраняет его локально, чтобы последующие открытия Settings
+    // не зависели от сети и не создавали новый HTTP-запрос каждый раз.
+    private async void LoadDeveloperAvatar()
     {
+        const string avatarUrl = "https://github.com/wasssly.png?size=96";
+        string cacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumisense", "Cache");
+        string cachePath = Path.Combine(cacheDirectory, "developer-avatar-96.png");
+        string temporaryPath = Path.Combine(cacheDirectory, $"developer-avatar-{Guid.NewGuid():N}.part");
+
         try
         {
+            byte[] bytes;
+            bool cacheIsFresh = File.Exists(cachePath) &&
+                                DateTime.UtcNow - File.GetLastWriteTimeUtc(cachePath) < TimeSpan.FromDays(30);
+            if (cacheIsFresh)
+            {
+                bytes = await File.ReadAllBytesAsync(cachePath);
+            }
+            else
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("Lumisense/1.0");
+                bytes = await client.GetByteArrayAsync(avatarUrl);
+                if (bytes.Length == 0 || bytes.Length > 2 * 1024 * 1024) return;
+
+                Directory.CreateDirectory(cacheDirectory);
+                await File.WriteAllBytesAsync(temporaryPath, bytes);
+                File.Move(temporaryPath, cachePath, true);
+            }
+
+            using var stream = new MemoryStream(bytes);
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
-            bitmap.UriSource = new Uri("https://github.com/wasssly.png?size=96", UriKind.Absolute);
-            bitmap.DownloadCompleted += (_, _) => DeveloperAvatarBrush.ImageSource = bitmap;
-            // Нет сети, GitHub недоступен и т.п. — молча оставляем плейсхолдер из XAML.
-            bitmap.DownloadFailed += (_, _) => { };
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
             bitmap.EndInit();
-
-            // Без внешней ссылки на bitmap его мог собрать GC до завершения загрузки —
-            // подписка на собственное же событие DownloadCompleted объект не защищает.
+            bitmap.Freeze();
             _developerAvatarBitmap = bitmap;
+            DeveloperAvatarBrush.ImageSource = bitmap;
         }
         catch
         {
-            // Нет сети/DNS и т.п. ещё до начала асинхронной загрузки — тот же случай, тоже молча.
+            // При недоступной сети или повреждённом кэше остаётся XAML placeholder.
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            catch { }
         }
     }
 

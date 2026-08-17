@@ -361,7 +361,8 @@
 
             <!-- ===== Справа: детали выбранной версии ===== -->
             <Grid Grid.Column="1">
-                <ScrollViewer x:Name="DetailsScroll" VerticalScrollBarVisibility="Auto">
+                <ScrollViewer x:Name="DetailsScroll" VerticalScrollBarVisibility="Auto"
+                              ScrollChanged="DetailsScroll_ScrollChanged">
                     <StackPanel x:Name="DetailsPanel" Margin="0,0,0,32"
                                 DataContext="{Binding ElementName=VersionsListBox, Path=SelectedItem}">
 
@@ -418,7 +419,9 @@
                                     </ItemsControl.ItemsPanel>
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border CornerRadius="14" Padding="10,5" Margin="0,0,8,0">
+                                            <Border CornerRadius="14" Padding="10,5" Margin="0,0,8,0"
+                                                    Cursor="Hand" MouseLeftButtonUp="SummaryGroup_MouseLeftButtonUp"
+                                                    ToolTip="Перейти к этому типу изменений">
                                                 <Border.Background>
                                                     <SolidColorBrush Color="{Binding Brush.Color}" Opacity="0.14" />
                                                 </Border.Background>
@@ -463,7 +466,7 @@
 
                         <!-- Сами изменения — секциями по типу (Добавлено / Изменено / Исправлено / Удалено),
                              а не одним плоским списком, чтобы состав версии читался по смыслу с первого взгляда -->
-                        <ItemsControl ItemsSource="{Binding Groups}" Margin="36,10,36,0">
+                        <ItemsControl x:Name="GroupSectionsItemsControl" ItemsSource="{Binding Groups}" Margin="36,10,36,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="0,0,0,24">
@@ -487,7 +490,8 @@
                                         <ItemsControl ItemsSource="{Binding Items}" Margin="0,2,0,0">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border CornerRadius="10" Padding="14,12" Margin="0,0,0,8" BorderThickness="1">
+                                                    <Border CornerRadius="10" Padding="14,12" Margin="0,0,0,8" BorderThickness="1"
+                                                            Opacity="0" Loaded="ChangeCard_Loaded">
                                                         <Border.Background>
                                                             <SolidColorBrush Color="{Binding DataContext.Brush.Color, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                               Opacity="0.07" />
@@ -546,6 +550,18 @@
                         </TextBlock>
                     </StackPanel>
                 </ScrollViewer>
+
+                <Button x:Name="DetailsScrollTopButton" Width="32" Height="32" Margin="0,0,18,18"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom"
+                        Style="{StaticResource IconOnlyButtonStyle}" ToolTip="Прокрутить вверх"
+                        Visibility="Collapsed" Click="DetailsScrollTopButton_Click" Panel.ZIndex="5">
+                    <local:SvgPathIcon Icon="IconChevronDown" Size="14" Foreground="White"
+                                        RenderTransformOrigin="0.5,0.5">
+                        <local:SvgPathIcon.RenderTransform>
+                            <RotateTransform Angle="180" />
+                        </local:SvgPathIcon.RenderTransform>
+                    </local:SvgPathIcon>
+                </Button>
 
                 <!-- Показывается вместо панели деталей, если поиск/фильтр отфильтровали все версии -->
                 <StackPanel x:Name="NoSelectionState" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
