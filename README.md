@@ -1,8 +1,8 @@
+![Интерфейс Lumisense](docs/lumisense-gallery.png)
+
 # Lumisense
 
 [![Release](https://img.shields.io/github/v/release/wasssly/Lumisense?display_name=tag&sort=semver&label=release)](https://github.com/wasssly/Lumisense/releases) [![Release workflow](https://github.com/wasssly/Lumisense/actions/workflows/release.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/release.yml) [![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4?logo=windows11&logoColor=white)](https://github.com/wasssly/Lumisense)
-
-![Интерфейс Lumisense](docs/lumisense-gallery.png)
 
 **Lumisense** — локальный аудиоплеер для Windows 11 в стиле Fluent Design. Он воспроизводит музыку с диска без стриминга и облачных сервисов, поддерживает обложки, теги, плейлисты, эквалайзер, статистику прослушиваний, мини-плеер и обновление через GitHub Releases.
 
