@@ -220,13 +220,31 @@ public sealed class TrayIconManager : IDisposable
 
         // Иконки пунктов перерисовываем под новый цвет текста темы, чтобы они не выглядели
         // тёмными штрихами на тёмном фоне (или наоборот)
-        _openItem.Image = TrayIcons.OpenApp(ForegroundColor);
-        _playPauseItem.Image = TrayIcons.PlayPause(_playPauseItem.Text == "Пауза", ForegroundColor);
-        _nextItem.Image = TrayIcons.Next(ForegroundColor);
-        _previousItem.Image = TrayIcons.Previous(ForegroundColor);
-        _exitItem.Image = TrayIcons.Exit(ForegroundColor);
+        ReplaceMenuImage(_openItem, TrayIcons.OpenApp(ForegroundColor));
+        ReplaceMenuImage(_playPauseItem, TrayIcons.PlayPause(_playPauseItem.Text == "Пауза", ForegroundColor));
+        ReplaceMenuImage(_nextItem, TrayIcons.Next(ForegroundColor));
+        ReplaceMenuImage(_previousItem, TrayIcons.Previous(ForegroundColor));
+        ReplaceMenuImage(_exitItem, TrayIcons.Exit(ForegroundColor));
 
         _menu.RefreshRoundedRegion();
+    }
+
+    private static void ReplaceMenuImage(ToolStripItem item, Image replacement)
+    {
+        var previous = item.Image;
+        item.Image = replacement;
+        if (!ReferenceEquals(previous, replacement))
+            previous?.Dispose();
+    }
+
+    private void DisposeMenuImages()
+    {
+        foreach (ToolStripItem item in _menu.Items)
+        {
+            var image = item.Image;
+            item.Image = null;
+            image?.Dispose();
+        }
     }
 
     public void Show(string? tooltipText = null)
@@ -247,8 +265,10 @@ public sealed class TrayIconManager : IDisposable
     public void Dispose()
     {
         _notifyIcon.Visible = false;
+        DisposeMenuImages();
         _notifyIcon.Dispose();
         _currentArtThumbnail?.Dispose();
+        _currentArtThumbnail = null;
     }
 
     // Тёмный вариант в стиле Fluent/Mica (тёмно-серые фоны, акцентная подсветка),
