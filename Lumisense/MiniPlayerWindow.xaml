@@ -161,7 +161,8 @@
                 </MenuItem>
             </ContextMenu>
         </Border.ContextMenu>
-        <Grid x:Name="ContentGrid">
+        <Grid>
+            <Grid x:Name="ContentGrid">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -213,32 +214,6 @@
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                 </StackPanel>
             </StackPanel>
-
-            <!-- Всплывающий индикатор процентов громкости — в той же ячейке Grid, что и
-                 HeaderPanel (Grid.Row="0"), с центрированием, а не фиксированным Margin от
-                 верхнего края окна: HeaderPanel гаснет синхронно с появлением индикатора (см.
-                 VolumeIndicatorStoryboard) и уступает ему своё место, но фактическая высота
-                 этой строки зависит от текущего нижнего отступа HeaderPanel (2 при видимой
-                 полосе прогресса, 10 при скрытой — см. ApplyProgressBarVisibility в
-                 code-behind). Фиксированный Margin был подобран только под один из этих
-                 случаев и не совпадал с реальным центром строки во втором.
-                 IsHitTestVisible="False", чтобы не мешать кликам/скроллу по мини-плееру.
-                 Opacity="0" по умолчанию — без анимации полностью невидим, а не просто
-                 "пустой", чтобы не перехватывать события мыши до первого запуска анимации. -->
-            <Border x:Name="VolumeIndicator" Grid.Row="0" CornerRadius="10" Padding="12,6"
-                    Background="{DynamicResource ControlFillColorDefaultBrush}"
-                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"
-                    Opacity="0" IsHitTestVisible="False">
-                <StackPanel Orientation="Horizontal">
-                    <local:SvgPathIcon x:Name="VolumeIndicatorIcon" Icon="IconSpeaker" Size="14"
-                                   VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                    <TextBlock x:Name="VolumeIndicatorText" Text="30%" FontSize="14" FontWeight="SemiBold"
-                               Margin="7,0,0,0" VerticalAlignment="Center"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                </StackPanel>
-            </Border>
 
             <!-- Прогресс (простая полоса + прозрачный слой для перемотки кликом/перетаскиванием).
                  См. AppSettings.MiniPlayerShowProgress/ApplyProgressBarVisibility — скрывается
@@ -304,7 +279,28 @@
                 </ui:Button>
             </StackPanel>
         </Grid>
-    </Border>
 
-    </Grid>
+        <!-- Отдельный overlay-слой: индикатор не участвует в измерении auto-строк ContentGrid,
+             поэтому VerticalAlignment="Center" рассчитывается относительно всей видимой площади
+             мини-плеера, включая высоту панели управления. IsHitTestVisible=False сохраняет
+             прокрутку и перетаскивание окна. В Overlay-режиме ControlsPanel скрывается на время
+             показа индикатора из code-behind, поэтому слои не перекрываются. -->
+        <Border x:Name="VolumeIndicator" Panel.ZIndex="10"
+                CornerRadius="10" Padding="12,6"
+                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                HorizontalAlignment="Center" VerticalAlignment="Center"
+                Opacity="0" IsHitTestVisible="False">
+            <StackPanel Orientation="Horizontal">
+                <local:SvgPathIcon x:Name="VolumeIndicatorIcon" Icon="IconSpeaker" Size="14"
+                                   VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <TextBlock x:Name="VolumeIndicatorText" Text="30%" FontSize="14" FontWeight="SemiBold"
+                           Margin="7,0,0,0" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            </StackPanel>
+            </Border>
+        </Grid>
+    </Border>
+</Grid>
 </Window>

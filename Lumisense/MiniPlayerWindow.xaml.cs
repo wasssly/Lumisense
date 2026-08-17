@@ -65,6 +65,8 @@ public partial class MiniPlayerWindow : Window
     // См. ApplyButtonsLayoutMode — true, когда в настройках выбран режим "кнопки на месте
     // обложки" (AppSettings.MiniPlayerButtonsLayout == "Overlay") вместо прежнего "снизу".
     private bool _buttonsOverlayMode;
+    private DispatcherTimer? _volumeOverlayRestoreTimer;
+    private bool _volumeOverlaySuppressedControls;
 
     public MiniPlayerWindow(MainWindow mainWindow)
     {
@@ -385,8 +387,45 @@ public partial class MiniPlayerWindow : Window
         VolumeIndicatorText.Text = $"{(int)Math.Round(volume * 100)}%";
         VolumeIndicatorIcon.Icon = volume <= 0.0 ? "IconSpeakerMute" : "IconSpeaker";
 
+        if (_buttonsOverlayMode)
+        {
+            // В Overlay-режиме при наведении ControlsPanel занимает ту же строку, что и
+            // HeaderPanel. На время volume indicator убираем кнопки, иначе процент громкости
+            // отображается одновременно с ними и элементы перекрываются.
+            _volumeOverlaySuppressedControls = ControlsPanel.Visibility == Visibility.Visible;
+            if (_volumeOverlaySuppressedControls)
+                ControlsPanel.Visibility = Visibility.Collapsed;
+        }
+
+        _volumeOverlayRestoreTimer?.Stop();
+        _volumeOverlayRestoreTimer = new DispatcherTimer(DispatcherPriority.Normal)
+        {
+            Interval = TimeSpan.FromMilliseconds(1350)
+        };
+        _volumeOverlayRestoreTimer.Tick += VolumeOverlayRestoreTimer_Tick;
+        _volumeOverlayRestoreTimer.Start();
+
         var storyboard = (Storyboard)FindResource("VolumeIndicatorStoryboard");
         storyboard.Begin(this, true);
+    }
+
+    private void VolumeOverlayRestoreTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_volumeOverlayRestoreTimer is not null)
+        {
+            _volumeOverlayRestoreTimer.Stop();
+            _volumeOverlayRestoreTimer.Tick -= VolumeOverlayRestoreTimer_Tick;
+            _volumeOverlayRestoreTimer = null;
+        }
+
+        if (!_volumeOverlaySuppressedControls || !_buttonsOverlayMode) return;
+        _volumeOverlaySuppressedControls = false;
+
+        if (RootBorder.IsMouseOver)
+        {
+            ControlsPanel.Visibility = Visibility.Visible;
+            HeaderPanel.Visibility = Visibility.Collapsed;
+        }
     }
 
     private void OnProgressChanged(double currentSeconds, double totalSeconds)
@@ -699,6 +738,9 @@ public partial class MiniPlayerWindow : Window
         // с заведомо согласованного состояния (обложка видна, кнопки скрыты, окно свёрнуто)
         // надёжнее, чем пытаться угадать, в каком из двух РАЗНЫХ по смыслу "развёрнутых"
         // состояний старого и нового режима мы сейчас находимся.
+        _volumeOverlayRestoreTimer?.Stop();
+        _volumeOverlayRestoreTimer = null;
+        _volumeOverlaySuppressedControls = false;
         HeaderPanel.Visibility = Visibility.Visible;
         ControlsPanel.Visibility = Visibility.Collapsed;
         Height = MeasureContentHeight();
@@ -791,6 +833,10 @@ public partial class MiniPlayerWindow : Window
     {
         _topmostTimer.Stop();
         _topmostTimer.Tick -= TopmostTimer_Tick;
+        _volumeOverlayRestoreTimer?.Stop();
+        if (_volumeOverlayRestoreTimer is not null)
+            _volumeOverlayRestoreTimer.Tick -= VolumeOverlayRestoreTimer_Tick;
+        _volumeOverlayRestoreTimer = null;
 
         _mainWindow.TrackInfoChanged -= OnTrackInfoChanged;
         _mainWindow.ProgressChanged -= OnProgressChanged;
