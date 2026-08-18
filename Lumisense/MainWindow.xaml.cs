@@ -13,6 +13,7 @@ using System.Windows.Threading;
 using Microsoft.Win32;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using SoundTouch.Net.NAudioSupport;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
@@ -40,6 +41,7 @@ public partial class MainWindow : FluentWindow
 
     // AudioFileReader умеет читать mp3/wav/wma и сразу даёт регулировку громкости
     private AudioFileReader? _audioFile;
+    private SoundTouchWaveStream? _tempoStream;
 
     // Живёт одно на всё время работы приложения (см. OnClosed) вместо пересоздания на каждый
     // трек — StopPlayback останавливает и переиспользует его, LoadAndPlay зовёт Init(...)
@@ -61,6 +63,7 @@ public partial class MainWindow : FluentWindow
     // громкость в ComputeAudioFileVolume — то же место конвейера (AudioFileReader.Volume, до
     // эквалайзера), отдельный ISampleProvider не нужен.
     private double _replayGainFactor = 1.0;
+    private Color? _coverAccentColor;
 
     // ---------- Waveform-полоса воспроизведения (см. AppSettings.ProgressBarStyle) ----------
     // Кэш пиков по пути файла — трек может грузиться повторно, пересчитывать форму волны заново
@@ -81,6 +84,7 @@ public partial class MainWindow : FluentWindow
     private sealed class PreparedTrack : IDisposable
     {
         public required AudioFileReader AudioFile { get; init; }
+        public required SoundTouchWaveStream TempoStream { get; init; }
         public required EqualizerSampleProvider Equalizer { get; init; }
         public required double ReplayGainFactor { get; init; }
         public string? Title { get; init; }
@@ -94,7 +98,7 @@ public partial class MainWindow : FluentWindow
         {
             try
             {
-                AudioFile.Dispose();
+                TempoStream.Dispose();
             }
             catch (Exception ex)
             {
@@ -864,6 +868,13 @@ public partial class MainWindow : FluentWindow
         if (_settings.RememberVolume)
             VolumeSlider.Value = Math.Clamp(_settings.SavedVolume, 0.0, 1.0);
 
+        PlaybackSpeedSlider.Value = Math.Clamp(_settings.PlaybackSpeed, 0.5, 2.0);
+        PlaybackSpeedValueText.Text = FormatPlaybackSpeed(PlaybackSpeedSlider.Value);
+        ApplyPlaybackSpeedLive(PlaybackSpeedSlider.Value);
+        PlaybackPitchSlider.Value = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
+        PlaybackPitchValueText.Text = FormatPlaybackPitch(PlaybackPitchSlider.Value);
+        ApplyPlaybackPitchLive(PlaybackPitchSlider.Value);
+
         SetShuffleEnabled(_settings.IsShuffleEnabled);
         SetRepeatMode(Enum.TryParse<RepeatMode>(_settings.RepeatMode, out var savedRepeatMode)
             ? savedRepeatMode
@@ -979,6 +990,9 @@ public partial class MainWindow : FluentWindow
             catch { /* некорректный hex — откатываемся на системный акцент ниже */ }
         }
 
+        if (_settings.AccentColorMode == "Cover" && _coverAccentColor is Color coverColor)
+            return coverColor;
+
         return Application.Current.Resources["SystemAccentColor"] is Color color
             ? color
             : Color.FromRgb(0x00, 0x78, 0xD4);
@@ -986,19 +1000,33 @@ public partial class MainWindow : FluentWindow
 
     public void ApplyAccentColor()
     {
-        if (_settings.AccentColorMode != "Manual")
+        if (_settings.AccentColorMode == "System"
+            || (_settings.AccentColorMode == "Cover" && _currentAlbumArt is null))
         {
             ApplicationAccentColorManager.ApplySystemAccent();
-            // Системный акцент почти всегда достаточно тёмный/насыщенный для белого текста —
-            // так было и раньше, до появления выбора цвета, менять тут нечего.
             IconResources.AccentContrastBrush = Brushes.White;
             RefreshAccentDependentIcons();
+            ApplyCoverBaseBackground();
+            return;
+        }
+
+        if (_settings.AccentColorMode == "Cover" && _currentAlbumArt is not null)
+            _coverAccentColor = ExtractCoverAccentColor(_currentAlbumArt);
+
+        if (_settings.AccentColorMode == "Cover" && _coverAccentColor is not Color)
+        {
+            ApplicationAccentColorManager.ApplySystemAccent();
+            IconResources.AccentContrastBrush = Brushes.White;
+            RefreshAccentDependentIcons();
+            ApplyCoverBaseBackground();
             return;
         }
 
         try
         {
-            var color = (Color)ColorConverter.ConvertFromString(_settings.AccentColorHex);
+            var color = _settings.AccentColorMode == "Cover"
+                ? _coverAccentColor!.Value
+                : (Color)ColorConverter.ConvertFromString(_settings.AccentColorHex);
             ApplicationAccentColorManager.Apply(color,
                 _settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
             IconResources.AccentContrastBrush = new SolidColorBrush(GetAccentContrastColor(color));
@@ -1012,6 +1040,25 @@ public partial class MainWindow : FluentWindow
         }
 
         RefreshAccentDependentIcons();
+        ApplyCoverBaseBackground();
+    }
+
+    // Для режима "Обложка" добавляем к системному Mica/Acrylic очень прозрачный слой
+    // на основе обложки. Слой намеренно приглушён и полупрозрачен: системные кисти WPF-UI
+    // продолжают обеспечивать базовый контраст, а яркие цвета обложки не превращают текст
+    // и кнопки в нечитаемые элементы.
+    private void ApplyCoverBaseBackground()
+    {
+        if (_settings.AccentColorMode != "Cover" || _coverAccentColor is not Color cover)
+        {
+            RootGrid.Background = Brushes.Transparent;
+            return;
+        }
+
+        byte r = (byte)Math.Clamp((int)Math.Round(cover.R * 0.52), 0, 255);
+        byte g = (byte)Math.Clamp((int)Math.Round(cover.G * 0.52), 0, 255);
+        byte b = (byte)Math.Clamp((int)Math.Round(cover.B * 0.52), 0, 255);
+        RootGrid.Background = new SolidColorBrush(Color.FromArgb(0x4A, r, g, b));
     }
 
     // Чёрный или белый — по относительной яркости акцента (тот же принцип, что и в
@@ -1019,6 +1066,51 @@ public partial class MainWindow : FluentWindow
     // вариантами такая упрощённая формула более чем достаточна). Порог 0.6, а не ровно 0.5, —
     // чтобы на пограничных, но всё ещё достаточно ярких акцентах (жёлтый/оранжевый и подобные)
     // увереннее склоняться к тёмному варианту, а не оставлять белый там, где он уже еле читается.
+    private static Color? ExtractCoverAccentColor(BitmapSource source)
+    {
+        try
+        {
+            const int size = 32;
+            var visual = new DrawingVisual();
+            using (var context = visual.RenderOpen())
+                context.DrawImage(source, new Rect(0, 0, size, size));
+
+            var bitmap = new RenderTargetBitmap(size, size, 96, 96, PixelFormats.Pbgra32);
+            bitmap.Render(visual);
+            var pixels = new byte[size * size * 4];
+            bitmap.CopyPixels(pixels, size * 4, 0);
+
+            double red = 0, green = 0, blue = 0, weightSum = 0;
+            for (int i = 0; i < pixels.Length; i += 4)
+            {
+                double blueValue = pixels[i] / 255.0;
+                double greenValue = pixels[i + 1] / 255.0;
+                double redValue = pixels[i + 2] / 255.0;
+                double brightness = Math.Max(redValue, Math.Max(greenValue, blueValue));
+                double minimum = Math.Min(redValue, Math.Min(greenValue, blueValue));
+                double saturation = brightness <= 0 ? 0 : (brightness - minimum) / brightness;
+                if (brightness < 0.08 || saturation < 0.12) continue;
+
+                double weight = 0.25 + saturation * 0.75;
+                red += redValue * weight;
+                green += greenValue * weight;
+                blue += blueValue * weight;
+                weightSum += weight;
+            }
+
+            if (weightSum <= 0) return null;
+            return Color.FromRgb(
+                (byte)Math.Clamp(red / weightSum * 255, 0, 255),
+                (byte)Math.Clamp(green / weightSum * 255, 0, 255),
+                (byte)Math.Clamp(blue / weightSum * 255, 0, 255));
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось извлечь цвет из обложки: {ex.Message}");
+            return null;
+        }
+    }
+
     private static Color GetAccentContrastColor(Color accent)
     {
         double luminance = (0.299 * accent.R + 0.587 * accent.G + 0.114 * accent.B) / 255.0;
@@ -1066,6 +1158,7 @@ public partial class MainWindow : FluentWindow
         WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
             ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
             : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        ApplyCoverBaseBackground();
     }
 
     private void SettingsButton_Click(object sender, RoutedEventArgs e) => ShowSettingsWindow();
@@ -2539,15 +2632,18 @@ public partial class MainWindow : FluentWindow
             double volumeSliderValue = VolumeSlider.Value;
             bool replayGainEnabled = _settings.ReplayGainEnabled;
             bool equalizerEnabled = _settings.EqualizerEnabled;
-            double[] equalizerGains = (double[])_settings.EqualizerBandGainsDb.Clone();
+                    double[] equalizerGains = (double[])_settings.EqualizerBandGainsDb.Clone();
+        double playbackSpeed = Math.Clamp(_settings.PlaybackSpeed, 0.5, 2.0);
+        double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
+        prepared = await PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
+            equalizerEnabled, equalizerGains, playbackSpeed, playbackPitch, cts.Token);
 
-            prepared = await PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
-                equalizerEnabled, equalizerGains, cts.Token);
             cts.Token.ThrowIfCancellationRequested();
             if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
                 return;
 
             _audioFile = prepared.AudioFile;
+            _tempoStream = prepared.TempoStream;
             _equalizer = prepared.Equalizer;
             _replayGainFactor = prepared.ReplayGainFactor;
             PreparedTrack loaded = prepared;
@@ -2634,7 +2730,8 @@ public partial class MainWindow : FluentWindow
     }
 
     private async Task<PreparedTrack> PrepareTrackAsync(string filePath, double volumeSliderValue,
-        bool replayGainEnabled, bool equalizerEnabled, double[] equalizerGains, CancellationToken token)
+        bool replayGainEnabled, bool equalizerEnabled, double[] equalizerGains, double playbackSpeed,
+        double playbackPitch, CancellationToken token)
     {
         return await Task.Run(() =>
         {
@@ -2682,13 +2779,19 @@ public partial class MainWindow : FluentWindow
             };
             try
             {
-                var equalizer = new EqualizerSampleProvider(reader) { Enabled = equalizerEnabled };
+                var tempoStream = new SoundTouchWaveStream(reader)
+                {
+                    Tempo = Math.Clamp(playbackSpeed, 0.5, 2.0),
+                    PitchSemiTones = Math.Clamp(playbackPitch, -12.0, 12.0)
+                };
+                var equalizer = new EqualizerSampleProvider(tempoStream.ToSampleProvider()) { Enabled = equalizerEnabled };
                 for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
                     equalizer.SetBandGain(band, band < equalizerGains.Length ? equalizerGains[band] : 0);
 
                 return new PreparedTrack
                 {
                     AudioFile = reader,
+                    TempoStream = tempoStream,
                     Equalizer = equalizer,
                     ReplayGainFactor = replayGain,
                     Title = title,
@@ -2808,6 +2911,9 @@ public partial class MainWindow : FluentWindow
         {
             ResetAlbumArtPlaceholder(direction);
         }
+
+        if (_settings.AccentColorMode == "Cover")
+            ApplyAccentColor();
     }
 
     private void LoadAlbumArt(string filePath, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
@@ -3177,7 +3283,7 @@ public partial class MainWindow : FluentWindow
 
         try
         {
-            _audioFile?.Dispose();
+            _tempoStream?.Dispose();
         }
         catch (Exception ex)
         {
@@ -3185,6 +3291,7 @@ public partial class MainWindow : FluentWindow
         }
         finally
         {
+            _tempoStream = null;
             _audioFile = null;
         }
         _equalizer = null;
@@ -3466,6 +3573,36 @@ public partial class MainWindow : FluentWindow
     // Вызывается из окна настроек при переключении настройки "Шаффл без повторов" — колода
     // от старого/нового алгоритма не имеет смысла продолжать использовать после смены режима
     // на лету, поэтому просто начинаем её заново.
+    public void ResetAllUserData()
+    {
+        FlushPlaybackClock();
+        StopPlayback();
+
+        _folders.Clear();
+        _favoritesFolder.Tracks.Clear();
+        FavoritesManager.Reset();
+        PlayCountManager.Reset();
+
+        LumiProfileIO.ResetToDefaults(_settings);
+        _settings.SavedPlaylistFolders = new List<SavedPlaylistFolder>();
+        _settings.SavedPlaylist = null;
+        _settings.FavoriteTracks = new List<string>();
+        _settings.PinnedFavoriteTracks = new List<string>();
+        _settings.PlayCounts = new Dictionary<string, int>();
+        _settings.LastTrackPath = null;
+        _settings.LastPositionSeconds = 0;
+        _settings.EqualizerPresets.Clear();
+
+        _currentTrackPath = null;
+        _replayGainFactor = 1.0;
+        SetTrackInfoText("Файл не выбран", "—");
+        TotalTimeText.Text = "00:00";
+        ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
+        RefreshPlaylistView();
+        if (_isFavoritesView) RefreshFavoritesTrackList();
+        SettingsManager.Save(_settings);
+    }
+
     public void ResetShuffleState()
     {
         _shuffleHistory.Clear();
@@ -3707,6 +3844,22 @@ public partial class MainWindow : FluentWindow
     public void SetAlbumArtTransitionEnabled(bool enabled) => _settings.AlbumArtTransitionEnabled = enabled;
 
     public bool IsEqualizerEnabled => _settings.EqualizerEnabled;
+
+    public void ApplyPlaybackSpeedLive(double speed)
+    {
+        double clamped = Math.Clamp(speed, 0.5, 2.0);
+        _settings.PlaybackSpeed = clamped;
+        if (_tempoStream != null)
+            _tempoStream.Tempo = clamped;
+    }
+
+    public void ApplyPlaybackPitchLive(double semitones)
+    {
+        double clamped = Math.Clamp(semitones, -12.0, 12.0);
+        _settings.PlaybackPitchSemitones = clamped;
+        if (_tempoStream != null)
+            _tempoStream.PitchSemiTones = clamped;
+    }
 
     public void SetEqualizerEnabled(bool enabled)
     {
@@ -4203,6 +4356,37 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    private static string FormatPlaybackSpeed(double value) => $"{value:0.00}×";
+
+    private void PlaybackSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (PlaybackSpeedValueText != null)
+            PlaybackSpeedValueText.Text = FormatPlaybackSpeed(e.NewValue);
+        ApplyPlaybackSpeedLive(e.NewValue);
+    }
+
+    private static string FormatPlaybackPitch(double semitones) =>
+        $"{semitones:+0;-0;0} st";
+
+    private void PlaybackSpeedSlider_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        PlaybackSpeedSlider.Value = 1.0;
+        e.Handled = true;
+    }
+
+    private void PlaybackPitchSlider_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        PlaybackPitchSlider.Value = 0.0;
+        e.Handled = true;
+    }
+
+    private void PlaybackPitchSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (PlaybackPitchValueText != null)
+            PlaybackPitchValueText.Text = FormatPlaybackPitch(e.NewValue);
+        ApplyPlaybackPitchLive(e.NewValue);
+    }
+
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_audioFile != null)
@@ -4224,6 +4408,38 @@ public partial class MainWindow : FluentWindow
 
     private void MuteButton_Click(object sender, RoutedEventArgs e) => ToggleMute();
 
+    private const double PlaybackSpeedWheelStep = 0.05;
+
+    private void ChangePlaybackSpeedBy(double delta)
+    {
+        PlaybackSpeedSlider.Value = Math.Clamp(
+            PlaybackSpeedSlider.Value + delta,
+            PlaybackSpeedSlider.Minimum,
+            PlaybackSpeedSlider.Maximum);
+    }
+
+    private void PlaybackSpeedButton_Click(object sender, RoutedEventArgs e)
+    {
+        PlaybackSpeedPopup.IsOpen = !PlaybackSpeedPopup.IsOpen;
+        if (PlaybackSpeedPopup.IsOpen)
+            PlaybackSpeedSlider.Focus();
+        e.Handled = true;
+    }
+
+    private void PlaybackSpeedButton_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        if (!PlaybackSpeedPopup.IsOpen)
+            PlaybackSpeedPopup.IsOpen = true;
+        ChangePlaybackSpeedBy(Math.Sign(e.Delta) * PlaybackSpeedWheelStep);
+        e.Handled = true;
+    }
+
+    private void PlaybackSpeedPopup_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        ChangePlaybackSpeedBy(Math.Sign(e.Delta) * PlaybackSpeedWheelStep);
+        e.Handled = true;
+    }
+
     // Живо переприменяет только тему/акцент/подложку после импорта .lumi-профиля или сброса
     // настроек — остальное (хоткеи, эквалайзер, трей, мини-плеер) читается только при старте
     // соответствующих подсистем, поэтому SettingsWindow в обоих случаях дополнительно
@@ -4233,6 +4449,8 @@ public partial class MainWindow : FluentWindow
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();
+        ApplyPlaybackSpeedLive(_settings.PlaybackSpeed);
+        ApplyPlaybackPitchLive(_settings.PlaybackPitchSemitones);
     }
 
     // Раньше вызывалась только из OnClosed — а поскольку MinimizeToTrayOnClose включён по

@@ -83,6 +83,11 @@ public static class LumiProfileIO
             (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32)
             return false;
 
+        if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
+            return false;
+        if (!double.IsFinite(settings.PlaybackPitchSemitones) || settings.PlaybackPitchSemitones < -12.0 || settings.PlaybackPitchSemitones > 12.0)
+            return false;
+
         if ((settings.EqualizerPresets?.Count ?? int.MaxValue) > 100 ||
             (settings.SavedPlaylistFolders?.Count ?? int.MaxValue) > 100 ||
             (settings.HotkeyPlayPause?.Key?.Length ?? 0) > 64 || (settings.HotkeyNext?.Key?.Length ?? 0) > 64 ||
@@ -120,6 +125,8 @@ public static class LumiProfileIO
         target.SavedVolume = source.SavedVolume;
         target.UseLogarithmicVolume = source.UseLogarithmicVolume;
         target.ReplayGainEnabled = source.ReplayGainEnabled;
+        target.PlaybackSpeed = source.PlaybackSpeed;
+        target.PlaybackPitchSemitones = source.PlaybackPitchSemitones;
         target.MinimizeToTrayOnClose = source.MinimizeToTrayOnClose;
         target.StartHiddenInTray = source.StartHiddenInTray;
         target.IsPlaylistVisible = source.IsPlaylistVisible;

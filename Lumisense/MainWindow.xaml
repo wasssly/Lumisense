@@ -396,7 +396,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid x:Name="RootGrid">
+    <Grid x:Name="RootGrid" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />   <!-- Заголовок -->
             <RowDefinition Height="*" />      <!-- Тело: центрируется и масштабируется в полноэкранном режиме -->
@@ -462,13 +462,14 @@
         <Border Grid.Row="1" x:Name="ContentHost" HorizontalAlignment="Stretch" MaxWidth="440">
             <Grid x:Name="BodyGrid">
                 <Grid.RowDefinitions>
-                    <RowDefinition Height="0" />      <!-- Заглушка: сохраняет исходную нумерацию Grid.Row="1".."6" ниже -->
-                    <RowDefinition Height="Auto" />   <!-- Обложка / инфо о треке -->
-                    <RowDefinition Height="Auto" />   <!-- Прогресс и время -->
-                    <RowDefinition Height="Auto" />   <!-- Кнопки управления -->
-                    <RowDefinition Height="Auto" />   <!-- Громкость -->
-                    <RowDefinition Height="Auto" />   <!-- Панель плейлиста: заголовок + кнопки добавления -->
-                    <RowDefinition Height="*" />      <!-- Плейлист (тянется, не вылезает за края) -->
+                                    <RowDefinition Height="0" />      <!-- Техническая заглушка -->
+                <RowDefinition Height="Auto" />   <!-- Обложка / инфо о треке -->
+                <RowDefinition Height="Auto" />   <!-- Прогресс и время -->
+                <RowDefinition Height="Auto" />   <!-- Кнопки управления -->
+                <RowDefinition Height="Auto" />   <!-- Громкость и кнопка скорости -->
+                <RowDefinition Height="Auto" />   <!-- Панель плейлиста: заголовок + кнопки добавления -->
+                <RowDefinition Height="*" />      <!-- Плейлист (тянется, не вылезает за края) -->
+
                 </Grid.RowDefinitions>
 
         <!-- Блок с обложкой и названием трека -->
@@ -643,7 +644,7 @@
             </ui:Button>
         </StackPanel>
 
-        <!-- Громкость -->
+        <!-- Громкость и компактное управление скоростью -->
         <Grid x:Name="VolumeRow" Grid.Row="4" Margin="24,0,24,10" MouseWheel="VolumeRow_MouseWheel">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -651,13 +652,23 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <ui:Button Grid.Column="0" x:Name="MuteButton" Appearance="Transparent"
-                       Width="26" Height="26" Padding="0" Margin="0,0,6,0"
-                       Click="MuteButton_Click" ToolTip="Без звука">
-                <ui:Button.Icon>
-                    <local:SvgPathIcon x:Name="SpeakerIcon" Icon="IconSpeaker" Size="15" />
-                </ui:Button.Icon>
-            </ui:Button>
+            <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
+                <ui:Button x:Name="PlaybackSpeedButton" Appearance="Transparent"
+                           Width="26" Height="26" Padding="0" Margin="0,0,4,0"
+                           Click="PlaybackSpeedButton_Click" MouseWheel="PlaybackSpeedButton_MouseWheel"
+                           ToolTip="Скорость воспроизведения">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon Icon="IconSpeed" Size="15" />
+                    </ui:Button.Icon>
+                </ui:Button>
+                <ui:Button x:Name="MuteButton" Appearance="Transparent"
+                           Width="26" Height="26" Padding="0" Margin="0,0,6,0"
+                           Click="MuteButton_Click" ToolTip="Без звука">
+                    <ui:Button.Icon>
+                        <local:SvgPathIcon x:Name="SpeakerIcon" Icon="IconSpeaker" Size="15" />
+                    </ui:Button.Icon>
+                </ui:Button>
+            </StackPanel>
 
             <Grid Grid.Column="1">
                 <Slider x:Name="VolumeSlider" IsHitTestVisible="False"
@@ -674,6 +685,59 @@
                        FontSize="11" Opacity="0.6" Width="34" Margin="8,0,0,0"
                        VerticalAlignment="Center" HorizontalAlignment="Right" />
         </Grid>
+
+        <Popup x:Name="PlaybackSpeedPopup" PlacementTarget="{Binding ElementName=PlaybackSpeedButton}"
+               Placement="Top" StaysOpen="False" AllowsTransparency="True"
+               VerticalOffset="-8" PopupAnimation="Fade">
+            <Border x:Name="PlaybackSpeedPopupBorder" Background="#FF242424"
+                    BorderBrush="#FF707070" BorderThickness="1" CornerRadius="8" Padding="12,8"
+                    MouseWheel="PlaybackSpeedPopup_MouseWheel">
+                <Grid Width="230">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Скорость" Grid.Column="0" Foreground="#D8D8D8"
+                                   FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Slider x:Name="PlaybackSpeedSlider" Grid.Column="1"
+                                Minimum="0.5" Maximum="2.0" Value="1.0"
+                                TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                ValueChanged="PlaybackSpeedSlider_ValueChanged"
+                                MouseDoubleClick="PlaybackSpeedSlider_MouseDoubleClick"
+                                VerticalAlignment="Center" />
+                        <TextBlock x:Name="PlaybackSpeedValueText" Grid.Column="2" Text="1.00×"
+                                   Foreground="White" FontWeight="SemiBold" FontSize="11" Width="38"
+                                   Margin="10,0,0,0" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" />
+                    </Grid>
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Тон" Grid.Column="0" Foreground="#D8D8D8"
+                                   FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <Slider x:Name="PlaybackPitchSlider" Grid.Column="1"
+                                Minimum="-12" Maximum="12" Value="0"
+                                TickFrequency="1" IsSnapToTickEnabled="True"
+                                ValueChanged="PlaybackPitchSlider_ValueChanged"
+                                MouseDoubleClick="PlaybackPitchSlider_MouseDoubleClick"
+                                VerticalAlignment="Center" />
+                        <TextBlock x:Name="PlaybackPitchValueText" Grid.Column="2" Text="0 st"
+                                   Foreground="White" FontWeight="SemiBold" FontSize="11" Width="38"
+                                   Margin="10,0,0,0" VerticalAlignment="Center"
+                                   HorizontalAlignment="Right" />
+                    </Grid>
+                </Grid>
+            </Border>
+        </Popup>
 
         <!-- Панель плейлиста: заголовок + переключатель видимости + кнопки добавления -->
         <Grid x:Name="PlaylistHeaderRow" Grid.Row="5" Margin="16,4,16,6">
