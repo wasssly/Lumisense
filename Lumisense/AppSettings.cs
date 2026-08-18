@@ -91,6 +91,11 @@ public class AppSettings
     public string AccentColorMode { get; set; } = "System";
     public string AccentColorHex { get; set; } = "#0078D4";
 
+    // Независимо от AccentColorMode добавляет к основе главного окна приглушённый цвет
+    // текущей обложки. Поэтому можно, например, оставить системный акцент и включить
+    // цветную основу, либо взять акцент от обложки без изменения основы окна.
+    public bool CoverBaseFromCover { get; set; }
+
     // Подложка окна — "Mica" (по умолчанию) или "Acrylic", оба через системный DWM backdrop
     // Windows 11. Применяется только к MainWindow/SettingsWindow/StatisticsWindow — мелкие
     // диалоговые окна (свойства трека, поиск обложки) открываются и закрываются слишком быстро,
@@ -378,6 +383,15 @@ public static class SettingsManager
                 var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
                 if (settings != null)
                 {
+                    // До разделения настроек режим AccentColorMode=Cover одновременно красил
+                    // акцент и основу окна. Сохраняем это ожидаемое поведение для старых файлов,
+                    // в которых новый независимый флаг ещё отсутствует.
+                    if (!json.Contains("\"CoverBaseFromCover\"", StringComparison.Ordinal)
+                        && settings.AccentColorMode == "Cover")
+                    {
+                        settings.CoverBaseFromCover = true;
+                    }
+
                     MigrateOldFlatPlaylist(settings);
                     return settings;
                 }

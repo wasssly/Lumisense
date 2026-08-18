@@ -118,6 +118,7 @@ public static class LumiProfileIO
         target.Theme = source.Theme;
         target.AccentColorMode = source.AccentColorMode;
         target.AccentColorHex = source.AccentColorHex;
+        target.CoverBaseFromCover = source.CoverBaseFromCover;
         target.WindowBackdropType = source.WindowBackdropType;
         target.ProgressBarStyle = source.ProgressBarStyle;
         target.AlwaysOnTop = source.AlwaysOnTop;

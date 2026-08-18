@@ -1030,58 +1030,89 @@ public partial class MainWindow : FluentWindow
             : Color.FromRgb(0x00, 0x78, 0xD4);
     }
 
+    private void RefreshCoverThemeColor()
+    {
+        _coverAccentColor = _currentAlbumArt is null
+            ? null
+            : ExtractCoverAccentColor(_currentAlbumArt);
+    }
+
+    private void ApplySelectableControlAccentResources(Color accent)
+    {
+        // Явные стили SettingsWindow используют эти DynamicResource. Меняем значения в
+        // Application и уже открытых окнах, но не переустанавливаем Template вручную: это
+        // вызывало артефакты у Thumb Slider при смене обложки.
+        var accentBrush = new SolidColorBrush(accent);
+        accentBrush.Freeze();
+        var contrastBrush = new SolidColorBrush(GetAccentContrastColor(accent));
+        contrastBrush.Freeze();
+
+        void ApplyResources(ResourceDictionary resources)
+        {
+            resources["AccentFillColorDefaultBrush"] = accentBrush;
+            resources["AccentFillColorSecondaryBrush"] = accentBrush;
+            resources["AccentTextFillColorPrimaryBrush"] = accentBrush;
+            resources["TextOnAccentFillColorPrimaryBrush"] = contrastBrush;
+        }
+
+        ApplyResources(Application.Current.Resources);
+        foreach (Window window in Application.Current.Windows.OfType<Window>())
+            ApplyResources(window.Resources);
+    }
+
     public void ApplyAccentColor()
     {
-        if (_settings.AccentColorMode == "System"
-            || (_settings.AccentColorMode == "Cover" && _currentAlbumArt is null))
-        {
-            ApplicationAccentColorManager.ApplySystemAccent();
-            IconResources.AccentContrastBrush = Brushes.White;
-            RefreshAccentDependentIcons();
-            ApplyCoverBaseBackground();
-            return;
-        }
+        RefreshCoverThemeColor();
+        Color appliedAccent;
 
-        if (_settings.AccentColorMode == "Cover" && _currentAlbumArt is not null)
-            _coverAccentColor = ExtractCoverAccentColor(_currentAlbumArt);
-
-        if (_settings.AccentColorMode == "Cover" && _coverAccentColor is not Color)
+        if (_settings.AccentColorMode == "Cover" && _coverAccentColor is Color coverColor)
         {
-            ApplicationAccentColorManager.ApplySystemAccent();
-            IconResources.AccentContrastBrush = Brushes.White;
-            RefreshAccentDependentIcons();
-            ApplyCoverBaseBackground();
-            return;
-        }
-
-        try
-        {
-            var color = _settings.AccentColorMode == "Cover"
-                ? _coverAccentColor!.Value
-                : (Color)ColorConverter.ConvertFromString(_settings.AccentColorHex);
-            ApplicationAccentColorManager.Apply(color,
+            appliedAccent = coverColor;
+            ApplicationAccentColorManager.Apply(appliedAccent,
                 _settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
-            IconResources.AccentContrastBrush = new SolidColorBrush(GetAccentContrastColor(color));
         }
-        catch
+        else if (_settings.AccentColorMode == "Manual")
         {
-            // Некорректный/повреждённый hex (например, вручную подправленный settings.json) —
-            // тихо остаёмся на системном акценте вместо падения.
+            try
+            {
+                appliedAccent = (Color)ColorConverter.ConvertFromString(_settings.AccentColorHex);
+                ApplicationAccentColorManager.Apply(appliedAccent,
+                    _settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
+            }
+            catch
+            {
+                ApplicationAccentColorManager.ApplySystemAccent();
+                appliedAccent = GetResolvedAccentColor();
+            }
+        }
+        else
+        {
             ApplicationAccentColorManager.ApplySystemAccent();
-            IconResources.AccentContrastBrush = Brushes.White;
+            appliedAccent = GetResolvedAccentColor();
         }
 
+        IconResources.AccentContrastBrush = new SolidColorBrush(GetAccentContrastColor(appliedAccent));
+        ApplySelectableControlAccentResources(appliedAccent);
         RefreshAccentDependentIcons();
         ApplyCoverBaseBackground();
     }
 
-    // Для режима "Обложка" добавляем к системному Mica/Acrylic очень прозрачный слой
-    // на основе обложки. Слой намеренно приглушён и полупрозрачен: системные кисти WPF-UI
-    // продолжают обеспечивать базовый контраст, а яркие цвета обложки не превращают текст
-    // и кнопки в нечитаемые элементы.
+    // Вызывается из SettingsWindow отдельно от ApplyAccentColor: окраска основы больше не
+    // зависит от того, выбран ли акцент от обложки.
+    public void ApplyCoverBaseTheme() => ApplyCoverBaseBackground();
+
+    // Добавляет к системному Mica/Acrylic очень прозрачный слой текущей обложки. Эта настройка
+    // независима от AccentColorMode: акцент и основа окна могут использовать разные источники.
     private void ApplyCoverBaseBackground()
     {
-        if (_settings.AccentColorMode != "Cover" || _coverAccentColor is not Color cover)
+        if (!_settings.CoverBaseFromCover || _currentAlbumArt is null)
+        {
+            RootGrid.Background = Brushes.Transparent;
+            return;
+        }
+
+        RefreshCoverThemeColor();
+        if (_coverAccentColor is not Color cover)
         {
             RootGrid.Background = Brushes.Transparent;
             return;
@@ -2946,7 +2977,7 @@ public partial class MainWindow : FluentWindow
             ResetAlbumArtPlaceholder(direction);
         }
 
-        if (_settings.AccentColorMode == "Cover")
+        if (_settings.AccentColorMode == "Cover" || _settings.CoverBaseFromCover)
             ApplyAccentColor();
     }
 
@@ -2992,6 +3023,9 @@ public partial class MainWindow : FluentWindow
             // Файл без тегов, повреждённые метаданные и т.п. — просто показываем плейсхолдер
             ResetAlbumArtPlaceholder(direction);
         }
+
+        if (_settings.AccentColorMode == "Cover" || _settings.CoverBaseFromCover)
+            ApplyAccentColor();
     }
 
     private void ApplyAlbumArtBrush(Brush brush, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
@@ -3014,6 +3048,9 @@ public partial class MainWindow : FluentWindow
         _currentAlbumArtBytes = null;
         _currentAlbumArtMimeType = null;
         _currentAlbumArtPictureType = null;
+
+        if (_settings.AccentColorMode == "Cover" || _settings.CoverBaseFromCover)
+            ApplyAccentColor();
     }
 
     // Смена обложки в духе iTunes: снимок прежней обложки "улетает" в сторону с затуханием,

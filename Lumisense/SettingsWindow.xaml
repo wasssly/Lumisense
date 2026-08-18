@@ -15,6 +15,248 @@
 
     <ui:FluentWindow.Resources>
 
+        <!-- Явные шаблоны контролов выбора. Они читают кисти как DynamicResource, поэтому
+             цвет индикатора обновляется сразу после смены cover-акцента. -->
+        <Style TargetType="CheckBox">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="CheckBox">
+                        <Grid SnapsToDevicePixels="True">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="20" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border x:Name="Box" Width="20" Height="20" CornerRadius="4"
+                                    BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                    Background="Transparent" VerticalAlignment="Center">
+                                <Grid>
+                                    <Border x:Name="AccentFill" CornerRadius="3"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                            Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform ScaleX="0.82" ScaleY="0.82" />
+                                        </Border.RenderTransform>
+                                    </Border>
+                                    <Path x:Name="Mark" Data="M 4,10 L 8,14 L 16,5" StrokeThickness="2"
+                                          Width="12" Height="12" Stretch="Uniform"
+                                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                          Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                          Opacity="0" RenderTransformOrigin="0.5,0.5">
+                                        <Path.RenderTransform>
+                                            <ScaleTransform ScaleX="0.55" ScaleY="0.55" />
+                                        </Path.RenderTransform>
+                                    </Path>
+                                </Grid>
+                            </Border>
+                            <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center"
+                                              RecognizesAccessKey="True" />
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="AccentFill" Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="0:0:0.18"
+                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
+                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
+                                                             To="1" Duration="0:0:0.18"
+                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
+                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
+                                                             To="1" Duration="0:0:0.18"
+                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
+                                            <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="0:0:0.16"
+                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
+                                            <DoubleAnimation Storyboard.TargetName="Mark"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
+                                                             To="1" Duration="0:0:0.16"
+                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
+                                            <DoubleAnimation Storyboard.TargetName="Mark"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
+                                                             To="1" Duration="0:0:0.16"
+                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="AccentFill" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
+                                                             To="0.82" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
+                                                             To="0.82" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="Mark"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
+                                                             To="0.55" Duration="0:0:0.12" />
+                                            <DoubleAnimation Storyboard.TargetName="Mark"
+                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
+                                                             To="0.55" Duration="0:0:0.12" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <!-- Прозрачный Border формирует единую hit-test область. Внутренние
+                             декоративные элементы не перехватывают PointerDown, поэтому клик
+                             по кругу и по подписи гарантированно доходит до RadioButton. -->
+                        <Border Background="Transparent">
+                            <Grid SnapsToDevicePixels="True" IsHitTestVisible="False">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="20" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid Width="20" Height="20" VerticalAlignment="Center">
+                                    <Ellipse x:Name="Ring" StrokeThickness="1"
+                                             Stroke="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                                    <!-- Почти замкнутая дуга: длина штриха равна окружности,
+                                         поэтому сдвиг StrokeDashOffset визуально дорисовывает
+                                         акцентную обводку по кругу. -->
+                                    <Path x:Name="DrawRing" Data="M 10,1 A 9,9 0 1 1 9.99,1"
+                                          Stroke="{DynamicResource AccentFillColorDefaultBrush}"
+                                          StrokeThickness="2" StrokeDashArray="28.3,100"
+                                          StrokeDashOffset="28.3" StrokeStartLineCap="Round"
+                                          StrokeEndLineCap="Round" />
+                                    <Ellipse x:Name="Dot" Width="10" Height="10"
+                                             Fill="{DynamicResource AccentFillColorDefaultBrush}"
+                                             Opacity="0" />
+                                </Grid>
+                                <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <!-- Обводка: акцентный контур дорисовывается по окружности,
+                                 затем появляется центральная точка. -->
+                            <Trigger Property="IsChecked" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <!-- Явно возвращаем непрозрачность после предыдущего
+                                                 снятия выбора, прежде чем начнётся прорисовка. -->
+                                            <DoubleAnimation Storyboard.TargetName="DrawRing" Storyboard.TargetProperty="Opacity"
+                                                             From="1" To="1" Duration="0:0:0.24" />
+                                            <DoubleAnimation Storyboard.TargetName="DrawRing" Storyboard.TargetProperty="StrokeDashOffset"
+                                                             From="28.3" To="0" Duration="0:0:0.24"
+                                                             AccelerationRatio="0.08" DecelerationRatio="0.72" />
+                                            <DoubleAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="Opacity"
+                                                             To="1" Duration="0:0:0.10" BeginTime="0:0:0.13"
+                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="DrawRing" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.14"
+                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
+                                            <DoubleAnimation Storyboard.TargetName="DrawRing" Storyboard.TargetProperty="StrokeDashOffset"
+                                                             To="28.3" Duration="0:0:0.01" BeginTime="0:0:0.14" />
+                                            <DoubleAnimation Storyboard.TargetName="Dot" Storyboard.TargetProperty="Opacity"
+                                                             To="0" Duration="0:0:0.10" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="TransparentSliderRepeatButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Background="Transparent" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="AccentSliderDecreaseRepeatButtonStyle" TargetType="RepeatButton" BasedOn="{StaticResource TransparentSliderRepeatButtonStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border Height="4" CornerRadius="2" Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                VerticalAlignment="Center" />
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="SettingsAccentSliderStyle" TargetType="Slider">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Margin="0,5" SnapsToDevicePixels="True">
+                            <Border Height="4" CornerRadius="2" Background="{DynamicResource ControlFillColorTertiaryBrush}"
+                                    VerticalAlignment="Center" IsHitTestVisible="False" />
+                            <Track x:Name="PART_Track" VerticalAlignment="Center" Orientation="{TemplateBinding Orientation}">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource AccentSliderDecreaseRepeatButtonStyle}"
+                                                  Command="Slider.DecreaseLarge" />
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="14" Height="14">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="{DynamicResource AccentFillColorDefaultBrush}"
+                                                         Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Style="{StaticResource TransparentSliderRepeatButtonStyle}"
+                                                  Command="Slider.IncreaseLarge" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Стиль пунктов панели навигации слева: RadioButton без "кружка", вместо этого
              вся строка (иконка + подпись) подсвечивается фоном, когда пункт выбран. -->
         <Style x:Key="NavItemStyle" TargetType="RadioButton">
@@ -74,15 +316,15 @@
         <Style x:Key="SettingsCardStyle" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
             <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="16" />
-            <Setter Property="Margin" Value="0,0,0,12" />
+            <Setter Property="Padding" Value="16,18" />
+            <Setter Property="Margin" Value="0,0,0,14" />
         </Style>
 
         <!-- Заголовок страницы настроек -->
         <Style x:Key="PageTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="20" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,0,0,14" />
+            <Setter Property="Margin" Value="0,0,0,18" />
         </Style>
 
         <!-- Строка результата поиска настроек: прозрачная кнопка на всю ширину со скруглённой
@@ -290,9 +532,9 @@
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Тема" Margin="0,0,0,8" />
+                                <TextBlock Text="Тема" Margin="0,0,0,10" />
                                 <RadioButton x:Name="ThemeDarkRadio" Content="Тёмная" GroupName="Theme"
-                                             Checked="ThemeRadio_Changed" Margin="0,0,0,8" />
+                                             Checked="ThemeRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="ThemeLightRadio" Content="Светлая" GroupName="Theme"
                                              Checked="ThemeRadio_Changed" />
                             </StackPanel>
@@ -302,9 +544,9 @@
                              готовых hex-цветов; "Свой" открывает стандартный системный ColorDialog. У
                              выбранного сейчас цвета (если это один из пресетов) рамка подсвечена белым —
                              см. RefreshAccentSwatchSelection. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
-                                <TextBlock Text="Акцентный цвет" Margin="0,0,0,8" />
+                                <TextBlock Text="Акцентный цвет" Margin="0,0,0,10" />
                                 <RadioButton x:Name="AccentSystemRadio" Content="Системный (как в Windows)"
                                              GroupName="AccentMode" Checked="AccentModeRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="AccentCoverRadio" Content="От текущей обложки"
@@ -358,24 +600,29 @@
                         </Border>
 
                         <!-- См. AppSettings.WindowBackdropType. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
-                                <TextBlock Text="Основа окна" Margin="0,0,0,8" />
+                                <TextBlock Text="Основа окна" Margin="0,0,0,10" />
                                 <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,8" />
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,4" />
-                                <TextBlock Text="Применяется к главному окну, окну настроек и статистике."
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,10" />
+                                <CheckBox x:Name="CoverBaseFromCoverCheckBox" Content="Цвет основы от текущей обложки"
+                                          Checked="CoverBaseFromCoverCheckBox_Changed"
+                                          Unchecked="CoverBaseFromCoverCheckBox_Changed" Margin="0,0,0,10" />
+                                <TextBlock Text="Этот вариант независим от акцентного цвета: можно включить цвет основы от обложки отдельно или совместить его с любым акцентом."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,4" />
+                                <TextBlock Text="Mica/Acrylic применяется к главному окну, окну настроек и статистике."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
                         </Border>
 
                         <!-- См. AppSettings.AlbumArtTransitionEnabled. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
-                                <TextBlock Text="Анимация смены обложки" Margin="0,0,0,8" />
+                                <TextBlock Text="Анимация смены обложки" Margin="0,0,0,10" />
                                 <RadioButton x:Name="AlbumArtTransitionOffRadio" Content="Без анимации" GroupName="AlbumArtTransition"
-                                             Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,4" />
+                                             Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="AlbumArtTransitionOnRadio" Content="С анимацией" GroupName="AlbumArtTransition"
                                              Checked="AlbumArtTransitionRadio_Changed" />
                                 <TextBlock Text="При переключении трека старая обложка «улетает» в сторону, а новая «влетает» с противоположной — как в iTunes."
@@ -504,17 +751,17 @@
                             <StackPanel>
                                 <CheckBox x:Name="AlwaysOnTopCheckBox" Content="Поверх всех окон"
                                           Checked="AlwaysOnTopCheckBox_Changed" Unchecked="AlwaysOnTopCheckBox_Changed"
-                                          Margin="0,0,0,8" />
+                                          Margin="0,0,0,10" />
                                 <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Сворачивать в трей при закрытии"
                                           Checked="MinimizeToTrayCheckBox_Changed" Unchecked="MinimizeToTrayCheckBox_Changed" />
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
                                 <CheckBox x:Name="LaunchOnStartupCheckBox" Content="Запускать вместе с Windows"
                                           Checked="LaunchOnStartupCheckBox_Changed" Unchecked="LaunchOnStartupCheckBox_Changed"
-                                          Margin="0,0,0,8" />
+                                          Margin="0,0,0,10" />
                                 <CheckBox x:Name="StartHiddenInTrayCheckBox" Content="Запускать свёрнутым в трей"
                                           Checked="StartHiddenInTrayCheckBox_Changed" Unchecked="StartHiddenInTrayCheckBox_Changed" />
                                 <TextBlock Text="Окно плеера не появляется при запуске — сразу только значок в трее. Работает и без автозапуска с Windows: например, вместе с ярлыком в папке автозагрузки, если предпочитаете такой способ."
@@ -531,7 +778,7 @@
                             <StackPanel>
                                 <CheckBox x:Name="RememberVolumeCheckBox" Content="Запоминать громкость между запусками"
                                           Checked="RememberVolumeCheckBox_Changed" Unchecked="RememberVolumeCheckBox_Changed"
-                                          Margin="0,0,0,8" />
+                                          Margin="0,0,0,10" />
                                 <CheckBox x:Name="LogarithmicVolumeCheckBox" Content="Логарифмическая регулировка громкости"
                                           Checked="LogarithmicVolumeCheckBox_Changed" Unchecked="LogarithmicVolumeCheckBox_Changed" />
                                 <TextBlock Text="Ползунок громкости меняет уровень так, как его воспринимает слух: заметный на глаз ход в начале и в конце шкалы звучит одинаково плавно, без резкого скачка на малой громкости."
@@ -543,7 +790,7 @@
                              имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
                              сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
                              это называется в интерфейсе. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
                                 <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
                                           Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
@@ -553,20 +800,20 @@
                         </Border>
 
                         <!-- См. AppSettings.ProgressBarStyle / WaveformView / WaveformGenerator. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
-                                <TextBlock Text="Полоса воспроизведения" Margin="0,0,0,8" />
+                                <TextBlock Text="Полоса воспроизведения" Margin="0,0,0,10" />
                                 <RadioButton x:Name="ProgressBarSliderRadio" Content="Обычная (по умолчанию)"
-                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,8" />
+                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="ProgressBarWaveformRadio" Content="Waveform (форма звука, как в SoundCloud)"
-                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,4" />
+                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,10" />
                                 <TextBlock Text="Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
                         </Border>
 
                         <!-- См. AppSettings.ReplayGainEnabled / ReplayGainReader. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
                                 <CheckBox x:Name="ReplayGainCheckBox" Content="ReplayGain"
                                           Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
@@ -587,7 +834,7 @@
                             <StackPanel>
                                 <CheckBox x:Name="TrackChangeToastCheckBox" Content="Уведомление о смене трека"
                                           Checked="TrackChangeToastCheckBox_Changed" Unchecked="TrackChangeToastCheckBox_Changed"
-                                          Margin="0,0,0,4" />
+                                          Margin="0,0,0,10" />
                                 <TextBlock Text="Маленькая карточка с обложкой и названием в углу экрана — появляется на пару секунд при каждом переключении трека и пропадает сама."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
                             </StackPanel>
@@ -596,16 +843,16 @@
                         <!-- См. AppSettings.TrackChangeToastPosition/TrackChangeToastMonitor/TrackChangeToastWidth.
                              Список мониторов в ToastMonitorCombo заполняется в code-behind (InitializeSettings) —
                              в разметке заранее известен только первый пункт "Автоматически". -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
-                                <TextBlock Text="Расположение уведомления" Margin="0,0,0,8" />
-                                <UniformGrid Columns="3" Margin="0,0,0,14">
+                                <TextBlock Text="Расположение уведомления" Margin="0,0,0,10" />
+                                <UniformGrid Columns="3" Margin="0,0,0,16">
                                     <RadioButton x:Name="ToastPosTopLeftRadio" Content="Сверху слева"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,8" />
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
                                     <RadioButton x:Name="ToastPosTopCenterRadio" Content="Сверху по центру"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,8" />
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
                                     <RadioButton x:Name="ToastPosTopRightRadio" Content="Сверху справа"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,8" />
+                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
                                     <RadioButton x:Name="ToastPosBottomLeftRadio" Content="Снизу слева"
                                                  GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
                                     <RadioButton x:Name="ToastPosBottomCenterRadio" Content="Снизу по центру"
@@ -614,19 +861,22 @@
                                                  GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
                                 </UniformGrid>
 
-                                <TextBlock Text="Размер" Margin="0,0,0,8" />
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,14">
+                                <TextBlock Text="Размер" Margin="0,0,0,10" />
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
                                     <RadioButton x:Name="ToastSizeSmallRadio" Content="Маленький"
-                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" Margin="0,0,16,0" />
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
                                     <RadioButton x:Name="ToastSizeMediumRadio" Content="Средний"
-                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" Margin="0,0,16,0" />
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
                                     <RadioButton x:Name="ToastSizeLargeRadio" Content="Большой"
-                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed" />
+                                                 GroupName="ToastSize" Checked="ToastSizeRadio_Changed"
+                                                 Margin="0" VerticalAlignment="Center" />
                                 </StackPanel>
 
                                 <!-- См. AppSettings.TrackChangeToastWidth — независимо от размера выше,
                                      только ширина карточки (и то, сколько текста влезает в строку). -->
-                                <TextBlock Text="Ширина" Margin="0,0,0,8" />
+                                <TextBlock Text="Ширина" Margin="0,0,0,10" />
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -635,11 +885,12 @@
                                     <TextBlock Grid.Column="1" x:Name="ToastWidthValueText" Text="300 px"
                                                Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ToastWidthSlider" Minimum="220" Maximum="420" Value="300"
+                                <Slider x:Name="ToastWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        Minimum="220" Maximum="420" Value="300"
                                         TickFrequency="10" IsSnapToTickEnabled="True"
-                                        ValueChanged="ToastWidthSlider_ValueChanged" Margin="0,0,0,14" />
+                                        ValueChanged="ToastWidthSlider_ValueChanged" Margin="0,0,0,16" />
 
-                                <TextBlock Text="Монитор" Margin="0,0,0,8" />
+                                <TextBlock Text="Монитор" Margin="0,0,0,10" />
                                 <ComboBox x:Name="ToastMonitorCombo" SelectionChanged="ToastMonitorCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="220" />
                             </StackPanel>
@@ -654,7 +905,7 @@
                             <StackPanel>
                                 <CheckBox x:Name="EqualizerEnabledCheckBox" Content="Включить эквалайзер"
                                           Checked="EqualizerEnabledCheckBox_Changed" Unchecked="EqualizerEnabledCheckBox_Changed"
-                                          Margin="0,0,0,4" />
+                                          Margin="0,0,0,10" />
                                 <TextBlock Text="10 полос графического эквалайзера — регулировки применяются сразу же, без перезапуска трека."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,16" />
 
@@ -768,7 +1019,7 @@
                                 </Grid>
 
                                 <Button x:Name="EqualizerResetButton" Content="Сбросить всё" HorizontalAlignment="Left"
-                                        Margin="0,16,0,0" Click="EqualizerResetButton_Click" />
+                                        Margin="0,14,0,0" Click="EqualizerResetButton_Click" />
                             </StackPanel>
                         </Border>
 
@@ -826,8 +1077,8 @@
                                      ловит мышь, поверх него прозрачный Border обрабатывает клик/перетаскивание
                                      в любой точке трека целиком, без зависимости от того, куда именно попали
                                      (в шарик или в любую другую точку полосы). -->
-                                <Grid Margin="0,0,0,14">
-                                    <Slider x:Name="MiniOpacitySlider" IsHitTestVisible="False"
+                                <Grid Margin="0,0,0,16">
+                                    <Slider x:Name="MiniOpacitySlider" Style="{StaticResource SettingsAccentSliderStyle}" IsHitTestVisible="False"
                                             Minimum="0.3" Maximum="1.0" Value="1.0"
                                             ValueChanged="MiniOpacitySlider_ValueChanged" VerticalAlignment="Center" />
 
@@ -839,10 +1090,10 @@
 
                                 <CheckBox x:Name="MiniAlwaysOnTopCheckBox" Content="Поверх всех окон (мини-плеер)"
                                           Checked="MiniAlwaysOnTopCheckBox_Changed" Unchecked="MiniAlwaysOnTopCheckBox_Changed"
-                                          Margin="0,0,0,8" />
+                                          Margin="0,0,0,10" />
                                 <CheckBox x:Name="MiniPinnedCheckBox" Content="Закрепить положение (запретить перетаскивание)"
                                           Checked="MiniPinnedCheckBox_Changed" Unchecked="MiniPinnedCheckBox_Changed"
-                                          Margin="0,0,0,8" />
+                                          Margin="0,0,0,10" />
                                 <!-- См. AppSettings.MiniPlayerSnapToEdges / WindowSnapHelper. Действует, только
                                      пока положение НЕ закреплено чекбоксом выше — если перетаскивания нет
                                      вообще, прилипать уже нечему. -->
@@ -855,13 +1106,13 @@
                              под одну "вторую" кнопку рядом с play/pause и next/prev — выбираем здесь,
                              какую из трёх функций она выполняет (см. AppSettings.MiniPlayerSecondaryButton
                              и MiniPlayerWindow.UpdateSecondaryButton). -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
-                                <TextBlock Text="Вторая кнопка в мини-плеере" Margin="0,0,0,8" />
+                                <TextBlock Text="Вторая кнопка в мини-плеере" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniSecondaryRepeatRadio" Content="Повтор" GroupName="MiniSecondaryButton"
-                                             Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,8" />
+                                             Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniSecondaryShuffleRadio" Content="Перемешать" GroupName="MiniSecondaryButton"
-                                             Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,8" />
+                                             Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniSecondaryFavoriteRadio" Content="Избранное" GroupName="MiniSecondaryButton"
                                              Checked="MiniSecondaryButtonRadio_Changed" />
                             </StackPanel>
@@ -869,13 +1120,13 @@
 
                         <!-- См. AppSettings.MiniPlayerButtonsLayout и MiniPlayerWindow.ApplyButtonsLayoutMode
                              за подробностями, чем отличаются режимы. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
-                                <TextBlock Text="Расположение кнопок управления" Margin="0,0,0,8" />
+                                <TextBlock Text="Расположение кнопок управления" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniButtonsBelowRadio"
                                              Content="Снизу (окно немного подрастает при наведении)"
                                              GroupName="MiniButtonsLayout" Checked="MiniButtonsLayoutRadio_Changed"
-                                             Margin="0,0,0,8" />
+                                             Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniButtonsOverlayRadio"
                                              Content="На месте обложки и названия (размер окна не меняется)"
                                              GroupName="MiniButtonsLayout" Checked="MiniButtonsLayoutRadio_Changed" />
@@ -883,7 +1134,7 @@
                         </Border>
 
                         <!-- См. AppSettings.MiniPlayerShowProgress и MiniPlayerWindow.ApplyProgressBarVisibility. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
                                 <CheckBox x:Name="MiniShowProgressCheckBox" Content="Показывать полосу прогресса"
                                           Checked="MiniShowProgressCheckBox_Changed" Unchecked="MiniShowProgressCheckBox_Changed" />
@@ -895,13 +1146,13 @@
                         <!-- См. AppSettings.MiniPlayerInfoMode и MiniPlayerWindow.UpdateSecondaryLine.
                              Название трека видно всегда, вне зависимости от этого выбора — тут только
                              про вторую строку под ним. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>
-                                <TextBlock Text="Вторая строка в мини-плеере" Margin="0,0,0,8" />
+                                <TextBlock Text="Вторая строка в мини-плеере" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniInfoArtistRadio" Content="Исполнитель" GroupName="MiniInfoMode"
-                                             Checked="MiniInfoModeRadio_Changed" Margin="0,0,0,8" />
+                                             Checked="MiniInfoModeRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniInfoOnlyTitleRadio" Content="Ничего (только название трека)"
-                                             GroupName="MiniInfoMode" Checked="MiniInfoModeRadio_Changed" Margin="0,0,0,8" />
+                                             GroupName="MiniInfoMode" Checked="MiniInfoModeRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniInfoRemainingRadio" Content="Оставшееся время трека"
                                              GroupName="MiniInfoMode" Checked="MiniInfoModeRadio_Changed" />
                             </StackPanel>
@@ -915,9 +1166,9 @@
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Работают из любого окна, даже когда плеер свёрнут. Нажмите на комбинацию и введите новую — Esc отменяет запись."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,14" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,16" />
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -934,7 +1185,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -951,7 +1202,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -968,7 +1219,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -985,7 +1236,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -1002,7 +1253,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -1019,7 +1270,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -1036,7 +1287,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -1070,7 +1321,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -1087,7 +1338,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,8">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -1137,7 +1388,7 @@
 
                         <ui:Button x:Name="ExportProfileButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                   Padding="16,14" Margin="0,0,0,8" Click="ExportProfileButton_Click">
+                                   Padding="16,14" Margin="0,0,0,10" Click="ExportProfileButton_Click">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -1211,7 +1462,7 @@
 
                         <ui:Button x:Name="ResetAllDataButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                   Padding="16,14" Margin="0,12,0,0" Click="ResetAllDataButton_Click">
+                                   Padding="16,14" Margin="0,14,0,0" Click="ResetAllDataButton_Click">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -1272,16 +1523,16 @@
                                            TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
 
                                 <RadioButton x:Name="UpdateSourceGitHubRadio" GroupName="UpdateSource" Tag="GitHub"
-                                             Content="GitHub (напрямую)" Margin="0,0,0,8"
+                                             Content="GitHub (напрямую)" Margin="0,0,0,10"
                                              Checked="UpdateSourceRadio_Checked" />
                                 <RadioButton x:Name="UpdateSourceGhProxyRadio" GroupName="UpdateSource" Tag="GhProxy"
-                                             Content="gh-proxy.org (зеркало)" Margin="0,0,0,8"
+                                             Content="gh-proxy.org (зеркало)" Margin="0,0,0,10"
                                              Checked="UpdateSourceRadio_Checked" />
                                 <RadioButton x:Name="UpdateSourceGhProxyV4Radio" GroupName="UpdateSource" Tag="GhProxyV4"
-                                             Content="v4.gh-proxy.org (зеркало, только IPv4)" Margin="0,0,0,8"
+                                             Content="v4.gh-proxy.org (зеркало, только IPv4)" Margin="0,0,0,10"
                                              Checked="UpdateSourceRadio_Checked" />
                                 <RadioButton x:Name="UpdateSourceGhProxyV6Radio" GroupName="UpdateSource" Tag="GhProxyV6"
-                                             Content="v6.gh-proxy.org (зеркало, только IPv6)" Margin="0,0,0,8"
+                                             Content="v6.gh-proxy.org (зеркало, только IPv6)" Margin="0,0,0,10"
                                              Checked="UpdateSourceRadio_Checked" />
                                 <RadioButton x:Name="UpdateSourceGhProxyCdnRadio" GroupName="UpdateSource" Tag="GhProxyCdn"
                                              Content="cdn.gh-proxy.org (зеркало, через CDN)"
@@ -1297,7 +1548,7 @@
                              при ручном раскрытии, но раз аккордеон открыт сразу, загрузка
                              стартует сразу при открытии страницы "Обновления", а не по клику. -->
                         <Expander x:Name="AllVersionsExpanderControl" Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch"
-                                  Margin="0,12,0,0" IsExpanded="True" Expanded="AllVersionsExpander_Expanded">
+                                  Margin="0,14,0,0" IsExpanded="True" Expanded="AllVersionsExpander_Expanded">
                             <Expander.Header>
                                 <TextBlock Text="Все версии" FontSize="14" FontWeight="SemiBold" />
                             </Expander.Header>
@@ -1369,60 +1620,10 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Логи — см. Logger.cs. Диагностика на случай сбоев/падений: файл на
-                             сессию в %AppData%\Lumisense\logs, кнопка ниже просто открывает эту
-                             папку в Проводнике, чтобы её было легко найти и приложить куда-нибудь
-                             при сообщении о проблеме. -->
-                        <ui:Button x:Name="OpenLogsButton" Appearance="Secondary"
-                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                   Padding="16,14" Margin="0,12,0,0" Click="OpenLogsButton_Click">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
-                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
-                                        Margin="0,0,12,0">
-                                    <local:SvgPathIcon Icon="IconWrench" Size="16"
-                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Открыть папку с логами" FontWeight="SemiBold" />
-                                    <TextBlock Text="Пригодится, если плеер упал или повёл себя странно" FontSize="12" Opacity="0.6" />
-                                </StackPanel>
-                            </Grid>
-                        </ui:Button>
-
-                        <ui:Button x:Name="OpenRepositoryButton" Appearance="Secondary"
-                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                   Padding="16,14" Margin="0,12,0,0" Click="OpenRepositoryButton_Click">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-
-                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
-                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
-                                        Margin="0,0,12,0">
-                                    <local:SvgPathIcon Icon="IconGitHub" Size="16"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Открытый исходный код" FontWeight="SemiBold" />
-                                    <TextBlock Text="Открыть репозиторий Lumisense на GitHub" FontSize="12" Opacity="0.6" />
-                                </StackPanel>
-                            </Grid>
-                        </ui:Button>
-
                         <!-- 2. Разработчик — компактная карточка (аватар, ник, иконки-ссылки),
                              раньше был аккордеон с двумя большими кнопками-строками; см.
                              SettingsWindow.LoadDeveloperAvatar/DeveloperGitHubButton_Click. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,12,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -1472,6 +1673,56 @@
                                 </StackPanel>
                             </Grid>
                         </Border>
+
+                        <!-- Логи — см. Logger.cs. Диагностика на случай сбоев/падений: файл на
+                             сессию в %AppData%\Lumisense\logs, кнопка ниже просто открывает эту
+                             папку в Проводнике, чтобы её было легко найти и приложить куда-нибудь
+                             при сообщении о проблеме. -->
+                        <ui:Button x:Name="OpenLogsButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Margin="0,14,0,0" Click="OpenLogsButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconWrench" Size="16"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Открыть папку с логами" FontWeight="SemiBold" />
+                                    <TextBlock Text="Пригодится, если плеер упал или повёл себя странно" FontSize="12" Opacity="0.6" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
+
+                        <ui:Button x:Name="OpenRepositoryButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Margin="0,14,0,0" Click="OpenRepositoryButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconGitHub" Size="16"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Открытый исходный код" FontWeight="SemiBold" />
+                                    <TextBlock Text="Открыть репозиторий Lumisense на GitHub" FontSize="12" Opacity="0.6" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
 
                         <!-- 3. "Список изменений" — в самом низу страницы -->
                         <TextBlock Text="Список изменений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />

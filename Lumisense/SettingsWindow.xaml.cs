@@ -114,6 +114,7 @@ public partial class SettingsWindow : FluentWindow
 
         BackdropAcrylicRadio.IsChecked = _settings.WindowBackdropType == "Acrylic";
         BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault();
+        CoverBaseFromCoverCheckBox.IsChecked = _settings.CoverBaseFromCover;
 
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
@@ -460,6 +461,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
+        Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд fly transition album art cover");
         Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
@@ -681,15 +683,21 @@ public partial class SettingsWindow : FluentWindow
         public nint Handle { get; }
     }
 
-    private void WindowBackdropRadio_Changed(object sender, RoutedEventArgs e)
+        private void WindowBackdropRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
-
         _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? "Acrylic" : "Mica";
-
         _owner.ApplyWindowBackdrop();
         ApplyWindowBackdrop(_settings); // то же самое — и у этого окна настроек тоже
     }
+
+    private void CoverBaseFromCoverCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _settings.CoverBaseFromCover = CoverBaseFromCoverCheckBox.IsChecked == true;
+        _owner.ApplyCoverBaseTheme();
+    }
+
 
     private void AlwaysOnTopCheckBox_Changed(object sender, RoutedEventArgs e)
     {
