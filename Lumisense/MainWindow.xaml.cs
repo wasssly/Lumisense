@@ -1152,21 +1152,22 @@ public partial class MainWindow : FluentWindow
                 Owner = this
             };
 
-            // WindowState.Maximized здесь намеренно не используется: у окон с Mica-фоном и
-            // ExtendsContentIntoTitleBar (как у всех FluentWindow этого проекта) нативный
-            // Maximize через WindowChrome нередко даёт лишние отступы по краям — окно выглядит
-            // "почти" на весь экран, но не встык с его границами. Вместо этого явно выставляем
-            // координаты и размер под рабочую область (без учёта панели задач) того монитора,
-            // на котором сейчас находится главное окно — получается гарантированно ровно
-            // на весь экран, независимо от особенностей рендеринга Mica-хрома.
+            // Screen.WorkingArea возвращает физические пиксели, а Left/Top/Width/Height
+            // WPF-окна задаются в DIP. Прямое присваивание давало окно больше рабочей области
+            // на мониторах с масштабированием 125/150/200%. Переводим обе координаты и размер
+            // через текущий DPI главного окна и открываем CoverArtWindow ровно по рабочей области.
             var screen = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(this).Handle);
             var workArea = screen.WorkingArea;
+            var fromDevice = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice
+                             ?? Matrix.Identity;
+            var workTopLeft = fromDevice.Transform(new Point(workArea.Left, workArea.Top));
 
+            _coverArtWindow.WindowState = WindowState.Normal;
             _coverArtWindow.WindowStartupLocation = WindowStartupLocation.Manual;
-            _coverArtWindow.Left = workArea.Left;
-            _coverArtWindow.Top = workArea.Top;
-            _coverArtWindow.Width = workArea.Width;
-            _coverArtWindow.Height = workArea.Height;
+            _coverArtWindow.Left = workTopLeft.X;
+            _coverArtWindow.Top = workTopLeft.Y;
+            _coverArtWindow.Width = Math.Max(_coverArtWindow.MinWidth, workArea.Width * fromDevice.M11);
+            _coverArtWindow.Height = Math.Max(_coverArtWindow.MinHeight, workArea.Height * fromDevice.M22);
 
             _coverArtWindow.Closed += (_, _) => _coverArtWindow = null;
             _coverArtWindow.Show();

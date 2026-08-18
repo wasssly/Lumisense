@@ -1356,6 +1356,8 @@ public partial class SettingsWindow : FluentWindow
     // не критично, просто ничего не откроется.
     private void DeveloperGitHubButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly");
 
+    private void OpenRepositoryButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly/Lumisense");
+
     private void DeveloperTelegramButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://t.me/dontwritetoblame");
 
     private void OpenLogsButton_Click(object sender, RoutedEventArgs e) => Logger.OpenLogsFolder();
