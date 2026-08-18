@@ -87,7 +87,6 @@ public class AppSettings
     // персонализации Windows (тот самый цвет, которым подсвечены системные "Пуск"/плитки).
     // "Manual" — используем AccentColorHex, независимо от того, выбран ли он одним из
     // пресетов в настройках или через палитру: результат в обоих случаях — обычный hex-цвет.
-    // "System" — акцент Windows, "Manual" — AccentColorHex, "Cover" — цвет от текущей обложки.
     public string AccentColorMode { get; set; } = "System";
     public string AccentColorHex { get; set; } = "#0078D4";
 
@@ -119,9 +118,6 @@ public class AppSettings
     // ничего не меняется, но включать что-либо, способное менять громкость воспроизведения без
     // явного действия пользователя, по умолчанию — не лучшая идея, пусть будет осознанным выбором.
     public bool ReplayGainEnabled { get; set; }
-
-    // Темп воспроизведения без изменения высоты тона. 1.0 — обычная скорость.
-    public double PlaybackSpeed { get; set; } = 1.0;
 
     public bool MinimizeToTrayOnClose { get; set; } = true; // Сворачивать в трей вместо закрытия
 

@@ -109,14 +109,6 @@ public static class FavoritesManager
     // неизменным и восстанавливаемым, если пользователь всё раскрепит обратно.
     public static List<string> GetOrder() => new(_order);
 
-    public static void Reset()
-    {
-        _order.Clear();
-        _lookup.Clear();
-        _pinned.Clear();
-        FavoritesChangeNotifier.Instance.Bump();
-    }
-
     // Список для показа в виртуальном плейлисте "Избранное" — закреплённые треки первыми (в
     // своём собственном порядке добавления среди закреплённых), затем остальные избранные —
     // тоже в порядке добавления, как и раньше. OrderByDescending в LINQ — стабильная сортировка,
