@@ -396,7 +396,7 @@
         </Style>
     </Window.Resources>
 
-    <Grid x:Name="RootGrid">
+    <Grid x:Name="RootGrid" Background="Transparent">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />   <!-- Заголовок -->
             <RowDefinition Height="*" />      <!-- Тело: центрируется и масштабируется в полноэкранном режиме -->
@@ -466,6 +466,7 @@
                     <RowDefinition Height="Auto" />   <!-- Обложка / инфо о треке -->
                     <RowDefinition Height="Auto" />   <!-- Прогресс и время -->
                     <RowDefinition Height="Auto" />   <!-- Кнопки управления -->
+                    <RowDefinition Height="Auto" />   <!-- Скорость -->
                     <RowDefinition Height="Auto" />   <!-- Громкость -->
                     <RowDefinition Height="Auto" />   <!-- Панель плейлиста: заголовок + кнопки добавления -->
                     <RowDefinition Height="*" />      <!-- Плейлист (тянется, не вылезает за края) -->
@@ -643,8 +644,32 @@
             </ui:Button>
         </StackPanel>
 
+        <!-- Скорость воспроизведения: SoundTouch меняет темп без изменения высоты тона. -->
+        <Grid x:Name="PlaybackSpeedRow" Grid.Row="4" Margin="24,0,24,6">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock Text="Скорость" Grid.Column="0" FontSize="11" Opacity="0.6"
+                       VerticalAlignment="Center" Margin="0,0,10,0" />
+            <Grid Grid.Column="1">
+                <Slider x:Name="PlaybackSpeedSlider" IsHitTestVisible="False"
+                        Minimum="0.5" Maximum="2.0" Value="1.0"
+                        TickFrequency="0.05" IsSnapToTickEnabled="True"
+                        ValueChanged="PlaybackSpeedSlider_ValueChanged" VerticalAlignment="Center" />
+                <Border Background="Transparent" Height="24" VerticalAlignment="Center"
+                        MouseLeftButtonDown="PlaybackSpeedOverlay_MouseLeftButtonDown"
+                        MouseMove="PlaybackSpeedOverlay_MouseMove"
+                        MouseLeftButtonUp="PlaybackSpeedOverlay_MouseLeftButtonUp" />
+            </Grid>
+            <TextBlock x:Name="PlaybackSpeedValueText" Grid.Column="2" Text="1.00×"
+                       FontSize="11" Opacity="0.6" Width="38" Margin="8,0,0,0"
+                       VerticalAlignment="Center" HorizontalAlignment="Right" />
+        </Grid>
+
         <!-- Громкость -->
-        <Grid x:Name="VolumeRow" Grid.Row="4" Margin="24,0,24,10" MouseWheel="VolumeRow_MouseWheel">
+        <Grid x:Name="VolumeRow" Grid.Row="5" Margin="24,0,24,10" MouseWheel="VolumeRow_MouseWheel">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -676,7 +701,7 @@
         </Grid>
 
         <!-- Панель плейлиста: заголовок + переключатель видимости + кнопки добавления -->
-        <Grid x:Name="PlaylistHeaderRow" Grid.Row="5" Margin="16,4,16,6">
+        <Grid x:Name="PlaylistHeaderRow" Grid.Row="6" Margin="16,4,16,6">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -774,7 +799,7 @@
              или выключить чекбоксом — выключенные пропускаются при воспроизведении,
              но остаются видны в списке (полупрозрачные). Клик по шеврону сворачивает/
              разворачивает список треков внутри группы. -->
-        <Border x:Name="PlaylistBorder" Grid.Row="6" Margin="16,0,16,16" CornerRadius="10"
+        <Border x:Name="PlaylistBorder" Grid.Row="7" Margin="16,0,16,16" CornerRadius="10"
                 Background="{DynamicResource ControlFillColorDefaultBrush}">
             <Grid>
                 <Grid.RowDefinitions>

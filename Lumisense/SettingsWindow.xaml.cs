@@ -106,7 +106,9 @@ public partial class SettingsWindow : FluentWindow
         ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault();
 
         AccentManualRadio.IsChecked = _settings.AccentColorMode == "Manual";
-        AccentSystemRadio.IsChecked = !AccentManualRadio.IsChecked.GetValueOrDefault();
+        AccentCoverRadio.IsChecked = _settings.AccentColorMode == "Cover";
+        AccentSystemRadio.IsChecked = !AccentManualRadio.IsChecked.GetValueOrDefault()
+                                      && !AccentCoverRadio.IsChecked.GetValueOrDefault();
         AccentSwatchesPanel.Visibility = AccentManualRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         RefreshAccentSwatchSelection();
 
@@ -603,7 +605,9 @@ public partial class SettingsWindow : FluentWindow
 
         if (_isInitializing) return;
 
-        _settings.AccentColorMode = AccentManualRadio.IsChecked == true ? "Manual" : "System";
+        _settings.AccentColorMode = AccentManualRadio.IsChecked == true
+            ? "Manual"
+            : AccentCoverRadio.IsChecked == true ? "Cover" : "System";
         _owner.ApplyAccentColor();
     }
 
@@ -1263,6 +1267,27 @@ public partial class SettingsWindow : FluentWindow
             "Плеер сброшен к исходным настройкам.\n\nЧасть из них (хоткеи, эквалайзер, поведение трея и мини-плеера, размер и положение окна) применится полностью после перезапуска плеера.",
             "Сброс завершён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
 
+        Close();
+        _owner.ShowSettingsWindow("Profile");
+    }
+
+    private void ResetAllDataButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = System.Windows.MessageBox.Show(this,
+            "Будут удалены настройки, сохранённые плейлисты, избранное, история прослушиваний, статистика и пресеты эквалайзера.\n\n" +
+            "Аудиофайлы на диске не удаляются. Продолжить?",
+            "Полный сброс данных", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        var secondConfirm = System.Windows.MessageBox.Show(this,
+            "Это действие нельзя отменить. Выполнить полный сброс сейчас?",
+            "Подтвердите полный сброс", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (secondConfirm != System.Windows.MessageBoxResult.Yes) return;
+
+        _owner.ResetAllUserData();
+        System.Windows.MessageBox.Show(this,
+            "Данные очищены. Для полного применения стандартных настроек перезапустите Lumisense.",
+            "Сброс завершён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         Close();
         _owner.ShowSettingsWindow("Profile");
     }
