@@ -80,7 +80,9 @@ public static class LumiProfileIO
     {
         if ((settings.AccentColorHex?.Length ?? 0) > 32 || (settings.WindowBackdropType?.Length ?? 0) > 32 ||
             (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
-            (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32)
+            (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32 ||
+            (settings.MiniPlayerArtworkProgressColorMode?.Length ?? 0) > 32 ||
+            (settings.MiniPlayerArtworkProgressColorHex?.Length ?? 0) > 32)
             return false;
 
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
@@ -148,6 +150,9 @@ public static class LumiProfileIO
         target.TrackChangeToastWidth = source.TrackChangeToastWidth;
         target.MiniPlayerButtonsLayout = source.MiniPlayerButtonsLayout;
         target.MiniPlayerShowProgress = source.MiniPlayerShowProgress;
+        target.MiniPlayerShowArtworkProgress = source.MiniPlayerShowArtworkProgress;
+        target.MiniPlayerArtworkProgressColorMode = source.MiniPlayerArtworkProgressColorMode;
+        target.MiniPlayerArtworkProgressColorHex = source.MiniPlayerArtworkProgressColorHex;
         target.MiniPlayerLeft = source.MiniPlayerLeft;
         target.MiniPlayerTop = source.MiniPlayerTop;
         target.SettingsWindowLeft = source.SettingsWindowLeft;

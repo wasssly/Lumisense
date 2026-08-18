@@ -247,6 +247,17 @@ public class AppSettings
     // поведение). См. MiniPlayerWindow.ApplyProgressBarVisibility.
     public bool MiniPlayerShowProgress { get; set; } = true;
 
+    // Показывать ли акцентный прогресс вокруг обложки в мини-плеере. Независим от обычной
+    // горизонтальной полосы: можно оставить один из индикаторов или включить оба.
+    // По умолчанию выключен, чтобы не менять привычный вид уже существующих мини-плееров.
+    public bool MiniPlayerShowArtworkProgress { get; set; } = false;
+
+    // Источник цвета контура прогресса обложки: "Accent" — текущий акцент из раздела
+    // «Оформление», "Fixed" — отдельный цвет из MiniPlayerArtworkProgressColorHex.
+    // Accent — безопасный дефолт и сохраняет поведение первой версии функции.
+    public string MiniPlayerArtworkProgressColorMode { get; set; } = "Accent";
+    public string MiniPlayerArtworkProgressColorHex { get; set; } = "#0078D4";
+
     // Место на экране, куда пользователь перетащил мини-плеер в последний раз.
     // null означает "ещё ни разу не задавалось" — тогда используется положение по умолчанию.
     public double? MiniPlayerLeft { get; set; }

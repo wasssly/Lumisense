@@ -173,12 +173,24 @@
             <StackPanel x:Name="HeaderPanel" Grid.Row="0" Orientation="Horizontal" Margin="14,10,14,2"
                         Background="Transparent"
                         MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
-                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
-                    <local:SvgPathIcon x:Name="ArtIcon" Icon="IconMusicNote" Size="15"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
-                </Border>
+                <!-- Индикатор прогресса не влияет на размер или перетаскивание заголовка:
+                     это только визуальный слой поверх обложки. Его скруглённый контур
+                     повторяет обложку 42×42 с CornerRadius=8. -->
+                <Grid Width="42" Height="42">
+                    <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
+                            Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                        <local:SvgPathIcon x:Name="ArtIcon" Icon="IconMusicNote" Size="15"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </Border>
+                    <Border x:Name="ArtProgressTrack" Width="42" Height="42" CornerRadius="8"
+                            BorderThickness="2" BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                            Visibility="Collapsed" IsHitTestVisible="False" />
+                    <Path x:Name="ArtProgressOutline" StrokeThickness="2"
+                          Stroke="{DynamicResource AccentFillColorDefaultBrush}"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          Visibility="Collapsed" IsHitTestVisible="False" />
+                </Grid>
 
                 <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
                     <!-- Ширина 140 подобрана под фактически доступное место: 220 (окно) минус

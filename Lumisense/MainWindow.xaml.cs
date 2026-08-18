@@ -1136,6 +1136,7 @@ public partial class MainWindow : FluentWindow
         IconResources.AccentContrastBrush = new SolidColorBrush(GetAccentContrastColor(appliedAccent));
         ApplySelectableControlAccentResources(appliedAccent);
         RefreshAccentDependentIcons();
+        _miniPlayerWindow?.ApplyArtworkProgressColor();
         ApplyCoverBaseBackground();
     }
 
@@ -3895,6 +3896,20 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.ApplyProgressBarVisibility();
     }
 
+    // Аналог ApplyMiniPlayerProgressBarVisibilityLive для настройки "прогресс вокруг
+    // обложки" (см. AppSettings.MiniPlayerShowArtworkProgress).
+    public void ApplyMiniPlayerArtworkProgressVisibilityLive()
+    {
+        _miniPlayerWindow?.ApplyArtworkProgressVisibility();
+    }
+
+    // Применяет выбранный источник цвета (акцент оформления или фиксированный цвет) к уже
+    // открытому мини-плееру без необходимости переоткрывать его.
+    public void ApplyMiniPlayerArtworkProgressColorLive()
+    {
+        _miniPlayerWindow?.ApplyArtworkProgressColor();
+    }
+
     // Аналог ApplyMiniPlayerSecondaryButtonLive для настройки "что показывать во второй
     // строке" (исполнитель / ничего / оставшееся время, см. AppSettings.MiniPlayerInfoMode).
     public void ApplyMiniPlayerInfoModeLive()
@@ -4669,6 +4684,8 @@ public partial class MainWindow : FluentWindow
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();
+        _miniPlayerWindow?.ApplyArtworkProgressVisibility();
+        _miniPlayerWindow?.ApplyArtworkProgressColor();
         ApplyPlaybackRateLive(_settings.PlaybackSpeed);
         ApplyPlaybackPitchLive(_settings.PlaybackPitchSemitones);
     }

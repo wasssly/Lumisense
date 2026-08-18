@@ -1140,6 +1140,64 @@
                                           Checked="MiniShowProgressCheckBox_Changed" Unchecked="MiniShowProgressCheckBox_Changed" />
                                 <TextBlock Text="Окно мини-плеера становится немного компактнее, если полоса не нужна. Перемотка кликом по обложке/названию по-прежнему недоступна — только сама полоса."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                <CheckBox x:Name="MiniShowArtworkProgressCheckBox" Content="Показывать прогресс вокруг обложки"
+                                          Checked="MiniShowArtworkProgressCheckBox_Changed"
+                                          Unchecked="MiniShowArtworkProgressCheckBox_Changed"
+                                          Margin="0,14,0,0" />
+                                <TextBlock Text="Тонкий акцентный контур повторяет скруглённую форму обложки и показывает прогресс текущего трека. Его можно включить отдельно от обычной полосы прогресса."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+
+                                <TextBlock Text="Цвет контура" Margin="0,18,0,10" />
+                                <RadioButton x:Name="MiniArtworkProgressAccentRadio"
+                                             Content="Акцент из вкладки «Оформление»"
+                                             GroupName="MiniArtworkProgressColorMode"
+                                             Checked="MiniArtworkProgressColorModeRadio_Changed" />
+                                <RadioButton x:Name="MiniArtworkProgressFixedRadio" Content="Фиксированный цвет"
+                                             GroupName="MiniArtworkProgressColorMode"
+                                             Checked="MiniArtworkProgressColorModeRadio_Changed" />
+
+                                <WrapPanel x:Name="MiniArtworkProgressColorSwatchesPanel" Margin="26,0,0,0">
+                                    <Border x:Name="MiniArtworkProgressColorSwatch0" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#0078D4" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="MiniArtworkProgressColorSwatch1" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#8764B8" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="MiniArtworkProgressColorSwatch2" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#E3008C" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="MiniArtworkProgressColorSwatch3" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#E81123" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="MiniArtworkProgressColorSwatch4" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#FF8C00" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="MiniArtworkProgressColorSwatch5" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#FFB900" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="MiniArtworkProgressColorSwatch6" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#107C10" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
+                                    <Border x:Name="MiniArtworkProgressColorSwatch7" Width="26" Height="26" CornerRadius="6"
+                                            Margin="0,0,8,8" Background="#00B7C3" BorderThickness="2"
+                                            BorderBrush="Transparent" Cursor="Hand"
+                                            MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
+
+                                    <ui:Button x:Name="MiniArtworkProgressColorCustomButton" Width="26" Height="26" Padding="0"
+                                               Margin="0,0,8,8" Appearance="Secondary" ToolTip="Свой цвет через палитру"
+                                               Click="MiniArtworkProgressColorCustomButton_Click">
+                                        <ui:Button.Icon>
+                                            <local:SvgPathIcon Icon="IconEdit" Size="12" />
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                </WrapPanel>
                             </StackPanel>
                         </Border>
 

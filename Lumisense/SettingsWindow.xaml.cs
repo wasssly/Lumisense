@@ -141,6 +141,12 @@ public partial class SettingsWindow : FluentWindow
         MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
         MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
         MiniShowProgressCheckBox.IsChecked = _settings.MiniPlayerShowProgress;
+        MiniShowArtworkProgressCheckBox.IsChecked = _settings.MiniPlayerShowArtworkProgress;
+        MiniArtworkProgressFixedRadio.IsChecked = _settings.MiniPlayerArtworkProgressColorMode == "Fixed";
+        MiniArtworkProgressAccentRadio.IsChecked = !MiniArtworkProgressFixedRadio.IsChecked.GetValueOrDefault();
+        MiniArtworkProgressColorSwatchesPanel.Visibility = MiniArtworkProgressFixedRadio.IsChecked == true
+            ? Visibility.Visible : Visibility.Collapsed;
+        RefreshMiniArtworkProgressColorSwatchSelection();
         MiniInfoOnlyTitleRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleOnly";
         MiniInfoRemainingRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleRemaining";
         MiniInfoArtistRadio.IsChecked = !MiniInfoOnlyTitleRadio.IsChecked.GetValueOrDefault()
@@ -477,6 +483,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Прилипание к краям экрана (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniSnapToEdgesCheckBox, "прилипание магнит края экран snap edge мини плеер");
         Add("Вторая кнопка в мини-плеере", "Мини-плеер", "MiniPlayer", MiniSecondaryRepeatRadio, "вторая кнопка повтор перемешать избранное сердечко favorite shuffle repeat мини плеер");
         Add("Показывать полосу прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowProgressCheckBox, "полоса прогресс progress bar скрыть мини плеер");
+        Add("Прогресс вокруг обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowArtworkProgressCheckBox, "контур скруглённый квадрат прогресс обложка арт мини плеер artwork outline");
+        Add("Цвет контура прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkProgressAccentRadio, "акцент фиксированный цвет палитра контур прогресс обложка мини плеер artwork outline color");
         Add("Пуск / пауза", "Горячие клавиши", "Hotkeys", HotkeyPlayPauseButton, "play pause горячая клавиша");
         Add("Следующий трек", "Горячие клавиши", "Hotkeys", HotkeyNextButton, "next горячая клавиша");
         Add("Предыдущий трек", "Горячие клавиши", "Hotkeys", HotkeyPreviousButton, "previous горячая клавиша");
@@ -940,6 +948,81 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.MiniPlayerShowProgress = MiniShowProgressCheckBox.IsChecked == true;
         _owner.ApplyMiniPlayerProgressBarVisibilityLive();
+    }
+
+    private void MiniShowArtworkProgressCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerShowArtworkProgress = MiniShowArtworkProgressCheckBox.IsChecked == true;
+        _owner.ApplyMiniPlayerArtworkProgressVisibilityLive();
+    }
+
+    private void MiniArtworkProgressColorModeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        bool fixedColor = MiniArtworkProgressFixedRadio.IsChecked == true;
+        MiniArtworkProgressColorSwatchesPanel.Visibility = fixedColor ? Visibility.Visible : Visibility.Collapsed;
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerArtworkProgressColorMode = fixedColor ? "Fixed" : "Accent";
+        _owner.ApplyMiniPlayerArtworkProgressColorLive();
+    }
+
+    private void MiniArtworkProgressColorSwatch_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Border { Background: SolidColorBrush brush }) return;
+
+        var color = brush.Color;
+        ApplyMiniArtworkProgressColorHex($"#{color.R:X2}{color.G:X2}{color.B:X2}");
+    }
+
+    private void MiniArtworkProgressColorCustomButton_Click(object sender, RoutedEventArgs e)
+    {
+        System.Drawing.Color initialColor;
+        try
+        {
+            initialColor = System.Drawing.ColorTranslator.FromHtml(_settings.MiniPlayerArtworkProgressColorHex);
+        }
+        catch
+        {
+            initialColor = System.Drawing.Color.FromArgb(0x00, 0x78, 0xD4);
+        }
+
+        using var dialog = new System.Windows.Forms.ColorDialog { Color = initialColor, FullOpen = true };
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (dialog.ShowDialog(new Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
+
+        var color = dialog.Color;
+        ApplyMiniArtworkProgressColorHex($"#{color.R:X2}{color.G:X2}{color.B:X2}");
+    }
+
+    private void ApplyMiniArtworkProgressColorHex(string hex)
+    {
+        _settings.MiniPlayerArtworkProgressColorHex = hex;
+        RefreshMiniArtworkProgressColorSwatchSelection();
+        if (_isInitializing) return;
+
+        _owner.ApplyMiniPlayerArtworkProgressColorLive();
+    }
+
+    private void RefreshMiniArtworkProgressColorSwatchSelection()
+    {
+        System.Windows.Controls.Border[] swatches =
+        {
+            MiniArtworkProgressColorSwatch0, MiniArtworkProgressColorSwatch1,
+            MiniArtworkProgressColorSwatch2, MiniArtworkProgressColorSwatch3,
+            MiniArtworkProgressColorSwatch4, MiniArtworkProgressColorSwatch5,
+            MiniArtworkProgressColorSwatch6, MiniArtworkProgressColorSwatch7
+        };
+
+        for (int i = 0; i < swatches.Length; i++)
+        {
+            bool selected = string.Equals(AccentPresetHexes[i], _settings.MiniPlayerArtworkProgressColorHex,
+                StringComparison.OrdinalIgnoreCase);
+            swatches[i].BorderBrush = selected
+                ? (Brush)FindResource("TextFillColorPrimaryBrush")
+                : Brushes.Transparent;
+        }
     }
 
     private void MiniInfoModeRadio_Changed(object sender, RoutedEventArgs e)

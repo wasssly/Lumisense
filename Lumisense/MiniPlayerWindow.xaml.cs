@@ -25,6 +25,10 @@ public partial class MiniPlayerWindow : Window
     // Из настроек (см. ApplyProgressBarVisibility) — показывать полосу прогресса сейчас или нет.
     private bool _showProgress = true;
 
+    // Независимая настройка контура прогресса вокруг обложки. Обычная горизонтальная полоса
+    // может быть выключена при включённом контуре и наоборот.
+    private bool _showArtworkProgress;
+
     // Реальный замер (Measure), а не заранее подобранные константы под каждую комбинацию
     // видимости строк — та комбинация слишком легко расходится с реальной раскладкой (Grid с
     // рядами Auto отдаёт лишнее/недостающее место последнему ряду, а не распределяет поровну).
@@ -83,6 +87,8 @@ public partial class MiniPlayerWindow : Window
 
         ApplyButtonsLayoutMode();
         ApplyProgressBarVisibility();
+        ApplyArtworkProgressVisibility();
+        ApplyArtworkProgressColor();
 
         // Сразу отображаем текущее состояние плеера
         OnTrackInfoChanged(_mainWindow.CurrentTitle, _mainWindow.CurrentArtist, _mainWindow.CurrentArtBrush);
@@ -184,6 +190,8 @@ public partial class MiniPlayerWindow : Window
     {
         TitleText.Text = title;
         _lastArtist = artist;
+        _lastCurrentSeconds = 0;
+        _lastTotalSeconds = 0;
         UpdateSecondaryLine();
 
         // Новый трек — новое избранное-состояние; если сейчас выбран режим "Избранное" (см.
@@ -202,6 +210,9 @@ public partial class MiniPlayerWindow : Window
             ArtIcon.Visibility = Visibility.Visible;
         }
 
+        // Новый трек не должен коротко показывать заполнение от предыдущей композиции, пока
+        // не придёт первый тик ProgressChanged для новой.
+        UpdateArtworkProgressOutline(0.0);
         UpdateTitleMarquee();
     }
 
@@ -433,13 +444,14 @@ public partial class MiniPlayerWindow : Window
         _lastCurrentSeconds = currentSeconds;
         _lastTotalSeconds = totalSeconds;
         if (_mainWindow.Settings.MiniPlayerInfoMode == "TitleRemaining") UpdateSecondaryLine();
-
         if (_isDraggingProgress || totalSeconds <= 0) return;
 
         double ratio = Math.Clamp(currentSeconds / totalSeconds, 0.0, 1.0);
         double trackWidth = Math.Max(ActualWidth - 28, 0); // 28 = отступы слева/справа (14+14)
         ProgressFill.Width = trackWidth * ratio;
+        UpdateArtworkProgressOutline(ratio);
     }
+
 
     private void OnPlaybackStateChanged(bool isPlaying)
     {
@@ -766,6 +778,152 @@ public partial class MiniPlayerWindow : Window
         Height = MeasureContentHeight();
     }
 
+    // Показывает/скрывает тонкий акцентный контур вокруг обложки. В отличие от обычной
+    // полосы он не меняет высоту мини-плеера и не получает мышь: перемотка остаётся
+    // привязанной к существующей горизонтальной полосе.
+    public void ApplyArtworkProgressVisibility()
+    {
+        _showArtworkProgress = _mainWindow.Settings.MiniPlayerShowArtworkProgress;
+        var visibility = _showArtworkProgress ? Visibility.Visible : Visibility.Collapsed;
+        ArtProgressTrack.Visibility = visibility;
+        ArtProgressOutline.Visibility = visibility;
+        UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
+    }
+
+    // Применяет либо отдельный фиксированный цвет, либо фактически используемый сейчас
+    // акцент оформления. Цвет задаётся явной замороженной кистью, а не только DynamicResource:
+    // это надёжно обновляет уже созданный обычный WPF Window при смене акцента Wpf.Ui.
+    public void ApplyArtworkProgressColor()
+    {
+        Color color = _mainWindow.GetResolvedAccentColor();
+        if (_mainWindow.Settings.MiniPlayerArtworkProgressColorMode == "Fixed")
+        {
+            try
+            {
+                color = (Color)ColorConverter.ConvertFromString(
+                    _mainWindow.Settings.MiniPlayerArtworkProgressColorHex);
+            }
+            catch
+            {
+                // Повреждённое значение из settings.json не должно скрыть индикатор: безопасно
+                // откатываемся к текущему акценту оформления.
+            }
+        }
+
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        ArtProgressOutline.Stroke = brush;
+    }
+
+    private void UpdateArtworkProgressOutline(double currentSeconds, double totalSeconds)
+    {
+        double ratio = totalSeconds > 0
+            ? Math.Clamp(currentSeconds / totalSeconds, 0.0, 1.0)
+            : 0.0;
+        UpdateArtworkProgressOutline(ratio);
+    }
+
+    private void UpdateArtworkProgressOutline(double ratio)
+    {
+        if (!_showArtworkProgress || ratio <= 0.0001)
+        {
+            ArtProgressOutline.Data = null;
+            return;
+        }
+
+        // Обложка имеет размер 42×42, CornerRadius=8 и рамку толщиной 2. Центр линии
+        // индикатора проходит по прямоугольнику 40×40 с радиусом 7: так внешняя граница
+        // штриха точно совпадает с внешней границей скруглённой обложки.
+        const double inset = 1.0;
+        const double side = 40.0;
+        const double cornerRadius = 7.0;
+        const double straightSide = side - 2 * cornerRadius;
+        double perimeter = 4 * straightSide + 2 * Math.PI * cornerRadius;
+        ratio = Math.Clamp(ratio, 0.0, 1.0);
+
+        // Path с замыкающей дугой при совпадающих начальной и конечной точках не рисует
+        // полный контур надёжно, поэтому на 100% используем явную RectangleGeometry.
+        if (ratio >= 0.9999)
+        {
+            ArtProgressOutline.Data = new RectangleGeometry(
+                new Rect(inset, inset, side, side), cornerRadius, cornerRadius);
+            return;
+        }
+
+        double left = inset;
+        double top = inset;
+        double right = inset + side;
+        double bottom = inset + side;
+        double remaining = perimeter * ratio;
+
+        // Старт в центре верхней грани; дальше контур заполняется по часовой стрелке:
+        // верхняя грань → правый верхний угол → правая грань и так далее.
+        var start = new Point((left + right) / 2, top);
+        var figure = new PathFigure { StartPoint = start };
+
+        bool finished = AppendArtworkProgressLine(figure, start, new Point(right - cornerRadius, top), ref remaining);
+        if (!finished) finished = AppendArtworkProgressArc(figure, new Point(right, top + cornerRadius),
+            new Point(right - cornerRadius, top + cornerRadius), -Math.PI / 2, cornerRadius, ref remaining);
+        if (!finished) finished = AppendArtworkProgressLine(figure, new Point(right, top + cornerRadius),
+            new Point(right, bottom - cornerRadius), ref remaining);
+        if (!finished) finished = AppendArtworkProgressArc(figure, new Point(right - cornerRadius, bottom),
+            new Point(right - cornerRadius, bottom - cornerRadius), 0, cornerRadius, ref remaining);
+        if (!finished) finished = AppendArtworkProgressLine(figure, new Point(right - cornerRadius, bottom),
+            new Point(left + cornerRadius, bottom), ref remaining);
+        if (!finished) finished = AppendArtworkProgressArc(figure, new Point(left, bottom - cornerRadius),
+            new Point(left + cornerRadius, bottom - cornerRadius), Math.PI / 2, cornerRadius, ref remaining);
+        if (!finished) finished = AppendArtworkProgressLine(figure, new Point(left, bottom - cornerRadius),
+            new Point(left, top + cornerRadius), ref remaining);
+        if (!finished) finished = AppendArtworkProgressArc(figure, new Point(left + cornerRadius, top),
+            new Point(left + cornerRadius, top + cornerRadius), Math.PI, cornerRadius, ref remaining);
+        if (!finished) AppendArtworkProgressLine(figure, new Point(left + cornerRadius, top), start, ref remaining);
+
+        ArtProgressOutline.Data = new PathGeometry(new[] { figure });
+    }
+
+    // Добавляет целую или частичную прямую грань. Возвращает true, когда отведённая длина
+    // прогресса исчерпана и построение остальных сторон уже не требуется.
+    private static bool AppendArtworkProgressLine(PathFigure figure, Point start, Point end, ref double remaining)
+    {
+        double length = (end - start).Length;
+        if (remaining >= length)
+        {
+            figure.Segments.Add(new LineSegment(end, true));
+            remaining -= length;
+            return remaining <= 0.0001;
+        }
+
+        double fraction = remaining / length;
+        figure.Segments.Add(new LineSegment(
+            new Point(start.X + (end.X - start.X) * fraction, start.Y + (end.Y - start.Y) * fraction), true));
+        remaining = 0;
+        return true;
+    }
+
+    // Добавляет четверть окружности угла. Для частичного угла конец вычисляется по текущей
+    // длине дуги, поэтому прогресс движется равномерно и не "перепрыгивает" через скругления.
+    private static bool AppendArtworkProgressArc(PathFigure figure, Point end, Point center,
+        double startAngle, double radius, ref double remaining)
+    {
+        double length = Math.PI * radius / 2;
+        if (remaining >= length)
+        {
+            figure.Segments.Add(new ArcSegment(end, new Size(radius, radius), 0, false,
+                SweepDirection.Clockwise, true));
+            remaining -= length;
+            return remaining <= 0.0001;
+        }
+
+        double endAngle = startAngle + remaining / radius;
+        var partialEnd = new Point(
+            center.X + radius * Math.Cos(endAngle),
+            center.Y + radius * Math.Sin(endAngle));
+        figure.Segments.Add(new ArcSegment(partialEnd, new Size(radius, radius), 0, false,
+            SweepDirection.Clockwise, true));
+        remaining = 0;
+        return true;
+    }
+
     private void RootBorder_MouseEnter(object sender, MouseEventArgs e)
     {
         ControlsPanel.Visibility = Visibility.Visible;
@@ -826,6 +984,7 @@ public partial class MiniPlayerWindow : Window
 
         double ratio = Math.Clamp(x / width, 0.0, 1.0);
         ProgressFill.Width = Math.Max(ActualWidth - 28, 0) * ratio;
+        UpdateArtworkProgressOutline(ratio);
         _mainWindow.ExternalSeekRatio(ratio);
     }
 
