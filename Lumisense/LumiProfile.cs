@@ -50,6 +50,7 @@ public static class LumiProfileIO
         clone.FavoriteTracks = new List<string>();
         clone.LastTrackPath = null;
         clone.LastPositionSeconds = 0;
+        clone.WasPlayingOnClose = false;
         clone.WasMiniPlayerOnClose = false;
         clone.PlayCounts = new Dictionary<string, int>();
 
@@ -132,6 +133,7 @@ public static class LumiProfileIO
         target.PlaybackPitchSemitones = source.PlaybackPitchSemitones;
         target.MinimizeToTrayOnClose = source.MinimizeToTrayOnClose;
         target.StartHiddenInTray = source.StartHiddenInTray;
+        target.NeverAutoPlayLastTrackOnStartup = source.NeverAutoPlayLastTrackOnStartup;
         target.IsPlaylistVisible = source.IsPlaylistVisible;
         target.PlayerViewMode = source.PlayerViewMode;
         target.IsShuffleEnabled = source.IsShuffleEnabled;

@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
@@ -30,11 +31,24 @@ public partial class CoverArtSearchWindow : FluentWindow
 {
     private const int MaxApiJsonBytes = 2 * 1024 * 1024;
     private const int MaxImageBytes = 10 * 1024 * 1024;
+
+    // Обложки из поиска сохраняются в %AppData%\\Lumisense\\cover-cache. URL не попадает
+    // в имя файла: SHA-256 даёт короткий детерминированный ключ и исключает path traversal.
+    // Лимиты не позволяют кэшу незаметно занимать неограниченное место на диске.
+    private const int ArtworkCacheMaxFiles = 256;
+    private const long ArtworkCacheMaxBytes = 128L * 1024 * 1024;
+    private static readonly string ArtworkCacheDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lumisense", "cover-cache");
+
     private static readonly HashSet<string> TrustedImageHosts = new(StringComparer.OrdinalIgnoreCase)
     {
         "mzstatic.com", "apple.com", "deezer.com", "dzcdn.net"
     };
     private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+
+    // Результат ручной очистки для интерфейса настроек. FailedFiles > 0 обычно означает,
+    // что параллельно с очисткой какой-то файл кэша был занят новой загрузкой.
+    public readonly record struct ArtworkCacheClearResult(int DeletedFiles, long FreedBytes, int FailedFiles);
 
     // Заполняется только если пользователь кликнул по одному из найденных вариантов —
     // при закрытии окна без выбора (Escape/крестик/"Закрыть") остаётся null.
@@ -418,9 +432,194 @@ public partial class CoverArtSearchWindow : FluentWindow
                                            uri.Host.EndsWith("." + host, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException("Источник изображения не входит в список доверенных HTTPS-доменов.");
 
+        string cachePath = GetArtworkCachePath(uri);
+        if (await TryReadCachedArtworkAsync(cachePath, token) is { } cachedBytes)
+            return cachedBytes;
+
         using var response = await Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();
-        return await ReadBytesWithLimitAsync(response.Content, MaxImageBytes, token);
+        var bytes = await ReadBytesWithLimitAsync(response.Content, MaxImageBytes, token);
+        if (!IsDecodableArtwork(bytes))
+            throw new InvalidDataException("Сервер вернул данные, которые не являются поддерживаемым изображением.");
+
+        await WriteArtworkCacheAsync(cachePath, bytes, token);
+        _ = Task.Run(TrimArtworkCache);
+        return bytes;
+    }
+
+    private static string GetArtworkCachePath(Uri uri)
+    {
+        byte[] hash = SHA256.HashData(Encoding.UTF8.GetBytes(uri.AbsoluteUri));
+        return Path.Combine(ArtworkCacheDirectory, Convert.ToHexString(hash) + ".img");
+    }
+
+    private static async Task<byte[]?> TryReadCachedArtworkAsync(string cachePath, CancellationToken token)
+    {
+        try
+        {
+            if (!File.Exists(cachePath)) return null;
+
+            var info = new FileInfo(cachePath);
+            if (info.Length <= 0 || info.Length > MaxImageBytes)
+            {
+                TryDeleteCacheFile(cachePath);
+                return null;
+            }
+
+            var bytes = await File.ReadAllBytesAsync(cachePath, token);
+            if (!IsDecodableArtwork(bytes))
+            {
+                TryDeleteCacheFile(cachePath);
+                return null;
+            }
+
+            // LastAccessTime может быть выключен политикой Windows, поэтому обновляем
+            // LastWriteTime сами и используем его как переносимый LRU-признак при очистке.
+            // Даже если дата недоступна (например, read-only каталог), корректные байты
+            // остаются полезным попаданием кэша и не должны вызывать новую загрузку.
+            try { File.SetLastWriteTimeUtc(cachePath, DateTime.UtcNow); }
+            catch { /* Используем файл без обновления LRU-метки. */ }
+            return bytes;
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // Проблема только с кэшем не должна мешать поиску: при недоступном файле просто
+            // используем уже защищённую сетевую загрузку ниже.
+            return null;
+        }
+    }
+
+    private static async Task WriteArtworkCacheAsync(string cachePath, byte[] bytes, CancellationToken token)
+    {
+        string temporaryPath = cachePath + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            Directory.CreateDirectory(ArtworkCacheDirectory);
+            await File.WriteAllBytesAsync(temporaryPath, bytes, token);
+            File.Move(temporaryPath, cachePath, overwrite: true);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // Кэш — ускорение, а не обязательная часть выбора обложки. Ошибка диска не должна
+            // отменять уже успешно полученное из доверенного источника изображение.
+        }
+        finally
+        {
+            TryDeleteCacheFile(temporaryPath);
+        }
+    }
+
+    private static bool IsDecodableArtwork(byte[] bytes)
+    {
+        try
+        {
+            _ = BytesToBitmap(bytes);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    private static void TrimArtworkCache()
+    {
+        try
+        {
+            if (!Directory.Exists(ArtworkCacheDirectory)) return;
+
+            var files = Directory.EnumerateFiles(ArtworkCacheDirectory, "*.img")
+                .Select(path => new FileInfo(path))
+                .OrderByDescending(file => file.LastWriteTimeUtc)
+                .ToList();
+
+            long totalBytes = files.Sum(file => file.Length);
+            int remainingFiles = files.Count;
+            foreach (var file in files)
+            {
+                if (remainingFiles <= ArtworkCacheMaxFiles && totalBytes <= ArtworkCacheMaxBytes) break;
+
+                try
+                {
+                    file.Delete();
+                    totalBytes -= file.Length;
+                    remainingFiles--;
+                }
+                catch
+                {
+                    // Один занятый/защищённый файл не должен останавливать очистку остальных.
+                }
+            }
+        }
+        catch
+        {
+            // Очистка выполняется в фоне и не влияет ни на выбор обложки, ни на UI.
+        }
+    }
+
+    // Вызывается только по явному действию пользователя из SettingsWindow. Удаляем файлы
+    // непосредственно в известной папке кэша, не используем путь или маску, пришедшие из UI,
+    // и не трогаем вложенные каталоги. Параллельная загрузка может создать новую запись уже
+    // после очистки — это нормальное и безопасное поведение.
+    public static ArtworkCacheClearResult ClearArtworkCache()
+    {
+        int deletedFiles = 0;
+        long freedBytes = 0;
+        int failedFiles = 0;
+
+        try
+        {
+            if (!Directory.Exists(ArtworkCacheDirectory))
+                return new ArtworkCacheClearResult(0, 0, 0);
+
+            foreach (var path in Directory.EnumerateFiles(ArtworkCacheDirectory).ToList())
+            {
+                try
+                {
+                    long length = new FileInfo(path).Length;
+                    File.Delete(path);
+                    deletedFiles++;
+                    freedBytes += length;
+                }
+                catch
+                {
+                    failedFiles++;
+                }
+            }
+
+            // Удаляем пустую папку, но не считаем это ошибкой: она может снова создаваться
+            // параллельной загрузкой в тот же момент.
+            try { Directory.Delete(ArtworkCacheDirectory, recursive: false); }
+            catch { /* В каталоге остались занятые файлы либо он уже создан заново. */ }
+        }
+        catch
+        {
+            // Невозможность перечислить каталог не должна приводить к падению окна настроек.
+            failedFiles++;
+        }
+
+        return new ArtworkCacheClearResult(deletedFiles, freedBytes, failedFiles);
+    }
+
+    private static void TryDeleteCacheFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch
+        {
+            // Невозможность удалить устаревший кэш безопасна: следующая запись всё равно
+            // использует отдельный временный файл и атомарную замену.
+        }
     }
 
     private static async Task<byte[]> ReadBytesWithLimitAsync(HttpContent content, int maxBytes, CancellationToken token)

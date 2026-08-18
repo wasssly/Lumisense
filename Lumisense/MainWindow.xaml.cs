@@ -617,8 +617,9 @@ public partial class MainWindow : FluentWindow
 
     private string? GetCurrentTrackPath() => _currentTrackPath;
 
-    // Восстанавливает сохранённый плейлист и последний трек (без автозапуска), без единого
-    // обращения к диску — раньше File.Exists по каждому треку выполнялся синхронно до показа
+    // Восстанавливает сохранённый плейлист и последний трек. Звук запускается только если
+    // предыдущий сеанс действительно был активен и пользователь не включил запрет автозапуска.
+    // Загрузка не делает массовых обращений к диску: раньше File.Exists по каждому треку выполнялся синхронно до показа
     // окна и был основной причиной долгого "чёрного экрана" при запуске. Устаревшие записи
     // тихо убираются позже, уже после показа (см. VerifyTrackExistenceInBackgroundAsync).
     private System.Threading.Tasks.Task RestoreSavedPlaylistAsync()
@@ -656,7 +657,8 @@ public partial class MainWindow : FluentWindow
         if (!all.Contains(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
         if (!File.Exists(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask; // единичная дешёвая проверка ОДНОГО файла — не массовое сканирование
 
-        LoadAndPlay(_settings.LastTrackPath, autoPlay: false,
+        bool resumePlayback = _settings.WasPlayingOnClose && !_settings.NeverAutoPlayLastTrackOnStartup;
+        LoadAndPlay(_settings.LastTrackPath, autoPlay: resumePlayback,
             startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)),
             albumArtDirection: AlbumArtTransitionDirection.None);
         return System.Threading.Tasks.Task.CompletedTask;
@@ -3705,6 +3707,7 @@ public partial class MainWindow : FluentWindow
         _settings.PlayCounts = new Dictionary<string, int>();
         _settings.LastTrackPath = null;
         _settings.LastPositionSeconds = 0;
+        _settings.WasPlayingOnClose = false;
         _settings.EqualizerPresets.Clear();
 
         _currentTrackPath = null;
@@ -4714,6 +4717,7 @@ public partial class MainWindow : FluentWindow
 
         _settings.LastTrackPath = GetCurrentTrackPath();
         _settings.LastPositionSeconds = _audioFile?.CurrentTime.TotalSeconds ?? _settings.LastPositionSeconds;
+        _settings.WasPlayingOnClose = _isPlaying;
         _settings.WasMiniPlayerOnClose = _isMiniMode;
         _settings.IsPlaylistVisible = _isPlaylistVisible;
         _settings.PlayerViewMode = _viewMode.ToString();

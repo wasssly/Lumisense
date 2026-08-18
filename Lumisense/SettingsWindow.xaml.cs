@@ -119,6 +119,7 @@ public partial class SettingsWindow : FluentWindow
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
+        NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked = _settings.NeverAutoPlayLastTrackOnStartup;
         TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
         InitializeToastPositionAndSize();
         InitializeToastMonitorCombo();
@@ -476,6 +477,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Запускать свёрнутым в трей", "Окно", "Window", StartHiddenInTrayCheckBox, "запуск свёрнутым трей автозапуск скрыто hidden startup tray");
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
+        Add("Не запускать трек при старте", "Воспроизведение", "Playback", NeverAutoPlayLastTrackOnStartupCheckBox, "старт запуск продолжить воспроизведение последний трек пауза resume autoplay");
+        Add("Очистить кэш интернет-обложек", "Воспроизведение", "Playback", ClearArtworkCacheButton, "кэш обложка интернет очистить удалить cover cache artwork image");
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
@@ -732,6 +735,49 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.UseLogarithmicVolume = LogarithmicVolumeCheckBox.IsChecked == true;
         _owner.RefreshVolumeCurve();
+    }
+
+    private void NeverAutoPlayLastTrackOnStartupCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.NeverAutoPlayLastTrackOnStartup = NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked == true;
+    }
+
+    private async void ClearArtworkCacheButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirmation = System.Windows.MessageBox.Show(this,
+            "Удалить локально сохранённые интернет-обложки?\n\nПри следующем поиске нужные изображения будут скачаны заново.",
+            "Очистить кэш обложек?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+        if (confirmation != System.Windows.MessageBoxResult.Yes) return;
+
+        ClearArtworkCacheButton.IsEnabled = false;
+        ArtworkCacheClearResultText.Visibility = Visibility.Collapsed;
+        try
+        {
+            var result = await System.Threading.Tasks.Task.Run(CoverArtSearchWindow.ClearArtworkCache);
+            ArtworkCacheClearResultText.Text = result.DeletedFiles == 0
+                ? "Кэш обложек уже пуст."
+                : $"Удалено файлов: {result.DeletedFiles}; освобождено: {FormatArtworkCacheSize(result.FreedBytes)}."
+                  + (result.FailedFiles > 0 ? $" Не удалось удалить файлов: {result.FailedFiles}." : string.Empty);
+            ArtworkCacheClearResultText.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            ArtworkCacheClearResultText.Text = $"Не удалось очистить кэш: {ex.Message}";
+            ArtworkCacheClearResultText.Visibility = Visibility.Visible;
+        }
+        finally
+        {
+            ClearArtworkCacheButton.IsEnabled = true;
+        }
+    }
+
+    private static string FormatArtworkCacheSize(long bytes)
+    {
+        if (bytes < 1024) return $"{bytes} Б";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} КБ";
+        return $"{bytes / (1024.0 * 1024.0):0.#} МБ";
     }
 
     private void TrackChangeToastCheckBox_Changed(object sender, RoutedEventArgs e)

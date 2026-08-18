@@ -786,6 +786,33 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.NeverAutoPlayLastTrackOnStartup / WasPlayingOnClose. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="NeverAutoPlayLastTrackOnStartupCheckBox"
+                                          Content="Никогда не запускать трек при старте"
+                                          Checked="NeverAutoPlayLastTrackOnStartupCheckBox_Changed"
+                                          Unchecked="NeverAutoPlayLastTrackOnStartupCheckBox_Changed" />
+                                <TextBlock Text="По умолчанию Lumisense продолжает трек с сохранённой позиции, только если он играл при закрытии приложения. С этой настройкой трек всё равно откроется, но останется на паузе."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Кэш обложек из CoverArtSearchWindow хранится локально в %AppData%\Lumisense\cover-cache. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <TextBlock Text="Кэш интернет-обложек" Margin="0,0,0,4" />
+                                <TextBlock Text="Повторно открытые варианты обложек берутся из локальной папки, чтобы не скачивать изображения заново."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                                <ui:Button x:Name="ClearArtworkCacheButton" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Margin="0,12,0,0"
+                                           Click="ClearArtworkCacheButton_Click"
+                                           Content="Очистить кэш обложек" />
+                                <TextBlock x:Name="ArtworkCacheClearResultText" Visibility="Collapsed"
+                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- Раньше называлась "Улучшенный шаффл" и жила на странице "Экспериментальное" —
                              имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
                              сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
