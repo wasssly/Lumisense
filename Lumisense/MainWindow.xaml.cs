@@ -167,6 +167,15 @@ public partial class MainWindow : FluentWindow
     // включена настройка Settings.UseImprovedShuffle.
     private List<string> _shuffleBag = new();
     private bool _isMiniMode;
+
+    // Отличает обычное свёрнутое окно от главного окна, только что открытого внешней
+    // активацией из мини-плеера. Нужен, чтобы следующий клик по его кнопке в панели задач
+    // вернул мини-плеер, не меняя поведение обычной кнопки «Свернуть».
+    private bool _returnToMiniOnNextTaskbarMinimize;
+
+    // Устанавливается строго на время синхронной обработки системной кнопки «Свернуть»
+    // в TitleBar. Нужен, чтобы эта кнопка никогда не считалась кликом по панели задач.
+    private bool _isSystemTitleBarMinimize;
     private RepeatMode _repeatMode = RepeatMode.Off;
 
     // Текущий вид плеера (см. PlayerViewMode) и вид, в котором плеер был непосредственно
@@ -293,6 +302,7 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         InitializeComponent();
+        ConfigureSystemTitleBarActions();
         // В этот момент ValueChanged от XAML уже мог сработать, но был проигнорирован до
         // _playbackRateIsReady. Теперь фиксируем единственное исходное значение из JSON.
         _runtimePlaybackRate = NormalizePlaybackRate(_settings.PlaybackSpeed);
@@ -363,11 +373,18 @@ public partial class MainWindow : FluentWindow
             ApplyFullscreenLayout(fullscreen);
         }
 
-        // Обычное сворачивание (кнопка/Win+D/значок в панели задач) в этом плеере ведёт не в
-        // Windows-минимизацию, а в мини-плеер — без этой ветки повторный клик по значку в
-        // панели задач сворачивал бы окно в обычном смысле, минуя мини-плеер.
-        if (WindowState == WindowState.Minimized && !_isMiniMode)
+        // Только главный вид, восстановленный из мини-плеера внешней активацией, должен
+        // вернуть мини-плеер следующим обычным сворачиванием через кнопку панели задач.
+        // Системная кнопка «Свернуть» явно исключена: она всегда оставляет обычное окно
+        // свёрнутым, даже если оно было перед этим восстановлено из мини-плеера.
+        if (WindowState == WindowState.Minimized
+            && _returnToMiniOnNextTaskbarMinimize
+            && !_isSystemTitleBarMinimize
+            && !_isMiniMode)
+        {
+            _returnToMiniOnNextTaskbarMinimize = false;
             SetPlayerViewMode(PlayerViewMode.Mini);
+        }
     }
 
     // Пересчитывает ширину ContentHost при изменении размеров окна — иначе после
@@ -801,6 +818,29 @@ public partial class MainWindow : FluentWindow
     // в прежней палитре после переключения темы в настройках
     public void ApplyTrayTheme(bool isLight) => _trayIconManager?.ApplyTheme(isLight);
 
+    // WPF-UI передаёт клик по системной кнопке сворачивания в MinimizeActionOverride.
+    // Не полагаемся на поведение TitleBar по умолчанию: при нажатии «Свернуть» главное окно
+    // всегда остаётся главным окном и уходит только в панель задач. Переход в мини-плеер
+    // возможен исключительно по отдельной кнопке/пункту вида либо повторной активации ярлыка.
+    private void ConfigureSystemTitleBarActions()
+    {
+        AppTitleBar.MinimizeActionOverride = (_, window) =>
+        {
+            _isSystemTitleBarMinimize = true;
+            // Пользователь явно выбрал обычное сворачивание, поэтому одноразовый маршрут
+            // возврата в мини-плеер больше не должен срабатывать позже.
+            _returnToMiniOnNextTaskbarMinimize = false;
+            try
+            {
+                window.SetCurrentValue(Window.WindowStateProperty, WindowState.Minimized);
+            }
+            finally
+            {
+                _isSystemTitleBarMinimize = false;
+            }
+        };
+    }
+
     private void RestoreFromTray()
     {
         Dispatcher.BeginInvoke(() =>
@@ -837,21 +877,23 @@ public partial class MainWindow : FluentWindow
     // App.OnStartup/WaitForToggleSignal. В отличие от RestoreFromTray (которая всегда просто
     // ПОКАЗЫВАЕТ окно) здесь именно переключение: мини-плеер активен — открываем обычное окно
     // (как кнопкой "развернуть"), обычное окно уже открыто и видимо — сворачиваем в мини-плеер
-    // (как кнопкой "мини-плеер"); а если окно было свёрнуто в трей, просто восстанавливаем его,
-    // не превращая это в переключение в мини-режим.
+    // (как кнопкой "мини-плеер"). Если главное окно скрыто в трее ИЛИ свёрнуто в панели задач,
+    // внешняя активация только восстанавливает его и никогда не переводит в мини-режим.
     public void ToggleMiniOrMainFromExternalActivation()
     {
         Dispatcher.BeginInvoke(() =>
         {
             if (_isMiniMode)
             {
-                ExitMiniMode();
+                ExitMiniMode(returnToMiniOnNextTaskbarMinimize: true);
                 return;
             }
 
-            if (Visibility != Visibility.Visible)
+            if (Visibility != Visibility.Visible || WindowState == WindowState.Minimized)
             {
-                Show();
+                if (Visibility != Visibility.Visible)
+                    Show();
+
                 WindowState = WindowState.Normal;
                 ForceForeground(this);
                 _trayIconManager?.Hide();
@@ -3730,6 +3772,9 @@ public partial class MainWindow : FluentWindow
     // меню, так и при восстановлении сохранённого состояния на старте.
     private void EnterMiniMode()
     {
+        // После фактического возврата в мини-плеер отложенный маркер больше не нужен.
+        _returnToMiniOnNextTaskbarMinimize = false;
+
         // На этот момент _viewMode ещё хранит вид ДО перехода в мини-режим (SetPlayerViewMode
         // присваивает новое значение уже после вызова этого метода) — запоминаем его, чтобы
         // при "развернуть" в ExitMiniMode вернуться именно туда, откуда ушли.
@@ -3770,10 +3815,13 @@ public partial class MainWindow : FluentWindow
         _trayIconManager?.Show($"Lumisense — {TrackTitleText.Text}");
     }
 
-    // Вызывается из MiniPlayerWindow при нажатии кнопки "развернуть"
-    public void ExitMiniMode()
+    // Вызывается из MiniPlayerWindow при нажатии кнопки "развернуть".
+    // Внешняя активация ярлыка передаёт true, чтобы следующий клик по кнопке панели задач
+    // снова вернул мини-плеер; обычное разворачивание мини-плеера этот маркер не устанавливает.
+    public void ExitMiniMode(bool returnToMiniOnNextTaskbarMinimize = false)
     {
         _isMiniMode = false;
+        _returnToMiniOnNextTaskbarMinimize = returnToMiniOnNextTaskbarMinimize;
 
         _miniPlayerWindow?.Close();
         _miniPlayerWindow = null;
