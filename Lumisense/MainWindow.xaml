@@ -653,9 +653,9 @@
             </Grid.ColumnDefinitions>
 
             <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                <ui:Button x:Name="PlaybackSpeedButton" Appearance="Transparent"
+                <ui:Button x:Name="PlaybackControlButton" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="0,0,4,0"
-                           Click="PlaybackSpeedButton_Click" MouseWheel="PlaybackSpeedButton_MouseWheel"
+                           Click="PlaybackControlButton_Click" MouseWheel="PlaybackControlButton_MouseWheel"
                            ToolTip="Скорость воспроизведения">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconSpeed" Size="15" />
@@ -686,12 +686,13 @@
                        VerticalAlignment="Center" HorizontalAlignment="Right" />
         </Grid>
 
-        <Popup x:Name="PlaybackSpeedPopup" PlacementTarget="{Binding ElementName=PlaybackSpeedButton}"
+        <Popup x:Name="PlaybackControlPopup" PlacementTarget="{Binding ElementName=PlaybackControlButton}"
                Placement="Top" StaysOpen="False" AllowsTransparency="True"
-               VerticalOffset="-8" PopupAnimation="Fade">
-            <Border x:Name="PlaybackSpeedPopupBorder" Background="#FF242424"
+               VerticalOffset="-8" PopupAnimation="Fade" Opened="PlaybackControlPopup_Opened"
+               Closed="PlaybackControlPopup_Closed">
+            <Border x:Name="PlaybackControlPopupBorder" Background="#FF242424"
                     BorderBrush="#FF707070" BorderThickness="1" CornerRadius="8" Padding="12,8"
-                    MouseWheel="PlaybackSpeedPopup_MouseWheel">
+                    >
                 <Grid Width="230">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -705,17 +706,18 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Text="Скорость" Grid.Column="0" Foreground="#D8D8D8"
                                    FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0" />
-                        <Slider x:Name="PlaybackSpeedSlider" Grid.Column="1"
+                        <Slider x:Name="PlaybackRateSlider" Grid.Column="1"
                                 Minimum="0.5" Maximum="2.0" Value="1.0"
                                 TickFrequency="0.05" IsSnapToTickEnabled="True"
-                                ValueChanged="PlaybackSpeedSlider_ValueChanged"
-                                MouseDoubleClick="PlaybackSpeedSlider_MouseDoubleClick"
+                                ValueChanged="PlaybackRateSlider_ValueChanged"
+                                MouseDoubleClick="PlaybackRateSlider_MouseDoubleClick"
+                                MouseWheel="PlaybackRateSlider_MouseWheel"
                                 VerticalAlignment="Center" />
-                        <TextBlock x:Name="PlaybackSpeedValueText" Grid.Column="2" Text="1.00×"
+                        <TextBlock x:Name="PlaybackRateValueText" Grid.Column="2" Text="1.00×"
                                    Foreground="White" FontWeight="SemiBold" FontSize="11" Width="38"
                                    Margin="10,0,0,0" VerticalAlignment="Center"
                                    HorizontalAlignment="Right" />
-                    </Grid>
+                                        </Grid>
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
@@ -729,6 +731,7 @@
                                 TickFrequency="1" IsSnapToTickEnabled="True"
                                 ValueChanged="PlaybackPitchSlider_ValueChanged"
                                 MouseDoubleClick="PlaybackPitchSlider_MouseDoubleClick"
+                                MouseWheel="PlaybackPitchSlider_MouseWheel"
                                 VerticalAlignment="Center" />
                         <TextBlock x:Name="PlaybackPitchValueText" Grid.Column="2" Text="0 st"
                                    Foreground="White" FontWeight="SemiBold" FontSize="11" Width="38"
@@ -738,6 +741,7 @@
                 </Grid>
             </Border>
         </Popup>
+
 
         <!-- Панель плейлиста: заголовок + переключатель видимости + кнопки добавления -->
         <Grid x:Name="PlaylistHeaderRow" Grid.Row="5" Margin="16,4,16,6">

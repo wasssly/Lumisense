@@ -56,6 +56,7 @@ public partial class MainWindow : FluentWindow
     private FadeInOutSampleProvider? _activeFade;
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private readonly DispatcherTimer _playbackRatePersistenceTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly Stopwatch _playbackClock = new();
 
     // Множитель громкости из ReplayGain-тегов текущего трека (см. ReplayGainReader,
@@ -187,6 +188,16 @@ public partial class MainWindow : FluentWindow
     private TrackChangeToastWindow? _trackChangeToastWindow;
     private CoverArtWindow? _coverArtWindow;
     private bool _isExiting;
+    // Не сохраняем стартовые значения Slider из XAML до того, как ApplySettingsOnStartup
+    // восстановит значения из settings.json. После запуска изменения пользователя сохраняются
+    // асинхронно, чтобы движение ползунка не блокировало UI.
+    private bool _isApplyingStartupSettings = true;
+    private bool _isOpeningPlaybackControlPopup;
+    // Единственный runtime-источник скорости. До завершения InitializeComponent Slider не
+    // имеет права менять его: XAML всегда создаёт Slider с Value=1.0.
+    private double _runtimePlaybackRate;
+    private bool _playbackRateIsReady;
+    private bool _isUpdatingPlaybackRateControl;
 
     // ---------- Полноэкранный режим ----------
     // Обычная (не полноэкранная) ширина ContentHost — совпадает со стартовой шириной окна,
@@ -282,12 +293,20 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         InitializeComponent();
+        // В этот момент ValueChanged от XAML уже мог сработать, но был проигнорирован до
+        // _playbackRateIsReady. Теперь фиксируем единственное исходное значение из JSON.
+        _runtimePlaybackRate = NormalizePlaybackRate(_settings.PlaybackSpeed);
+        _settings.PlaybackSpeed = _runtimePlaybackRate;
+        _playbackRateIsReady = true;
+
         FavoritesManager.Initialize(_settings.FavoriteTracks, _settings.PinnedFavoriteTracks);
         PlayCountManager.Initialize(_settings.PlayCounts);
 
         _progressTimer.Tick += ProgressTimer_Tick;
         _hotkeyTrackStepTimer.Tick += (_, _) => CommitPendingHotkeyTrackStep();
+        _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
         ApplySettingsOnStartup();
+        _playbackRatePersistenceTimer.Start();
 
         // Не await — намеренно "запустили и забыли": файловая проверка треков и загрузка
         // последнего трека идут в фоне, окно тем временем показывается сразу, без ожидания
@@ -321,7 +340,14 @@ public partial class MainWindow : FluentWindow
     private void MainWindow_Loaded(object? sender, RoutedEventArgs e)
     {
         Loaded -= MainWindow_Loaded;
-        Dispatcher.BeginInvoke(new Action(ApplyAccentColor), DispatcherPriority.Loaded);
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            // settings.json уже содержит последнее значение (например, 0.75), но Popup и
+            // Slider были созданы из XAML раньше. Повторно применяем настройки после полной
+            // загрузки визуального дерева, чтобы поздняя инициализация WPF не вернула 1.0.
+            SetPlaybackRate(_settings.PlaybackSpeed, persist: false);
+            ApplyAccentColor();
+        }), DispatcherPriority.Loaded);
     }
 
     // ---------- Полноэкранный режим ----------
@@ -857,28 +883,34 @@ public partial class MainWindow : FluentWindow
 
     private void ApplySettingsOnStartup()
     {
-        ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
-        ApplyAccentColor();
-        ApplyWindowBackdrop();
-        ApplyProgressBarStyle();
+        _isApplyingStartupSettings = true;
+        try
+        {
+            ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
+            ApplyAccentColor();
+            ApplyWindowBackdrop();
+            ApplyProgressBarStyle();
 
-        if (_settings.AlwaysOnTop)
-            Topmost = true;
+            if (_settings.AlwaysOnTop)
+                Topmost = true;
 
-        if (_settings.RememberVolume)
-            VolumeSlider.Value = Math.Clamp(_settings.SavedVolume, 0.0, 1.0);
+            if (_settings.RememberVolume)
+                VolumeSlider.Value = Math.Clamp(_settings.SavedVolume, 0.0, 1.0);
 
-        PlaybackSpeedSlider.Value = Math.Clamp(_settings.PlaybackSpeed, 0.5, 2.0);
-        PlaybackSpeedValueText.Text = FormatPlaybackSpeed(PlaybackSpeedSlider.Value);
-        ApplyPlaybackSpeedLive(PlaybackSpeedSlider.Value);
-        PlaybackPitchSlider.Value = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
-        PlaybackPitchValueText.Text = FormatPlaybackPitch(PlaybackPitchSlider.Value);
-        ApplyPlaybackPitchLive(PlaybackPitchSlider.Value);
+            SetPlaybackRate(_settings.PlaybackSpeed, persist: false);
+            PlaybackPitchSlider.Value = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
+            PlaybackPitchValueText.Text = FormatPlaybackPitch(PlaybackPitchSlider.Value);
+            ApplyPlaybackPitchLive(PlaybackPitchSlider.Value);
 
-        SetShuffleEnabled(_settings.IsShuffleEnabled);
-        SetRepeatMode(Enum.TryParse<RepeatMode>(_settings.RepeatMode, out var savedRepeatMode)
-            ? savedRepeatMode
-            : RepeatMode.Off);
+            SetShuffleEnabled(_settings.IsShuffleEnabled);
+            SetRepeatMode(Enum.TryParse<RepeatMode>(_settings.RepeatMode, out var savedRepeatMode)
+                ? savedRepeatMode
+                : RepeatMode.Off);
+        }
+        finally
+        {
+            _isApplyingStartupSettings = false;
+        }
     }
 
     // Переключает вид полосы воспроизведения (см. AppSettings.ProgressBarStyle) — вызывается на
@@ -2633,7 +2665,7 @@ public partial class MainWindow : FluentWindow
             bool replayGainEnabled = _settings.ReplayGainEnabled;
             bool equalizerEnabled = _settings.EqualizerEnabled;
                     double[] equalizerGains = (double[])_settings.EqualizerBandGainsDb.Clone();
-        double playbackSpeed = Math.Clamp(_settings.PlaybackSpeed, 0.5, 2.0);
+        double playbackSpeed = _runtimePlaybackRate;
         double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
         prepared = await PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
             equalizerEnabled, equalizerGains, playbackSpeed, playbackPitch, cts.Token);
@@ -2644,6 +2676,7 @@ public partial class MainWindow : FluentWindow
 
             _audioFile = prepared.AudioFile;
             _tempoStream = prepared.TempoStream;
+            ApplyPlaybackRateToCurrentStream();
             _equalizer = prepared.Equalizer;
             _replayGainFactor = prepared.ReplayGainFactor;
             PreparedTrack loaded = prepared;
@@ -2682,6 +2715,7 @@ public partial class MainWindow : FluentWindow
             _outputDevice ??= new WaveOutEvent();
             _outputDevice.Init(fadeIn);
             _outputDevice.PlaybackStopped += OutputDevice_PlaybackStopped;
+            ReapplySavedPlaybackRateAfterTrackReady(generation);
             if (autoPlay)
             {
                 _outputDevice.Play();
@@ -3845,13 +3879,52 @@ public partial class MainWindow : FluentWindow
 
     public bool IsEqualizerEnabled => _settings.EqualizerEnabled;
 
-    public void ApplyPlaybackSpeedLive(double speed)
+    private void ApplyPlaybackRateToCurrentStream()
     {
-        double clamped = Math.Clamp(speed, 0.5, 2.0);
-        _settings.PlaybackSpeed = clamped;
         if (_tempoStream != null)
-            _tempoStream.Tempo = clamped;
+            _tempoStream.Tempo = _runtimePlaybackRate;
     }
+
+    private void ReapplySavedPlaybackRateAfterTrackReady(int generation)
+    {
+        // SoundTouch создаётся в фоне, затем WaveOut инициализируется на UI-потоке. Повторяем
+        // установку уже после Init через очередь Dispatcher, чтобы исключить поздний сброс
+        // Tempo во время восстановления последнего трека при запуске приложения.
+        Dispatcher.BeginInvoke(() =>
+        {
+            if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) || _tempoStream == null)
+                return;
+
+            ApplyPlaybackRateToCurrentStream();
+        }, DispatcherPriority.ContextIdle);
+    }
+
+    private static double NormalizePlaybackRate(double speed) =>
+        Math.Round(Math.Clamp(speed, 0.5, 2.0), 2);
+
+    private void SetPlaybackRate(double speed, bool persist)
+    {
+        double clamped = NormalizePlaybackRate(speed);
+        _runtimePlaybackRate = clamped;
+        _settings.PlaybackSpeed = clamped;
+
+        ApplyPlaybackRateToCurrentStream();
+
+        if (PlaybackRateValueText != null)
+            PlaybackRateValueText.Text = FormatPlaybackRate(clamped);
+
+        if (PlaybackRateSlider != null && Math.Abs(PlaybackRateSlider.Value - clamped) > 0.0001)
+        {
+            _isUpdatingPlaybackRateControl = true;
+            try { PlaybackRateSlider.Value = clamped; }
+            finally { _isUpdatingPlaybackRateControl = false; }
+        }
+
+        if (persist && !_isApplyingStartupSettings && !_isExiting)
+            SettingsManager.Save(_settings);
+    }
+
+    public void ApplyPlaybackRateLive(double speed) => SetPlaybackRate(speed, persist: false);
 
     public void ApplyPlaybackPitchLive(double semitones)
     {
@@ -4356,21 +4429,23 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    private static string FormatPlaybackSpeed(double value) => $"{value:0.00}×";
+    private static string FormatPlaybackRate(double value) => $"{value:0.00}×";
 
-    private void PlaybackSpeedSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    private void PlaybackRateSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (PlaybackSpeedValueText != null)
-            PlaybackSpeedValueText.Text = FormatPlaybackSpeed(e.NewValue);
-        ApplyPlaybackSpeedLive(e.NewValue);
+        // ValueChanged вызывается во время InitializeComponent для XAML Value=1.0.
+        // Пока runtime-state не загружен из settings.json, это событие игнорируется.
+        if (!_playbackRateIsReady || _isUpdatingPlaybackRateControl) return;
+        SetPlaybackRate(e.NewValue, persist: true);
+        ApplyPlaybackRateToCurrentStream();
     }
 
     private static string FormatPlaybackPitch(double semitones) =>
         $"{semitones:+0;-0;0} st";
 
-    private void PlaybackSpeedSlider_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void PlaybackRateSlider_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        PlaybackSpeedSlider.Value = 1.0;
+        SetPlaybackRate(1.0, persist: true);
         e.Handled = true;
     }
 
@@ -4385,6 +4460,7 @@ public partial class MainWindow : FluentWindow
         if (PlaybackPitchValueText != null)
             PlaybackPitchValueText.Text = FormatPlaybackPitch(e.NewValue);
         ApplyPlaybackPitchLive(e.NewValue);
+        PersistPlaybackSettingsAfterUserChange();
     }
 
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -4408,35 +4484,94 @@ public partial class MainWindow : FluentWindow
 
     private void MuteButton_Click(object sender, RoutedEventArgs e) => ToggleMute();
 
-    private const double PlaybackSpeedWheelStep = 0.05;
-
-    private void ChangePlaybackSpeedBy(double delta)
+    private void PlaybackRatePersistenceTimer_Tick(object? sender, EventArgs e)
     {
-        PlaybackSpeedSlider.Value = Math.Clamp(
-            PlaybackSpeedSlider.Value + delta,
-            PlaybackSpeedSlider.Minimum,
-            PlaybackSpeedSlider.Maximum);
+        if (_isApplyingStartupSettings || _isExiting || PlaybackRateSlider == null) return;
+
+        double sliderValue = Math.Round(Math.Clamp(PlaybackRateSlider.Value, 0.5, 2.0), 2);
+        if (Math.Abs(sliderValue - _runtimePlaybackRate) <= 0.0001) return;
+
+        // Watcher страхует случай, когда визуальный Slider изменился, но ValueChanged не
+        // дошёл до setter из-за особенностей Popup/мыши. Источником состояния остаётся setter.
+        SetPlaybackRate(sliderValue, persist: false);
+        SettingsManager.Save(_settings);
     }
 
-    private void PlaybackSpeedButton_Click(object sender, RoutedEventArgs e)
+    private void PersistPlaybackSettingsAfterUserChange()
     {
-        PlaybackSpeedPopup.IsOpen = !PlaybackSpeedPopup.IsOpen;
-        if (PlaybackSpeedPopup.IsOpen)
-            PlaybackSpeedSlider.Focus();
+        if (_isApplyingStartupSettings || _isOpeningPlaybackControlPopup || _isExiting) return;
+        _settings.PlaybackSpeed = _runtimePlaybackRate;
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SavePlaybackSettingsAsync");
+    }
+
+    private const double PlaybackRateWheelStep = 0.05;
+    private const double PlaybackPitchWheelStep = 1.0;
+
+    private void ChangePlaybackRateBy(double delta)
+    {
+        SetPlaybackRate(_runtimePlaybackRate + delta, persist: true);
+    }
+
+    private void OpenPlaybackControlPopup()
+    {
+        if (PlaybackControlPopup.IsOpen) return;
+
+        _isOpeningPlaybackControlPopup = true;
+        PlaybackControlPopup.IsOpen = true;
+    }
+
+    private void PlaybackControlPopup_Closed(object? sender, EventArgs e)
+    {
+        if (_isExiting || _isApplyingStartupSettings) return;
+        SetPlaybackRate(PlaybackRateSlider.Value, persist: true);
+        _settings.PlaybackPitchSemitones = Math.Clamp(PlaybackPitchSlider.Value, -12.0, 12.0);
+        SettingsManager.Save(_settings);
+    }
+
+    private void PlaybackControlPopup_Opened(object? sender, EventArgs e)
+    {
+        try
+        {
+            SetPlaybackRate(_runtimePlaybackRate, persist: false);
+            PlaybackPitchSlider.Value = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
+            PlaybackPitchValueText.Text = FormatPlaybackPitch(PlaybackPitchSlider.Value);
+            ApplyPlaybackPitchLive(PlaybackPitchSlider.Value);
+        }
+        finally
+        {
+            _isOpeningPlaybackControlPopup = false;
+            PlaybackRateSlider.Focus();
+        }
+    }
+
+    private void PlaybackControlButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (PlaybackControlPopup.IsOpen)
+            PlaybackControlPopup.IsOpen = false;
+        else
+            OpenPlaybackControlPopup();
         e.Handled = true;
     }
 
-    private void PlaybackSpeedButton_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    private void PlaybackControlButton_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
-        if (!PlaybackSpeedPopup.IsOpen)
-            PlaybackSpeedPopup.IsOpen = true;
-        ChangePlaybackSpeedBy(Math.Sign(e.Delta) * PlaybackSpeedWheelStep);
+        OpenPlaybackControlPopup();
+        ChangePlaybackRateBy(Math.Sign(e.Delta) * PlaybackRateWheelStep);
         e.Handled = true;
     }
 
-    private void PlaybackSpeedPopup_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    private void PlaybackRateSlider_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
-        ChangePlaybackSpeedBy(Math.Sign(e.Delta) * PlaybackSpeedWheelStep);
+        ChangePlaybackRateBy(Math.Sign(e.Delta) * PlaybackRateWheelStep);
+        e.Handled = true;
+    }
+
+    private void PlaybackPitchSlider_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        PlaybackPitchSlider.Value = Math.Clamp(
+            PlaybackPitchSlider.Value + Math.Sign(e.Delta) * PlaybackPitchWheelStep,
+            PlaybackPitchSlider.Minimum,
+            PlaybackPitchSlider.Maximum);
         e.Handled = true;
     }
 
@@ -4449,7 +4584,7 @@ public partial class MainWindow : FluentWindow
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();
-        ApplyPlaybackSpeedLive(_settings.PlaybackSpeed);
+        ApplyPlaybackRateLive(_settings.PlaybackSpeed);
         ApplyPlaybackPitchLive(_settings.PlaybackPitchSemitones);
     }
 
@@ -4459,6 +4594,9 @@ public partial class MainWindow : FluentWindow
     // трей, на паузе и периодически во время игры.
     private void PersistPlaybackAndPlaylistState(bool asyncSave = false)
     {
+        // Сохраняем speed из независимого runtime-state, а не из Popup или временного Slider.
+        _settings.PlaybackSpeed = _runtimePlaybackRate;
+
         if (_settings.RememberVolume)
             _settings.SavedVolume = VolumeSlider.Value;
 
@@ -4495,6 +4633,10 @@ public partial class MainWindow : FluentWindow
         // OnClosing, где закрытие ещё можно было заменить сворачиванием в трей) — на всякий
         // случай выставляем здесь и так, чтобы Closed-обработчик ShowChangelogWindow ниже
         // точно не попытался открыть окно настроек заново посреди выключения программы.
+        // Timer должен быть остановлен до финального Save, чтобы он не начал новую запись
+        // параллельно с закрытием окна.
+        _playbackRatePersistenceTimer.Stop();
+        _settings.PlaybackSpeed = _runtimePlaybackRate;
         _isExiting = true;
         _lifetimeCts.Cancel();
         _trackLoadCts?.Cancel();
