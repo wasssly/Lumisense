@@ -7,17 +7,16 @@
 #   1. Собирает Lumisense (dotnet publish, self-contained win-x64 — см. Lumisense.csproj).
 #   2. Собирает установщик Installer/Lumisense.iss (Inno Setup), передавая ему номер версии
 #      из тега через /DMyAppVersion — см. #ifndef MyAppVersion в самом .iss.
-#   3. Достаёт текст изменений для этой версии из Changelog/changelog.json (берётся самая
-#      последняя запись в общем порядке — датированные по возрастанию даты, затем
-#      недатированные в порядке файла; та же логика, что и в самом приложении, см.
-#      ChangelogLoader.AssignComputedFields) и использует как описание релиза.
-#   4. Публикует релиз на GitHub с прикреплённым Lumisense_Setup.exe — его и находит
-#      UpdateChecker.cs в самом плеере при проверке обновлений.
+#   3. Проверяет Changelog/changelog.json до сборки: JSON, обязательные поля, типы и текст
+#      изменений. Затем берёт последнюю запись в том же порядке, что и приложение
+#      (ChangelogLoader.AssignComputedFields), и формирует Markdown с разделами
+#      «Добавлено», «Изменено», «Исправлено» и «Удалено».
+#   4. Публикует релиз на GitHub с этим описанием и прикреплённым Lumisense_Setup.exe —
+#      его и находит UpdateChecker.cs в самом плеере при проверке обновлений.
 #
 # ВАЖНО перед тем как поставить тег: добавьте в Changelog/changelog.json новую запись со
-# списком изменений (дату указывать больше не обязательно — см. комментарий в
-# ChangelogLoader.cs, новые записи привязаны к версии, а не к дате) — она станет и текстом
-# релиза, и версией, которую приложение покажет в "О программе" после обновления.
+# списком изменений. Дату указывать больше не обязательно: новые записи привязаны к версии,
+# а не к дате. Некорректный changelog остановит workflow до сборки и публикации релиза.
 
 name: Release
 
@@ -54,6 +53,17 @@ jobs:
           Write-Host "Версия релиза: $version"
           "version=$version" >> $env:GITHUB_OUTPUT
 
+      # Этот шаг выполняется до сборки. Ошибка структуры changelog останавливает
+      # workflow до создания установщика и публикации неполного GitHub Release.
+      - name: Validate changelog and prepare structured release notes
+        id: notes
+        shell: pwsh
+        run: |
+          & .\tools\Prepare-ReleaseChangelog.ps1 `
+            -ChangelogPath "Lumisense\Changelog\changelog.json" `
+            -OutputPath "release_notes.md" `
+            -Version "${{ steps.ver.outputs.version }}"
+
       - name: Setup .NET 8
         uses: actions/setup-dotnet@v4
         with:
@@ -69,37 +79,6 @@ jobs:
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" "Installer\Lumisense.iss"
-
-      - name: Extract changelog for this release
-        id: notes
-        shell: pwsh
-        run: |
-          $notesPath = "release_notes.md"
-          try {
-            $entries = Get-Content "Lumisense\Changelog\changelog.json" -Raw | ConvertFrom-Json
-
-            # changelog.json теперь поддерживает записи без даты (новые версии привязаны к
-            # версии, а не к дате — см. комментарий в ChangelogLoader.cs) — те же правила
-            # порядка, что и в самом приложении (ChangelogLoader.AssignComputedFields):
-            # сначала все датированные записи по возрастанию даты, затем все недатированные
-            # в порядке, в котором они перечислены в файле; "текущая" — последняя в этом
-            # общем порядке.
-            function Parse-ChangelogDate($text) {
-              foreach ($fmt in @("dd.MM.yyyy", "dd.MM.yy")) {
-                try { return [datetime]::ParseExact($text, $fmt, $null) } catch {}
-              }
-              return [datetime]::MinValue
-            }
-
-            $dated = @($entries | Where-Object { $_.date }) | Sort-Object { Parse-ChangelogDate $_.date }
-            $undated = @($entries | Where-Object { -not $_.date })
-            $latest = @($dated) + @($undated) | Select-Object -Last 1
-
-            $lines = foreach ($c in $latest.changes) { "- $($c.text)" }
-            $lines -join "`n" | Out-File -FilePath $notesPath -Encoding utf8
-          } catch {
-            "Список изменений см. в приложении (Настройки → О программе → Список изменений)." | Out-File -FilePath $notesPath -Encoding utf8
-          }
 
       - name: Create GitHub Release
         if: github.event_name != 'workflow_dispatch'
