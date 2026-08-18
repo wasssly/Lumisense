@@ -27,6 +27,8 @@
     <PackageReference Include="SoundTouch.Net.NAudioSupport" Version="2.3.2" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
+    <!-- Локальный Discord IPC / Rich Presence; фиксированная версия делает восстановление сборки воспроизводимым. -->
+    <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
   </ItemGroup>
 
   <ItemGroup>

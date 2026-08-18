@@ -839,6 +839,42 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Discord Rich Presence — локальный Discord IPC, см. DiscordRichPresenceManager. -->
+                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                            <StackPanel>
+                                <CheckBox x:Name="DiscordRichPresenceEnabledCheckBox" Content="Discord Rich Presence"
+                                          Checked="DiscordRichPresenceEnabledCheckBox_Changed"
+                                          Unchecked="DiscordRichPresenceEnabledCheckBox_Changed"
+                                          Margin="0,0,0,10" />
+                                <TextBlock Text="Показывает активность Lumisense в профиле Discord через локальное соединение. Discord и обмен статусами должны быть включены в самом клиенте Discord."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,14" />
+
+                                <ui:Button x:Name="ConnectDiscordButton" Appearance="Secondary" HorizontalAlignment="Left" Margin="0,0,0,0"
+                                           Content="Подключить Discord"
+                                           Click="ConnectDiscordButton_Click" />
+                                <TextBlock x:Name="DiscordRichPresenceConnectionStatusText"
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <ui:Button x:Name="OpenDiscordDiagnosticsLogButton" Appearance="Secondary" HorizontalAlignment="Left" Margin="0,10,0,0"
+                                           Content="Открыть журнал Discord"
+                                           Click="OpenDiscordDiagnosticsLogButton_Click" />
+                                <TextBlock Text="Журнал сохраняет события подключения, отправки статуса и ошибки Discord Rich Presence — он поможет при диагностике проблем интеграции."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+
+                                <TextBlock Text="Приватность" Margin="0,14,0,8" />
+                                <CheckBox x:Name="DiscordRichPresenceShowTrackInfoCheckBox"
+                                          Content="Показывать название и исполнителя"
+                                          Checked="DiscordRichPresencePrivacyCheckBox_Changed"
+                                          Unchecked="DiscordRichPresencePrivacyCheckBox_Changed"
+                                          Margin="0,0,0,10" />
+                                <CheckBox x:Name="DiscordRichPresenceShowTimelineCheckBox"
+                                          Content="Показывать таймлайн воспроизведения"
+                                          Checked="DiscordRichPresencePrivacyCheckBox_Changed"
+                                          Unchecked="DiscordRichPresencePrivacyCheckBox_Changed" />
+                                <TextBlock Text="Локальные файлы и обложки не загружаются в Discord. Обложка может отображаться только как заранее добавленный asset вашего Discord-приложения."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.ReplayGainEnabled / ReplayGainReader. -->
                         <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
                             <StackPanel>

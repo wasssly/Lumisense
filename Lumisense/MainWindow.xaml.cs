@@ -190,6 +190,7 @@ public partial class MainWindow : FluentWindow
     private GlobalMediaHotKeys? _mediaHotKeys;
     private TrayIconManager? _trayIconManager;
     private NowPlayingIntegration? _nowPlaying;
+    private readonly DiscordRichPresenceManager _discordRichPresence = new();
     private MiniPlayerWindow? _miniPlayerWindow;
 
     private SettingsWindow? _settingsWindow;
@@ -315,6 +316,12 @@ public partial class MainWindow : FluentWindow
         _progressTimer.Tick += ProgressTimer_Tick;
         _hotkeyTrackStepTimer.Tick += (_, _) => CommitPendingHotkeyTrackStep();
         _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
+
+        // Rich Presence использует те же единые события, что и мини-плеер: это исключает
+        // отдельный таймер, опрос UI и расхождение со сменой состояния аудиоустройства.
+        TrackInfoChanged += (_, _, _) => UpdateDiscordRichPresence(force: true);
+        PlaybackStateChanged += _ => UpdateDiscordRichPresence(force: true);
+        ProgressChanged += (_, _) => UpdateDiscordRichPresence(force: false);
         ApplySettingsOnStartup();
         _playbackRatePersistenceTimer.Start();
 
@@ -3422,6 +3429,7 @@ public partial class MainWindow : FluentWindow
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Stopped);
             PlaybackStateChanged?.Invoke(false);
+            _discordRichPresence.ClearAndDispose();
         }
     }
 
@@ -4682,6 +4690,29 @@ public partial class MainWindow : FluentWindow
     // настроек — остальное (хоткеи, эквалайзер, трей, мини-плеер) читается только при старте
     // соответствующих подсистем, поэтому SettingsWindow в обоих случаях дополнительно
     // предлагает перезапустить плеер.
+    // Обновляет Rich Presence единым снимком аудиосостояния. Полная длительность и позиция
+    // берутся только из AudioFileReader, поэтому Discord не зависит от текстовых полей UI.
+    private void UpdateDiscordRichPresence(bool force)
+    {
+        var audioFile = _audioFile;
+        _discordRichPresence.Update(
+            _settings,
+            CurrentTitle,
+            CurrentArtist,
+            _isPlaying,
+            audioFile?.CurrentTime.TotalSeconds ?? 0,
+            audioFile?.TotalTime.TotalSeconds ?? 0,
+            audioFile != null && !string.IsNullOrWhiteSpace(_currentTrackPath),
+            force);
+    }
+
+    // Вызывается SettingsWindow сразу после изменения включения, Application ID или параметров
+    // приватности. При выключении менеджер сам очищает активность и освобождает Discord IPC.
+    public void ApplyDiscordRichPresenceSettingsLive()
+    {
+        UpdateDiscordRichPresence(force: true);
+    }
+
     public void ApplyImportedSettingsLive()
     {
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
@@ -4689,6 +4720,7 @@ public partial class MainWindow : FluentWindow
         ApplyWindowBackdrop();
         _miniPlayerWindow?.ApplyArtworkProgressVisibility();
         _miniPlayerWindow?.ApplyArtworkProgressColor();
+        ApplyDiscordRichPresenceSettingsLive();
         ApplyPlaybackRateLive(_settings.PlaybackSpeed);
         ApplyPlaybackPitchLive(_settings.PlaybackPitchSemitones);
     }
@@ -4759,6 +4791,7 @@ public partial class MainWindow : FluentWindow
         // вообще происходит (см. подробный комментарий у поля _outputDevice в начале файла:
         // между треками StopPlayback теперь только останавливает его, не уничтожая).
         DisposeOutputDeviceSafely();
+        _discordRichPresence.Dispose();
 
         _mediaHotKeys?.Dispose();
         _nowPlaying?.Dispose();

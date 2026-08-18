@@ -125,6 +125,13 @@ public class AppSettings
     // явного действия пользователя, по умолчанию — не лучшая идея, пусть будет осознанным выбором.
     public bool ReplayGainEnabled { get; set; }
 
+    // Discord Rich Presence использует только локальный Discord IPC и встроенный публичный
+    // Application ID Lumisense. По умолчанию интеграция выключена, а публикация названия,
+    // исполнителя и таймлайна настраивается отдельно.
+    public bool DiscordRichPresenceEnabled { get; set; }
+    public bool DiscordRichPresenceShowTrackInfo { get; set; } = true;
+    public bool DiscordRichPresenceShowTimeline { get; set; } = true;
+
     // Темп воспроизведения без изменения высоты тона. 1.0 — обычная скорость.
     public double PlaybackSpeed { get; set; } = 1.0;
 

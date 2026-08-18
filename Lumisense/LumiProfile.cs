@@ -129,6 +129,9 @@ public static class LumiProfileIO
         target.SavedVolume = source.SavedVolume;
         target.UseLogarithmicVolume = source.UseLogarithmicVolume;
         target.ReplayGainEnabled = source.ReplayGainEnabled;
+        target.DiscordRichPresenceEnabled = source.DiscordRichPresenceEnabled;
+        target.DiscordRichPresenceShowTrackInfo = source.DiscordRichPresenceShowTrackInfo;
+        target.DiscordRichPresenceShowTimeline = source.DiscordRichPresenceShowTimeline;
         target.PlaybackSpeed = source.PlaybackSpeed;
         target.PlaybackPitchSemitones = source.PlaybackPitchSemitones;
         target.MinimizeToTrayOnClose = source.MinimizeToTrayOnClose;

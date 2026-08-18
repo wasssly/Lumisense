@@ -157,6 +157,10 @@ public partial class SettingsWindow : FluentWindow
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
         ProgressBarSliderRadio.IsChecked = !ProgressBarWaveformRadio.IsChecked.GetValueOrDefault();
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
+        DiscordRichPresenceEnabledCheckBox.IsChecked = _settings.DiscordRichPresenceEnabled;
+        DiscordRichPresenceShowTrackInfoCheckBox.IsChecked = _settings.DiscordRichPresenceShowTrackInfo;
+        DiscordRichPresenceShowTimelineCheckBox.IsChecked = _settings.DiscordRichPresenceShowTimeline;
+        UpdateDiscordRichPresenceConnectionStatus();
         AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled;
         AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
 
@@ -479,6 +483,11 @@ public partial class SettingsWindow : FluentWindow
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
         Add("Не запускать трек при старте", "Воспроизведение", "Playback", NeverAutoPlayLastTrackOnStartupCheckBox, "старт запуск продолжить воспроизведение последний трек пауза resume autoplay");
         Add("Очистить кэш интернет-обложек", "Воспроизведение", "Playback", ClearArtworkCacheButton, "кэш обложка интернет очистить удалить cover cache artwork image");
+        Add("Discord Rich Presence", "Воспроизведение", "Playback", DiscordRichPresenceEnabledCheckBox, "discord статус rich presence rpc активность" );
+        Add("Подключить Discord", "Воспроизведение", "Playback", ConnectDiscordButton, "discord подключить connection rich presence статус" );
+        Add("Открыть журнал Discord", "Воспроизведение", "Playback", OpenDiscordDiagnosticsLogButton, "discord журнал лог диагностика ошибка rich presence" );
+        Add("Приватность Discord: название и исполнитель", "Воспроизведение", "Playback", DiscordRichPresenceShowTrackInfoCheckBox, "discord приватность название исполнитель трек" );
+        Add("Приватность Discord: таймлайн", "Воспроизведение", "Playback", DiscordRichPresenceShowTimelineCheckBox, "discord приватность время прогресс таймлайн" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
@@ -778,6 +787,61 @@ public partial class SettingsWindow : FluentWindow
         if (bytes < 1024) return $"{bytes} Б";
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} КБ";
         return $"{bytes / (1024.0 * 1024.0):0.#} МБ";
+    }
+
+    private void DiscordRichPresenceEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.DiscordRichPresenceEnabled = DiscordRichPresenceEnabledCheckBox.IsChecked == true;
+        UpdateDiscordRichPresenceConnectionStatus();
+        _owner.ApplyDiscordRichPresenceSettingsLive();
+    }
+
+    private void ConnectDiscordButton_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.DiscordRichPresenceEnabled = true;
+        DiscordRichPresenceEnabledCheckBox.IsChecked = true;
+        DiscordRichPresenceLogger.Info("Пользователь включил Discord Rich Presence из настроек.");
+        UpdateDiscordRichPresenceConnectionStatus();
+        _owner.ApplyDiscordRichPresenceSettingsLive();
+    }
+
+    private void OpenDiscordDiagnosticsLogButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            DiscordRichPresenceLogger.Info("Пользователь открыл журнал диагностики Discord из настроек.");
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = DiscordRichPresenceLogger.LogFilePath,
+                UseShellExecute = true
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(this, $"Не удалось открыть журнал Discord:\n{ex.Message}",
+                "Discord Rich Presence", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+        }
+    }
+
+    private void UpdateDiscordRichPresenceConnectionStatus()
+    {
+        ConnectDiscordButton.Content = _settings.DiscordRichPresenceEnabled
+            ? "Обновить подключение Discord"
+            : "Подключить Discord";
+        DiscordRichPresenceConnectionStatusText.Text = _settings.DiscordRichPresenceEnabled
+            ? "Discord Rich Presence включён. При начале воспроизведения Lumisense обновит ваш статус."
+            : "Нажмите «Подключить Discord», чтобы включить Rich Presence с официальным приложением Lumisense.";
+    }
+
+    private void DiscordRichPresencePrivacyCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.DiscordRichPresenceShowTrackInfo = DiscordRichPresenceShowTrackInfoCheckBox.IsChecked == true;
+        _settings.DiscordRichPresenceShowTimeline = DiscordRichPresenceShowTimelineCheckBox.IsChecked == true;
+        _owner.ApplyDiscordRichPresenceSettingsLive();
     }
 
     private void TrackChangeToastCheckBox_Changed(object sender, RoutedEventArgs e)
