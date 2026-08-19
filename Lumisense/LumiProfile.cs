@@ -52,6 +52,9 @@ public static class LumiProfileIO
         clone.LastPositionSeconds = 0;
         clone.WasPlayingOnClose = false;
         clone.WasMiniPlayerOnClose = false;
+        clone.ShuffleHistory = new List<string>();
+        clone.ShuffleHistoryIndex = -1;
+        clone.ShuffleBag = new List<string>();
         clone.PlayCounts = new Dictionary<string, int>();
 
         return clone;
@@ -82,6 +85,7 @@ public static class LumiProfileIO
         if ((settings.AccentColorHex?.Length ?? 0) > 32 || (settings.WindowBackdropType?.Length ?? 0) > 32 ||
             (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32 ||
+            (settings.MiniPlayerArtworkStyle?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkProgressColorMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkProgressColorHex?.Length ?? 0) > 32 ||
             (settings.FileNameNormalizationTemplate?.Length ?? 0) > 180)
@@ -147,6 +151,7 @@ public static class LumiProfileIO
         target.RepeatMode = source.RepeatMode;
         target.AlbumArtTransitionEnabled = source.AlbumArtTransitionEnabled;
         target.MiniPlayerOpacity = source.MiniPlayerOpacity;
+        target.MiniPlayerArtworkStyle = source.MiniPlayerArtworkStyle;
         target.MiniPlayerAlwaysOnTop = source.MiniPlayerAlwaysOnTop;
         target.MiniPlayerPinned = source.MiniPlayerPinned;
         target.MiniPlayerSnapToEdges = source.MiniPlayerSnapToEdges;

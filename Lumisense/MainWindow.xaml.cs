@@ -180,6 +180,7 @@ public partial class MainWindow : FluentWindow
     // вернуться к реально предыдущему треку.
     private readonly List<string> _shuffleHistory = new();
     private int _shuffleHistoryIndex = -1;
+    private const int MaxPersistedShuffleHistory = 512;
 
     // "Колода" для шаффла без повторов (см. GetNextShuffleTrack) — активна только когда
     // включена настройка Settings.UseImprovedShuffle.
@@ -672,6 +673,7 @@ public partial class MainWindow : FluentWindow
         }
 
         RefreshPlaylistView();
+        RestoreShuffleSessionState();
 
         // Fire-and-forget — удаление устаревших записей не должно задерживать ни показ
         // плейлиста (уже показан), ни загрузку последнего трека чуть ниже.
@@ -973,7 +975,9 @@ public partial class MainWindow : FluentWindow
             PlaybackPitchValueText.Text = FormatPlaybackPitch(PlaybackPitchSlider.Value);
             ApplyPlaybackPitchLive(PlaybackPitchSlider.Value);
 
-            SetShuffleEnabled(_settings.IsShuffleEnabled);
+            // На старте состояние кнопки шаффла нужно применить без очистки истории: сама
+            // история будет отфильтрована и восстановлена после загрузки плейлиста.
+            SetShuffleEnabled(_settings.IsShuffleEnabled, resetSessionHistory: false);
             SetRepeatMode(Enum.TryParse<RepeatMode>(_settings.RepeatMode, out var savedRepeatMode)
                 ? savedRepeatMode
                 : RepeatMode.Off);
@@ -4003,18 +4007,17 @@ public partial class MainWindow : FluentWindow
     // Вынесено из ShuffleButton_Click, чтобы этим же кодом (смена состояния + иконки кнопки)
     // можно было воспользоваться и при восстановлении сохранённого состояния при запуске
     // (см. ApplySettingsOnStartup), не эмулируя клик по кнопке.
-    private void SetShuffleEnabled(bool enabled)
+    private void SetShuffleEnabled(bool enabled, bool resetSessionHistory = true)
     {
         _isShuffleEnabled = enabled;
         SetAccentButtonActive(ShuffleButton, _isShuffleEnabled);
         IconResources.SetOnAccent(ShuffleIcon, _isShuffleEnabled);
         ShuffleStateChanged?.Invoke(_isShuffleEnabled);
 
-        // Старая история шафла относится к предыдущему "заезду" по плейлисту — начинаем
-        // её заново, чтобы "назад" не утаскивал в состояние из совсем другого включения.
-        _shuffleHistory.Clear();
-        _shuffleHistoryIndex = -1;
-        _shuffleBag.Clear();
+        // Смена пользователем режима шаффла начинает новый заезд. Исключение — старт
+        // приложения: там восстановим ранее сохранённую историю после загрузки плейлиста.
+        if (resetSessionHistory)
+            ResetShuffleState();
     }
 
     // Вызывается из окна настроек при переключении настройки "Шаффл без повторов" — колода
@@ -4039,9 +4042,13 @@ public partial class MainWindow : FluentWindow
         _settings.LastTrackPath = null;
         _settings.LastPositionSeconds = 0;
         _settings.WasPlayingOnClose = false;
+        _settings.ShuffleHistory = new List<string>();
+        _settings.ShuffleHistoryIndex = -1;
+        _settings.ShuffleBag = new List<string>();
         _settings.EqualizerPresets.Clear();
 
         _currentTrackPath = null;
+        ResetShuffleState();
         _replayGainFactor = 1.0;
         SetTrackInfoText("Файл не выбран", "—");
         TotalTimeText.Text = "00:00";
@@ -4056,6 +4063,56 @@ public partial class MainWindow : FluentWindow
         _shuffleHistory.Clear();
         _shuffleHistoryIndex = -1;
         _shuffleBag.Clear();
+    }
+
+    // Вызывается только после восстановления SavedPlaylistFolders. Повреждённые, удалённые
+    // или выключенные пути не должны делать кнопку «Назад» непредсказуемой, поэтому берём лишь
+    // актуальные активные треки и аккуратно ограничиваем сохранённый индекс.
+    private void PersistShuffleSessionState()
+    {
+        if (!_isShuffleEnabled || _shuffleHistory.Count == 0)
+        {
+            _settings.ShuffleHistory = new List<string>();
+            _settings.ShuffleHistoryIndex = -1;
+            _settings.ShuffleBag = new List<string>();
+            return;
+        }
+
+        int firstPersistedIndex = Math.Max(0, _shuffleHistory.Count - MaxPersistedShuffleHistory);
+        _settings.ShuffleHistory = _shuffleHistory.Skip(firstPersistedIndex).ToList();
+        _settings.ShuffleHistoryIndex = Math.Clamp(
+            _shuffleHistoryIndex - firstPersistedIndex, 0, _settings.ShuffleHistory.Count - 1);
+        _settings.ShuffleBag = _shuffleBag.Take(MaxPersistedShuffleHistory).ToList();
+    }
+
+    private void RestoreShuffleSessionState()
+    {
+        ResetShuffleState();
+        if (!_settings.IsShuffleEnabled) return;
+
+        var activePaths = new HashSet<string>(FlattenActive(), StringComparer.OrdinalIgnoreCase);
+        if (activePaths.Count == 0) return;
+
+        _shuffleHistory.AddRange((_settings.ShuffleHistory ?? new List<string>())
+            .Where(path => !string.IsNullOrWhiteSpace(path) && activePaths.Contains(path))
+            .TakeLast(MaxPersistedShuffleHistory));
+
+        if (_shuffleHistory.Count > 0)
+        {
+            _shuffleHistoryIndex = Math.Clamp(_settings.ShuffleHistoryIndex, 0, _shuffleHistory.Count - 1);
+            if (_settings.LastTrackPath is { } lastTrackPath)
+            {
+                int lastTrackIndex = _shuffleHistory.FindLastIndex(path =>
+                    string.Equals(path, lastTrackPath, StringComparison.OrdinalIgnoreCase));
+                if (lastTrackIndex >= 0)
+                    _shuffleHistoryIndex = lastTrackIndex;
+            }
+        }
+
+        _shuffleBag = (_settings.ShuffleBag ?? new List<string>())
+            .Where(path => !string.IsNullOrWhiteSpace(path) && activePaths.Contains(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
     }
 
     private void RepeatButton_Click(object sender, RoutedEventArgs e)
@@ -4250,6 +4307,12 @@ public partial class MainWindow : FluentWindow
     public void ApplyMiniPlayerArtworkProgressVisibilityLive()
     {
         _miniPlayerWindow?.ApplyArtworkProgressVisibility();
+    }
+
+    // Применяет выбранный вид обложки (обычный / винил) немедленно, без закрытия мини-плеера.
+    public void ApplyMiniPlayerArtworkStyleLive()
+    {
+        _miniPlayerWindow?.ApplyArtworkStyle();
     }
 
     // Применяет выбранный источник цвета (акцент оформления или фиксированный цвет) к уже
@@ -5093,6 +5156,7 @@ public partial class MainWindow : FluentWindow
         ApplyWindowBackdrop();
         _miniPlayerWindow?.ApplyArtworkProgressVisibility();
         _miniPlayerWindow?.ApplyArtworkProgressColor();
+        _miniPlayerWindow?.ApplyArtworkStyle();
         ApplyDiscordRichPresenceSettingsLive();
         TrackContextMenuActions.Instance.Initialize(_settings.DisabledTrackContextMenuActions);
         ApplyPlaybackRateLive(_settings.PlaybackSpeed);
@@ -5129,6 +5193,7 @@ public partial class MainWindow : FluentWindow
         _settings.PlayerViewMode = _viewMode.ToString();
         _settings.IsShuffleEnabled = _isShuffleEnabled;
         _settings.RepeatMode = _repeatMode.ToString();
+        PersistShuffleSessionState();
         _settings.FavoriteTracks = FavoritesManager.GetOrder();
         _settings.PinnedFavoriteTracks = FavoritesManager.GetPinnedPaths();
         _settings.PlayCounts = PlayCountManager.GetAll();

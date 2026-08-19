@@ -29,6 +29,11 @@ public partial class MiniPlayerWindow : Window
     // может быть выключена при включённом контуре и наоборот.
     private bool _showArtworkProgress;
 
+    // Вращение назначается непосредственно свойству Angle через AnimationClock, а не
+    // storyboard с поиском цели по namescope. Так анимация гарантированно живёт на transform
+    // самой обложки даже в отдельном transparent Window мини-плеера.
+    private AnimationClock? _vinylRotationClock;
+
     // Реальный замер (Measure), а не заранее подобранные константы под каждую комбинацию
     // видимости строк — та комбинация слишком легко расходится с реальной раскладкой (Grid с
     // рядами Auto отдаёт лишнее/недостающее место последнему ряду, а не распределяет поровну).
@@ -89,6 +94,7 @@ public partial class MiniPlayerWindow : Window
         ApplyProgressBarVisibility();
         ApplyArtworkProgressVisibility();
         ApplyArtworkProgressColor();
+        ApplyArtworkStyle();
 
         // Сразу отображаем текущее состояние плеера
         OnTrackInfoChanged(_mainWindow.CurrentTitle, _mainWindow.CurrentArtist, _mainWindow.CurrentArtBrush);
@@ -335,6 +341,58 @@ public partial class MiniPlayerWindow : Window
     // светлую/тёмную тему в настройках, пока мини-плеер уже открыт.
     public void ApplyThemeLive() => ApplyTheme();
 
+    // Default сохраняет привычную скруглённую квадратную обложку. Vinyl превращает только
+    // сам визуальный слой в круг и добавляет медленное вращение; индикатор прогресса остаётся
+    // отдельным неподвижным слоем поверх, чтобы не терять читаемость позиции трека.
+    public void ApplyArtworkStyle()
+    {
+        bool vinyl = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal);
+        ArtBorder.CornerRadius = vinyl ? new CornerRadius(21) : new CornerRadius(8);
+        ArtProgressTrack.CornerRadius = vinyl ? new CornerRadius(21) : new CornerRadius(8);
+        UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
+
+        if (!vinyl)
+        {
+            StopVinylRotation();
+            return;
+        }
+
+        EnsureVinylRotation();
+        UpdateVinylRotation(_mainWindow.IsPlayingNow);
+    }
+
+    private void EnsureVinylRotation()
+    {
+        if (_vinylRotationClock is not null) return;
+
+        var rotation = new DoubleAnimation(0, 360, new Duration(TimeSpan.FromSeconds(18)))
+        {
+            RepeatBehavior = RepeatBehavior.Forever
+        };
+        _vinylRotationClock = (AnimationClock)rotation.CreateClock(true);
+        ArtRotateTransform.ApplyAnimationClock(RotateTransform.AngleProperty, _vinylRotationClock,
+            HandoffBehavior.SnapshotAndReplace);
+    }
+
+    private void UpdateVinylRotation(bool isPlaying)
+    {
+        if (!string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal))
+            return;
+
+        EnsureVinylRotation();
+        if (isPlaying)
+            _vinylRotationClock!.Controller?.Resume();
+        else
+            _vinylRotationClock!.Controller?.Pause();
+    }
+
+    private void StopVinylRotation()
+    {
+        ArtRotateTransform.BeginAnimation(RotateTransform.AngleProperty, null);
+        _vinylRotationClock = null;
+        ArtRotateTransform.Angle = 0;
+    }
+
     // ---------- Бегущая строка названия трека ----------
     // Название показывается статично, пока помещается в 140px. Если длиннее — бесконечная
     // анимация TranslateTransform.X: пауза → проезд до конца → пауза → проезд обратно, по кругу,
@@ -457,6 +515,7 @@ public partial class MiniPlayerWindow : Window
     {
         PlayPauseButton.Icon = IconResources.MakeOnAccent(isPlaying ? "IconPause" : "IconPlay");
         PlayPauseButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor()); // всегда акцентная
+        UpdateVinylRotation(isPlaying);
     }
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPlayPause();
@@ -978,7 +1037,27 @@ public partial class MiniPlayerWindow : Window
             return;
         }
 
-        // Обложка имеет размер 42×42, CornerRadius=8 и рамку толщиной 2. Центр линии
+        if (string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal))
+        {
+            // В режиме Vinyl тот же прогресс идёт по окружности 40×40 вокруг круглой обложки.
+            const double center = 21.0;
+            const double radius = 20.0;
+            if (ratio >= 0.9999)
+            {
+                ArtProgressOutline.Data = new EllipseGeometry(new Point(center, center), radius, radius);
+                return;
+            }
+
+            double endAngle = -Math.PI / 2 + 2 * Math.PI * ratio;
+            var vinylFigure = new PathFigure { StartPoint = new Point(center, center - radius) };
+            vinylFigure.Segments.Add(new ArcSegment(
+                new Point(center + radius * Math.Cos(endAngle), center + radius * Math.Sin(endAngle)),
+                new Size(radius, radius), 0, ratio > 0.5, SweepDirection.Clockwise, true));
+            ArtProgressOutline.Data = new PathGeometry(new[] { vinylFigure });
+            return;
+        }
+
+        // Обычная обложка имеет размер 42×42, CornerRadius=8 и рамку толщиной 2. Центр линии
         // индикатора проходит по прямоугольнику 40×40 с радиусом 7: так внешняя граница
         // штриха точно совпадает с внешней границей скруглённой обложки.
         const double inset = 1.0;
@@ -1139,6 +1218,7 @@ public partial class MiniPlayerWindow : Window
     {
         _topmostTimer.Stop();
         _topmostTimer.Tick -= TopmostTimer_Tick;
+        StopVinylRotation();
         _volumeOverlayRestoreTimer?.Stop();
         if (_volumeOverlayRestoreTimer is not null)
             _volumeOverlayRestoreTimer.Tick -= VolumeOverlayRestoreTimer_Tick;

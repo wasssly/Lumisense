@@ -191,6 +191,13 @@ public class AppSettings
     public bool IsShuffleEnabled { get; set; }
     public string RepeatMode { get; set; } = "Off";
 
+    // История шаффла — данные текущей сессии, а не пользовательская настройка. Храним
+    // последовательность уже пройденных треков, текущий индекс и остаток колоды, чтобы кнопка
+    // «Назад» после перезапуска возвращала к тем же композициям, а не генерировала новые.
+    public List<string> ShuffleHistory { get; set; } = new();
+    public int ShuffleHistoryIndex { get; set; } = -1;
+    public List<string> ShuffleBag { get; set; } = new();
+
     // Анимация смены обложки (старая "улетает" в сторону, новая "влетает" с
     // противоположной — как в iTunes) при переключении трека. Можно выключить в
     // настройках, если анимация мешает или не нравится — см. MainWindow.SetAlbumArtTransitionEnabled.
@@ -198,6 +205,10 @@ public class AppSettings
 
     // Настройки мини-плеера
     public double MiniPlayerOpacity { get; set; } = 1.0;
+
+    // Default — обычная скруглённая обложка; Vinyl — круглая «пластинка», медленно
+    // вращающаяся только во время воспроизведения (см. MiniPlayerWindow).
+    public string MiniPlayerArtworkStyle { get; set; } = "Default";
     public bool MiniPlayerAlwaysOnTop { get; set; } = true;
     public bool MiniPlayerPinned { get; set; }               // Запрещает перетаскивание окна мышью
 

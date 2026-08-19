@@ -1278,6 +1278,20 @@
                             </StackPanel>
                         </Border>
 
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Отображение обложки" Margin="0,0,0,10" />
+                                <RadioButton x:Name="MiniArtworkDefaultRadio" Content="По умолчанию"
+                                             GroupName="MiniPlayerArtworkStyle"
+                                             Checked="MiniArtworkStyleRadio_Changed" Margin="0,0,0,10" />
+                                <RadioButton x:Name="MiniArtworkVinylRadio" Content="Винил (медленное вращение во время воспроизведения)"
+                                             GroupName="MiniPlayerArtworkStyle"
+                                             Checked="MiniArtworkStyleRadio_Changed" />
+                                <TextBlock Text="Виниловый режим делает обложку круглой и приостанавливает её вращение вместе с треком."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.MiniPlayerShowProgress и MiniPlayerWindow.ApplyProgressBarVisibility. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>

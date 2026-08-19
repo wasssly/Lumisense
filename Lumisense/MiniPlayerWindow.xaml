@@ -257,6 +257,11 @@
                 <Grid Width="42" Height="42">
                     <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
                             Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                        <!-- В режиме Vinyl вращается только этот слой обложки. Контур прогресса
+                             остаётся неподвижным и продолжает точно показывать позицию трека. -->
+                        <Border.RenderTransform>
+                            <RotateTransform x:Name="ArtRotateTransform" CenterX="21" CenterY="21" />
+                        </Border.RenderTransform>
                         <local:SvgPathIcon x:Name="ArtIcon" Icon="IconMusicNote" Size="15"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"
                                        Foreground="{DynamicResource TextFillColorSecondaryBrush}" />

@@ -37,15 +37,16 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Bg" CornerRadius="10" Background="Transparent">
+                        <Border x:Name="Bg" CornerRadius="14" Background="Transparent"
+                                BorderBrush="Transparent" BorderThickness="1">
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="3" />
+                                    <ColumnDefinition Width="4" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Border x:Name="AccentBar" Grid.Column="0" Width="3" CornerRadius="2" Margin="0,7"
+                                <Border x:Name="AccentBar" Grid.Column="0" Width="4" CornerRadius="3" Margin="0,8"
                                         Background="{DynamicResource AccentFillColorDefaultBrush}" Opacity="0" />
-                                <ContentPresenter Grid.Column="1" Margin="12,10,12,10" />
+                                <ContentPresenter Grid.Column="1" Margin="14,12,14,12" />
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
@@ -56,6 +57,8 @@
                             <Trigger Property="IsSelected" Value="True">
                                 <Setter TargetName="Bg" Property="Background"
                                         Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                <Setter TargetName="Bg" Property="BorderBrush"
+                                        Value="{DynamicResource AccentFillColorDefaultBrush}" />
                                 <Setter TargetName="AccentBar" Property="Opacity" Value="1" />
                             </Trigger>
                         </ControlTemplate.Triggers>
@@ -77,7 +80,7 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ToggleButton">
-                        <Border x:Name="Bg" CornerRadius="13"
+                        <Border x:Name="Bg" CornerRadius="15"
                                 Background="{TemplateBinding Background}"
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}">
@@ -179,16 +182,16 @@
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,2,16">
-                        <Border Width="36" Height="36" CornerRadius="10" Margin="0,0,10,0"
+                    <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,2,2,18">
+                        <Border Width="40" Height="40" CornerRadius="13" Margin="0,0,12,0"
                                 Background="{DynamicResource AccentFillColorDefaultBrush}">
                             <local:SvgPathIcon Icon="IconMusicNote" Size="18"
                                                 Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
                                                 HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Список изменений" FontSize="15" FontWeight="SemiBold" />
-                            <TextBlock x:Name="ResultsCountText" FontSize="11" Opacity="0.55" Margin="0,1,0,0" />
+                            <TextBlock Text="Релизы Lumisense" FontSize="15" FontWeight="SemiBold" />
+                            <TextBlock x:Name="ResultsCountText" FontSize="11" Opacity="0.55" Margin="0,2,0,0" />
                         </StackPanel>
                     </StackPanel>
 
@@ -366,13 +369,14 @@
                     <StackPanel x:Name="DetailsPanel" Margin="0,0,0,32"
                                 DataContext="{Binding ElementName=VersionsListBox, Path=SelectedItem}">
 
-                        <!-- Хедер-"обложка" версии: крупный акцентный блок сверху, а не просто заголовок в
-                             общем потоке — сразу считывается, какая версия открыта, ещё до чтения списка -->
-                        <Border Padding="36,30,36,26">
+                        <!-- Карточка релиза: версия, её дата и состав изменений отделены от
+                             остального потока, поэтому выбранный релиз считывается до прокрутки. -->
+                        <Border Margin="24,22,24,4" Padding="28,26,28,24" CornerRadius="20"
+                                BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="1">
                             <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                                    <GradientStop Offset="0" Color="#1A605CFF" />
-                                    <GradientStop Offset="1" Color="#00605CFF" />
+                                    <GradientStop Offset="0" Color="#24605CFF" />
+                                    <GradientStop Offset="1" Color="#08101A2B" />
                                 </LinearGradientBrush>
                             </Border.Background>
 
@@ -383,7 +387,7 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <Border Grid.Column="0" Width="52" Height="52" CornerRadius="16" Margin="0,0,16,0"
+                                    <Border Grid.Column="0" Width="56" Height="56" CornerRadius="18" Margin="0,0,16,0"
                                             Background="{DynamicResource AccentFillColorDefaultBrush}">
                                         <local:SvgPathIcon Icon="IconChangelog" Size="22"
                                                             Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
@@ -392,7 +396,7 @@
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock FontSize="26" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                            <TextBlock FontSize="28" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
                                                 <Run Text="Версия " /><Run Text="{Binding Version, Mode=OneWay}" />
                                             </TextBlock>
                                             <Border Height="22" CornerRadius="11" Padding="11,0" Margin="10,0,0,0"
@@ -411,7 +415,7 @@
 
                                 <!-- Сводка состава версии по типам — сразу видно, чего и сколько, ещё до
                                      прокрутки к самим секциям ниже -->
-                                <ItemsControl ItemsSource="{Binding Groups}" Margin="0,18,0,0">
+                                <ItemsControl ItemsSource="{Binding Groups}" Margin="0,20,0,0">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>
                                             <StackPanel Orientation="Horizontal" />
@@ -442,7 +446,7 @@
                              Клик открывает её крупно в CoverArtWindow — то же самое окно (с
                              приближением по клику, панорамированием и сбросом ПКМ), что и у
                              обложки трека в главном окне, см. ChangelogImage_MouseLeftButtonDown. -->
-                        <Border Margin="36,18,36,0" CornerRadius="12"
+                        <Border Margin="24,18,24,0" CornerRadius="16"
                                 Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Image x:Name="ChangelogEntryImage" Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="320"
                                    HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"
@@ -466,7 +470,7 @@
 
                         <!-- Сами изменения — секциями по типу (Добавлено / Изменено / Исправлено / Удалено),
                              а не одним плоским списком, чтобы состав версии читался по смыслу с первого взгляда -->
-                        <ItemsControl x:Name="GroupSectionsItemsControl" ItemsSource="{Binding Groups}" Margin="36,10,36,0">
+                        <ItemsControl x:Name="GroupSectionsItemsControl" ItemsSource="{Binding Groups}" Margin="24,20,24,0">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <StackPanel Margin="0,0,0,24">
@@ -490,7 +494,7 @@
                                         <ItemsControl ItemsSource="{Binding Items}" Margin="0,2,0,0">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
-                                                    <Border CornerRadius="10" Padding="14,12" Margin="0,0,0,8" BorderThickness="1"
+                                                    <Border CornerRadius="14" Padding="0" Margin="0,0,0,10" BorderThickness="1"
                                                             Opacity="0" Loaded="ChangeCard_Loaded">
                                                         <Border.Background>
                                                             <SolidColorBrush Color="{Binding DataContext.Brush.Color, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
@@ -500,8 +504,15 @@
                                                             <SolidColorBrush Color="{Binding DataContext.Brush.Color, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
                                                                               Opacity="0.22" />
                                                         </Border.BorderBrush>
-                                                        <StackPanel>
-                                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="14" LineHeight="21" />
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="4" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Grid.Column="0" Margin="0,12,0,12" CornerRadius="2"
+                                                                    Background="{Binding DataContext.Brush, RelativeSource={RelativeSource AncestorType=ItemsControl}}" />
+                                                            <StackPanel Grid.Column="1" Margin="15,13,15,14">
+                                                                <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="14" LineHeight="21" />
 
                                                             <!-- Необязательная картинка ИМЕННО этого пункта (поле "image" внутри
                                                                  конкретного изменения в changelog.json), отдельно от общей картинки
@@ -524,7 +535,8 @@
                                                                     </Image.Clip>
                                                                 </Image>
                                                             </Border>
-                                                        </StackPanel>
+                                                            </StackPanel>
+                                                        </Grid>
                                                     </Border>
                                                 </DataTemplate>
                                             </ItemsControl.ItemTemplate>
@@ -536,7 +548,7 @@
 
                         <!-- Показывается, если для версии совсем нет описания изменений -->
                         <TextBlock Text="Для этой версии пока нет описания изменений." Opacity="0.5" FontSize="13"
-                                   TextWrapping="Wrap" Margin="36,10,36,0">
+                                   TextWrapping="Wrap" Margin="24,20,24,0">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
                                     <Setter Property="Visibility" Value="Collapsed" />

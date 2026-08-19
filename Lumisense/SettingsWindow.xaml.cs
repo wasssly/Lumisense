@@ -142,6 +142,8 @@ public partial class SettingsWindow : FluentWindow
                                               && !MiniSecondaryFavoriteRadio.IsChecked.GetValueOrDefault();
         MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
         MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
+        MiniArtworkVinylRadio.IsChecked = _settings.MiniPlayerArtworkStyle == "Vinyl";
+        MiniArtworkDefaultRadio.IsChecked = !MiniArtworkVinylRadio.IsChecked.GetValueOrDefault();
         MiniShowProgressCheckBox.IsChecked = _settings.MiniPlayerShowProgress;
         MiniShowArtworkProgressCheckBox.IsChecked = _settings.MiniPlayerShowArtworkProgress;
         MiniArtworkProgressFixedRadio.IsChecked = _settings.MiniPlayerArtworkProgressColorMode == "Fixed";
@@ -531,6 +533,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Закрепить положение (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniPinnedCheckBox, "закрепить перетаскивание pin мини плеер");
         Add("Прилипание к краям экрана (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniSnapToEdgesCheckBox, "прилипание магнит края экран snap edge мини плеер");
         Add("Вторая кнопка в мини-плеере", "Мини-плеер", "MiniPlayer", MiniSecondaryRepeatRadio, "вторая кнопка повтор перемешать избранное сердечко favorite shuffle repeat мини плеер");
+        Add("Отображение обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkVinylRadio, "обложка винил пластинка вращение круглая artwork vinyl rotate мини плеер");
         Add("Показывать полосу прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowProgressCheckBox, "полоса прогресс progress bar скрыть мини плеер");
         Add("Прогресс вокруг обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowArtworkProgressCheckBox, "контур скруглённый квадрат прогресс обложка арт мини плеер artwork outline");
         Add("Цвет контура прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkProgressAccentRadio, "акцент фиксированный цвет палитра контур прогресс обложка мини плеер artwork outline color");
@@ -1088,6 +1091,14 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.MiniPlayerButtonsLayout = MiniButtonsOverlayRadio.IsChecked == true ? "Overlay" : "Below";
         _owner.ApplyMiniPlayerButtonsLayoutLive();
+    }
+
+    private void MiniArtworkStyleRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerArtworkStyle = MiniArtworkVinylRadio.IsChecked == true ? "Vinyl" : "Default";
+        _owner.ApplyMiniPlayerArtworkStyleLive();
     }
 
     private void MiniShowProgressCheckBox_Changed(object sender, RoutedEventArgs e)
