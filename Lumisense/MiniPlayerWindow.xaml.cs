@@ -523,6 +523,7 @@ public partial class MiniPlayerWindow : Window
     private void PrevButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExternalPrev();
     private void RestoreButton_Click(object sender, RoutedEventArgs e) => _mainWindow.ExitMiniMode();
     private void SettingsMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowSettingsWindow("MiniPlayer");
+    private void NowPlayingMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowNowPlayingWindow();
 
     // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
     // тот же подтверждённый баг библиотеки, что и в MainWindow.SetAccentButtonActive (фон не

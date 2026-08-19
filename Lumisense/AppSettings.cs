@@ -203,6 +203,11 @@ public class AppSettings
     // настройках, если анимация мешает или не нравится — см. MainWindow.SetAlbumArtTransitionEnabled.
     public bool AlbumArtTransitionEnabled { get; set; } = true;
 
+    // Включает касание/свайпы на основной обложке: короткое касание — пуск/пауза,
+    // горизонтальный свайп — следующий/предыдущий трек, вертикальный — громкость.
+    // При отключении обычный клик снова открывает просмотр обложки.
+    public bool AlbumArtGesturesEnabled { get; set; } = true;
+
     // Настройки мини-плеера
     public double MiniPlayerOpacity { get; set; } = 1.0;
 

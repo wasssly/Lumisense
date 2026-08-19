@@ -642,6 +642,16 @@
                             </StackPanel>
                         </Border>
 
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="AlbumArtGesturesCheckBox" Content="Включить жесты на обложке"
+                                          Checked="AlbumArtGesturesCheckBox_Changed"
+                                          Unchecked="AlbumArtGesturesCheckBox_Changed" />
+                                <TextBlock Text="Касание — пуск/пауза; свайп влево или вправо — смена трека; свайп вверх или вниз — громкость. При отключении клик снова открывает обложку."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
 
                     <!-- Окно и запуск -->
@@ -958,6 +968,7 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
+
                     </StackPanel>
 
                     <!-- Уведомления — раньше жили на странице "Воспроизведение", вынесены на

@@ -171,6 +171,7 @@ public partial class SettingsWindow : FluentWindow
         UpdateDiscordRichPresenceConnectionStatus();
         AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled;
         AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
+        AlbumArtGesturesCheckBox.IsChecked = _settings.AlbumArtGesturesEnabled;
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
         EqualizerBypassCheckBox.IsChecked = _owner.IsEqualizerBypass;
@@ -510,6 +511,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд fly transition album art cover");
+        Add("Жесты на обложке", "Оформление", "Appearance", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
         Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно и запуск", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно и запуск", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
@@ -1499,6 +1501,12 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _owner.SetAlbumArtTransitionEnabled(AlbumArtTransitionOnRadio.IsChecked == true);
+    }
+
+    private void AlbumArtGesturesCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _settings.AlbumArtGesturesEnabled = AlbumArtGesturesCheckBox.IsChecked == true;
     }
 
     // ---------- Экспорт/импорт настроек (.lumi) ----------

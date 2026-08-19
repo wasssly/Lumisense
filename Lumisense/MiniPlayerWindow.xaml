@@ -103,6 +103,7 @@
         <Border.ContextMenu>
             <ContextMenu Opened="MiniPlayerContextMenu_Opened">
                 <MenuItem Header="Настройки" Click="SettingsMenuItem_Click" />
+                <MenuItem Header="Now Playing (полный экран)" Click="NowPlayingMenuItem_Click" />
                 <Separator />
                 <MenuItem x:Name="PinnedMenuItem" Header="Закрепить" IsCheckable="True"
                           Click="PinnedMenuItem_Click" />

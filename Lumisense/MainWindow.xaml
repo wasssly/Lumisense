@@ -437,6 +437,11 @@
                                 <local:SvgPathIcon Icon="IconPictureInPicture" Size="14" />
                             </MenuItem.Icon>
                         </MenuItem>
+                        <MenuItem Header="Now Playing (полный экран)" Click="ShowNowPlayingMenuItem_Click">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconExpand" Size="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <Separator />
                         <MenuItem x:Name="MiniViewMenuItem" Header="Мини-плеер"
                                   IsCheckable="True" Tag="Mini" Click="ViewModeMenuItem_Click">
@@ -496,9 +501,11 @@
 
                 <Border x:Name="AlbumArtBorder" Width="150" Height="150" CornerRadius="16"
                         Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                        Cursor="Hand" RenderTransformOrigin="0.5,0.5"
-                        MouseLeftButtonDown="AlbumArtBorder_MouseLeftButtonDown"
-                        ContextMenuOpening="AlbumArtBorder_ContextMenuOpening">
+                         Cursor="Hand" RenderTransformOrigin="0.5,0.5"
+                         PreviewMouseLeftButtonDown="AlbumArtBorder_PreviewMouseLeftButtonDown"
+                         PreviewMouseMove="AlbumArtBorder_PreviewMouseMove"
+                         PreviewMouseLeftButtonUp="AlbumArtBorder_PreviewMouseLeftButtonUp"
+                         ContextMenuOpening="AlbumArtBorder_ContextMenuOpening">
                     <Border.RenderTransform>
                         <TransformGroup>
                             <ScaleTransform x:Name="AlbumArtBorderScale" ScaleX="1" ScaleY="1" />
@@ -507,6 +514,12 @@
                     </Border.RenderTransform>
                     <Border.ContextMenu>
                         <ContextMenu>
+                            <MenuItem Header="Открыть обложку" Click="OpenAlbumArtMenuItem_Click">
+                                <MenuItem.Icon>
+                                    <local:SvgPathIcon Icon="IconExpand" Size="13" />
+                                </MenuItem.Icon>
+                            </MenuItem>
+                            <Separator />
                             <MenuItem Header="Скачать изображение…" Click="DownloadAlbumArtMenuItem_Click">
                                 <MenuItem.Icon>
                                     <local:SvgPathIcon Icon="IconAddFile" Size="13" />

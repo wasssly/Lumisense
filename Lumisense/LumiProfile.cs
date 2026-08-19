@@ -150,6 +150,7 @@ public static class LumiProfileIO
         target.IsShuffleEnabled = source.IsShuffleEnabled;
         target.RepeatMode = source.RepeatMode;
         target.AlbumArtTransitionEnabled = source.AlbumArtTransitionEnabled;
+        target.AlbumArtGesturesEnabled = source.AlbumArtGesturesEnabled;
         target.MiniPlayerOpacity = source.MiniPlayerOpacity;
         target.MiniPlayerArtworkStyle = source.MiniPlayerArtworkStyle;
         target.MiniPlayerAlwaysOnTop = source.MiniPlayerAlwaysOnTop;

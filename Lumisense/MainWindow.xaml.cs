@@ -216,6 +216,15 @@ public partial class MainWindow : FluentWindow
     private StatisticsWindow? _statisticsWindow;
     private TrackChangeToastWindow? _trackChangeToastWindow;
     private CoverArtWindow? _coverArtWindow;
+    private NowPlayingWindow? _nowPlayingWindow;
+
+    // Жесты на обложке: короткое касание управляет паузой, а сдвиг не меньше 28 DIP
+    // распознаётся как смена трека (горизонталь) или изменение громкости (вертикаль).
+    private Point _albumArtGestureStart;
+    private bool _isAlbumArtGestureActive;
+    private bool _albumArtGestureMoved;
+    private const double AlbumArtGestureThreshold = 28.0;
+
     private bool _isExiting;
     // Не сохраняем стартовые значения Slider из XAML до того, как ApplySettingsOnStartup
     // восстановит значения из settings.json. После запуска изменения пользователя сохраняются
@@ -273,6 +282,9 @@ public partial class MainWindow : FluentWindow
     // он сам декодирует System.Drawing.Bitmap для миниатюры в меню трея (см.
     // TrayIconManager.SetNowPlaying), не завися от WPF-типов вроде BitmapSource/ImageBrush.
     public byte[]? CurrentAlbumArtBytes => AlbumArtIcon.Visibility == Visibility.Visible ? null : _currentAlbumArtBytes;
+    public BitmapImage? CurrentAlbumArt => _currentAlbumArt;
+    public double CurrentPlaybackSeconds => _audioFile?.CurrentTime.TotalSeconds ?? 0;
+    public double CurrentTrackDurationSeconds => _audioFile?.TotalTime.TotalSeconds ?? 0;
     public bool IsPlayingNow => _isPlaying;
 
     // Для мини-плеера — узнать текущий режим повтора сразу при открытии, до первого события
@@ -1370,9 +1382,79 @@ public partial class MainWindow : FluentWindow
         _settingsWindow?.Close();
     }
 
+    public void ShowNowPlayingWindow()
+    {
+        if (_nowPlayingWindow is null)
+        {
+            _nowPlayingWindow = new NowPlayingWindow(this);
+            _nowPlayingWindow.Closed += (_, _) => _nowPlayingWindow = null;
+            _nowPlayingWindow.Show();
+        }
+        else
+        {
+            _nowPlayingWindow.Activate();
+        }
+    }
+
+    private void ShowNowPlayingMenuItem_Click(object sender, RoutedEventArgs e) => ShowNowPlayingWindow();
+
     // ---------- Просмотр обложки ----------
 
-    private void AlbumArtBorder_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void AlbumArtBorder_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_settings.AlbumArtGesturesEnabled)
+        {
+            OpenAlbumArtPreview();
+            e.Handled = true;
+            return;
+        }
+
+        _albumArtGestureStart = e.GetPosition(AlbumArtBorder);
+        _albumArtGestureMoved = false;
+        _isAlbumArtGestureActive = AlbumArtBorder.CaptureMouse();
+    }
+
+    private void AlbumArtBorder_PreviewMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_isAlbumArtGestureActive || e.LeftButton != System.Windows.Input.MouseButtonState.Pressed) return;
+
+        Vector delta = e.GetPosition(AlbumArtBorder) - _albumArtGestureStart;
+        if (delta.Length >= AlbumArtGestureThreshold)
+            _albumArtGestureMoved = true;
+    }
+
+    private void AlbumArtBorder_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_isAlbumArtGestureActive) return;
+
+        Point end = e.GetPosition(AlbumArtBorder);
+        AlbumArtBorder.ReleaseMouseCapture();
+        _isAlbumArtGestureActive = false;
+
+        Vector delta = end - _albumArtGestureStart;
+        if (!_albumArtGestureMoved || delta.Length < AlbumArtGestureThreshold)
+        {
+            ExternalPlayPause();
+            e.Handled = true;
+            return;
+        }
+
+        if (Math.Abs(delta.X) >= Math.Abs(delta.Y))
+        {
+            if (delta.X < 0) ExternalNext();
+            else ExternalPrev();
+        }
+        else
+        {
+            ExternalChangeVolume(delta.Y < 0 ? 0.04 : -0.04);
+        }
+
+        e.Handled = true;
+    }
+
+    // Просмотр обложки остаётся доступен из контекстного меню. Так короткий клик на самой
+    // обложке можно использовать как предсказуемый жест пуск/пауза, не теряя эту функцию.
+    private void OpenAlbumArtPreview()
     {
         // У трека может не быть обложки (показан плейсхолдер-иконка) — тогда открывать нечего
         if (_currentAlbumArt is null) return;
@@ -1410,8 +1492,10 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    private void OpenAlbumArtMenuItem_Click(object sender, RoutedEventArgs e) => OpenAlbumArtPreview();
+
     // Обложки может не быть (плейсхолдер-иконка) — тогда контекстное меню показывать не о
-    // чем, все три пункта всё равно ничего бы не сделали.
+    // чем, все четыре пункта всё равно ничего бы не сделали.
     private void AlbumArtBorder_ContextMenuOpening(object sender, System.Windows.Controls.ContextMenuEventArgs e)
     {
         if (_currentAlbumArt is null) e.Handled = true;
@@ -2795,6 +2879,13 @@ public partial class MainWindow : FluentWindow
     // работать как отмена ввода текста.
     private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
+        if (e.Key == System.Windows.Input.Key.F11)
+        {
+            ShowNowPlayingWindow();
+            e.Handled = true;
+            return;
+        }
+
         bool isCtrl = System.Windows.Input.Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Control);
         if (!isCtrl || e.Key != System.Windows.Input.Key.Z) return;
         if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase) return;
@@ -4642,6 +4733,7 @@ public partial class MainWindow : FluentWindow
     public void ExternalPlayPause() => PlayPauseButton_Click(this, new RoutedEventArgs());
     public void ExternalNext() => PlayNextTrack();
     public void ExternalPrev() => PrevButton_Click(this, new RoutedEventArgs());
+    public void ExternalChangeVolume(double delta) => ChangeVolumeBy(delta);
     public void ExternalToggleRepeat() => RepeatButton_Click(this, new RoutedEventArgs());
     public void ExternalToggleShuffle() => ShuffleButton_Click(this, new RoutedEventArgs());
     public void ExternalToggleMute() => ToggleMute();
@@ -4655,10 +4747,6 @@ public partial class MainWindow : FluentWindow
     {
         if (_currentTrackPath != null) ToggleFavoriteAndRefresh(_currentTrackPath);
     }
-
-    // Используется и колесом мыши над ползунком громкости в главном окне (см.
-    // VolumeOverlay_MouseWheel), и колесом мыши над мини-плеером целиком
-    public void ExternalChangeVolume(double delta) => ChangeVolumeBy(delta);
 
     public void ExternalSeekRatio(double ratio)
     {
@@ -5243,6 +5331,7 @@ public partial class MainWindow : FluentWindow
         _trackChangeToastWindow?.Close();
         _changelogWindow?.Close();
         _coverArtWindow?.Close();
+        _nowPlayingWindow?.Close();
         // Track-load, ReplayGain и waveform tasks владеют своими CTS и освобождают их
         // в собственных finally-блоках после отмены. Не Dispose здесь, пока task ещё может
         // обращаться к TokenSource.
