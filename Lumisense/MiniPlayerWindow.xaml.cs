@@ -205,15 +205,22 @@ public partial class MiniPlayerWindow : Window
         // донашивать вид предыдущего до следующего клика по нему где-либо ещё.
         if (SecondaryButtonMode == "Favorite") UpdateFavoriteSecondaryButtonVisual();
 
-        if (art != null)
+        if (art is ImageBrush { ImageSource: not null } imageBrush)
         {
-            ArtBorder.Background = art;
+            // Не используем ImageBrush как Background для миниатюры: WPF может выбрать
+            // низкокачественное масштабирование фона. Image ниже рендерится с HighQuality
+            // и является тем же слоем в обычном и виниловом вариантах оформления.
+            ArtImage.Source = imageBrush.ImageSource;
+            ArtImage.Visibility = Visibility.Visible;
+            ArtBorder.Background = Brushes.Transparent;
             ArtIcon.Visibility = Visibility.Collapsed;
         }
         else
         {
-            ArtBorder.Background = (Brush)FindResource("ControlFillColorSecondaryBrush");
-            ArtIcon.Visibility = Visibility.Visible;
+            ArtImage.Source = null;
+            ArtImage.Visibility = Visibility.Collapsed;
+            ArtBorder.Background = art ?? (Brush)FindResource("ControlFillColorSecondaryBrush");
+            ArtIcon.Visibility = art is null ? Visibility.Visible : Visibility.Collapsed;
         }
 
         // Новый трек не должен коротко показывать заполнение от предыдущей композиции, пока
@@ -349,6 +356,8 @@ public partial class MiniPlayerWindow : Window
         bool vinyl = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal);
         ArtBorder.CornerRadius = vinyl ? new CornerRadius(21) : new CornerRadius(8);
         ArtProgressTrack.CornerRadius = vinyl ? new CornerRadius(21) : new CornerRadius(8);
+        ApplyArtworkImageClip(vinyl);
+        ApplyArtworkProgressClip(vinyl);
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
 
         if (!vinyl)
@@ -359,6 +368,24 @@ public partial class MiniPlayerWindow : Window
 
         EnsureVinylRotation();
         UpdateVinylRotation(_mainWindow.IsPlayingNow);
+    }
+
+    private void ApplyArtworkImageClip(bool vinyl)
+    {
+        // Border.CornerRadius не обрезает дочерний Image. Поэтому форма задаётся самому
+        // пиксельному слою: скруглённый квадрат в обычном виде и безупречный круг в Vinyl.
+        ArtImage.Clip = vinyl
+            ? new EllipseGeometry(new Point(21, 21), 21, 21)
+            : new RectangleGeometry(new Rect(0, 0, 42, 42), 8, 8);
+    }
+
+    private void ApplyArtworkProgressClip(bool vinyl)
+    {
+        // Контур строится отдельным Path, поэтому он тоже получает точную маску формы,
+        // иначе край штриха мог выходить за сетку и давать цветные фрагменты на углах.
+        ArtProgressOutline.Clip = vinyl
+            ? new EllipseGeometry(new Point(21, 21), 21, 21)
+            : new RectangleGeometry(new Rect(0, 0, 42, 42), 8, 8);
     }
 
     private void EnsureVinylRotation()
@@ -1040,9 +1067,10 @@ public partial class MiniPlayerWindow : Window
 
         if (string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal))
         {
-            // В режиме Vinyl тот же прогресс идёт по окружности 40×40 вокруг круглой обложки.
+            // Центр штриха удерживается внутри маски радиуса 21: при толщине 1.5
+            // внешний край остаётся ровным и не обрезается на границе круглой обложки.
             const double center = 21.0;
-            const double radius = 20.0;
+            const double radius = 19.75;
             if (ratio >= 0.9999)
             {
                 ArtProgressOutline.Data = new EllipseGeometry(new Point(center, center), radius, radius);
@@ -1058,12 +1086,11 @@ public partial class MiniPlayerWindow : Window
             return;
         }
 
-        // Обычная обложка имеет размер 42×42, CornerRadius=8 и рамку толщиной 2. Центр линии
-        // индикатора проходит по прямоугольнику 40×40 с радиусом 7: так внешняя граница
-        // штриха точно совпадает с внешней границей скруглённой обложки.
-        const double inset = 1.0;
-        const double side = 40.0;
-        const double cornerRadius = 7.0;
+        // Обычная обложка имеет размер 42×42 и CornerRadius=8. Центр тонкого штриха
+        // сдвинут внутрь на 1.25px, поэтому его край не выходит за маску на прямых и углах.
+        const double inset = 1.25;
+        const double side = 39.5;
+        const double cornerRadius = 7.25;
         const double straightSide = side - 2 * cornerRadius;
         double perimeter = 4 * straightSide + 2 * Math.PI * cornerRadius;
         ratio = Math.Clamp(ratio, 0.0, 1.0);

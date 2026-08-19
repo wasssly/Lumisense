@@ -255,7 +255,8 @@
                 <!-- Индикатор прогресса не влияет на размер или перетаскивание заголовка:
                      это только визуальный слой поверх обложки. Его скруглённый контур
                      повторяет обложку 42×42 с CornerRadius=8. -->
-                <Grid Width="42" Height="42">
+                <Grid Width="42" Height="42" ClipToBounds="True"
+                      SnapsToDevicePixels="True" UseLayoutRounding="True">
                     <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
                             Background="{DynamicResource ControlFillColorSecondaryBrush}">
                         <!-- В режиме Vinyl вращается только этот слой обложки. Контур прогресса
@@ -263,16 +264,23 @@
                         <Border.RenderTransform>
                             <RotateTransform x:Name="ArtRotateTransform" CenterX="21" CenterY="21" />
                         </Border.RenderTransform>
-                        <local:SvgPathIcon x:Name="ArtIcon" Icon="IconMusicNote" Size="15"
-                                       HorizontalAlignment="Center" VerticalAlignment="Center"
-                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <Grid ClipToBounds="True">
+                            <Image x:Name="ArtImage" Stretch="UniformToFill" Visibility="Collapsed"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   RenderOptions.EdgeMode="Unspecified"
+                                   SnapsToDevicePixels="True" UseLayoutRounding="True" />
+                            <local:SvgPathIcon x:Name="ArtIcon" Icon="IconMusicNote" Size="15"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </Grid>
                     </Border>
                     <Border x:Name="ArtProgressTrack" Width="42" Height="42" CornerRadius="8"
-                            BorderThickness="2" BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                            BorderThickness="1" BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
                             Visibility="Collapsed" IsHitTestVisible="False" />
-                    <Path x:Name="ArtProgressOutline" StrokeThickness="2"
+                    <Path x:Name="ArtProgressOutline" StrokeThickness="1.5"
                           Stroke="{DynamicResource AccentFillColorDefaultBrush}"
-                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                          SnapsToDevicePixels="True" UseLayoutRounding="True"
                           Visibility="Collapsed" IsHitTestVisible="False" />
                 </Grid>
 
