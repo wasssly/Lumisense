@@ -391,6 +391,7 @@
                     </ui:TextBox>
 
                     <Grid Grid.Row="1">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                         <StackPanel x:Name="NavCategoriesPanel">
 
                     <RadioButton x:Name="NavAppearance" Style="{StaticResource NavItemStyle}"
@@ -406,7 +407,7 @@
                                  GroupName="SettingsNav" Tag="Window" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
                             <local:SvgPathIcon Icon="IconWindow" Size="18" VerticalAlignment="Center" />
-                            <TextBlock Text="Окно" Margin="10,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Окно и запуск" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
 
@@ -415,6 +416,16 @@
                         <StackPanel Orientation="Horizontal">
                             <local:SvgPathIcon Icon="IconPlay" Size="16" VerticalAlignment="Center" />
                             <TextBlock Text="Воспроизведение" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <!-- Интеграции вынесены отдельно: Discord не относится к аудиообработке,
+                         а объединяет подключение внешнего сервиса, приватность и диагностику. -->
+                    <RadioButton x:Name="NavIntegrations" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Integrations" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconWrench" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Интеграции" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
 
@@ -489,6 +500,7 @@
                     </RadioButton>
 
                         </StackPanel>
+                        </ScrollViewer>
 
                         <!-- ===== Результаты поиска настроек (заменяют список категорий, пока идёт поиск) ===== -->
                         <Grid x:Name="SearchResultsHost" Visibility="Collapsed">
@@ -544,7 +556,7 @@
                              готовых hex-цветов; "Свой" открывает стандартный системный ColorDialog. У
                              выбранного сейчас цвета (если это один из пресетов) рамка подсвечена белым —
                              см. RefreshAccentSwatchSelection. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Акцентный цвет" Margin="0,0,0,10" />
                                 <RadioButton x:Name="AccentSystemRadio" Content="Системный (как в Windows)"
@@ -600,7 +612,7 @@
                         </Border>
 
                         <!-- См. AppSettings.WindowBackdropType. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Основа окна" Margin="0,0,0,10" />
                                 <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
@@ -618,7 +630,7 @@
                         </Border>
 
                         <!-- См. AppSettings.AlbumArtTransitionEnabled. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Анимация смены обложки" Margin="0,0,0,10" />
                                 <RadioButton x:Name="AlbumArtTransitionOffRadio" Content="Без анимации" GroupName="AlbumArtTransition"
@@ -632,9 +644,9 @@
 
                     </StackPanel>
 
-                    <!-- Окно -->
+                    <!-- Окно и запуск -->
                     <StackPanel x:Name="PageWindow" Visibility="Collapsed">
-                        <TextBlock Text="Окно" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Окно и запуск" Style="{StaticResource PageTitleStyle}" />
 
                         <Border x:Name="PlayerViewModeCard" Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
@@ -757,7 +769,7 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="LaunchOnStartupCheckBox" Content="Запускать вместе с Windows"
                                           Checked="LaunchOnStartupCheckBox_Changed" Unchecked="LaunchOnStartupCheckBox_Changed"
@@ -787,7 +799,7 @@
                         </Border>
 
                         <!-- См. AppSettings.NeverAutoPlayLastTrackOnStartup / WasPlayingOnClose. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="NeverAutoPlayLastTrackOnStartupCheckBox"
                                           Content="Никогда не запускать трек при старте"
@@ -799,7 +811,7 @@
                         </Border>
 
                         <!-- Кэш обложек из CoverArtSearchWindow хранится локально в %AppData%\Lumisense\cover-cache. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Кэш интернет-обложек" Margin="0,0,0,4" />
                                 <TextBlock Text="Повторно открытые варианты обложек берутся из локальной папки, чтобы не скачивать изображения заново."
@@ -817,7 +829,7 @@
                              имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
                              сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
                              это называется в интерфейсе. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
                                           Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
@@ -827,7 +839,7 @@
                         </Border>
 
                         <!-- См. AppSettings.ProgressBarStyle / WaveformView / WaveformGenerator. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Полоса воспроизведения" Margin="0,0,0,10" />
                                 <RadioButton x:Name="ProgressBarSliderRadio" Content="Обычная (по умолчанию)"
@@ -839,8 +851,25 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.ReplayGainEnabled / ReplayGainReader. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="ReplayGainCheckBox" Content="ReplayGain"
+                                          Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
+                                <TextBlock Text="Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Интеграции -->
+                    <StackPanel x:Name="PageIntegrations" Visibility="Collapsed">
+                        <TextBlock Text="Интеграции" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Подключение внешних сервисов, параметры приватности и диагностика."
+                                   FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,14" />
+
                         <!-- Discord Rich Presence — локальный Discord IPC, см. DiscordRichPresenceManager. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="DiscordRichPresenceEnabledCheckBox" Content="Discord Rich Presence"
                                           Checked="DiscordRichPresenceEnabledCheckBox_Changed"
@@ -849,7 +878,7 @@
                                 <TextBlock Text="Показывает активность Lumisense в профиле Discord через локальное соединение. Discord и обмен статусами должны быть включены в самом клиенте Discord."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,14" />
 
-                                <ui:Button x:Name="ConnectDiscordButton" Appearance="Secondary" HorizontalAlignment="Left" Margin="0,0,0,0"
+                                <ui:Button x:Name="ConnectDiscordButton" Appearance="Secondary" HorizontalAlignment="Left"
                                            Content="Подключить Discord"
                                            Click="ConnectDiscordButton_Click" />
                                 <TextBlock x:Name="DiscordRichPresenceConnectionStatusText"
@@ -860,7 +889,7 @@
                                 <TextBlock Text="Журнал сохраняет события подключения, отправки статуса и ошибки Discord Rich Presence — он поможет при диагностике проблем интеграции."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
 
-                                <TextBlock Text="Приватность" Margin="0,14,0,8" />
+                                <TextBlock Text="Приватность" FontWeight="SemiBold" Margin="0,18,0,8" />
                                 <CheckBox x:Name="DiscordRichPresenceShowTrackInfoCheckBox"
                                           Content="Показывать название и исполнителя"
                                           Checked="DiscordRichPresencePrivacyCheckBox_Changed"
@@ -870,17 +899,7 @@
                                           Content="Показывать таймлайн воспроизведения"
                                           Checked="DiscordRichPresencePrivacyCheckBox_Changed"
                                           Unchecked="DiscordRichPresencePrivacyCheckBox_Changed" />
-                                <TextBlock Text="Локальные файлы и обложки не загружаются в Discord. Обложка может отображаться только как заранее добавленный asset вашего Discord-приложения."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- См. AppSettings.ReplayGainEnabled / ReplayGainReader. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
-                            <StackPanel>
-                                <CheckBox x:Name="ReplayGainCheckBox" Content="ReplayGain"
-                                          Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
-                                <TextBlock Text="Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."
+                                <TextBlock Text="Локальные файлы и обложки не загружаются в Discord. Обложка может отображаться только как заранее добавленный asset приложения Lumisense."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
                             </StackPanel>
                         </Border>
@@ -906,7 +925,7 @@
                         <!-- См. AppSettings.TrackChangeToastPosition/TrackChangeToastMonitor/TrackChangeToastWidth.
                              Список мониторов в ToastMonitorCombo заполняется в code-behind (InitializeSettings) —
                              в разметке заранее известен только первый пункт "Автоматически". -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Расположение уведомления" Margin="0,0,0,10" />
                                 <UniformGrid Columns="3" Margin="0,0,0,16">
@@ -1169,7 +1188,7 @@
                              под одну "вторую" кнопку рядом с play/pause и next/prev — выбираем здесь,
                              какую из трёх функций она выполняет (см. AppSettings.MiniPlayerSecondaryButton
                              и MiniPlayerWindow.UpdateSecondaryButton). -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Вторая кнопка в мини-плеере" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniSecondaryRepeatRadio" Content="Повтор" GroupName="MiniSecondaryButton"
@@ -1183,7 +1202,7 @@
 
                         <!-- См. AppSettings.MiniPlayerButtonsLayout и MiniPlayerWindow.ApplyButtonsLayoutMode
                              за подробностями, чем отличаются режимы. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Расположение кнопок управления" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniButtonsBelowRadio"
@@ -1197,7 +1216,7 @@
                         </Border>
 
                         <!-- См. AppSettings.MiniPlayerShowProgress и MiniPlayerWindow.ApplyProgressBarVisibility. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="MiniShowProgressCheckBox" Content="Показывать полосу прогресса"
                                           Checked="MiniShowProgressCheckBox_Changed" Unchecked="MiniShowProgressCheckBox_Changed" />
@@ -1267,7 +1286,7 @@
                         <!-- См. AppSettings.MiniPlayerInfoMode и MiniPlayerWindow.UpdateSecondaryLine.
                              Название трека видно всегда, вне зависимости от этого выбора — тут только
                              про вторую строку под ним. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Вторая строка в мини-плеере" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniInfoArtistRadio" Content="Исполнитель" GroupName="MiniInfoMode"
@@ -1744,7 +1763,7 @@
                         <!-- 2. Разработчик — компактная карточка (аватар, ник, иконки-ссылки),
                              раньше был аккордеон с двумя большими кнопками-строками; см.
                              SettingsWindow.LoadDeveloperAvatar/DeveloperGitHubButton_Click. -->
-                        <Border Style="{StaticResource SettingsCardStyle}" Margin="0,14,0,0">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />

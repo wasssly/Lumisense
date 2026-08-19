@@ -52,6 +52,7 @@ public partial class SettingsWindow : FluentWindow
             "Updates" => NavUpdates,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
+            "Integrations" => NavIntegrations,
             "Notifications" => NavNotifications,
             "Equalizer" => NavEqualizer,
             "MiniPlayer" => NavMiniPlayer,
@@ -478,20 +479,20 @@ public partial class SettingsWindow : FluentWindow
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд fly transition album art cover");
-        Add("Вид плеера", "Окно", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
-        Add("Поверх всех окон", "Окно", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
-        Add("Сворачивать в трей при закрытии", "Окно", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
-        Add("Запускать вместе с Windows", "Окно", "Window", LaunchOnStartupCheckBox, "автозапуск запуск windows автозагрузка startup");
-        Add("Запускать свёрнутым в трей", "Окно", "Window", StartHiddenInTrayCheckBox, "запуск свёрнутым трей автозапуск скрыто hidden startup tray");
+        Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
+        Add("Поверх всех окон", "Окно и запуск", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
+        Add("Сворачивать в трей при закрытии", "Окно и запуск", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
+        Add("Запускать вместе с Windows", "Окно и запуск", "Window", LaunchOnStartupCheckBox, "автозапуск запуск windows автозагрузка startup");
+        Add("Запускать свёрнутым в трей", "Окно и запуск", "Window", StartHiddenInTrayCheckBox, "запуск свёрнутым трей автозапуск скрыто hidden startup tray");
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
         Add("Не запускать трек при старте", "Воспроизведение", "Playback", NeverAutoPlayLastTrackOnStartupCheckBox, "старт запуск продолжить воспроизведение последний трек пауза resume autoplay");
         Add("Очистить кэш интернет-обложек", "Воспроизведение", "Playback", ClearArtworkCacheButton, "кэш обложка интернет очистить удалить cover cache artwork image");
-        Add("Discord Rich Presence", "Воспроизведение", "Playback", DiscordRichPresenceEnabledCheckBox, "discord статус rich presence rpc активность" );
-        Add("Подключить Discord", "Воспроизведение", "Playback", ConnectDiscordButton, "discord подключить connection rich presence статус" );
-        Add("Открыть журнал Discord", "Воспроизведение", "Playback", OpenDiscordDiagnosticsLogButton, "discord журнал лог диагностика ошибка rich presence" );
-        Add("Приватность Discord: название и исполнитель", "Воспроизведение", "Playback", DiscordRichPresenceShowTrackInfoCheckBox, "discord приватность название исполнитель трек" );
-        Add("Приватность Discord: таймлайн", "Воспроизведение", "Playback", DiscordRichPresenceShowTimelineCheckBox, "discord приватность время прогресс таймлайн" );
+        Add("Discord Rich Presence", "Интеграции", "Integrations", DiscordRichPresenceEnabledCheckBox, "discord статус rich presence rpc активность" );
+        Add("Подключить Discord", "Интеграции", "Integrations", ConnectDiscordButton, "discord подключить connection rich presence статус" );
+        Add("Открыть журнал Discord", "Интеграции", "Integrations", OpenDiscordDiagnosticsLogButton, "discord журнал лог диагностика ошибка rich presence" );
+        Add("Приватность Discord: название и исполнитель", "Интеграции", "Integrations", DiscordRichPresenceShowTrackInfoCheckBox, "discord приватность название исполнитель трек" );
+        Add("Приватность Discord: таймлайн", "Интеграции", "Integrations", DiscordRichPresenceShowTimelineCheckBox, "discord приватность время прогресс таймлайн" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
@@ -566,6 +567,7 @@ public partial class SettingsWindow : FluentWindow
             "Appearance" => NavAppearance,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
+            "Integrations" => NavIntegrations,
             "Notifications" => NavNotifications,
             "Equalizer" => NavEqualizer,
             "MiniPlayer" => NavMiniPlayer,
@@ -1516,6 +1518,7 @@ public partial class SettingsWindow : FluentWindow
         PageAppearance.Visibility = key == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
         PageWindow.Visibility = key == "Window" ? Visibility.Visible : Visibility.Collapsed;
         PagePlayback.Visibility = key == "Playback" ? Visibility.Visible : Visibility.Collapsed;
+        PageIntegrations.Visibility = key == "Integrations" ? Visibility.Visible : Visibility.Collapsed;
         PageNotifications.Visibility = key == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
         PageEqualizer.Visibility = key == "Equalizer" ? Visibility.Visible : Visibility.Collapsed;
         PageMiniPlayer.Visibility = key == "MiniPlayer" ? Visibility.Visible : Visibility.Collapsed;
@@ -1536,6 +1539,7 @@ public partial class SettingsWindow : FluentWindow
             "Appearance" => PageAppearance,
             "Window" => PageWindow,
             "Playback" => PagePlayback,
+            "Integrations" => PageIntegrations,
             "Notifications" => PageNotifications,
             "Equalizer" => PageEqualizer,
             "MiniPlayer" => PageMiniPlayer,
