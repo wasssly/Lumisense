@@ -24,7 +24,7 @@
         <local:IsFavoriteMultiConverter x:Key="IsFavoriteMultiConverter" />
         <local:IsPinnedMultiConverter x:Key="IsPinnedMultiConverter" />
         <local:PlayCountMultiConverter x:Key="PlayCountMultiConverter" />
-        <local:TrackMatchesSearchMultiConverter x:Key="TrackMatchesSearchMultiConverter" />
+        <local:TrackContextMenuActionVisibilityConverter x:Key="TrackContextMenuActionVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
 
@@ -61,7 +61,8 @@
                                 <local:SvgPathIcon Icon="IconPlay" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click">
+                        <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=Favorite}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconHeart" Size="13" />
                             </MenuItem.Icon>
@@ -75,25 +76,39 @@
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
-                        <MenuItem Header="Показать в проводнике" Click="ShowInExplorerMenuItem_Click" />
-                        <MenuItem Header="Копировать имя трека" Click="CopyTrackNameMenuItem_Click" />
-                        <MenuItem Header="Копировать путь к файлу" Click="CopyPathMenuItem_Click" />
-                        <MenuItem Header="Копировать файл" Click="CopyFileMenuItem_Click" />
+                        <MenuItem Header="Показать в проводнике" Click="ShowInExplorerMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=ShowInExplorer}" />
+                        <MenuItem Header="Копировать имя трека" Click="CopyTrackNameMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=CopyTrackName}" />
+                        <MenuItem Header="Копировать путь к файлу" Click="CopyPathMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=CopyPath}" />
+                        <MenuItem Header="Копировать файл" Click="CopyFileMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=CopyFile}" />
                         <Separator />
-                        <MenuItem Header="Свойства" Click="TrackPropertiesMenuItem_Click" />
-                        <MenuItem Header="Изменить теги" Click="EditTagsMenuItem_Click">
+                        <MenuItem Header="Свойства" Click="TrackPropertiesMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=Properties}" />
+                        <MenuItem Header="Изменить теги" Click="EditTagsMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=EditTags}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconEdit" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Нормализовать имя файла…" Click="NormalizeTrackFileNameMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=NormalizeFileName}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconEdit" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator />
-                        <MenuItem Header="Убрать из плейлиста" Click="RemoveTrackMenuItem_Click">
+                        <MenuItem Header="Убрать из плейлиста" Click="RemoveTrackMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=RemoveFromPlaylist}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconDelete" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <MenuItem Header="Удалить трек с диска…" Click="DeleteTrackFromDiskMenuItem_Click"
-                                  Foreground="#E53935">
+                                  Foreground="#E53935"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=DeleteFromDisk}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconDelete" Size="13" Foreground="#E53935" />
                             </MenuItem.Icon>
@@ -372,28 +387,12 @@
             </Setter>
         </Style>
 
-        <!-- Стиль ListViewItem для строк ТРЕКОВ в обоих списках (единый PlaylistFoldersControl —
-             для элементов PlaylistTrackRow, выбирается PlaylistDisplayItemContainerStyleSelector —
-             и плоский FavoritesTrackListView) — добавляет только видимость по результату поиска
-             (см. PlaylistSearchBox и PlaylistSearchState.cs) поверх общего Style
-             TargetType="ListViewItem" из App.xaml (отступы, ховер, выделение, зебра — всё
-             оттуда, через BasedOn).
-
-             Setter.Value с MultiBinding — Visibility строки ЦЕЛОГО ListViewItem-контейнера
-             (а не только его содержимого) означает, что несовпавшая строка не оставляет пустой
-             отступ/padding на своём месте: Collapsed убирает контейнер из раскладки целиком, а
-             не просто прячет то, что внутри. -->
+        <!-- Общий стиль строк трека. Поиск теперь формирует отдельный отфильтрованный
+             ItemsSource в фоне (см. MainWindow.QueuePlaylistSearch), поэтому здесь нет
+             MultiBinding, который раньше пересчитывал Visibility каждого контейнера при любом
+             введённом символе и мог надолго блокировать раскладку большого списка. -->
         <Style x:Key="SearchableTrackListViewItemStyle" TargetType="ListViewItem"
-               BasedOn="{StaticResource {x:Type ListViewItem}}">
-            <Setter Property="Visibility">
-                <Setter.Value>
-                    <MultiBinding Converter="{StaticResource TrackMatchesSearchMultiConverter}">
-                        <Binding Path="FilePath" />
-                        <Binding Source="{x:Static local:PlaylistSearchState.Instance}" Path="Epoch" />
-                    </MultiBinding>
-                </Setter.Value>
-            </Setter>
-        </Style>
+               BasedOn="{StaticResource {x:Type ListViewItem}}" />
     </Window.Resources>
 
     <Grid x:Name="RootGrid" Background="Transparent">
@@ -854,13 +853,10 @@
                     <ColumnDefinition Width="14" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Поиск по плейлисту — фильтрует по имени файла (без расширения), то есть по
-                     тому же тексту, что показан в самой строке трека (см. FileNameConverter).
-                     Сам фильтр — визуальный (см. PlaylistSearchState.cs и
-                     SearchableTrackListViewItemStyle выше): не трогает ни _folders, ни то, что
-                     реально играет по "Далее/Назад/Перемешать" — просто прячет несовпавшие
-                     строки в обоих списках (обычном и "Избранном") одновременно, что бы из них
-                     сейчас ни было открыто. -->
+                <!-- Поиск по плейлисту фильтрует имя файла без расширения, то есть тот же
+                     текст, что показан в строке. Он создаёт отдельный ItemsSource после короткого
+                     debounce и не меняет _folders: «Далее/Назад/Перемешать» всегда используют
+                     полный плейлист, а не временный список результатов. -->
                 <ui:TextBox x:Name="PlaylistSearchBox" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
                             Margin="8,8,8,4"
                             PlaceholderText="Поиск по плейлисту"

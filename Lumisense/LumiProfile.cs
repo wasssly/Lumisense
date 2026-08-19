@@ -83,7 +83,8 @@ public static class LumiProfileIO
             (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkProgressColorMode?.Length ?? 0) > 32 ||
-            (settings.MiniPlayerArtworkProgressColorHex?.Length ?? 0) > 32)
+            (settings.MiniPlayerArtworkProgressColorHex?.Length ?? 0) > 32 ||
+            (settings.FileNameNormalizationTemplate?.Length ?? 0) > 180)
             return false;
 
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
@@ -93,13 +94,16 @@ public static class LumiProfileIO
 
         if ((settings.EqualizerPresets?.Count ?? int.MaxValue) > 100 ||
             (settings.SavedPlaylistFolders?.Count ?? int.MaxValue) > 100 ||
+            (settings.DisabledTrackContextMenuActions?.Count ?? int.MaxValue) > 20 ||
             (settings.HotkeyPlayPause?.Key?.Length ?? 0) > 64 || (settings.HotkeyNext?.Key?.Length ?? 0) > 64 ||
             (settings.HotkeyPrevious?.Key?.Length ?? 0) > 64 || (settings.HotkeyStop?.Key?.Length ?? 0) > 64)
             return false;
 
-        return settings.EqualizerPresets is not null && settings.EqualizerPresets.All(p =>
-            p is not null && (p.Name?.Length ?? int.MaxValue) <= 200 && p.GainsDb is not null &&
-            p.GainsDb.Length <= 32 && p.GainsDb.All(double.IsFinite) && p.GainsDb.All(g => g >= -100 && g <= 100));
+        return settings.EqualizerPresets is not null && settings.DisabledTrackContextMenuActions is not null &&
+               settings.DisabledTrackContextMenuActions.All(action => (action?.Length ?? int.MaxValue) <= 64) &&
+               settings.EqualizerPresets.All(p =>
+                   p is not null && (p.Name?.Length ?? int.MaxValue) <= 200 && p.GainsDb is not null &&
+                   p.GainsDb.Length <= 32 && p.GainsDb.All(double.IsFinite) && p.GainsDb.All(g => g >= -100 && g <= 100));
     }
 
     // Явный allowlist намеренно не использует reflection: добавление нового свойства в
@@ -178,7 +182,10 @@ public static class LumiProfileIO
         target.HidePlaybackButtons = source.HidePlaybackButtons;
         target.UpdateDownloadSource = source.UpdateDownloadSource;
         target.EqualizerEnabled = source.EqualizerEnabled;
+        target.EqualizerBypass = source.EqualizerBypass;
         target.EqualizerBandGainsDb = source.EqualizerBandGainsDb.ToArray();
+        target.FileNameNormalizationTemplate = FileNameNormalizer.NormalizeTemplate(source.FileNameNormalizationTemplate);
+        target.DisabledTrackContextMenuActions = TrackContextMenuActions.NormalizeDisabledActions(source.DisabledTrackContextMenuActions);
 
         if (!preserveRuntimeData)
         {

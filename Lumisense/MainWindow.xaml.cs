@@ -57,6 +57,13 @@ public partial class MainWindow : FluentWindow
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _playbackRatePersistenceTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+
+    // Поиск не меняет UI на каждый символ: небольшая пауза объединяет быстрый ввод в один
+    // запрос, а фильтрация снимка списка выполняется вне Dispatcher. Это предотвращает длинную
+    // перестройку раскладки тысяч ListViewItem при каждом нажатии клавиши.
+    private readonly DispatcherTimer _playlistSearchDebounceTimer = new() { Interval = TimeSpan.FromMilliseconds(180) };
+    private CancellationTokenSource? _playlistSearchCts;
+    private int _playlistSearchGeneration;
     private readonly Stopwatch _playbackClock = new();
 
     // Множитель громкости из ReplayGain-тегов текущего трека (см. ReplayGainReader,
@@ -138,6 +145,11 @@ public partial class MainWindow : FluentWindow
     private List<string>? _activeTracksCache;
     private bool _trackCachesAreFavoritesView;
 
+    // Нефильтрованные снимки строк для текущего вида. В отличие от прежнего Binding-конвертера,
+    // поиск строит из них отдельный ItemsSource и не запускает массовую смену Visibility.
+    private List<object> _playlistDisplayItems = new();
+    private List<object> _favoriteDisplayItems = new();
+
     private readonly Random _random = new();
 
     // Проверяется ДО загрузки настроек (сама загрузка ничего не создаёт на диске, поэтому
@@ -150,6 +162,12 @@ public partial class MainWindow : FluentWindow
     // Путь к треку, который сейчас загружен/играет. Хранится как путь, а не как индекс —
     // это позволяет треку спокойно доигрывать даже если его папку потом удалили из плейлиста.
     private string? _currentTrackPath;
+
+    // Исходные значения до UI-fallback: нужны, чтобы при нормализации имени уже загруженного
+    // трека сразу заново вывести исполнителя/название, не перезапуская AudioFileReader.
+    private string? _currentTrackTaggedTitle;
+    private string? _currentTrackTaggedArtist;
+
     private bool _isUserInteractingWithProgress;
     private bool _isSyncingProgressFromPlayback;
     private bool _isPlaying;
@@ -312,8 +330,10 @@ public partial class MainWindow : FluentWindow
 
         FavoritesManager.Initialize(_settings.FavoriteTracks, _settings.PinnedFavoriteTracks);
         PlayCountManager.Initialize(_settings.PlayCounts);
+        TrackContextMenuActions.Instance.Initialize(_settings.DisabledTrackContextMenuActions);
 
         _progressTimer.Tick += ProgressTimer_Tick;
+        _playlistSearchDebounceTimer.Tick += PlaylistSearchDebounceTimer_Tick;
         _hotkeyTrackStepTimer.Tick += (_, _) => CommitPendingHotkeyTrackStep();
         _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
 
@@ -1995,6 +2015,174 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    // Нормализация имён запускается только вручную — из настроек для всех добавленных файлов
+    // или из контекстного меню для одного выбранного трека. В обоих случаях сначала строится
+    // предпросмотр по тегам, затем пользователь видит примеры и явно подтверждает изменение.
+    // Текущий трек исключается, потому что его дескриптор может быть открыт AudioFileReader и
+    // Windows не позволит безопасно переместить файл.
+    public Task<FileNameNormalizer.RenameResult?> NormalizePlaylistFileNamesAsync(System.Windows.Window dialogOwner) =>
+        NormalizeTrackFileNamesAsync(_folders.SelectMany(folder => folder.Tracks), dialogOwner);
+
+    public bool IsTrackContextMenuActionDisabled(string actionId) =>
+        TrackContextMenuActions.Instance.IsDisabled(actionId);
+
+    // Изменение тут же поднимает Epoch у TrackContextMenuActions.Instance, поэтому даже
+    // созданные строки плейлиста пересчитывают Visibility без пересборки всего списка.
+    public void SetTrackContextMenuActionDisabled(string actionId, bool disabled)
+    {
+        TrackContextMenuActions.Instance.SetDisabled(actionId, disabled);
+        _settings.DisabledTrackContextMenuActions = TrackContextMenuActions.Instance.GetDisabledActionIds();
+    }
+
+    private async Task<FileNameNormalizer.RenameResult?> NormalizeTrackFileNamesAsync(
+        IEnumerable<string> requestedPaths, System.Windows.Window dialogOwner)
+    {
+        if (_isExiting) return null;
+
+        var sourcePaths = requestedPaths
+            .Where(path => !string.IsNullOrWhiteSpace(path))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+        if (sourcePaths.Count == 0)
+        {
+            System.Windows.MessageBox.Show(dialogOwner, "Нет доступных файлов для нормализации.",
+                "Нормализация имён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+            return null;
+        }
+
+        string? currentPath = _currentTrackPath;
+        IReadOnlyList<FileNameNormalizer.RenamePreview> preview;
+        try
+        {
+            preview = await Task.Run(() => FileNameNormalizer.BuildPreview(
+                sourcePaths,
+                _settings.FileNameNormalizationTemplate,
+                string.IsNullOrWhiteSpace(currentPath) ? null : new[] { currentPath }), _lifetimeCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+
+        if (_isExiting) return null;
+
+        var candidates = preview.Where(item => item.CanRename).ToList();
+        if (candidates.Count == 0)
+        {
+            string reason = preview.FirstOrDefault(item => !string.IsNullOrWhiteSpace(item.SkipReason))?.SkipReason
+                            ?? "нет файлов, подходящих для переименования";
+            string message = sourcePaths.Count == 1 && reason == "уже соответствует шаблону"
+                ? "Имя файла уже соответствует выбранному шаблону. Переименование не требуется."
+                : $"Ни один файл не будет переименован: {reason}.";
+            System.Windows.MessageBox.Show(dialogOwner, message,
+                "Нормализация имён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+
+            // Выбранный текущий трек мог не требовать File.Move, но всё равно нуждается в
+            // обновлённом fallback исполнителя/названия из имени файла.
+            if (_currentTrackPath is not null && sourcePaths.Any(path =>
+                    string.Equals(path, _currentTrackPath, StringComparison.OrdinalIgnoreCase)))
+            {
+                RefreshCurrentTrackMetadataFromFileName();
+            }
+
+            return new FileNameNormalizer.RenameResult(0, preview.Count, 0,
+                new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase), Array.Empty<string>());
+        }
+
+        string examples = string.Join(Environment.NewLine, candidates.Take(5).Select(item =>
+            $"• {item.SourceFileName} → {item.TargetFileName}"));
+        int skipped = preview.Count - candidates.Count;
+        string skippedText = skipped > 0 ? $"\n\nПропущено: {skipped} (уже соответствует шаблону, конфликтует или играет сейчас)." : string.Empty;
+
+        var confirmation = System.Windows.MessageBox.Show(dialogOwner,
+            $"Переименовать файлов: {candidates.Count}.\n\n{examples}{skippedText}\n\n" +
+            "Файлы останутся в исходных папках; изменятся только имена. Продолжить?",
+            "Нормализация имён", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (confirmation != System.Windows.MessageBoxResult.Yes) return null;
+
+        FileNameNormalizer.RenameResult result;
+        try
+        {
+            result = await Task.Run(() => FileNameNormalizer.Execute(preview), _lifetimeCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return null;
+        }
+
+        if (_isExiting) return null;
+
+        if (result.RenamedCount > 0)
+        {
+            ApplyNormalizedTrackPaths(result.RenamedPaths);
+            PersistPlaybackAndPlaylistState();
+        }
+
+        // Текущий трек намеренно исключается из File.Move, но его подписи не должны оставаться
+        // с устаревшим fallback вида «имя папки». Если путь был в запросе, пересчитываем UI из
+        // тех же тегов и имени файла даже при результате «уже соответствует шаблону».
+        if (_currentTrackPath is not null && sourcePaths.Any(path =>
+                string.Equals(path, _currentTrackPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            RefreshCurrentTrackMetadataFromFileName();
+        }
+
+        return result;
+    }
+
+    private void RefreshCurrentTrackMetadataFromFileName()
+    {
+        if (string.IsNullOrWhiteSpace(_currentTrackPath)) return;
+
+        var metadata = FileNameNormalizer.ResolveArtistAndTitle(
+            _currentTrackPath, _currentTrackTaggedArtist, _currentTrackTaggedTitle, "—");
+        SetTrackInfoText(metadata.Title, metadata.Artist);
+        _nowPlaying?.UpdateTrackInfo(metadata.Title, metadata.Artist);
+        TrackInfoChanged?.Invoke(metadata.Title, metadata.Artist, CurrentArtBrush);
+    }
+
+    private void ApplyNormalizedTrackPaths(IReadOnlyDictionary<string, string> renamedPaths)
+    {
+        if (renamedPaths.Count == 0) return;
+
+        string Remap(string path) => renamedPaths.TryGetValue(path, out string? renamed) ? renamed : path;
+
+        foreach (var folder in _folders)
+        {
+            for (int index = 0; index < folder.Tracks.Count; index++)
+                folder.Tracks[index] = Remap(folder.Tracks[index]);
+        }
+
+        // В нормальном сценарии текущий трек исключён из плана, но обновление оставляем как
+        // защиту от будущих способов запуска нормализации или от момента между переключениями.
+        if (_currentTrackPath != null)
+            _currentTrackPath = Remap(_currentTrackPath);
+        if (_settings.LastTrackPath != null)
+            _settings.LastTrackPath = Remap(_settings.LastTrackPath);
+
+        var favoriteOrder = FavoritesManager.GetOrder().Select(Remap).ToList();
+        var pinnedFavorites = FavoritesManager.GetPinnedPaths().Select(Remap).ToList();
+        FavoritesManager.Initialize(favoriteOrder, pinnedFavorites);
+        FavoritesChangeNotifier.Instance.Bump();
+
+        var remappedCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (path, count) in PlayCountManager.GetAll())
+        {
+            string remapped = Remap(path);
+            remappedCounts[remapped] = remappedCounts.TryGetValue(remapped, out int existing)
+                ? existing + count
+                : count;
+        }
+        PlayCountManager.Initialize(remappedCounts);
+        PlayCountChangeNotifier.Instance.Bump();
+
+        // Очередь и история шаффла содержат абсолютные пути. Перезапускаем их вместо частичного
+        // исправления, чтобы кнопки «следующий» и «предыдущий» никогда не ссылались на старое имя.
+        ResetShuffleState();
+        RefreshPlaylistView();
+        if (_isFavoritesView) RefreshFavoritesTrackList();
+    }
+
     // Единственный способ подхватить файлы, добавленные в папку на диске уже после того, как
     // она попала в плейлист — раньше это дополнительно делалось тихо на каждом старте, что на
     // большой/сетевой библиотеке ощущалось как лишнее фоновое сканирование. Переиспользует
@@ -2083,20 +2271,125 @@ public partial class MainWindow : FluentWindow
             }
         }
 
-        PlaylistFoldersControl.ItemsSource = items;
+        _playlistDisplayItems = items;
+        QueuePlaylistSearch();
+    }
+
+    // Поиск применяется только после короткой паузы во вводе. Очистка поля, напротив,
+    // возвращает полный снимок сразу — пользователь не видит устаревших результатов.
+    private void PlaylistSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) =>
+        QueuePlaylistSearch();
+
+    private void QueuePlaylistSearch()
+    {
+        if (_isExiting || PlaylistSearchBox is null) return;
+
+        _playlistSearchDebounceTimer.Stop();
+        if (string.IsNullOrWhiteSpace(PlaylistSearchBox.Text))
+        {
+            Interlocked.Increment(ref _playlistSearchGeneration);
+            _playlistSearchCts?.Cancel();
+            ApplyPlaylistSearchResult(_isFavoritesView ? _favoriteDisplayItems : _playlistDisplayItems, _isFavoritesView);
+            return;
+        }
+
+        _playlistSearchDebounceTimer.Start();
+    }
+
+    private void PlaylistSearchDebounceTimer_Tick(object? sender, EventArgs e)
+    {
+        _playlistSearchDebounceTimer.Stop();
+        FireAndForget(ApplyPlaylistSearchAsync(), "PlaylistSearchAsync");
+    }
+
+    private async Task ApplyPlaylistSearchAsync()
+    {
+        if (_isExiting) return;
+
+        string query = PlaylistSearchBox.Text.Trim();
+        bool favoritesView = _isFavoritesView;
+        List<object> snapshot = (favoritesView ? _favoriteDisplayItems : _playlistDisplayItems).ToList();
+        int generation = Interlocked.Increment(ref _playlistSearchGeneration);
+
+        _playlistSearchCts?.Cancel();
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _playlistSearchCts = cts;
+        try
+        {
+            List<object> filtered = await Task.Run(
+                () => FilterPlaylistDisplayItems(snapshot, query, cts.Token), cts.Token);
+
+            if (_isExiting || cts.IsCancellationRequested || generation != Volatile.Read(ref _playlistSearchGeneration) ||
+                favoritesView != _isFavoritesView)
+                return;
+
+            ApplyPlaylistSearchResult(filtered, favoritesView);
+        }
+        catch (OperationCanceledException)
+        {
+            // Новый символ в поле поиска отменяет устаревший запрос — это нормальный путь.
+        }
+        finally
+        {
+            if (ReferenceEquals(_playlistSearchCts, cts))
+                _playlistSearchCts = null;
+            cts.Dispose();
+        }
+    }
+
+    private void ApplyPlaylistSearchResult(IEnumerable<object> items, bool favoritesView)
+    {
+        if (favoritesView)
+            FavoritesTrackListView.ItemsSource = items;
+        else
+            PlaylistFoldersControl.ItemsSource = items;
+    }
+
+    // Обычный плейлист — смешанный список заголовков папок и строк. При поиске оставляем
+    // заголовок только у папки, в которой есть совпадения; «Избранное» содержит только строки
+    // и проходит тем же методом без лишней обёртки. Функция работает над неизменяемым снимком
+    // и вызывается в фоне, поэтому обращений к WPF или к диску здесь нет.
+    private static List<object> FilterPlaylistDisplayItems(
+        IReadOnlyList<object> source, string query, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(query)) return source.ToList();
+
+        var filtered = new List<object>();
+        PlaylistFolder? pendingFolder = null;
+        bool pendingFolderAdded = false;
+
+        foreach (object item in source)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (item is PlaylistFolder folder)
+            {
+                pendingFolder = folder;
+                pendingFolderAdded = false;
+                continue;
+            }
+
+            if (item is not PlaylistTrackRow row || !MatchesPlaylistSearch(row.FilePath, query))
+                continue;
+
+            if (pendingFolder is not null && !pendingFolderAdded)
+            {
+                filtered.Add(pendingFolder);
+                pendingFolderAdded = true;
+            }
+            filtered.Add(row);
+        }
+
+        return filtered;
+    }
+
+    private static bool MatchesPlaylistSearch(string? filePath, string query)
+    {
+        if (string.IsNullOrWhiteSpace(filePath)) return false;
+        return Path.GetFileNameWithoutExtension(filePath)
+            .Contains(query, StringComparison.OrdinalIgnoreCase);
     }
 
     // ---------- Избранное ----------
-
-    // Просто прокидывает текст в PlaylistSearchState (см. PlaylistSearchState.cs) — вся
-    // фильтрация происходит декларативно через биндинги (ItemContainerStyle обоих ListView, см.
-    // MainWindow.xaml), поэтому здесь ничего руками пересобирать не нужно: строки, переставшие
-    // совпадать с запросом, скрываются/показываются сами, и в обычном плейлисте, и в
-    // "Избранном" — какой бы из двух видов ни был сейчас открыт.
-    private void PlaylistSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
-    {
-        PlaylistSearchState.Instance.Query = PlaylistSearchBox.Text;
-    }
 
     private void FavoritesButton_Click(object sender, RoutedEventArgs e) => SetFavoritesViewActive(!_isFavoritesView);
 
@@ -2121,6 +2414,8 @@ public partial class MainWindow : FluentWindow
 
         if (active)
             RefreshFavoritesTrackList();
+        else
+            QueuePlaylistSearch();
     }
 
     // Пересобирает СОДЕРЖИМОЕ только виртуального плейлиста "Избранное" — не трогая
@@ -2142,7 +2437,9 @@ public partial class MainWindow : FluentWindow
         for (int i = 0; i < favorites.Count; i++)
             items.Add(new PlaylistTrackRow { Folder = _favoritesFolder, FilePath = favorites[i], IndexInFolder = i + 1 });
 
-        FavoritesTrackListView.ItemsSource = items;
+        _favoriteDisplayItems = items;
+        if (_isFavoritesView)
+            QueuePlaylistSearch();
     }
 
     // Сердечко на строке трека (см. TrackFavoriteButton в MainWindow.xaml) и одноимённый пункт
@@ -2584,6 +2881,30 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    private async void NormalizeTrackFileNameMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+
+        try
+        {
+            FileNameNormalizer.RenameResult? result = await NormalizeTrackFileNamesAsync(new[] { row.FilePath }, this);
+            if (result is null || result.RenamedCount == 0) return;
+
+            string errors = result.Errors.Count > 0
+                ? $"\n\nОшибок: {result.Errors.Count}. {string.Join(" ", result.Errors.Take(2))}"
+                : string.Empty;
+            System.Windows.MessageBox.Show(this,
+                $"Имя файла нормализовано. Переименовано: {result.RenamedCount}; пропущено: {result.SkippedCount}.{errors}",
+                "Нормализация имён", System.Windows.MessageBoxButton.OK,
+                result.Errors.Count == 0 ? System.Windows.MessageBoxImage.Information : System.Windows.MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            System.Windows.MessageBox.Show(this, $"Не удалось нормализовать имя файла:\n{ex.Message}",
+                "Нормализация имён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+    }
+
     private void RemoveTrackMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -2765,11 +3086,11 @@ public partial class MainWindow : FluentWindow
             PreparedTrack loaded = prepared;
             prepared = null;
 
-            string title = string.IsNullOrWhiteSpace(loaded.Title) ? Path.GetFileNameWithoutExtension(filePath) : loaded.Title;
-            string artist = string.IsNullOrWhiteSpace(loaded.Artist)
-                ? (Path.GetDirectoryName(filePath) is { } dir ? Path.GetFileName(dir) : "—")
-                : loaded.Artist;
-            SetTrackInfoText(title, artist);
+            _currentTrackTaggedTitle = loaded.Title;
+            _currentTrackTaggedArtist = loaded.Artist;
+            var metadata = FileNameNormalizer.ResolveArtistAndTitle(
+                filePath, _currentTrackTaggedArtist, _currentTrackTaggedTitle, "—");
+            SetTrackInfoText(metadata.Title, metadata.Artist);
             TotalTimeText.Text = _audioFile.TotalTime.ToString(@"mm\:ss");
             ProgressSlider.Maximum = Math.Max(_audioFile.TotalTime.TotalSeconds, 0.01);
             _currentTrackPath = filePath;
@@ -2867,7 +3188,9 @@ public partial class MainWindow : FluentWindow
             {
                 using var tagFile = TagLib.File.Create(filePath);
                 title = tagFile.Tag.Title;
-                artist = tagFile.Tag.FirstPerformer;
+                artist = !string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer)
+                    ? tagFile.Tag.FirstPerformer
+                    : tagFile.Tag.FirstAlbumArtist;
                 if (tagFile.Tag.Pictures.Length > 0)
                 {
                     var picture = tagFile.Tag.Pictures[0];
@@ -3993,6 +4316,8 @@ public partial class MainWindow : FluentWindow
         var saved = _settings.EqualizerBandGainsDb;
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
             _equalizer.SetBandGain(band, band < saved.Length ? saved[band] : 0);
+
+        _equalizer.Enabled = _settings.EqualizerEnabled && !_settings.EqualizerBypass;
     }
 
     // Анимация смены обложки (см. AnimateAlbumArtTransition) — переключатель в настройках,
@@ -4081,10 +4406,22 @@ public partial class MainWindow : FluentWindow
             _tempoStream.PitchSemiTones = clamped;
     }
 
+    public bool IsEqualizerBypass => _settings.EqualizerBypass;
+
     public void SetEqualizerEnabled(bool enabled)
     {
         _settings.EqualizerEnabled = enabled;
-        if (_equalizer != null) _equalizer.Enabled = enabled;
+        if (_equalizer != null)
+            _equalizer.Enabled = enabled && !_settings.EqualizerBypass;
+    }
+
+    // Bypass не сбрасывает ни флаг включения EQ, ни полосы, ни пресеты. Благодаря этому
+    // пользователь может сравнить звук «с EQ / без EQ» и вернуть обработку одним кликом.
+    public void SetEqualizerBypass(bool bypass)
+    {
+        _settings.EqualizerBypass = bypass;
+        if (_equalizer != null)
+            _equalizer.Enabled = _settings.EqualizerEnabled && !bypass;
     }
 
     public double GetEqualizerBandGain(int band) =>
@@ -4757,6 +5094,7 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.ApplyArtworkProgressVisibility();
         _miniPlayerWindow?.ApplyArtworkProgressColor();
         ApplyDiscordRichPresenceSettingsLive();
+        TrackContextMenuActions.Instance.Initialize(_settings.DisabledTrackContextMenuActions);
         ApplyPlaybackRateLive(_settings.PlaybackSpeed);
         ApplyPlaybackPitchLive(_settings.PlaybackPitchSemitones);
     }
@@ -4810,6 +5148,8 @@ public partial class MainWindow : FluentWindow
         // Timer должен быть остановлен до финального Save, чтобы он не начал новую запись
         // параллельно с закрытием окна.
         _playbackRatePersistenceTimer.Stop();
+        _playlistSearchDebounceTimer.Stop();
+        _playlistSearchCts?.Cancel();
         _settings.PlaybackSpeed = _runtimePlaybackRate;
         _isExiting = true;
         _lifetimeCts.Cancel();

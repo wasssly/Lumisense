@@ -349,7 +349,21 @@ public class AppSettings
     // подстраиваются под фактическую длину EqualizerSampleProvider.BandFrequencies, а не
     // слепо доверяют длине сохранённого массива.
     public bool EqualizerEnabled { get; set; }
+
+    // Bypass временно пропускает сигнал мимо фильтров, но не меняет включение EQ, значения
+    // полос или пресеты. После выключения Bypass сохранённая коррекция возвращается сразу.
+    public bool EqualizerBypass { get; set; }
+
     public double[] EqualizerBandGainsDb { get; set; } = new double[10];
+
+    // Шаблон безопасной нормализации имён аудиофайлов, см. FileNameNormalizer. Операция
+    // выполняется только вручную по подтверждённому предпросмотру и не запускается при импорте.
+    public string FileNameNormalizationTemplate { get; set; } = FileNameNormalizer.DefaultTemplate;
+
+    // Идентификаторы скрытых действий контекстного меню трека. Пустой список означает
+    // привычное полное меню; базовое «Воспроизвести» намеренно не выключается, чтобы меню
+    // всегда сохраняло безопасное и понятное основное действие.
+    public List<string> DisabledTrackContextMenuActions { get; set; } = new();
 
     // Именованные наборы значений эквалайзера, сохранённые пользователем — переключаются
     // и, при необходимости, экспортируются/импортируются как отдельный .json-файл (см.

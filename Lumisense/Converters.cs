@@ -89,21 +89,6 @@ public class IsPinnedMultiConverter : IMultiValueConverter
         => throw new NotSupportedException();
 }
 
-// Видимость строки трека при поиске по плейлисту. values[0] — FilePath, values[1] —
-// PlaylistSearchState.Instance.Epoch (тот же приём, что в IsFavoriteMultiConverter).
-// Фильтрует через Visibility контейнера, а не ICollectionView.Filter на самой коллекции —
-// так поиск не трогает данные плейлиста (ни порядок в "Далее/Назад", ни нумерацию треков).
-public class TrackMatchesSearchMultiConverter : IMultiValueConverter
-{
-    public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
-        => values.Length > 0 && values[0] is string path && PlaylistSearchState.Instance.Matches(path)
-            ? System.Windows.Visibility.Visible
-            : System.Windows.Visibility.Collapsed;
-
-    public object?[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture)
-        => throw new NotSupportedException();
-}
-
 // Ключ иконки шеврона для кнопки сворачивания списка треков группы
 public class ExpandChevronConverter : IValueConverter
 {

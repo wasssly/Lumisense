@@ -825,6 +825,61 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Нормализация меняет только имена уже добавленных файлов после явного
+                             предпросмотра и подтверждения; см. FileNameNormalizer/MainWindow. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Нормализация имён файлов" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <TextBlock Text="Переименовывает файлы в исходных папках по тегам. Перед изменением Lumisense покажет примеры и пропустит занятые имена или текущий трек."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                <TextBlock Text="Шаблон" FontSize="12" Opacity="0.7" Margin="0,0,0,6" />
+                                <ui:TextBox x:Name="FileNameNormalizationTemplateTextBox"
+                                            PlaceholderText="Например: {Artist} - {Title}{Extension}"
+                                            TextChanged="FileNameNormalizationTemplateTextBox_TextChanged">
+                                    <ui:TextBox.Icon>
+                                        <local:SvgPathIcon Icon="IconEdit" />
+                                    </ui:TextBox.Icon>
+                                </ui:TextBox>
+                                <TextBlock Text="Токены: {Artist}, {Title}, {Album}, {Track}, {Extension}. Расширение исходного файла сохраняется автоматически."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <Button x:Name="NormalizePlaylistFileNamesButton" Content="Показать предпросмотр и нормализовать"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0"
+                                        Click="NormalizePlaylistFileNamesButton_Click" />
+                                <TextBlock x:Name="FileNameNormalizationResultText" Visibility="Collapsed"
+                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Действия контекстного меню трека" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <TextBlock Text="Снимите галочки, чтобы скрыть ненужные действия при нажатии правой кнопкой по треку в плейлисте. «Воспроизвести» остаётся доступным всегда."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                <UniformGrid Columns="2">
+                                    <CheckBox x:Name="TrackContextFavoriteCheckBox" Tag="Favorite" Content="Избранное"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextShowInExplorerCheckBox" Tag="ShowInExplorer" Content="Показать в проводнике"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextCopyNameCheckBox" Tag="CopyTrackName" Content="Копировать имя трека"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextCopyPathCheckBox" Tag="CopyPath" Content="Копировать путь к файлу"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextCopyFileCheckBox" Tag="CopyFile" Content="Копировать файл"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextPropertiesCheckBox" Tag="Properties" Content="Свойства"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextEditTagsCheckBox" Tag="EditTags" Content="Изменить теги"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextNormalizeFileNameCheckBox" Tag="NormalizeFileName" Content="Нормализовать имя файла"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextRemoveFromPlaylistCheckBox" Tag="RemoveFromPlaylist" Content="Убрать из плейлиста"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextDeleteFromDiskCheckBox" Tag="DeleteFromDisk" Content="Удалить с диска"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
                         <!-- Раньше называлась "Улучшенный шаффл" и жила на странице "Экспериментальное" —
                              имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
                              сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
@@ -990,6 +1045,14 @@
                                           Margin="0,0,0,10" />
                                 <TextBlock Text="10 полос графического эквалайзера — регулировки применяются сразу же, без перезапуска трека."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,16" />
+
+                                <CheckBox x:Name="EqualizerBypassCheckBox"
+                                          Content="EQ Bypass (временно отключить обработку)"
+                                          Checked="EqualizerBypassCheckBox_Changed"
+                                          Unchecked="EqualizerBypassCheckBox_Changed"
+                                          Margin="0,0,0,0" />
+                                <TextBlock Text="Пропускает сигнал мимо фильтров, не меняя настройки полос. Удобно для быстрого сравнения звука с EQ и без."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,16" />
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>

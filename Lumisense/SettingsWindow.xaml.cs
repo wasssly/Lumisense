@@ -154,6 +154,11 @@ public partial class SettingsWindow : FluentWindow
         MiniInfoArtistRadio.IsChecked = !MiniInfoOnlyTitleRadio.IsChecked.GetValueOrDefault()
                                          && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
 
+        FileNameNormalizationTemplateTextBox.Text = string.IsNullOrWhiteSpace(_settings.FileNameNormalizationTemplate)
+            ? FileNameNormalizer.DefaultTemplate
+            : _settings.FileNameNormalizationTemplate;
+        FileNameNormalizationResultText.Visibility = Visibility.Collapsed;
+        InitializeTrackContextMenuActionCheckBoxes();
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
         ProgressBarSliderRadio.IsChecked = !ProgressBarWaveformRadio.IsChecked.GetValueOrDefault();
@@ -166,6 +171,7 @@ public partial class SettingsWindow : FluentWindow
         AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
+        EqualizerBypassCheckBox.IsChecked = _owner.IsEqualizerBypass;
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
         {
             double gain = _owner.GetEqualizerBandGain(band);
@@ -205,6 +211,29 @@ public partial class SettingsWindow : FluentWindow
         LoadDeveloperAvatar();
 
         _isInitializing = false;
+    }
+
+    private void InitializeTrackContextMenuActionCheckBoxes()
+    {
+        var checkBoxes = new[]
+        {
+            TrackContextFavoriteCheckBox,
+            TrackContextShowInExplorerCheckBox,
+            TrackContextCopyNameCheckBox,
+            TrackContextCopyPathCheckBox,
+            TrackContextCopyFileCheckBox,
+            TrackContextPropertiesCheckBox,
+            TrackContextEditTagsCheckBox,
+            TrackContextNormalizeFileNameCheckBox,
+            TrackContextRemoveFromPlaylistCheckBox,
+            TrackContextDeleteFromDiskCheckBox
+        };
+
+        foreach (System.Windows.Controls.CheckBox checkBox in checkBoxes)
+        {
+            if (checkBox.Tag is string actionId)
+                checkBox.IsChecked = !_owner.IsTrackContextMenuActionDisabled(actionId);
+        }
     }
 
     // WindowStartupLocation="CenterOwner" не подходит — Owner не выставляется (см. начало
@@ -488,12 +517,15 @@ public partial class SettingsWindow : FluentWindow
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
         Add("Не запускать трек при старте", "Воспроизведение", "Playback", NeverAutoPlayLastTrackOnStartupCheckBox, "старт запуск продолжить воспроизведение последний трек пауза resume autoplay");
         Add("Очистить кэш интернет-обложек", "Воспроизведение", "Playback", ClearArtworkCacheButton, "кэш обложка интернет очистить удалить cover cache artwork image");
+        Add("Нормализация имён файлов", "Воспроизведение", "Playback", NormalizePlaylistFileNamesButton, "нормализация имя файл шаблон переименование artist title album track extension rename");
+        Add("Действия контекстного меню трека", "Воспроизведение", "Playback", TrackContextFavoriteCheckBox, "контекстное меню правый клик пкм трек плейлист скрыть отключить действия проводник копировать теги свойства удалить");
         Add("Discord Rich Presence", "Интеграции", "Integrations", DiscordRichPresenceEnabledCheckBox, "discord статус rich presence rpc активность" );
         Add("Подключить Discord", "Интеграции", "Integrations", ConnectDiscordButton, "discord подключить connection rich presence статус" );
         Add("Открыть журнал Discord", "Интеграции", "Integrations", OpenDiscordDiagnosticsLogButton, "discord журнал лог диагностика ошибка rich presence" );
         Add("Приватность Discord: название и исполнитель", "Интеграции", "Integrations", DiscordRichPresenceShowTrackInfoCheckBox, "discord приватность название исполнитель трек" );
         Add("Приватность Discord: таймлайн", "Интеграции", "Integrations", DiscordRichPresenceShowTimelineCheckBox, "discord приватность время прогресс таймлайн" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
+        Add("EQ Bypass", "Эквалайзер", "Equalizer", EqualizerBypassCheckBox, "bypass обход эквалайзер eq временно сравнение фильтры");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
         Add("Закрепить положение (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniPinnedCheckBox, "закрепить перетаскивание pin мини плеер");
@@ -1160,6 +1192,13 @@ public partial class SettingsWindow : FluentWindow
         _owner.SetEqualizerEnabled(EqualizerEnabledCheckBox.IsChecked == true);
     }
 
+    private void EqualizerBypassCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _owner.SetEqualizerBypass(EqualizerBypassCheckBox.IsChecked == true);
+    }
+
     // Общий обработчик для всех 10 слайдеров полос — номер полосы передаётся через Tag
     // (см. SettingsWindow.xaml), а не десятью одинаковыми по сути методами.
     private void EqualizerBandSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -1358,6 +1397,61 @@ public partial class SettingsWindow : FluentWindow
         8 => EqBand8ValueText,
         _ => EqBand9ValueText
     };
+
+    private void TrackContextMenuActionCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        if (sender is not System.Windows.Controls.CheckBox { Tag: string actionId } checkBox) return;
+
+        _owner.SetTrackContextMenuActionDisabled(actionId, checkBox.IsChecked != true);
+    }
+
+    private void FileNameNormalizationTemplateTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        // Пустой шаблон безопасно возвращается к дефолтному в момент запуска операции. Не
+        // переписываем TextBox во время набора, чтобы не ломать редактирование пользователю.
+        _settings.FileNameNormalizationTemplate = string.IsNullOrWhiteSpace(FileNameNormalizationTemplateTextBox.Text)
+            ? FileNameNormalizer.DefaultTemplate
+            : FileNameNormalizationTemplateTextBox.Text.Trim();
+        FileNameNormalizationResultText.Visibility = Visibility.Collapsed;
+    }
+
+    private async void NormalizePlaylistFileNamesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.FileNameNormalizationTemplate = string.IsNullOrWhiteSpace(FileNameNormalizationTemplateTextBox.Text)
+            ? FileNameNormalizer.DefaultTemplate
+            : FileNameNormalizationTemplateTextBox.Text.Trim();
+
+        NormalizePlaylistFileNamesButton.IsEnabled = false;
+        FileNameNormalizationResultText.Text = "Подготавливается предпросмотр файлов…";
+        FileNameNormalizationResultText.Visibility = Visibility.Visible;
+
+        try
+        {
+            FileNameNormalizer.RenameResult? result = await _owner.NormalizePlaylistFileNamesAsync(this);
+            if (result is null)
+            {
+                FileNameNormalizationResultText.Text = "Нормализация отменена.";
+                return;
+            }
+
+            string errors = result.Errors.Count > 0 ? $" Ошибок: {result.Errors.Count}." : string.Empty;
+            FileNameNormalizationResultText.Text =
+                $"Готово. Переименовано: {result.RenamedCount}; пропущено: {result.SkippedCount}.{errors}";
+        }
+        catch (Exception ex)
+        {
+            FileNameNormalizationResultText.Text = $"Не удалось нормализовать имена: {ex.Message}";
+        }
+        finally
+        {
+            NormalizePlaylistFileNamesButton.IsEnabled = true;
+        }
+    }
 
     private void ImprovedShuffleCheckBox_Changed(object sender, RoutedEventArgs e)
     {
