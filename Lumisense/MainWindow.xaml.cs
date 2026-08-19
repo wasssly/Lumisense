@@ -3893,6 +3893,21 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.UpdateSecondaryButton();
     }
 
+    // Единая точка изменения режима второй кнопки для страницы настроек и контекстного меню
+    // мини-плеера. Открытое SettingsWindow синхронизируется без повторного вызова обработчика.
+    public void SetMiniPlayerSecondaryButtonMode(string? mode)
+    {
+        _settings.MiniPlayerSecondaryButton = mode switch
+        {
+            "Shuffle" => "Shuffle",
+            "Favorite" => "Favorite",
+            _ => "Repeat"
+        };
+
+        ApplyMiniPlayerSecondaryButtonLive();
+        _settingsWindow?.RefreshMiniPlayerToggles();
+    }
+
     // Аналог ApplyMiniPlayerSecondaryButtonLive для настройки "расположение кнопок" (снизу /
     // на месте обложки, см. AppSettings.MiniPlayerButtonsLayout).
     public void ApplyMiniPlayerButtonsLayoutLive()
@@ -4036,6 +4051,27 @@ public partial class MainWindow : FluentWindow
     }
 
     public void ApplyPlaybackRateLive(double speed) => SetPlaybackRate(speed, persist: false);
+
+    // Мини-плеер использует тот же путь, что и главный ползунок: темп применяется к текущему
+    // SoundTouch-потоку, сохраняется и синхронизирует основной контрол без отдельной логики.
+    public void SetPlaybackRateFromMiniPlayer(double speed) => SetPlaybackRate(speed, persist: true);
+
+    // Аналогичная точка входа для тона. Если главный Slider существует, его ValueChanged уже
+    // обновит SoundTouch, текст и сохранение; до его создания применяем всё напрямую.
+    public void SetPlaybackPitchFromMiniPlayer(double semitones)
+    {
+        double clamped = Math.Clamp(semitones, -12.0, 12.0);
+        if (PlaybackPitchSlider != null && Math.Abs(PlaybackPitchSlider.Value - clamped) > 0.0001)
+        {
+            PlaybackPitchSlider.Value = clamped;
+            return;
+        }
+
+        ApplyPlaybackPitchLive(clamped);
+        if (PlaybackPitchValueText != null)
+            PlaybackPitchValueText.Text = FormatPlaybackPitch(clamped);
+        PersistPlaybackSettingsAfterUserChange();
+    }
 
     public void ApplyPlaybackPitchLive(double semitones)
     {

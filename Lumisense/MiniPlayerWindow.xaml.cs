@@ -618,6 +618,12 @@ public partial class MiniPlayerWindow : Window
     // _isDraggingOpacityOverlay в SettingsWindow.xaml.cs.
     private bool _isDraggingOpacityOverlay;
 
+    // Контекстные скорость и тон получают программные значения при открытии меню. Этот флаг
+    // не даёт ValueChanged применить уже существующие настройки повторно.
+    private bool _isSyncingPlaybackContextSliders;
+    private bool _isDraggingPlaybackRateOverlay;
+    private bool _isDraggingPlaybackPitchOverlay;
+
     private void MiniPlayerContextMenu_Opened(object sender, RoutedEventArgs e)
     {
         PinnedMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerPinned;
@@ -627,6 +633,147 @@ public partial class MiniPlayerWindow : Window
         MiniOpacityContextSlider.Value = _mainWindow.Settings.MiniPlayerOpacity;
         MiniOpacityContextValueText.Text = $"{(int)Math.Round(_mainWindow.Settings.MiniPlayerOpacity * 100)}%";
         _isSyncingOpacitySlider = false;
+
+        _isSyncingPlaybackContextSliders = true;
+        try
+        {
+            MiniPlaybackRateContextSlider.Value = Math.Clamp(_mainWindow.Settings.PlaybackSpeed, 0.5, 2.0);
+            MiniPlaybackRateContextValueText.Text = FormatContextPlaybackRate(MiniPlaybackRateContextSlider.Value);
+            MiniPlaybackPitchContextSlider.Value = Math.Clamp(_mainWindow.Settings.PlaybackPitchSemitones, -12.0, 12.0);
+            MiniPlaybackPitchContextValueText.Text = FormatContextPlaybackPitch(MiniPlaybackPitchContextSlider.Value);
+            UpdateSecondaryContextButtons();
+        }
+        finally
+        {
+            _isSyncingPlaybackContextSliders = false;
+        }
+    }
+
+    private void MiniSecondaryContextButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not Wpf.Ui.Controls.Button { Tag: string mode }) return;
+
+        _mainWindow.SetMiniPlayerSecondaryButtonMode(mode);
+        UpdateSecondaryContextButtons();
+        e.Handled = true;
+    }
+
+    private void UpdateSecondaryContextButtons()
+    {
+        string mode = SecondaryButtonMode;
+        SetAccentButtonActive(MiniSecondaryRepeatContextButton, mode == "Repeat");
+        SetAccentButtonActive(MiniSecondaryShuffleContextButton, mode == "Shuffle");
+        SetAccentButtonActive(MiniSecondaryFavoriteContextButton, mode == "Favorite");
+    }
+
+    private static string FormatContextPlaybackRate(double rate) => $"{rate:0.00}×";
+
+    private static string FormatContextPlaybackPitch(double semitones) => $"{semitones:+0;-0;0} st";
+
+    private void MiniPlaybackRateContextSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_mainWindow == null || _isSyncingPlaybackContextSliders) return;
+
+        MiniPlaybackRateContextValueText.Text = FormatContextPlaybackRate(e.NewValue);
+        _mainWindow.SetPlaybackRateFromMiniPlayer(e.NewValue);
+    }
+
+    private void MiniPlaybackPitchContextSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_mainWindow == null || _isSyncingPlaybackContextSliders) return;
+
+        MiniPlaybackPitchContextValueText.Text = FormatContextPlaybackPitch(e.NewValue);
+        _mainWindow.SetPlaybackPitchFromMiniPlayer(e.NewValue);
+    }
+
+    private void MiniPlaybackRateContextOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var overlay = (FrameworkElement)sender;
+        if (e.ClickCount >= 2)
+        {
+            MiniPlaybackRateContextSlider.Value = 1.0;
+            e.Handled = true;
+            return;
+        }
+
+        overlay.CaptureMouse();
+        _isDraggingPlaybackRateOverlay = true;
+        UpdateContextSliderFromMouse(MiniPlaybackRateContextSlider, e.GetPosition(overlay).X, overlay.ActualWidth, 0.05);
+        e.Handled = true;
+    }
+
+    private void MiniPlaybackRateContextOverlay_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingPlaybackRateOverlay) return;
+        var overlay = (FrameworkElement)sender;
+        UpdateContextSliderFromMouse(MiniPlaybackRateContextSlider, e.GetPosition(overlay).X, overlay.ActualWidth, 0.05);
+    }
+
+    private void MiniPlaybackRateContextOverlay_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var overlay = (FrameworkElement)sender;
+        overlay.ReleaseMouseCapture();
+        _isDraggingPlaybackRateOverlay = false;
+        e.Handled = true;
+    }
+
+    private void MiniPlaybackRateContextOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        MiniPlaybackRateContextSlider.Value = Math.Clamp(
+            MiniPlaybackRateContextSlider.Value + Math.Sign(e.Delta) * 0.05,
+            MiniPlaybackRateContextSlider.Minimum,
+            MiniPlaybackRateContextSlider.Maximum);
+        e.Handled = true;
+    }
+
+    private void MiniPlaybackPitchContextOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var overlay = (FrameworkElement)sender;
+        if (e.ClickCount >= 2)
+        {
+            MiniPlaybackPitchContextSlider.Value = 0.0;
+            e.Handled = true;
+            return;
+        }
+
+        overlay.CaptureMouse();
+        _isDraggingPlaybackPitchOverlay = true;
+        UpdateContextSliderFromMouse(MiniPlaybackPitchContextSlider, e.GetPosition(overlay).X, overlay.ActualWidth, 1.0);
+        e.Handled = true;
+    }
+
+    private void MiniPlaybackPitchContextOverlay_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isDraggingPlaybackPitchOverlay) return;
+        var overlay = (FrameworkElement)sender;
+        UpdateContextSliderFromMouse(MiniPlaybackPitchContextSlider, e.GetPosition(overlay).X, overlay.ActualWidth, 1.0);
+    }
+
+    private void MiniPlaybackPitchContextOverlay_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var overlay = (FrameworkElement)sender;
+        overlay.ReleaseMouseCapture();
+        _isDraggingPlaybackPitchOverlay = false;
+        e.Handled = true;
+    }
+
+    private void MiniPlaybackPitchContextOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        MiniPlaybackPitchContextSlider.Value = Math.Clamp(
+            MiniPlaybackPitchContextSlider.Value + Math.Sign(e.Delta),
+            MiniPlaybackPitchContextSlider.Minimum,
+            MiniPlaybackPitchContextSlider.Maximum);
+        e.Handled = true;
+    }
+
+    private static void UpdateContextSliderFromMouse(System.Windows.Controls.Slider slider, double positionX,
+        double width, double tick)
+    {
+        if (width <= 0) return;
+
+        double ratio = Math.Clamp(positionX / width, 0.0, 1.0);
+        double raw = slider.Minimum + ratio * (slider.Maximum - slider.Minimum);
+        slider.Value = Math.Clamp(Math.Round(raw / tick) * tick, slider.Minimum, slider.Maximum);
     }
 
     private void PinnedMenuItem_Click(object sender, RoutedEventArgs e)

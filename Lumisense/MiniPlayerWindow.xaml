@@ -96,11 +96,10 @@
                  просто дефолт на первый кадр. -->
             <SolidColorBrush x:Name="MiniBackgroundBrush" Color="#F51C1C1E" />
         </Border.Background>
-        <!-- ПКМ по любому месту мини-плеера: закрепление (запрет перетаскивания), "поверх
-             окон" и теперь ещё и прозрачность — те же три настройки, что и в окне настроек,
-             здесь просто под рукой. MiniPlayerContextMenu_Opened каждый раз перед показом меню
-             подставляет актуальное состояние, так что галочки/слайдер не могут разъехаться
-             с реальными настройками, даже если их поменяли из другого места. -->
+        <!-- ПКМ по любому месту мини-плеера: закрепление, «поверх окон», вторая кнопка,
+             скорость, тон и прозрачность — быстрый доступ к связанным настройкам. Перед каждым
+             показом MiniPlayerContextMenu_Opened подставляет актуальные значения, поэтому
+             галочки, иконки и ползунки не расходятся с реальным состоянием приложения. -->
         <Border.ContextMenu>
             <ContextMenu Opened="MiniPlayerContextMenu_Opened">
                 <MenuItem Header="Настройки" Click="SettingsMenuItem_Click" />
@@ -109,6 +108,85 @@
                           Click="PinnedMenuItem_Click" />
                 <MenuItem x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
                           Click="TopmostMenuItem_Click" />
+                <Separator />
+                <!-- Выбор единственной второй кнопки управления. Три компактные иконки сохраняют
+                     главное меню коротким, а Tooltip раскрывает назначение без постоянного текста. -->
+                <MenuItem StaysOpenOnClick="True" Focusable="False">
+                    <MenuItem.Header>
+                        <Grid Width="220">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="Вторая кнопка" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                <ui:Button x:Name="MiniSecondaryRepeatContextButton" Tag="Repeat" Appearance="Secondary"
+                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Повтор"
+                                           Click="MiniSecondaryContextButton_Click">
+                                    <ui:Button.Icon><local:SvgPathIcon Icon="IconRepeatAll" Size="12" /></ui:Button.Icon>
+                                </ui:Button>
+                                <ui:Button x:Name="MiniSecondaryShuffleContextButton" Tag="Shuffle" Appearance="Secondary"
+                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Перемешать"
+                                           Click="MiniSecondaryContextButton_Click">
+                                    <ui:Button.Icon><local:SvgPathIcon Icon="IconShuffle" Size="12" /></ui:Button.Icon>
+                                </ui:Button>
+                                <ui:Button x:Name="MiniSecondaryFavoriteContextButton" Tag="Favorite" Appearance="Secondary"
+                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Избранное"
+                                           Click="MiniSecondaryContextButton_Click">
+                                    <ui:Button.Icon><local:SvgPathIcon Icon="IconHeart" Size="12" /></ui:Button.Icon>
+                                </ui:Button>
+                            </StackPanel>
+                        </Grid>
+                    </MenuItem.Header>
+                </MenuItem>
+                <Separator />
+                <!-- Скорость и тон используют такие же прозрачные overlay-области, как
+                     прозрачность ниже: Slider живёт в Popup ContextMenu, поэтому явный захват
+                     мыши надёжнее нативного Thumb. Двойной клик возвращает 1.00× и 0 st. -->
+                <MenuItem StaysOpenOnClick="True" Focusable="False">
+                    <MenuItem.Header>
+                        <Grid Width="220">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Скорость" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <Slider x:Name="MiniPlaybackRateContextSlider" Grid.Column="1" IsHitTestVisible="False"
+                                    Minimum="0.5" Maximum="2.0" Value="1.0" TickFrequency="0.05" IsSnapToTickEnabled="True"
+                                    VerticalAlignment="Center" ValueChanged="MiniPlaybackRateContextSlider_ValueChanged" />
+                            <Border Grid.Column="1" Background="Transparent" Height="24" VerticalAlignment="Center"
+                                    MouseLeftButtonDown="MiniPlaybackRateContextOverlay_MouseLeftButtonDown"
+                                    MouseMove="MiniPlaybackRateContextOverlay_MouseMove"
+                                    MouseLeftButtonUp="MiniPlaybackRateContextOverlay_MouseLeftButtonUp"
+                                    MouseWheel="MiniPlaybackRateContextOverlay_MouseWheel" />
+                            <TextBlock x:Name="MiniPlaybackRateContextValueText" Grid.Column="2" Text="1.00×"
+                                       Width="38" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        </Grid>
+                    </MenuItem.Header>
+                </MenuItem>
+                <MenuItem StaysOpenOnClick="True" Focusable="False">
+                    <MenuItem.Header>
+                        <Grid Width="220">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Тон" VerticalAlignment="Center" Margin="0,0,10,0" />
+                            <Slider x:Name="MiniPlaybackPitchContextSlider" Grid.Column="1" IsHitTestVisible="False"
+                                    Minimum="-12" Maximum="12" Value="0" TickFrequency="1" IsSnapToTickEnabled="True"
+                                    VerticalAlignment="Center" ValueChanged="MiniPlaybackPitchContextSlider_ValueChanged" />
+                            <Border Grid.Column="1" Background="Transparent" Height="24" VerticalAlignment="Center"
+                                    MouseLeftButtonDown="MiniPlaybackPitchContextOverlay_MouseLeftButtonDown"
+                                    MouseMove="MiniPlaybackPitchContextOverlay_MouseMove"
+                                    MouseLeftButtonUp="MiniPlaybackPitchContextOverlay_MouseLeftButtonUp"
+                                    MouseWheel="MiniPlaybackPitchContextOverlay_MouseWheel" />
+                            <TextBlock x:Name="MiniPlaybackPitchContextValueText" Grid.Column="2" Text="0 st"
+                                       Width="38" VerticalAlignment="Center" Margin="8,0,0,0" />
+                        </Grid>
+                    </MenuItem.Header>
+                </MenuItem>
                 <Separator />
                 <!-- Та же настройка, что и ползунок "Прозрачность мини-плеера" в окне настроек
                      (см. MainWindow.SetMiniPlayerOpacity) — синхронизирована в обе стороны:

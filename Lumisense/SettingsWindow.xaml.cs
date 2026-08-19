@@ -291,6 +291,10 @@ public partial class SettingsWindow : FluentWindow
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
         MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
+        MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
+        MiniSecondaryFavoriteRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Favorite";
+        MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault()
+                                              && !MiniSecondaryFavoriteRadio.IsChecked.GetValueOrDefault();
         MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         _isInitializing = false;
@@ -1038,10 +1042,10 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.MiniPlayerSecondaryButton = MiniSecondaryShuffleRadio.IsChecked == true ? "Shuffle"
+        _owner.SetMiniPlayerSecondaryButtonMode(
+            MiniSecondaryShuffleRadio.IsChecked == true ? "Shuffle"
             : MiniSecondaryFavoriteRadio.IsChecked == true ? "Favorite"
-            : "Repeat";
-        _owner.ApplyMiniPlayerSecondaryButtonLive();
+            : "Repeat");
     }
 
     private void MiniButtonsLayoutRadio_Changed(object sender, RoutedEventArgs e)
