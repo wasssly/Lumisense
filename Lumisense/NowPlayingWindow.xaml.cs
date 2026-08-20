@@ -59,6 +59,7 @@ public partial class NowPlayingWindow : Window
         OnlineLyricsResultsList.ItemsSource = _onlineResults;
         Loaded += NowPlayingWindow_Loaded;
         Closed += NowPlayingWindow_Closed;
+        LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
     }
 
     private void NowPlayingWindow_Loaded(object sender, RoutedEventArgs e)
@@ -79,6 +80,7 @@ public partial class NowPlayingWindow : Window
         _owner.TrackInfoChanged -= Owner_TrackInfoChanged;
         _owner.PlaybackStateChanged -= Owner_PlaybackStateChanged;
         _owner.ProgressChanged -= Owner_ProgressChanged;
+        LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         CancelLyricsLoad();
         CancelOnlineSearch();
         if (_ambientMotionTimer is not null)
@@ -92,6 +94,16 @@ public partial class NowPlayingWindow : Window
     private void Owner_TrackInfoChanged(string title, string artist, System.Windows.Media.Brush? _) => RefreshTrackPresentation();
     private void Owner_PlaybackStateChanged(bool isPlaying) => UpdatePlaybackState(isPlaying);
     private void Owner_ProgressChanged(double currentSeconds, double totalSeconds) => UpdateProgress(currentSeconds, totalSeconds);
+
+    private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
+    {
+        if (!IsLoaded) return;
+
+        // Заголовок, источник текста и подсказка play/pause формируются программно,
+        // поэтому их нужно обновить отдельно от обхода статического visual tree.
+        ApplyLyricsDocument(_lyrics);
+        UpdatePlaybackState(_owner.IsPlayingNow);
+    }
 
     private void NowPlayingWindow_SizeChanged(object sender, SizeChangedEventArgs e)
     {
@@ -398,7 +410,7 @@ public partial class NowPlayingWindow : Window
 
         try
         {
-            LyricsModeText.Text = "Ищем текст…";
+            LyricsModeText.Text = LocalizationService.Translate("Ищем текст…");
             IReadOnlyList<OnlineLyricsResult> results = await LyricsService.SearchOnlineAsync(
                 _owner.CurrentTitle, _owner.CurrentArtist, token);
             if (token.IsCancellationRequested || !string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
@@ -409,7 +421,7 @@ public partial class NowPlayingWindow : Window
                 SameTrackField(result.ArtistName, _owner.CurrentArtist));
             if (exact is null)
             {
-                LyricsModeText.Text = results.Count > 0 ? "Нужен выбор варианта" : "Нет текста";
+                LyricsModeText.Text = LocalizationService.Translate(results.Count > 0 ? "Нужен выбор варианта" : "Нет текста");
                 return;
             }
 
@@ -423,7 +435,7 @@ public partial class NowPlayingWindow : Window
         }
         catch (LyricsRateLimitException)
         {
-            LyricsModeText.Text = "Поиск временно ограничен";
+            LyricsModeText.Text = LocalizationService.Translate("Поиск временно ограничен");
         }
         catch (OperationCanceledException)
         {
@@ -431,7 +443,7 @@ public partial class NowPlayingWindow : Window
         }
         catch
         {
-            LyricsModeText.Text = "Нет текста";
+            LyricsModeText.Text = LocalizationService.Translate("Нет текста");
         }
         finally
         {
@@ -459,8 +471,8 @@ public partial class NowPlayingWindow : Window
         foreach (LyricLine line in document.Lines)
             _syncedLines.Add(line);
 
-        LyricsHeaderText.Text = document.Kind == LyricsKind.Synced ? "Live Lyrics" : "Текст песни";
-        LyricsModeText.Text = document.SourceLabel;
+        LyricsHeaderText.Text = LocalizationService.Translate(document.Kind == LyricsKind.Synced ? "Синхронный текст" : "Текст песни");
+        LyricsModeText.Text = LocalizationService.Translate(document.SourceLabel);
         SyncedLyricsList.Visibility = document.Kind == LyricsKind.Synced ? Visibility.Visible : Visibility.Collapsed;
         PlainLyricsScroll.Visibility = document.Kind == LyricsKind.Plain ? Visibility.Visible : Visibility.Collapsed;
         NoLyricsPanel.Visibility = document.Kind == LyricsKind.None ? Visibility.Visible : Visibility.Collapsed;
@@ -472,7 +484,7 @@ public partial class NowPlayingWindow : Window
     {
         UpdateAmbientAnimation(isPlaying);
         string icon = isPlaying ? "IconPause" : "IconPlay";
-        string toolTip = isPlaying ? "Пауза" : "Воспроизвести";
+        string toolTip = LocalizationService.Translate(isPlaying ? "Пауза" : "Воспроизвести");
         ArtworkPlayPauseIcon.Icon = icon;
         ArtworkPlayPauseButton.ToolTip = toolTip;
     }
@@ -653,7 +665,7 @@ public partial class NowPlayingWindow : Window
         _onlineResults.Clear();
         OnlineLyricsSearchPanel.Visibility = Visibility.Visible;
         LyricsSearchQueryTextBox.Text = BuildDefaultLyricsSearchQuery();
-        OnlineLyricsSearchStatusText.Text = "Проверьте запрос и нажмите «Искать» или Enter.";
+        OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Проверьте запрос и нажмите «Искать» или Enter.");
         LyricsSearchQueryTextBox.Focus();
         LyricsSearchQueryTextBox.SelectAll();
     }
@@ -677,7 +689,7 @@ public partial class NowPlayingWindow : Window
         trackPath = _owner.CurrentTrackPath ?? string.Empty;
         if (!string.IsNullOrWhiteSpace(trackPath) && File.Exists(trackPath)) return true;
 
-        MessageBox.Show(this, "Сначала выберите или запустите трек.", "Поиск текста",
+        LocalizedMessageBox.Show(this, "Сначала выберите или запустите трек.", "Поиск текста",
             MessageBoxButton.OK, MessageBoxImage.Information);
         return false;
     }
@@ -712,7 +724,7 @@ public partial class NowPlayingWindow : Window
         (string trackName, string artistName) = ParseLyricsSearchQuery(LyricsSearchQueryTextBox.Text ?? string.Empty);
         if (string.IsNullOrWhiteSpace(trackName))
         {
-            OnlineLyricsSearchStatusText.Text = "Введите название трека или «исполнитель — название».";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Введите название трека или «исполнитель — название».");
             LyricsSearchQueryTextBox.Focus();
             return;
         }
@@ -723,7 +735,7 @@ public partial class NowPlayingWindow : Window
         CancellationToken token = searchCts.Token;
         _onlineResults.Clear();
         OnlineLyricsSearchPanel.Visibility = Visibility.Visible;
-        OnlineLyricsSearchStatusText.Text = "Ищу текст…";
+        OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Ищу текст…");
         FindLyricsButton.IsEnabled = false;
         RunLyricsSearchButton.IsEnabled = false;
         LyricsSearchQueryTextBox.IsEnabled = false;
@@ -738,15 +750,15 @@ public partial class NowPlayingWindow : Window
                 _onlineResults.Add(result);
 
             OnlineLyricsSearchStatusText.Text = _onlineResults.Count == 0
-                ? "Во встроенной базе совпадения не найдены. Измените запрос или откройте Genius ниже."
-                : $"Найдено вариантов: {_onlineResults.Count}. Дважды кликните нужный вариант, чтобы сохранить его рядом с аудиофайлом.";
+                ? LocalizationService.Translate("Во встроенной базе совпадения не найдены. Измените запрос или откройте Genius ниже.")
+                : LocalizationService.Format("Найдено вариантов: {0}. Дважды кликните нужный вариант, чтобы сохранить его рядом с аудиофайлом.", _onlineResults.Count);
         }
         catch (LyricsRateLimitException ex)
         {
             string wait = ex.RetryAfter is { } delay && delay > TimeSpan.Zero
-                ? $" Попробуйте снова через {Math.Ceiling(delay.TotalSeconds)} сек."
-                : " Попробуйте снова немного позже.";
-            OnlineLyricsSearchStatusText.Text = "Сервис временно ограничил запросы." + wait;
+                ? LocalizationService.Format(" Попробуйте снова через {0} сек.", Math.Ceiling(delay.TotalSeconds))
+                : LocalizationService.Translate(" Попробуйте снова немного позже.");
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Сервис временно ограничил запросы.") + wait;
         }
         catch (OperationCanceledException)
         {
@@ -754,7 +766,7 @@ public partial class NowPlayingWindow : Window
         }
         catch
         {
-            OnlineLyricsSearchStatusText.Text = "Не удалось выполнить поиск. Проверьте подключение к интернету.";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Не удалось выполнить поиск. Проверьте подключение к интернету.");
         }
         finally
         {
@@ -779,7 +791,7 @@ public partial class NowPlayingWindow : Window
         {
             if (!Clipboard.ContainsText())
             {
-                OnlineLyricsSearchStatusText.Text = "Сначала скопируйте текст песни в буфер обмена.";
+                OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Сначала скопируйте текст песни в буфер обмена.");
                 return;
             }
 
@@ -787,19 +799,19 @@ public partial class NowPlayingWindow : Window
         }
         catch
         {
-            OnlineLyricsSearchStatusText.Text = "Не удалось прочитать буфер обмена. Скопируйте текст ещё раз.";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Не удалось прочитать буфер обмена. Скопируйте текст ещё раз.");
             return;
         }
 
         const int maxLyricsBytes = 2 * 1024 * 1024;
         if (string.IsNullOrWhiteSpace(text))
         {
-            OnlineLyricsSearchStatusText.Text = "В буфере нет текста песни.";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("В буфере нет текста песни.");
             return;
         }
         if (Encoding.UTF8.GetByteCount(text) > maxLyricsBytes)
         {
-            OnlineLyricsSearchStatusText.Text = "Скопированный текст больше 2 МБ и не был сохранён.";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Скопированный текст больше 2 МБ и не был сохранён.");
             return;
         }
 
@@ -817,7 +829,7 @@ public partial class NowPlayingWindow : Window
         }
         catch (Exception ex)
         {
-            OnlineLyricsSearchStatusText.Text = $"Не удалось сохранить текст: {ex.Message}";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate($"Не удалось сохранить текст: {ex.Message}");
         }
     }
 
@@ -829,7 +841,7 @@ public partial class NowPlayingWindow : Window
         string query = GetLyricsSearchQuery();
         if (string.IsNullOrWhiteSpace(query))
         {
-            OnlineLyricsSearchStatusText.Text = "Введите запрос, чтобы открыть внешний поиск.";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Введите запрос, чтобы открыть внешний поиск.");
             LyricsSearchQueryTextBox.Focus();
             return;
         }
@@ -841,7 +853,7 @@ public partial class NowPlayingWindow : Window
         }
         catch
         {
-            OnlineLyricsSearchStatusText.Text = "Не удалось открыть браузер для внешнего поиска.";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Не удалось открыть браузер для внешнего поиска.");
         }
     }
 
@@ -851,7 +863,7 @@ public partial class NowPlayingWindow : Window
         string? trackPath = _owner.CurrentTrackPath;
         if (string.IsNullOrWhiteSpace(trackPath) || !File.Exists(trackPath)) return;
 
-        OnlineLyricsSearchStatusText.Text = "Сохраняю выбранный текст рядом с аудиофайлом…";
+        OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Сохраняю выбранный текст рядом с аудиофайлом…");
         OnlineLyricsResultsList.IsEnabled = false;
         try
         {
@@ -865,7 +877,7 @@ public partial class NowPlayingWindow : Window
         }
         catch (Exception ex)
         {
-            OnlineLyricsSearchStatusText.Text = $"Не удалось сохранить текст: {ex.Message}";
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate($"Не удалось сохранить текст: {ex.Message}");
             OnlineLyricsResultsList.IsEnabled = true;
         }
     }
@@ -890,15 +902,15 @@ public partial class NowPlayingWindow : Window
         string? trackPath = _owner.CurrentTrackPath;
         if (string.IsNullOrWhiteSpace(trackPath) || !File.Exists(trackPath))
         {
-            MessageBox.Show(this, "Сначала выберите или запустите трек.", "Загрузка текста",
+            LocalizedMessageBox.Show(this, "Сначала выберите или запустите трек.", "Загрузка текста",
                 MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
 
         var dialog = new OpenFileDialog
         {
-            Title = "Выберите текст песни",
-            Filter = "Синхронный текст LRC (*.lrc)|*.lrc|Обычный текст (*.txt)|*.txt",
+            Title = LocalizationService.Translate("Выберите текст песни"),
+            Filter = LocalizationService.Translate("Синхронный текст LRC (*.lrc)|*.lrc|Обычный текст (*.txt)|*.txt"),
             CheckFileExists = true,
             Multiselect = false
         };
@@ -910,7 +922,7 @@ public partial class NowPlayingWindow : Window
             const long maxLyricsFileSize = 2 * 1024 * 1024;
             if (source.Length > maxLyricsFileSize)
             {
-                MessageBox.Show(this, "Файл текста больше 2 МБ и не был добавлен.", "Загрузка текста",
+                LocalizedMessageBox.Show(this, "Файл текста больше 2 МБ и не был добавлен.", "Загрузка текста",
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
@@ -932,7 +944,7 @@ public partial class NowPlayingWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Не удалось добавить текст песни.\n\n{ex.Message}", "Загрузка текста",
+            LocalizedMessageBox.Show(this, $"Не удалось добавить текст песни.\n\n{ex.Message}", "Загрузка текста",
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }

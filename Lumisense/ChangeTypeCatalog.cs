@@ -5,7 +5,10 @@ namespace AudioPlayer;
 // Ключи в changelog.json — латиницей в нижнем регистре, ровно как в ChangeItem.Type
 public static class ChangeTypeCatalog
 {
-    public sealed record Info(string Key, string Label, string IconKey, Color Color);
+    public sealed record Info(string Key, string SourceLabel, string IconKey, Color Color)
+    {
+        public string Label => LocalizationService.Translate(SourceLabel);
+    }
 
     public static readonly Info Added = new("added", "Добавлено", "IconAdd", Color.FromRgb(0x22, 0xC5, 0x5E));
     public static readonly Info Changed = new("changed", "Изменено", "IconEdit", Color.FromRgb(0x3B, 0x82, 0xF6));

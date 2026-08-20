@@ -103,6 +103,9 @@ public partial class SettingsWindow : FluentWindow
         ShowInTaskbar = true;
         RestoreOrCenterPosition(owner);
 
+        LanguageEnglishRadio.IsChecked = string.Equals(_settings.Language, LocalizationService.English, StringComparison.OrdinalIgnoreCase);
+        LanguageRussianRadio.IsChecked = !LanguageEnglishRadio.IsChecked.GetValueOrDefault();
+
         ThemeLightRadio.IsChecked = _settings.Theme == "Light";
         ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault();
 
@@ -214,6 +217,9 @@ public partial class SettingsWindow : FluentWindow
         LoadDeveloperAvatar();
 
         _isInitializing = false;
+        LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
+        Closed += (_, _) => LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
+        LocalizationService.Apply(this);
     }
 
     private void InitializeTrackContextMenuActionCheckBoxes()
@@ -377,7 +383,7 @@ public partial class SettingsWindow : FluentWindow
     private async void CheckUpdatesButton_Click(object sender, RoutedEventArgs e)
     {
         CheckUpdatesButton.IsEnabled = false;
-        CheckUpdatesButtonSubtitle.Text = "Проверяем…";
+        CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate("Проверяем…");
 
         try
         {
@@ -386,17 +392,17 @@ public partial class SettingsWindow : FluentWindow
             switch (result.Status)
             {
                 case UpdateCheckStatus.UpdateAvailable:
-                    CheckUpdatesButtonSubtitle.Text = $"Доступна версия {result.LatestVersion}";
+                    CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate($"Доступна версия {result.LatestVersion}");
                     new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
                     break;
 
                 case UpdateCheckStatus.UpToDate:
-                    CheckUpdatesButtonSubtitle.Text = $"У вас последняя версия ({result.CurrentVersion})";
+                    CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate($"У вас последняя версия ({result.CurrentVersion})");
                     break;
 
                 case UpdateCheckStatus.Error:
                 default:
-                    CheckUpdatesButtonSubtitle.Text = $"Не удалось проверить: {result.ErrorMessage}";
+                    CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate($"Не удалось проверить: {result.ErrorMessage}");
                     break;
             }
         }
@@ -425,6 +431,7 @@ public partial class SettingsWindow : FluentWindow
         string TitleText, string SubtitleText, string ActionText, bool CanInstall, ReleaseListItem Release);
 
     private bool _allVersionsLoaded;
+    private IReadOnlyList<ReleaseListItem>? _loadedReleases;
 
     // Список подгружается лениво — только при первом реальном раскрытии аккордеона (а не сразу
     // при каждом открытии окна настроек, где эта страница даже не обязательно будет открыта) —
@@ -441,18 +448,24 @@ public partial class SettingsWindow : FluentWindow
 
         if (errorMessage != null)
         {
-            AllVersionsErrorText.Text = $"Не удалось загрузить список версий: {errorMessage}";
+            AllVersionsErrorText.Text = LocalizationService.Translate($"Не удалось загрузить список версий: {errorMessage}");
             AllVersionsErrorText.Visibility = Visibility.Visible;
             return;
         }
 
         if (releases.Count == 0)
         {
-            AllVersionsErrorText.Text = "На GitHub пока нет ни одного опубликованного релиза.";
+            AllVersionsErrorText.Text = LocalizationService.Translate("На GitHub пока нет ни одного опубликованного релиза.");
             AllVersionsErrorText.Visibility = Visibility.Visible;
             return;
         }
 
+        _loadedReleases = releases;
+        RenderAllVersions(releases);
+    }
+
+    private void RenderAllVersions(IReadOnlyList<ReleaseListItem> releases)
+    {
         string currentVersion = UpdateChecker.GetCurrentVersion();
 
         AllVersionsList.ItemsSource = releases
@@ -463,15 +476,18 @@ public partial class SettingsWindow : FluentWindow
             {
                 bool isCurrent = string.Equals(r.Version, currentVersion, System.StringComparison.OrdinalIgnoreCase);
 
-                string title = $"v{r.Version}" + (isCurrent ? " · текущая версия" : "") + (r.IsPrerelease ? " · пререлиз" : "");
+                string title = $"v{r.Version}" +
+                    (isCurrent ? $" · {LocalizationService.Translate("Текущая версия")}" : "") +
+                    (r.IsPrerelease ? $" · {LocalizationService.Translate("Пререлиз")}" : "");
                 string subtitle = r.PublishedAt is { } published
-                    ? published.LocalDateTime.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo("ru-RU"))
-                    : "Дата публикации неизвестна";
+                    ? published.LocalDateTime.ToString("d MMMM yyyy", CultureInfo.GetCultureInfo(
+                        LocalizationService.IsEnglish ? "en-US" : "ru-RU"))
+                    : LocalizationService.Translate("Дата публикации неизвестна");
 
                 bool canInstall = !string.IsNullOrEmpty(r.ExeDownloadUrl);
-                if (!canInstall) subtitle += " · в релизе нет .exe-установщика";
+                if (!canInstall) subtitle += $" · {LocalizationService.Translate("В релизе нет .exe-установщика")}";
 
-                string action = isCurrent ? "Переустановить" : "Установить";
+                string action = LocalizationService.Translate(isCurrent ? "Переустановить" : "Установить");
 
                 return new VersionListItemViewModel(title, subtitle, action, canInstall, r);
             })
@@ -506,6 +522,7 @@ public partial class SettingsWindow : FluentWindow
         void Add(string label, string pageTitle, string pageKey, FrameworkElement target, string extraKeywords = "")
             => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey, $"{label} {extraKeywords}".ToLowerInvariant(), target));
 
+        Add("Язык интерфейса", "Оформление", "Appearance", LanguageRussianRadio, "язык русский english language locale локализация");
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
@@ -650,6 +667,14 @@ public partial class SettingsWindow : FluentWindow
             if (current is System.Windows.Controls.Expander expander) expander.IsExpanded = true;
             current = System.Windows.Media.VisualTreeHelper.GetParent(current);
         }
+    }
+
+    private void LanguageRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        LocalizationService.ChangeLanguage(_settings,
+            LanguageEnglishRadio.IsChecked == true ? LocalizationService.English : LocalizationService.Russian);
     }
 
     private void ThemeRadio_Changed(object sender, RoutedEventArgs e)
@@ -798,7 +823,7 @@ public partial class SettingsWindow : FluentWindow
 
     private async void ClearArtworkCacheButton_Click(object sender, RoutedEventArgs e)
     {
-        var confirmation = System.Windows.MessageBox.Show(this,
+        var confirmation = LocalizedMessageBox.Show(this,
             "Удалить локально сохранённые интернет-обложки?\n\nПри следующем поиске нужные изображения будут скачаны заново.",
             "Очистить кэш обложек?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
         if (confirmation != System.Windows.MessageBoxResult.Yes) return;
@@ -816,7 +841,7 @@ public partial class SettingsWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            ArtworkCacheClearResultText.Text = $"Не удалось очистить кэш: {ex.Message}";
+            ArtworkCacheClearResultText.Text = LocalizationService.Translate($"Не удалось очистить кэш: {ex.Message}");
             ArtworkCacheClearResultText.Visibility = Visibility.Visible;
         }
         finally
@@ -830,6 +855,18 @@ public partial class SettingsWindow : FluentWindow
         if (bytes < 1024) return $"{bytes} Б";
         if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} КБ";
         return $"{bytes / (1024.0 * 1024.0):0.#} МБ";
+    }
+
+    private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
+    {
+        InitializeToastMonitorCombo();
+        UpdateDiscordRichPresenceConnectionStatus();
+
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            GetEqBandValueText(band).Text = FormatEqGain(_owner.GetEqualizerBandGain(band));
+
+        if (_loadedReleases is not null)
+            RenderAllVersions(_loadedReleases);
     }
 
     private void DiscordRichPresenceEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -863,19 +900,19 @@ public partial class SettingsWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"Не удалось открыть журнал Discord:\n{ex.Message}",
+            LocalizedMessageBox.Show(this, $"Не удалось открыть журнал Discord:\n{ex.Message}",
                 "Discord Rich Presence", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
     }
 
     private void UpdateDiscordRichPresenceConnectionStatus()
     {
-        ConnectDiscordButton.Content = _settings.DiscordRichPresenceEnabled
+        ConnectDiscordButton.Content = LocalizationService.Translate(_settings.DiscordRichPresenceEnabled
             ? "Обновить подключение Discord"
-            : "Подключить Discord";
-        DiscordRichPresenceConnectionStatusText.Text = _settings.DiscordRichPresenceEnabled
+            : "Подключить Discord");
+        DiscordRichPresenceConnectionStatusText.Text = LocalizationService.Translate(_settings.DiscordRichPresenceEnabled
             ? "Discord Rich Presence включён. При начале воспроизведения Lumisense обновит ваш статус."
-            : "Нажмите «Подключить Discord», чтобы включить Rich Presence с официальным приложением Lumisense.";
+            : "Нажмите «Подключить Discord», чтобы включить Rich Presence с официальным приложением Lumisense.");
     }
 
     private void DiscordRichPresencePrivacyCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -926,7 +963,7 @@ public partial class SettingsWindow : FluentWindow
 
         var autoItem = new System.Windows.Controls.ComboBoxItem
         {
-            Content = "Автоматически (тот же монитор, что и окно плеера)", Tag = ""
+            Content = LocalizationService.Translate("Автоматически (тот же монитор, что и окно плеера)"), Tag = ""
         };
         ToastMonitorCombo.Items.Add(autoItem);
 
@@ -934,7 +971,8 @@ public partial class SettingsWindow : FluentWindow
         for (int i = 0; i < screens.Length; i++)
         {
             var s = screens[i];
-            string label = $"Монитор {i + 1} — {s.Bounds.Width}×{s.Bounds.Height}" + (s.Primary ? " (основной)" : "");
+            string label = LocalizationService.Translate($"Монитор {i + 1} — {s.Bounds.Width}×{s.Bounds.Height}") +
+                (s.Primary ? LocalizationService.Translate(" (основной)") : "");
             ToastMonitorCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = label, Tag = s.DeviceName });
         }
 
@@ -1255,8 +1293,13 @@ public partial class SettingsWindow : FluentWindow
         _isInitializing = false;
     }
 
-    private static string FormatEqGain(double gainDb) =>
-        gainDb == 0 ? "0 дБ" : $"{(gainDb > 0 ? "+" : "")}{gainDb:0.#} дБ";
+    private static string FormatEqGain(double gainDb)
+    {
+        var culture = System.Globalization.CultureInfo.GetCultureInfo(
+            LocalizationService.IsEnglish ? "en-US" : "ru-RU");
+        string unit = LocalizationService.IsEnglish ? "dB" : "дБ";
+        return $"{(gainDb > 0 ? "+" : "")}{gainDb.ToString("0.#", culture)} {unit}";
+    }
 
     // ---------- Пресеты эквалайзера ----------
 
@@ -1323,7 +1366,7 @@ public partial class SettingsWindow : FluentWindow
     {
         if (EqualizerPresetComboBox.SelectedItem is not EqualizerPreset preset) return;
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = LocalizedMessageBox.Show(
             this,
             $"Удалить пресет \"{preset.Name}\"?",
             "Удаление пресета",
@@ -1357,7 +1400,7 @@ public partial class SettingsWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"Не удалось сохранить пресет:\n{ex.Message}", "Ошибка",
+            LocalizedMessageBox.Show(this, $"Не удалось сохранить пресет:\n{ex.Message}", "Ошибка",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
     }
@@ -1374,7 +1417,7 @@ public partial class SettingsWindow : FluentWindow
         var imported = _owner.ImportEqualizerPresetFromFile(dialog.FileName);
         if (imported == null)
         {
-            System.Windows.MessageBox.Show(this, "Не удалось прочитать пресет — файл повреждён или это не пресет Lumisense.",
+            LocalizedMessageBox.Show(this, "Не удалось прочитать пресет — файл повреждён или это не пресет Lumisense.",
                 "Ошибка", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             return;
         }
@@ -1440,7 +1483,7 @@ public partial class SettingsWindow : FluentWindow
             : FileNameNormalizationTemplateTextBox.Text.Trim();
 
         NormalizePlaylistFileNamesButton.IsEnabled = false;
-        FileNameNormalizationResultText.Text = "Подготавливается предпросмотр файлов…";
+        FileNameNormalizationResultText.Text = LocalizationService.Translate("Подготавливается предпросмотр файлов…");
         FileNameNormalizationResultText.Visibility = Visibility.Visible;
 
         try
@@ -1448,17 +1491,17 @@ public partial class SettingsWindow : FluentWindow
             FileNameNormalizer.RenameResult? result = await _owner.NormalizePlaylistFileNamesAsync(this);
             if (result is null)
             {
-                FileNameNormalizationResultText.Text = "Нормализация отменена.";
+                FileNameNormalizationResultText.Text = LocalizationService.Translate("Нормализация отменена.");
                 return;
             }
 
             string errors = result.Errors.Count > 0 ? $" Ошибок: {result.Errors.Count}." : string.Empty;
             FileNameNormalizationResultText.Text =
-                $"Готово. Переименовано: {result.RenamedCount}; пропущено: {result.SkippedCount}.{errors}";
+                LocalizationService.Translate($"Готово. Переименовано: {result.RenamedCount}; пропущено: {result.SkippedCount}.{errors}");
         }
         catch (Exception ex)
         {
-            FileNameNormalizationResultText.Text = $"Не удалось нормализовать имена: {ex.Message}";
+            FileNameNormalizationResultText.Text = LocalizationService.Translate($"Не удалось нормализовать имена: {ex.Message}");
         }
         finally
         {
@@ -1527,12 +1570,12 @@ public partial class SettingsWindow : FluentWindow
         {
             LumiProfileIO.Export(saveDialog.FileName, _settings);
 
-            System.Windows.MessageBox.Show(this, "Настройки сохранены.", "Экспорт завершён",
+            LocalizedMessageBox.Show(this, "Настройки сохранены.", "Экспорт завершён",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"Не удалось сохранить файл:\n{ex.Message}", "Ошибка экспорта",
+            LocalizedMessageBox.Show(this, $"Не удалось сохранить файл:\n{ex.Message}", "Ошибка экспорта",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
     }
@@ -1545,16 +1588,17 @@ public partial class SettingsWindow : FluentWindow
         var profile = LumiProfileIO.TryReadFile(openDialog.FileName);
         if (profile == null)
         {
-            System.Windows.MessageBox.Show(this, "Не удалось прочитать этот файл — он повреждён или это не .lumi-профиль.",
+            LocalizedMessageBox.Show(this, "Не удалось прочитать этот файл — он повреждён или это не .lumi-профиль.",
                 "Ошибка импорта", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             return;
         }
 
         LumiProfileIO.Apply(profile.Settings, _settings);
+        LocalizationService.ChangeLanguage(_settings, _settings.Language);
         _owner.ApplyImportedSettingsLive();
         SettingsManager.Save(_settings);
 
-        System.Windows.MessageBox.Show(this,
+        LocalizedMessageBox.Show(this,
             "Настройки импортированы.\n\nЧасть из них (хоткеи, эквалайзер, поведение трея и мини-плеера) применится полностью после перезапуска плеера.",
             "Импорт завершён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
 
@@ -1573,17 +1617,18 @@ public partial class SettingsWindow : FluentWindow
     // перезапуске для остального, переоткрытие этого окна.
     private void ResetPlayerButton_Click(object sender, RoutedEventArgs e)
     {
-        var confirm = System.Windows.MessageBox.Show(this,
+        var confirm = LocalizedMessageBox.Show(this,
             "Сбросить тему, акцент, подложку окна, вид и размер плеера, громкость, шафл/повтор, горячие клавиши, мини-плеер и остальные настройки к значениям по умолчанию?\n\n" +
             "Плейлист, избранное, история прослушиваний, статистика и сохранённые пресеты эквалайзера затронуты не будут.",
             "Сбросить плеер?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
         LumiProfileIO.ResetToDefaults(_settings);
+        LocalizationService.ChangeLanguage(_settings, _settings.Language);
         _owner.ApplyImportedSettingsLive();
         SettingsManager.Save(_settings);
 
-        System.Windows.MessageBox.Show(this,
+        LocalizedMessageBox.Show(this,
             "Плеер сброшен к исходным настройкам.\n\nЧасть из них (хоткеи, эквалайзер, поведение трея и мини-плеера, размер и положение окна) применится полностью после перезапуска плеера.",
             "Сброс завершён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
 
@@ -1593,19 +1638,19 @@ public partial class SettingsWindow : FluentWindow
 
     private void ResetAllDataButton_Click(object sender, RoutedEventArgs e)
     {
-        var confirm = System.Windows.MessageBox.Show(this,
+        var confirm = LocalizedMessageBox.Show(this,
             "Будут удалены настройки, сохранённые плейлисты, избранное, история прослушиваний, статистика и пресеты эквалайзера.\n\n" +
             "Аудиофайлы на диске не удаляются. Продолжить?",
             "Полный сброс данных", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
-        var secondConfirm = System.Windows.MessageBox.Show(this,
+        var secondConfirm = LocalizedMessageBox.Show(this,
             "Это действие нельзя отменить. Выполнить полный сброс сейчас?",
             "Подтвердите полный сброс", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (secondConfirm != System.Windows.MessageBoxResult.Yes) return;
 
         _owner.ResetAllUserData();
-        System.Windows.MessageBox.Show(this,
+        LocalizedMessageBox.Show(this,
             "Данные очищены. Для полного применения стандартных настроек перезапустите Lumisense.",
             "Сброс завершён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         Close();
@@ -1812,7 +1857,7 @@ public partial class SettingsWindow : FluentWindow
         CancelRecording();
 
         _recordingTarget = target;
-        GetHotkeyButton(target).Content = "Нажмите комбинацию…";
+        GetHotkeyButton(target).Content = LocalizationService.Translate("Нажмите комбинацию…");
     }
 
     private void CancelRecording()
@@ -1857,7 +1902,7 @@ public partial class SettingsWindow : FluentWindow
         {
             // Глобальная комбинация без модификатора будет перехватывать обычный ввод
             // во всех остальных окнах и приложениях — не даём её записать
-            GetHotkeyButton(_recordingTarget).Content = "Нужен Ctrl/Alt/Shift/Win…";
+            GetHotkeyButton(_recordingTarget).Content = LocalizationService.Translate("Нужен Ctrl/Alt/Shift/Win…");
             return;
         }
 

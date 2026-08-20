@@ -82,7 +82,7 @@ public static class LumiProfileIO
 
     private static bool IsSafeSettings(AppSettings settings)
     {
-        if ((settings.AccentColorHex?.Length ?? 0) > 32 || (settings.WindowBackdropType?.Length ?? 0) > 32 ||
+        if ((settings.Language?.Length ?? 0) > 8 || (settings.AccentColorHex?.Length ?? 0) > 32 || (settings.WindowBackdropType?.Length ?? 0) > 32 ||
             (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkStyle?.Length ?? 0) > 32 ||
@@ -127,6 +127,7 @@ public static class LumiProfileIO
     private static void CopyTransferableSettings(AppSettings source, AppSettings target, bool preserveRuntimeData)
     {
         target.Theme = source.Theme;
+        target.Language = source.Language;
         target.AccentColorMode = source.AccentColorMode;
         target.AccentColorHex = source.AccentColorHex;
         target.CoverBaseFromCover = source.CoverBaseFromCover;

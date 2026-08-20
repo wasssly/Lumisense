@@ -54,6 +54,10 @@ public class AppSettings
     // "Dark" / "Light" — выбирается в настройках (страница "Оформление").
     public string Theme { get; set; } = "Dark";
 
+    // Язык статического интерфейса: "ru" или "en". На первом запуске установщик может
+    // передать свой выбор через одноразовый marker-файл в папке данных приложения.
+    public string Language { get; set; } = "ru";
+
     // Разрешает значение Theme в фактическую светлую/тёмную. На случай, если в settings.json
     // осталось "System" от более ранней версии (был такой вариант в настройках, убрали) —
     // не падаем и не считаем его тёмной по умолчанию, а на всякий случай всё равно смотрим
@@ -422,6 +426,18 @@ public static class SettingsManager
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Lumisense", "settings.json");
 
+    // Резервный снимок создаётся только из состояния с пользовательскими данными. В отличие
+    // от обычного settings.json он защищает не только пути плейлиста, но и избранное,
+    // закрепления, счётчики прослушиваний, время и последнее воспроизведение.
+    private static readonly string UserDataRecoveryBackupPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Lumisense", "settings.user-data-backup.json");
+
+    // Сохраняем прежнее имя параллельно для уже созданных копий и понятной ручной диагностики.
+    private static readonly string PlaylistRecoveryBackupPath = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+        "Lumisense", "settings.playlist-backup.json");
+
     // true, если файл настроек уже когда-либо сохранялся. Используется, чтобы отличить
     // самый первый запуск плеера (тогда PlayerViewMode ещё не сохранён и мы открываем
     // квадратный вид) от запуска с уже существующими, но старыми настройками (тогда вид
@@ -525,6 +541,7 @@ public static class SettingsManager
             var tempPath = SettingsFilePath + $".{revision}.{Guid.NewGuid():N}.tmp";
             try
             {
+                TryBackupUserData(json);
                 File.WriteAllText(tempPath, json);
                 File.Move(tempPath, SettingsFilePath, overwrite: true);
             }
@@ -540,4 +557,45 @@ public static class SettingsManager
             SaveGate.Release();
         }
     }
+
+    private static void TryBackupUserData(string candidateJson)
+    {
+        try
+        {
+            using var document = JsonDocument.Parse(candidateJson);
+            var root = document.RootElement;
+
+            bool hasFolderTracks = root.TryGetProperty("SavedPlaylistFolders", out var folders) &&
+                folders.ValueKind == JsonValueKind.Array &&
+                folders.EnumerateArray().Any(folder =>
+                    folder.TryGetProperty("Tracks", out var tracks) && tracks.ValueKind == JsonValueKind.Array &&
+                    tracks.GetArrayLength() > 0);
+            bool hasLegacyTracks = root.TryGetProperty("SavedPlaylist", out var legacy) &&
+                legacy.ValueKind == JsonValueKind.Array && legacy.GetArrayLength() > 0;
+            bool hasFavorites = HasNonEmptyArray(root, "FavoriteTracks") || HasNonEmptyArray(root, "PinnedFavoriteTracks");
+            bool hasPlayCounts = root.TryGetProperty("PlayCounts", out var playCounts) &&
+                playCounts.ValueKind == JsonValueKind.Object && playCounts.EnumerateObject().Any();
+            bool hasListenTime = root.TryGetProperty("TotalListenSeconds", out var listenSeconds) &&
+                listenSeconds.ValueKind == JsonValueKind.Number && listenSeconds.GetDouble() > 0;
+            bool hasResumeState = root.TryGetProperty("LastTrackPath", out var lastTrack) &&
+                lastTrack.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(lastTrack.GetString());
+
+            if (!(hasFolderTracks || hasLegacyTracks || hasFavorites || hasPlayCounts || hasListenTime || hasResumeState))
+                return;
+
+            File.WriteAllText(UserDataRecoveryBackupPath, candidateJson);
+            // Совместимость с резервной копией, созданной предыдущей тестовой сборкой.
+            File.WriteAllText(PlaylistRecoveryBackupPath, candidateJson);
+        }
+        catch (Exception ex)
+        {
+            // Сохранение текущих настроек не должно блокироваться, если резервную копию
+            // нельзя обновить, но причина остаётся в логе для диагностики.
+            Logger.Warn($"Не удалось обновить резервную копию пользовательских данных: {ex.Message}");
+        }
+    }
+
+    private static bool HasNonEmptyArray(JsonElement root, string propertyName) =>
+        root.TryGetProperty(propertyName, out var value) &&
+        value.ValueKind == JsonValueKind.Array && value.GetArrayLength() > 0;
 }

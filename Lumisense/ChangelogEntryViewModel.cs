@@ -10,6 +10,11 @@ public sealed class ChangelogEntryViewModel
     public string Version { get; }
     public string Date { get; }
     public bool IsCurrent { get; }
+    public string? GitHubReleaseUrl { get; }
+    public bool HasGitHubRelease => !string.IsNullOrWhiteSpace(GitHubReleaseUrl);
+    public string? GitHubReleaseToolTip => HasGitHubRelease
+        ? LocalizationService.Translate("Открыть релиз на GitHub")
+        : null;
     public IReadOnlyList<ChangeItemViewModel> Items { get; }
 
     // у старых записей дата есть, у новых нет (changelog теперь привязан к версии, а не к дате)
@@ -37,16 +42,19 @@ public sealed class ChangelogEntryViewModel
 
     public bool HasImage => !string.IsNullOrWhiteSpace(ImageSource);
 
-    // "3 изменения" под версией в списке слева, с русским склонением
+    // Подпись под версией в списке слева должна обновляться вместе с языком интерфейса.
     public string ChangesCountLabel => Items.Count == 0
-        ? "Нет описания"
-        : $"{Items.Count} {Pluralize(Items.Count)}";
+        ? LocalizationService.Translate("Нет описания")
+        : LocalizationService.IsEnglish
+            ? $"{Items.Count} {(Items.Count == 1 ? "change" : "changes")}"
+            : $"{Items.Count} {Pluralize(Items.Count)}";
 
-    public ChangelogEntryViewModel(ChangelogEntry source)
+    public ChangelogEntryViewModel(ChangelogEntry source, string? gitHubReleaseUrl = null)
     {
         Version = source.Version;
         Date = source.Date;
         IsCurrent = source.IsCurrent;
+        GitHubReleaseUrl = gitHubReleaseUrl;
         Items = source.Changes.Select(c => new ChangeItemViewModel(c)).ToList();
         ImageSource = ChangelogImageResolver.Resolve(source.Image);
 

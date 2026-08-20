@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
@@ -13,8 +15,11 @@ namespace AudioPlayer;
 // так что этому коду остаётся только загрузить записи и пересчитывать видимый список.
 public partial class ChangelogWindow : FluentWindow
 {
-    private readonly List<ChangelogEntryViewModel> _allEntries;
+    private List<ChangelogEntryViewModel> _allEntries = new();
     private readonly ObservableCollection<ChangelogEntryViewModel> _visibleEntries = new();
+    private IReadOnlyDictionary<string, string> _githubReleaseUrls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+    private System.Threading.CancellationTokenSource? _releaseAvailabilityCts;
+    private bool _isClosed;
 
     private bool _sortDescending = true;
     private System.Windows.Threading.DispatcherTimer? _detailsScrollAnimationTimer;
@@ -34,13 +39,55 @@ public partial class ChangelogWindow : FluentWindow
         InitializeComponent();
         _isInitializing = false;
 
-        _allEntries = ChangelogLoader.Load()
-            .Select(entry => new ChangelogEntryViewModel(entry))
-            .ToList();
-
         VersionsListBox.ItemsSource = _visibleEntries;
+        LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
+        ReloadEntries(string.Empty);
+        Loaded += ChangelogWindow_Loaded;
+    }
 
-        RefreshVisible(string.Empty);
+    private void ReloadEntries(string? query)
+    {
+        _allEntries = ChangelogLoader.Load()
+            .Select(entry => new ChangelogEntryViewModel(
+                entry,
+                _githubReleaseUrls.TryGetValue(entry.Version, out string? releaseUrl) ? releaseUrl : null))
+            .ToList();
+        RefreshVisible(query);
+    }
+
+    private async void ChangelogWindow_Loaded(object sender, RoutedEventArgs e)
+    {
+        Loaded -= ChangelogWindow_Loaded;
+        _releaseAvailabilityCts = new System.Threading.CancellationTokenSource();
+
+        var (releases, _) = await UpdateChecker.GetAllReleasesAsync(_releaseAvailabilityCts.Token);
+        if (_isClosed || _releaseAvailabilityCts.IsCancellationRequested)
+            return;
+
+        _githubReleaseUrls = releases
+            .Where(release =>
+                !string.IsNullOrWhiteSpace(release.Version) &&
+                !string.IsNullOrWhiteSpace(release.ReleaseNotesUrl) &&
+                UpdateChecker.IsTrustedReleaseNotesUrl(release.ReleaseNotesUrl))
+            .GroupBy(release => release.Version, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(group => group.Key, group => group.First().ReleaseNotesUrl!, StringComparer.OrdinalIgnoreCase);
+
+        string? selectedVersion = (VersionsListBox.SelectedItem as ChangelogEntryViewModel)?.Version;
+        ReloadEntries(SearchBox.Text);
+        if (selectedVersion is not null)
+            VersionsListBox.SelectedItem = _visibleEntries.FirstOrDefault(entry => entry.Version == selectedVersion);
+    }
+
+    private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
+    {
+        // Текст поиска мог быть введён на предыдущем языке и после перевода карточек
+        // перестать совпадать. Очищаем его, но сохраняем выбранную пользователем версию.
+        string? selectedVersion = (VersionsListBox.SelectedItem as ChangelogEntryViewModel)?.Version;
+        SearchBox.Text = string.Empty;
+        ReloadEntries(string.Empty);
+
+        if (selectedVersion is not null)
+            VersionsListBox.SelectedItem = _visibleEntries.FirstOrDefault(entry => entry.Version == selectedVersion);
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshVisible(SearchBox.Text);
@@ -103,8 +150,8 @@ public partial class ChangelogWindow : FluentWindow
         bool isFiltering = query.Length > 0 || selectedTypes.Count > 0;
         EmptyState.Visibility = _visibleEntries.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         ResultsCountText.Text = isFiltering
-            ? $"Найдено: {_visibleEntries.Count} из {_allEntries.Count}"
-            : $"Версий в истории: {_allEntries.Count}";
+            ? LocalizationService.Format("Найдено: {0} из {1}", _visibleEntries.Count, _allEntries.Count)
+            : LocalizationService.Format("Версий в истории: {0}", _allEntries.Count);
 
         // Если версия, выбранная до этого, всё ещё видна — оставляем её выбранной, чтобы
         // деталей на правой панели не "прыгали" без необходимости; иначе выбираем первую
@@ -126,6 +173,25 @@ public partial class ChangelogWindow : FluentWindow
         // открывалась не с начала. Сбрасываем скролл наверх при каждой смене выбора.
         if (hasSelection)
             DetailsScroll.ScrollToHome();
+    }
+
+    private void VersionRelease_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: ChangelogEntryViewModel entry } ||
+            !entry.HasGitHubRelease ||
+            !UpdateChecker.IsTrustedReleaseNotesUrl(entry.GitHubReleaseUrl!))
+            return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(entry.GitHubReleaseUrl!) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось открыть GitHub Release {entry.GitHubReleaseUrl}: {ex.Message}");
+        }
+
+        e.Handled = true;
     }
 
     private void SummaryGroup_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -217,8 +283,13 @@ public partial class ChangelogWindow : FluentWindow
 
     protected override void OnClosed(EventArgs e)
     {
+        _isClosed = true;
+        _releaseAvailabilityCts?.Cancel();
+        _releaseAvailabilityCts?.Dispose();
+        _releaseAvailabilityCts = null;
         _detailsScrollAnimationTimer?.Stop();
         _detailsScrollAnimationTimer = null;
+        LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         base.OnClosed(e);
     }
 

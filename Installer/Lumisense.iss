@@ -60,7 +60,8 @@ DisableProgramGroupPage=no
 
 ; Языки
 LanguageDetectionMethod=uilanguage
-ShowLanguageDialog=auto
+; Пользователь всегда видит русский и английский варианты, а не только автоматический выбор по Windows.
+ShowLanguageDialog=yes
 
 [Languages]
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
@@ -90,7 +91,7 @@ Source: "..\Lumisense\Icons\app\lumisense.ico"; DestDir: "{app}"; Flags: ignorev
 ; умолчанию (Flags: unchecked отсутствует), но пользователь может снять галочку и не получить
 ; ярлык на рабочем столе. Сам ярлык в [Icons] ниже ставится только если эта задача выбрана
 ; (Tasks: desktopicon).
-Name: "desktopicon"; Description: "Создать значок на рабочем столе"; GroupDescription: "Дополнительные значки:"
+Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 ; ============================================
 ; ЯРЛЫКИ
@@ -99,7 +100,7 @@ Name: "desktopicon"; Description: "Создать значок на рабоче
 [Icons]
 Name: "{group}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"
 Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"; Tasks: desktopicon
-Name: "{group}\Удалить Lumisense"; Filename: "{uninstallexe}"
+Name: "{group}\{cm:UninstallLumisense}"; Filename: "{uninstallexe}"
 
 ; ============================================
 ; АССОЦИАЦИЯ ФАЙЛОВ
@@ -116,7 +117,7 @@ Root: HKCR; Subkey: ".wma"; ValueType: string; ValueName: ""; ValueData: "Lumise
 
 Root: HKCR; Subkey: "Lumisense.AudioFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Lumisense.exe,0"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "Lumisense.AudioFile\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "*\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "Открыть в Lumisense"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "*\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "*\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
 
 ; ============================================
@@ -124,7 +125,7 @@ Root: HKCR; Subkey: "*\shell\LumisenseOpen\command"; ValueType: string; ValueNam
 ; ============================================
 
 [Run]
-Filename: "{app}\Lumisense.exe"; Description: "Запустить Lumisense"; Flags: postinstall nowait skipifsilent
+Filename: "{app}\Lumisense.exe"; Description: "{cm:LaunchLumisense}"; Flags: postinstall nowait skipifsilent
 
 ; ============================================
 ; УДАЛЕНИЕ
@@ -136,6 +137,18 @@ Type: filesandordirs; Name: "{app}"
 ; ============================================
 ; УДАЛЕНИЕ ДАННЫХ НАСТРОЕК (%AppData%\Lumisense)
 ; ============================================
+
+[CustomMessages]
+english.CreateDesktopIcon=Create a desktop shortcut
+english.AdditionalIcons=Additional shortcuts:
+english.UninstallLumisense=Uninstall Lumisense
+english.OpenInLumisense=Open in Lumisense
+english.LaunchLumisense=Launch Lumisense
+russian.CreateDesktopIcon=Создать значок на рабочем столе
+russian.AdditionalIcons=Дополнительные значки:
+russian.UninstallLumisense=Удалить Lumisense
+russian.OpenInLumisense=Открыть в Lumisense
+russian.LaunchLumisense=Запустить Lumisense
 
 [Code]
 // [UninstallDelete] выше уже безусловно удаляет {app} (саму программу в Program Files) —
@@ -154,16 +167,42 @@ Type: filesandordirs; Name: "{app}"
 var
   ShouldDeleteSettings: Boolean;
 
+function InstallerLanguageCode(): String;
+begin
+  if ActiveLanguage = 'english' then
+    Result := 'en'
+  else
+    Result := 'ru';
+end;
+
+function DeleteUserDataPrompt(): String;
+begin
+  if ActiveLanguage = 'english' then
+    Result := 'Also delete Lumisense settings and user data?' + #13#10 + #13#10 +
+      'They are stored separately from the program in:' + #13#10 +
+      ExpandConstant('{userappdata}') + '\Lumisense' + #13#10 + #13#10 +
+      'Click "No" if you plan to reinstall Lumisense later and want to keep your current settings, playlists, and favorites.'
+  else
+    Result := 'Удалить также файлы настроек и пользовательские данные Lumisense?' + #13#10 + #13#10 +
+      'Они хранятся отдельно от программы, в папке:' + #13#10 +
+      ExpandConstant('{userappdata}') + '\Lumisense' + #13#10 + #13#10 +
+      'Нажмите "Нет", если планируете переустановить Lumisense позже и хотите сохранить ' +
+      'текущие настройки, плейлисты и избранное.';
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssPostInstall then
+  begin
+    ForceDirectories(ExpandConstant('{userappdata}\Lumisense'));
+    SaveStringToFile(ExpandConstant('{userappdata}\Lumisense\installer-language.txt'), InstallerLanguageCode(), False);
+  end;
+end;
+
 function InitializeUninstall(): Boolean;
 begin
   Result := True;
-  ShouldDeleteSettings := (MsgBox(
-    'Удалить также файлы настроек и пользовательские данные Lumisense?' + #13#10 + #13#10 +
-    'Они хранятся отдельно от программы, в папке:' + #13#10 +
-    ExpandConstant('{userappdata}') + '\Lumisense' + #13#10 + #13#10 +
-    'Нажмите "Нет", если планируете переустановить Lumisense позже и хотите сохранить ' +
-    'текущие настройки, плейлисты и избранное.',
-    mbConfirmation, MB_YESNO) = IDYES);
+  ShouldDeleteSettings := (MsgBox(DeleteUserDataPrompt(), mbConfirmation, MB_YESNO) = IDYES);
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

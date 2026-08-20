@@ -31,6 +31,37 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Все окна (основное, мини-плеер, диалоги, Now Playing) получают текущий язык после
+        // построения собственного визуального дерева. Это исключает копирование одного и того
+        // же вызова локализации во все конструкторы окон.
+        EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
+            new RoutedEventHandler((sender, _) =>
+            {
+                LocalizationService.Apply(sender);
+
+                // Часть программных подписей создаётся в обработчиках Loaded конкретных окон.
+                // Повторный проход на ContextIdle выполняется после этих обработчиков и до
+                // первого устойчивого кадра, поэтому английский текст не остаётся русским до
+                // следующего запуска или ручного переключения языка.
+                if (sender is Window window)
+                {
+                    window.Dispatcher.BeginInvoke(new Action(() =>
+                    {
+                        if (window.IsLoaded)
+                            LocalizationService.Apply(window);
+                    }), System.Windows.Threading.DispatcherPriority.ContextIdle);
+                }
+            }));
+
+        // ContextMenu и ToolTip находятся в отдельных Popup-деревьях и часть из них создаётся
+        // только после Loaded окна. Переводим их непосредственно перед отображением.
+        EventManager.RegisterClassHandler(typeof(System.Windows.Controls.ContextMenu),
+            System.Windows.Controls.ContextMenu.OpenedEvent,
+            new RoutedEventHandler((sender, _) => LocalizationService.Apply(sender)));
+        EventManager.RegisterClassHandler(typeof(System.Windows.Controls.ToolTip),
+            System.Windows.Controls.ToolTip.OpenedEvent,
+            new RoutedEventHandler((sender, _) => LocalizationService.Apply(sender)));
+
         try { AttachConsole(AttachParentProcess); } catch { /* нет родительской консоли — и ладно */ }
 
         // Логируем необработанные исключения максимально рано, иначе падение до показа первого
@@ -57,7 +88,7 @@ public partial class App : Application
 
             try
             {
-                System.Windows.MessageBox.Show(
+                LocalizedMessageBox.Show(
                     $"Что-то пошло не так, но плеер попробует продолжить работу.\n\nПодробности сохранены в лог-файл, его можно найти в настройках (страница \"Обновления\") или в папке %AppData%\\Lumisense\\logs.\n\n{args.Exception.Message}",
                     "Lumisense — внутренняя ошибка",
                     System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
@@ -131,7 +162,7 @@ public partial class App : Application
 
             try
             {
-                System.Windows.MessageBox.Show(
+                LocalizedMessageBox.Show(
                     $"Lumisense не удалось запуститься.\n\nПодробности сохранены в лог-файл (%AppData%\\Lumisense\\logs).\n\n{ex.Message}",
                     "Lumisense — ошибка запуска",
                     System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);

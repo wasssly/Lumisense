@@ -23,7 +23,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         _result = result;
         _settings = settings;
 
-        VersionsText.Text = $"Версия {result.LatestVersion} (у вас {result.CurrentVersion})";
+        VersionsText.Text = LocalizationService.Translate($"Версия {result.LatestVersion} (у вас {result.CurrentVersion})");
 
         if (!string.IsNullOrWhiteSpace(result.ReleaseNotes))
         {
@@ -173,7 +173,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     private void SetPreparing()
     {
         DownloadProgressBar.IsIndeterminate = true;
-        PhaseText.Text = "Запуск установщика…";
+        PhaseText.Text = LocalizationService.Translate("Запуск установщика…");
         PhaseText.Visibility = Visibility.Visible;
     }
 

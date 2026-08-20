@@ -396,9 +396,28 @@
 
                                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock FontSize="28" FontWeight="Bold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                                                <Run Text="Версия " /><Run Text="{Binding Version, Mode=OneWay}" />
-                                            </TextBlock>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock FontSize="28" FontWeight="Bold" TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding GitHubReleaseToolTip}"
+                                                           MouseLeftButtonUp="VersionRelease_MouseLeftButtonUp">
+                                                    <TextBlock.Style>
+                                                        <Style TargetType="TextBlock">
+                                                            <Setter Property="Cursor" Value="Arrow" />
+                                                            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                                                            <Style.Triggers>
+                                                                <DataTrigger Binding="{Binding HasGitHubRelease}" Value="True">
+                                                                    <Setter Property="Cursor" Value="Hand" />
+                                                                    <Setter Property="Foreground" Value="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                                                </DataTrigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </TextBlock.Style>
+                                                    <Run Text="Версия " /><Run Text="{Binding Version, Mode=OneWay}" />
+                                                </TextBlock>
+                                                <TextBlock Text="↗" FontSize="18" FontWeight="SemiBold" Margin="7,1,0,0"
+                                                           VerticalAlignment="Center" Foreground="{DynamicResource AccentTextFillColorPrimaryBrush}"
+                                                           Visibility="{Binding HasGitHubRelease, Converter={StaticResource BoolToVisibilityConverter}}" />
+                                            </StackPanel>
                                             <Border Height="22" CornerRadius="11" Padding="11,0" Margin="10,0,0,0"
                                                     VerticalAlignment="Center"
                                                     Background="{DynamicResource AccentFillColorDefaultBrush}"

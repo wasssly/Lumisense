@@ -145,7 +145,7 @@
                                          акцентную обводку по кругу. -->
                                     <Path x:Name="DrawRing" Data="M 10,1 A 9,9 0 1 1 9.99,1"
                                           Stroke="{DynamicResource AccentFillColorDefaultBrush}"
-                                          StrokeThickness="2" StrokeDashArray="28.3,100"
+                                          Opacity="0" StrokeThickness="2" StrokeDashArray="28.3,100"
                                           StrokeDashOffset="28.3" StrokeStartLineCap="Round"
                                           StrokeEndLineCap="Round" />
                                     <Ellipse x:Name="Dot" Width="10" Height="10"
@@ -541,6 +541,18 @@
                     <!-- Оформление -->
                     <StackPanel x:Name="PageAppearance">
                         <TextBlock Text="Оформление" Style="{StaticResource PageTitleStyle}" />
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Язык интерфейса" Margin="0,0,0,10" />
+                                <RadioButton x:Name="LanguageRussianRadio" Content="Русский" GroupName="InterfaceLanguage"
+                                             Checked="LanguageRadio_Changed" Margin="0,0,0,10" />
+                                <RadioButton x:Name="LanguageEnglishRadio" Content="English" GroupName="InterfaceLanguage"
+                                             Checked="LanguageRadio_Changed" />
+                                <TextBlock Text="Выберите язык Lumisense. Изменение применяется сразу ко всем открытым окнам."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,8,0,0" />
+                            </StackPanel>
+                        </Border>
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>

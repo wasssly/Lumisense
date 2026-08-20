@@ -25,6 +25,13 @@ public partial class StatisticsWindow : FluentWindow
         ApplyWindowBackdrop();
 
         Loaded += async (_, _) => await LoadAsync();
+        Closed += (_, _) => LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
+        LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
+    }
+
+    private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
+    {
+        _ = LoadAsync();
     }
 
     // То же самое, что и MainWindow.ApplyWindowBackdrop/SettingsWindow.ApplyWindowBackdrop —
@@ -72,7 +79,7 @@ public partial class StatisticsWindow : FluentWindow
         var trackInfos = await Task.Run(() => played.Select(kv =>
         {
             string title = Path.GetFileNameWithoutExtension(kv.Key);
-            string artist = "Неизвестный исполнитель";
+            string artist = LocalizationService.Translate("Неизвестный исполнитель");
 
             try
             {
@@ -130,7 +137,8 @@ public partial class StatisticsWindow : FluentWindow
         if (DateTime.TryParse(_settings.StatsStartedAt, CultureInfo.InvariantCulture,
                 DateTimeStyles.RoundtripKind, out var since))
         {
-            StatsSinceText.Text = $"Статистика собирается с {since:d MMMM yyyy}";
+            StatsSinceText.Text = LocalizationService.Format("Статистика собирается с {0}",
+                since.ToString("d MMMM yyyy", CultureInfo.CurrentCulture));
             StatsSinceText.Visibility = Visibility.Visible;
         }
 
@@ -149,10 +157,21 @@ public partial class StatisticsWindow : FluentWindow
     {
         var span = TimeSpan.FromSeconds(totalSeconds);
 
-        if (span.TotalDays >= 1) return $"{(int)span.TotalDays} дн {span.Hours} ч";
-        if (span.TotalHours >= 1) return $"{(int)span.TotalHours} ч {span.Minutes} мин";
-        if (span.TotalMinutes >= 1) return $"{(int)span.TotalMinutes} мин {span.Seconds} сек";
-        return $"{(int)span.TotalSeconds} сек";
+        if (span.TotalDays >= 1)
+            return LocalizationService.IsEnglish
+                ? $"{(int)span.TotalDays} d {span.Hours} h"
+                : $"{(int)span.TotalDays} дн {span.Hours} ч";
+        if (span.TotalHours >= 1)
+            return LocalizationService.IsEnglish
+                ? $"{(int)span.TotalHours} h {span.Minutes} min"
+                : $"{(int)span.TotalHours} ч {span.Minutes} мин";
+        if (span.TotalMinutes >= 1)
+            return LocalizationService.IsEnglish
+                ? $"{(int)span.TotalMinutes} min {span.Seconds} sec"
+                : $"{(int)span.TotalMinutes} мин {span.Seconds} сек";
+        return LocalizationService.IsEnglish
+            ? $"{(int)span.TotalSeconds} sec"
+            : $"{(int)span.TotalSeconds} сек";
     }
 
     // Русское склонение "прослушивание/прослушивания/прослушиваний" по числу — те же три
@@ -160,6 +179,9 @@ public partial class StatisticsWindow : FluentWindow
     // (кроме 12-14) — "прослушивания"; всё остальное, включая 11-14, — "прослушиваний".
     private static string PluralizeListens(int count)
     {
+        if (LocalizationService.IsEnglish)
+            return $"{count} {(count == 1 ? "listen" : "listens")}";
+
         int tens = count % 100;
         int last = count % 10;
 
@@ -178,7 +200,7 @@ public partial class StatisticsWindow : FluentWindow
     // прослушиваний (PlayCountManager), не суммарное время и не дату начала отсчёта.
     private void ResetPlayCountsButton_Click(object sender, RoutedEventArgs e)
     {
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = LocalizedMessageBox.Show(
             this,
             "Сбросить счётчики прослушиваний по всем трекам?\n\nЭто обнулит \"Прослушано треков\", " +
             "\"Разных треков\" и оба топ-списка. Суммарное время прослушивания не изменится. " +
@@ -204,7 +226,7 @@ public partial class StatisticsWindow : FluentWindow
     // как согласие.
     private void ResetStatsButton_Click(object sender, RoutedEventArgs e)
     {
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = LocalizedMessageBox.Show(
             this,
             "Сбросить всю статистику прослушивания?\n\nСчётчики прослушиваний по всем трекам и суммарное " +
             "время обнулятся. Сами файлы и плейлист не затрагиваются. Отменить это действие нельзя.",

@@ -32,7 +32,7 @@ public partial class CoverArtPropertiesWindow : FluentWindow
             : System.Windows.Visibility.Visible;
 
         FormatValue.Text = FormatFromMimeType(mimeType);
-        DimensionsValue.Text = $"{art.PixelWidth} × {art.PixelHeight} пикс.";
+        DimensionsValue.Text = LocalizationService.Translate($"{art.PixelWidth} × {art.PixelHeight} пикс.");
         SizeValue.Text = FormatFileSize(artBytes.LongLength);
         DpiValue.Text = $"{Math.Round(art.DpiX)} × {Math.Round(art.DpiY)}";
 

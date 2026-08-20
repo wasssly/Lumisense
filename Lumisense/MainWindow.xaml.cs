@@ -125,6 +125,12 @@ public partial class MainWindow : FluentWindow
     // CollectionChanged, без пересоздания контейнеров всех папок при каждом добавлении.
     private readonly ObservableCollection<PlaylistFolder> _folders = new();
 
+    // Пока конструктор не завершил перенос SavedPlaylistFolders в _folders, любое сохранение
+    // пустой коллекции опасно: при исключении в ранней инициализации оно могло затереть
+    // реальный плейлист пользователя в settings.json. Флаг становится true только после
+    // успешного восстановления либо подтверждённого отсутствия сохранённых групп.
+    private bool _playlistRestoreCompleted;
+
     // Виртуальная группа "Избранное" — не входит в _folders (это не настоящая группа плейлиста,
     // её незачем сохранять в SavedPlaylistFolders), а собирается на лету из FavoritesManager
     // каждый раз перед показом (см. RefreshPlaylistView). Единственный экземпляр переиспользуется,
@@ -334,6 +340,9 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         InitializeComponent();
+        LocalizationService.Initialize(_settings, _isFirstLaunch);
+        LocalizationService.Apply(this);
+        LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
         ConfigureSystemTitleBarActions();
         // В этот момент ValueChanged от XAML уже мог сработать, но был проигнорирован до
         // _playbackRateIsReady. Теперь фиксируем единственное исходное значение из JSON.
@@ -379,6 +388,13 @@ public partial class MainWindow : FluentWindow
         // Без этого позиция трека, начатого прямо перед выключением компьютера, терялась бы
         // до следующего периодического автосохранения (см. ProgressTimer_Tick).
         System.Windows.Application.Current.SessionEnding += (_, _) => PersistPlaybackAndPlaylistState();
+    }
+
+    private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
+    {
+        foreach (PlaylistFolder folder in _folders)
+            folder.RefreshLocalizedSubtitle();
+        _favoritesFolder.RefreshLocalizedSubtitle();
     }
 
     // Первое применение акцента в ApplySettingsOnStartup происходит в конструкторе, до Show()
@@ -664,44 +680,59 @@ public partial class MainWindow : FluentWindow
     // тихо убираются позже, уже после показа (см. VerifyTrackExistenceInBackgroundAsync).
     private System.Threading.Tasks.Task RestoreSavedPlaylistAsync()
     {
-        if (_settings.SavedPlaylistFolders.Count == 0) return System.Threading.Tasks.Task.CompletedTask;
-
-        var foldersThatWereNonEmpty = new HashSet<PlaylistFolder>();
-
-        foreach (var saved in _settings.SavedPlaylistFolders)
+        if (_settings.SavedPlaylistFolders.Count == 0)
         {
-            var folder = new PlaylistFolder
-            {
-                SourcePath = saved.SourcePath,
-                DisplayName = saved.DisplayName,
-                IsEnabled = saved.IsEnabled,
-                IsLooseFilesBucket = saved.IsLooseFilesBucket,
-                IsExpanded = saved.IsExpanded
-            };
-            if (saved.Tracks.Count > 0) foldersThatWereNonEmpty.Add(folder);
-
-            folder.Tracks.AddRange(saved.Tracks);
-            _folders.Add(folder);
+            _playlistRestoreCompleted = true;
+            return System.Threading.Tasks.Task.CompletedTask;
         }
 
-        RefreshPlaylistView();
-        RestoreShuffleSessionState();
+        try
+        {
+            var foldersThatWereNonEmpty = new HashSet<PlaylistFolder>();
 
-        // Fire-and-forget — удаление устаревших записей не должно задерживать ни показ
-        // плейлиста (уже показан), ни загрузку последнего трека чуть ниже.
-        FireAndForget(VerifyTrackExistenceInBackgroundAsync(foldersThatWereNonEmpty), "VerifyTrackExistenceInBackgroundAsync");
+            foreach (var saved in _settings.SavedPlaylistFolders)
+            {
+                var folder = new PlaylistFolder
+                {
+                    SourcePath = saved.SourcePath,
+                    DisplayName = saved.DisplayName,
+                    IsEnabled = saved.IsEnabled,
+                    IsLooseFilesBucket = saved.IsLooseFilesBucket,
+                    IsExpanded = saved.IsExpanded
+                };
+                if (saved.Tracks.Count > 0) foldersThatWereNonEmpty.Add(folder);
 
-        if (_folders.Count == 0) return System.Threading.Tasks.Task.CompletedTask;
-        if (string.IsNullOrEmpty(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
+                folder.Tracks.AddRange(saved.Tracks);
+                _folders.Add(folder);
+            }
 
-        var all = FlattenAll();
-        if (!all.Contains(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
-        if (!File.Exists(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask; // единичная дешёвая проверка ОДНОГО файла — не массовое сканирование
+            RefreshPlaylistView();
+            RestoreShuffleSessionState();
+            _playlistRestoreCompleted = true;
 
-        bool resumePlayback = _settings.WasPlayingOnClose && !_settings.NeverAutoPlayLastTrackOnStartup;
-        LoadAndPlay(_settings.LastTrackPath, autoPlay: resumePlayback,
-            startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)),
-            albumArtDirection: AlbumArtTransitionDirection.None);
+            // Fire-and-forget — удаление устаревших записей не должно задерживать ни показ
+            // плейлиста (уже показан), ни загрузку последнего трека чуть ниже.
+            FireAndForget(VerifyTrackExistenceInBackgroundAsync(foldersThatWereNonEmpty), "VerifyTrackExistenceInBackgroundAsync");
+
+            if (_folders.Count == 0) return System.Threading.Tasks.Task.CompletedTask;
+            if (string.IsNullOrEmpty(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
+
+            var all = FlattenAll();
+            if (!all.Contains(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
+            if (!File.Exists(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask; // единичная дешёвая проверка ОДНОГО файла — не массовое сканирование
+
+            bool resumePlayback = _settings.WasPlayingOnClose && !_settings.NeverAutoPlayLastTrackOnStartup;
+            LoadAndPlay(_settings.LastTrackPath, autoPlay: resumePlayback,
+                startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)),
+                albumArtDirection: AlbumArtTransitionDirection.None);
+        }
+        catch (Exception ex)
+        {
+            // Сохраняем исходные данные settings.json нетронутыми: при следующем запуске
+            // восстановление можно повторить, а не закрепить пустой список на диске.
+            Logger.Error("Не удалось восстановить сохранённый плейлист", ex);
+        }
+
         return System.Threading.Tasks.Task.CompletedTask;
     }
 
@@ -1553,7 +1584,7 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"Не удалось сохранить изображение:\n{ex.Message}", "Ошибка",
+            LocalizedMessageBox.Show(this, $"Не удалось сохранить изображение:\n{ex.Message}", "Ошибка",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
     }
@@ -1568,7 +1599,7 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"Не удалось скопировать изображение:\n{ex.Message}", "Ошибка",
+            LocalizedMessageBox.Show(this, $"Не удалось скопировать изображение:\n{ex.Message}", "Ошибка",
                 System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
     }
@@ -1883,7 +1914,7 @@ public partial class MainWindow : FluentWindow
             string message = foundAnyFolder
                 ? "В перетащенных папках не найдено поддерживаемых аудиофайлов."
                 : "Среди перетащенного не найдено ни поддерживаемых аудиофайлов, ни папок.";
-            System.Windows.MessageBox.Show(this, message,
+            LocalizedMessageBox.Show(this, message,
                 "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
@@ -1983,7 +2014,7 @@ public partial class MainWindow : FluentWindow
         if (_isExiting) return;
         if (!foundAnything)
         {
-            System.Windows.MessageBox.Show(this, "В выбранной папке не найдено поддерживаемых аудиофайлов.",
+            LocalizedMessageBox.Show(this, "В выбранной папке не найдено поддерживаемых аудиофайлов.",
                 "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
@@ -2133,7 +2164,7 @@ public partial class MainWindow : FluentWindow
             .ToList();
         if (sourcePaths.Count == 0)
         {
-            System.Windows.MessageBox.Show(dialogOwner, "Нет доступных файлов для нормализации.",
+            LocalizedMessageBox.Show(dialogOwner, "Нет доступных файлов для нормализации.",
                 "Нормализация имён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
             return null;
         }
@@ -2162,7 +2193,7 @@ public partial class MainWindow : FluentWindow
             string message = sourcePaths.Count == 1 && reason == "уже соответствует шаблону"
                 ? "Имя файла уже соответствует выбранному шаблону. Переименование не требуется."
                 : $"Ни один файл не будет переименован: {reason}.";
-            System.Windows.MessageBox.Show(dialogOwner, message,
+            LocalizedMessageBox.Show(dialogOwner, message,
                 "Нормализация имён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
 
             // Выбранный текущий трек мог не требовать File.Move, но всё равно нуждается в
@@ -2182,7 +2213,7 @@ public partial class MainWindow : FluentWindow
         int skipped = preview.Count - candidates.Count;
         string skippedText = skipped > 0 ? $"\n\nПропущено: {skipped} (уже соответствует шаблону, конфликтует или играет сейчас)." : string.Empty;
 
-        var confirmation = System.Windows.MessageBox.Show(dialogOwner,
+        var confirmation = LocalizedMessageBox.Show(dialogOwner,
             $"Переименовать файлов: {candidates.Count}.\n\n{examples}{skippedText}\n\n" +
             "Файлы останутся в исходных папках; изменятся только имена. Продолжить?",
             "Нормализация имён", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
@@ -2287,7 +2318,7 @@ public partial class MainWindow : FluentWindow
 
         if (!foundAnything || addedCount <= 0)
         {
-            System.Windows.MessageBox.Show(this, "Новых треков в этой папке не найдено.",
+            LocalizedMessageBox.Show(this, "Новых треков в этой папке не найдено.",
                 "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
         }
     }
@@ -2312,7 +2343,7 @@ public partial class MainWindow : FluentWindow
     {
         if (_folders.Count == 0) return;
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = LocalizedMessageBox.Show(
             this,
             "Очистить весь плейлист?\n\nВсе папки и файлы будут убраны из списка (сами файлы на диске не затрагиваются).",
             "Очистка плейлиста",
@@ -2327,7 +2358,7 @@ public partial class MainWindow : FluentWindow
         _folders.Clear();
         RefreshPlaylistView();
 
-        TrackTitleText.Text = "Файл не выбран";
+        TrackTitleText.Text = LocalizationService.Translate("Файл не выбран");
         TrackArtistText.Text = "—";
         TotalTimeText.Text = "00:00";
         ResetAlbumArtPlaceholder();
@@ -2489,7 +2520,7 @@ public partial class MainWindow : FluentWindow
     {
         _isFavoritesView = active;
 
-        PlaylistHeaderText.Text = active ? "Избранное" : "Плейлист";
+        PlaylistHeaderText.Text = LocalizationService.Translate(active ? "Избранное" : "Плейлист");
         SetAccentButtonActive(FavoritesButton, active);
         FavoritesButtonIcon.Icon = active ? "IconHeartFilled" : "IconHeart";
         IconResources.SetOnAccent(FavoritesButtonIcon, active);
@@ -2988,14 +3019,14 @@ public partial class MainWindow : FluentWindow
             string errors = result.Errors.Count > 0
                 ? $"\n\nОшибок: {result.Errors.Count}. {string.Join(" ", result.Errors.Take(2))}"
                 : string.Empty;
-            System.Windows.MessageBox.Show(this,
+            LocalizedMessageBox.Show(this,
                 $"Имя файла нормализовано. Переименовано: {result.RenamedCount}; пропущено: {result.SkippedCount}.{errors}",
                 "Нормализация имён", System.Windows.MessageBoxButton.OK,
                 result.Errors.Count == 0 ? System.Windows.MessageBoxImage.Information : System.Windows.MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"Не удалось нормализовать имя файла:\n{ex.Message}",
+            LocalizedMessageBox.Show(this, $"Не удалось нормализовать имя файла:\n{ex.Message}",
                 "Нормализация имён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
     }
@@ -3062,7 +3093,7 @@ public partial class MainWindow : FluentWindow
         // мини-плеера, чинит и это; для контекстного меню — просто безвредный no-op.
         ForceForeground(ownerWindow);
 
-        var confirm = System.Windows.MessageBox.Show(
+        var confirm = LocalizedMessageBox.Show(
             ownerWindow,
             $"Удалить файл «{trackName}» с диска?\n\nФайл будет перемещён в корзину, а трек — убран из всех плейлистов.",
             "Удаление трека с диска",
@@ -3114,7 +3145,7 @@ public partial class MainWindow : FluentWindow
             if (isCurrentlyLoaded && File.Exists(filePath))
                 LoadAndPlay(filePath, autoPlay: wasPlaying, startPosition: previousPosition);
 
-            System.Windows.MessageBox.Show(ownerWindow, $"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
+            LocalizedMessageBox.Show(ownerWindow, $"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка удаления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             return;
         }
@@ -3251,7 +3282,7 @@ public partial class MainWindow : FluentWindow
             ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
             Logger.Error($"Не удалось открыть аудиофайл: {filePath}", ex);
             if (!_isExiting)
-                System.Windows.MessageBox.Show(this, $"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
+                LocalizedMessageBox.Show(this, $"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
                     "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
         finally
@@ -3724,7 +3755,7 @@ public partial class MainWindow : FluentWindow
                 _replayGainFactor = 1.0;
                 ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
                 if (!_isExiting)
-                    System.Windows.MessageBox.Show(this,
+                    LocalizedMessageBox.Show(this,
                         $"Не удалось запустить воспроизведение — возможно, устройство вывода звука недоступно.\n\n{ex.Message}",
                         "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
                 return;
@@ -4230,17 +4261,17 @@ public partial class MainWindow : FluentWindow
             case RepeatMode.Off:
                 RepeatButton.Icon = IconResources.Make("IconRepeatAll");
                 SetAccentButtonActive(RepeatButton, false);
-                RepeatButton.ToolTip = "Повтор: выключен";
+                RepeatButton.ToolTip = LocalizationService.Translate("Повтор: выключен");
                 break;
             case RepeatMode.All:
                 RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatAll");
                 SetAccentButtonActive(RepeatButton, true);
-                RepeatButton.ToolTip = "Повтор: весь плейлист";
+                RepeatButton.ToolTip = LocalizationService.Translate("Повтор: весь плейлист");
                 break;
             case RepeatMode.One:
                 RepeatButton.Icon = IconResources.MakeOnAccent("IconRepeatOne");
                 SetAccentButtonActive(RepeatButton, true);
-                RepeatButton.ToolTip = "Повтор: один трек";
+                RepeatButton.ToolTip = LocalizationService.Translate("Повтор: один трек");
                 break;
         }
 
@@ -5257,21 +5288,35 @@ public partial class MainWindow : FluentWindow
     // трей, на паузе и периодически во время игры.
     private void PersistPlaybackAndPlaylistState(bool asyncSave = false)
     {
+        // До завершения RestoreSavedPlaylistAsync часть runtime-полей ещё содержит XAML-значения
+        // (текущий трек, режим окна и т.п.). Не только плейлист, но и любые такие поля нельзя
+        // записывать поверх settings.json после неудачного или прерванного старта.
+        if (!_playlistRestoreCompleted)
+        {
+            Logger.Warn("Пропущено раннее сохранение: восстановление состояния плеера ещё не завершено");
+            return;
+        }
+
         // Сохраняем speed из независимого runtime-state, а не из Popup или временного Slider.
         _settings.PlaybackSpeed = _runtimePlaybackRate;
 
         if (_settings.RememberVolume)
             _settings.SavedVolume = VolumeSlider.Value;
 
-        _settings.SavedPlaylistFolders = _folders.Select(f => new SavedPlaylistFolder
+        // Не затираем сохранённый плейлист пустой коллекцией, пока конструктор ещё не
+        // завершил его восстановление. Это особенно важно, если старт прерван исключением.
+        if (_playlistRestoreCompleted)
         {
-            DisplayName = f.DisplayName,
-            SourcePath = f.SourcePath,
-            IsEnabled = f.IsEnabled,
-            IsExpanded = f.IsExpanded,
-            Tracks = f.Tracks.ToList(),
-            IsLooseFilesBucket = f.IsLooseFilesBucket
-        }).ToList();
+            _settings.SavedPlaylistFolders = _folders.Select(f => new SavedPlaylistFolder
+            {
+                DisplayName = f.DisplayName,
+                SourcePath = f.SourcePath,
+                IsEnabled = f.IsEnabled,
+                IsExpanded = f.IsExpanded,
+                Tracks = f.Tracks.ToList(),
+                IsLooseFilesBucket = f.IsLooseFilesBucket
+            }).ToList();
+        }
 
         _settings.LastTrackPath = GetCurrentTrackPath();
         _settings.LastPositionSeconds = _audioFile?.CurrentTime.TotalSeconds ?? _settings.LastPositionSeconds;
@@ -5305,6 +5350,7 @@ public partial class MainWindow : FluentWindow
         _playlistSearchCts?.Cancel();
         _settings.PlaybackSpeed = _runtimePlaybackRate;
         _isExiting = true;
+        LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         _lifetimeCts.Cancel();
         _trackLoadCts?.Cancel();
         _replayGainCts?.Cancel();

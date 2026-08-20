@@ -100,7 +100,7 @@ public partial class CoverArtSearchWindow : FluentWindow
         _searchCts?.Cancel();
 
         StatusText.Visibility = Visibility.Visible;
-        StatusText.Text = "Поиск отменён";
+        StatusText.Text = LocalizationService.Translate("Поиск отменён");
         ResultsScrollViewer.Visibility = Visibility.Collapsed;
 
         SearchButton.IsEnabled = true;
@@ -123,7 +123,7 @@ public partial class CoverArtSearchWindow : FluentWindow
         ResultsPanel.Children.Clear();
         ResultsScrollViewer.Visibility = Visibility.Collapsed;
         StatusText.Visibility = Visibility.Visible;
-        StatusText.Text = "Ищем…";
+        StatusText.Text = LocalizationService.Translate("Ищем…");
         SearchButton.IsEnabled = false;
         CancelSearchButton.Visibility = Visibility.Visible;
 
@@ -142,7 +142,7 @@ public partial class CoverArtSearchWindow : FluentWindow
 
             if (entries.Count == 0)
             {
-                StatusText.Text = "Ничего не найдено. Попробуйте изменить запрос.";
+                StatusText.Text = LocalizationService.Translate("Ничего не найдено. Попробуйте изменить запрос.");
                 return;
             }
 
@@ -165,7 +165,7 @@ public partial class CoverArtSearchWindow : FluentWindow
             if (token.IsCancellationRequested) return;
             StatusText.Visibility = Visibility.Visible;
             ResultsScrollViewer.Visibility = Visibility.Collapsed;
-            StatusText.Text = $"Не удалось выполнить поиск: {ex.Message}";
+            StatusText.Text = LocalizationService.Translate($"Не удалось выполнить поиск: {ex.Message}");
         }
         finally
         {
@@ -407,7 +407,7 @@ public partial class CoverArtSearchWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            System.Windows.MessageBox.Show(this, $"Не удалось загрузить обложку:\n{ex.Message}",
+            LocalizedMessageBox.Show(this, $"Не удалось загрузить обложку:\n{ex.Message}",
                 "Ошибка загрузки", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
         finally

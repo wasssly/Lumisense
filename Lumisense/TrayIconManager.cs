@@ -38,6 +38,9 @@ public sealed class TrayIconManager : IDisposable
     private readonly ToolStripMenuItem _exitItem;
 
     private bool _isLight;
+    private bool _isPlaying;
+    private string _nowPlayingTitle = "";
+    private string _nowPlayingArtist = "";
 
     // Миниатюра обложки, показанная сейчас в пункте "сейчас играет" (см. SetNowPlaying) —
     // хранится отдельно, чтобы её можно было корректно освободить (Bitmap — обёртка над GDI-
@@ -64,18 +67,18 @@ public sealed class TrayIconManager : IDisposable
             ImageScaling = ToolStripItemImageScaling.None
         };
 
-        _nowPlayingItem = new ToolStripMenuItem("Ничего не играет")
+        _nowPlayingItem = new ToolStripMenuItem(LocalizationService.Translate("Ничего не играет"))
         {
             Enabled = false,
             Font = _nowPlayingFont,
             AutoToolTip = false
         };
 
-        _openItem = new ToolStripMenuItem("Открыть Lumisense", null, (_, _) => OpenRequested?.Invoke());
-        _playPauseItem = new ToolStripMenuItem("Пауза", null, (_, _) => PlayPauseRequested?.Invoke());
-        _nextItem = new ToolStripMenuItem("Следующий трек", null, (_, _) => NextRequested?.Invoke());
-        _previousItem = new ToolStripMenuItem("Предыдущий трек", null, (_, _) => PreviousRequested?.Invoke());
-        _exitItem = new ToolStripMenuItem("Выход", null, (_, _) => ExitRequested?.Invoke());
+        _openItem = new ToolStripMenuItem(LocalizationService.Translate("Открыть Lumisense"), null, (_, _) => OpenRequested?.Invoke());
+        _playPauseItem = new ToolStripMenuItem(LocalizationService.Translate("Пауза"), null, (_, _) => PlayPauseRequested?.Invoke());
+        _nextItem = new ToolStripMenuItem(LocalizationService.Translate("Следующий трек"), null, (_, _) => NextRequested?.Invoke());
+        _previousItem = new ToolStripMenuItem(LocalizationService.Translate("Предыдущий трек"), null, (_, _) => PreviousRequested?.Invoke());
+        _exitItem = new ToolStripMenuItem(LocalizationService.Translate("Выход"), null, (_, _) => ExitRequested?.Invoke());
 
         _menu = new RoundedContextMenuStrip(CornerRadius)
         {
@@ -106,6 +109,19 @@ public sealed class TrayIconManager : IDisposable
         _notifyIcon.DoubleClick += (_, _) => OpenRequested?.Invoke();
 
         ApplyTheme(isLight: false); // тема применяется поверх при старте — см. MainWindow.OnSourceInitialized
+        LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
+    }
+
+    private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
+    {
+        if (_disposed) return;
+
+        _openItem.Text = LocalizationService.Translate("Открыть Lumisense");
+        _nextItem.Text = LocalizationService.Translate("Следующий трек");
+        _previousItem.Text = LocalizationService.Translate("Предыдущий трек");
+        _exitItem.Text = LocalizationService.Translate("Выход");
+        SetPlayingState(_isPlaying);
+        UpdateNowPlayingText();
     }
 
     // Иконка самого плеера (та же, что и у .exe/окон), а не общая системная — берём прямо
@@ -139,7 +155,8 @@ public sealed class TrayIconManager : IDisposable
     // отражал реальное состояние, а не оставался статичной надписью "Пауза"
     public void SetPlayingState(bool isPlaying)
     {
-        _playPauseItem.Text = isPlaying ? "Пауза" : "Продолжить";
+        _isPlaying = isPlaying;
+        _playPauseItem.Text = LocalizationService.Translate(isPlaying ? "Пауза" : "Продолжить");
         ReplaceMenuImage(_playPauseItem, TrayIcons.PlayPause(isPlaying, ForegroundColor));
     }
 
@@ -147,8 +164,9 @@ public sealed class TrayIconManager : IDisposable
     // Вызывается из MainWindow на каждый TrackInfoChanged.
     public void SetNowPlaying(string title, string artist, byte[]? artBytes)
     {
-        var text = string.IsNullOrWhiteSpace(title) ? "Ничего не играет" : $"{title} — {artist}";
-        _nowPlayingItem.Text = Truncate(text, 60);
+        _nowPlayingTitle = title;
+        _nowPlayingArtist = artist;
+        UpdateNowPlayingText();
 
         var previousThumbnail = _currentArtThumbnail;
         _currentArtThumbnail = BuildRoundedThumbnail(artBytes);
@@ -159,6 +177,14 @@ public sealed class TrayIconManager : IDisposable
         // меню — если освободить раньше, а перерисовка пункта меню случится ровно в этот
         // промежуток, WinForms попытается нарисовать уже освобождённый Bitmap.
         previousThumbnail?.Dispose();
+    }
+
+    private void UpdateNowPlayingText()
+    {
+        var text = string.IsNullOrWhiteSpace(_nowPlayingTitle)
+            ? LocalizationService.Translate("Ничего не играет")
+            : $"{_nowPlayingTitle} — {_nowPlayingArtist}";
+        _nowPlayingItem.Text = Truncate(text, 60);
     }
 
     // Декодирование могло бы упасть на битых/незнакомых по формату тегах — сам плеер в этом
@@ -238,7 +264,7 @@ public sealed class TrayIconManager : IDisposable
         // Иконки пунктов перерисовываем под новый цвет текста темы, чтобы они не выглядели
         // тёмными штрихами на тёмном фоне (или наоборот)
         ReplaceMenuImage(_openItem, TrayIcons.OpenApp(ForegroundColor));
-        ReplaceMenuImage(_playPauseItem, TrayIcons.PlayPause(_playPauseItem.Text == "Пауза", ForegroundColor));
+        ReplaceMenuImage(_playPauseItem, TrayIcons.PlayPause(_isPlaying, ForegroundColor));
         ReplaceMenuImage(_nextItem, TrayIcons.Next(ForegroundColor));
         ReplaceMenuImage(_previousItem, TrayIcons.Previous(ForegroundColor));
         ReplaceMenuImage(_exitItem, TrayIcons.Exit(ForegroundColor));
@@ -289,6 +315,7 @@ public sealed class TrayIconManager : IDisposable
     {
         if (_disposed) return;
         _disposed = true;
+        LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
 
         _notifyIcon.Visible = false;
         _notifyIcon.ContextMenuStrip = null;

@@ -91,8 +91,13 @@ public class PlaylistFolder : INotifyPropertyChanged
         }
     }
 
+    public void RefreshLocalizedSubtitle() => OnPropertyChanged(nameof(SubtitleText));
+
     private static string TrackWord(int count)
     {
+        if (LocalizationService.IsEnglish)
+            return count == 1 ? "track" : "tracks";
+
         int hundredsRemainder = count % 100;
         if (hundredsRemainder is >= 11 and <= 14) return "треков";
 
