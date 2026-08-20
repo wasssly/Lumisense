@@ -462,6 +462,7 @@ public static class LocalizationService
         ["Дата публикации неизвестна"] = "Release date unknown",
         ["Пререлиз"] = "Prerelease",
         ["В релизе нет .exe-установщика"] = "No .exe installer is available in this release",
+        ["В релизе отсутствует SHA-256 установщика"] = "The installer SHA-256 is missing from this release",
         [" · в релизе нет .exe-установщика"] = " · no .exe installer in this release",
         ["Переустановить"] = "Reinstall",
         ["Установить"] = "Install",

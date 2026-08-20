@@ -2,6 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +21,10 @@ public sealed class UpdateCheckResult
     // Прямая ссылка на .exe-ассет релиза (сам установщик Lumisense_Setup.exe — см.
     // Installer/Lumisense.iss) — то, что реально скачивается и запускается.
     public string? DownloadUrl { get; init; }
+
+    // SHA-256 из поля digest у GitHub Release asset. Установщик не запускается, пока
+    // вычисленная при скачивании сумма не совпадёт с опубликованной.
+    public string? InstallerSha256 { get; init; }
 
     // Страница релиза на GitHub — на неё ведёт "Подробнее" в диалоге.
     public string? ReleaseNotesUrl { get; init; }
@@ -46,6 +51,7 @@ public sealed class ReleaseListItem
 {
     public string Version { get; init; } = "";
     public string? ExeDownloadUrl { get; init; }
+    public string? ExeSha256 { get; init; }
     public string? ReleaseNotesUrl { get; init; }
     public string? ReleaseNotes { get; init; }
     public System.DateTimeOffset? PublishedAt { get; init; }
@@ -110,31 +116,33 @@ public static class UpdateChecker
             string tagName = root.TryGetProperty("tag_name", out var tagEl) ? tagEl.GetString() ?? "" : "";
             string latestVersion = tagName.TrimStart('v', 'V');
 
-            string? downloadUrl = null;
-            if (root.TryGetProperty("assets", out var assetsEl) && assetsEl.ValueKind == JsonValueKind.Array)
-            {
-                var exeAsset = assetsEl.EnumerateArray().FirstOrDefault(a =>
-                    a.TryGetProperty("name", out var n) &&
-                    (n.GetString() ?? "").EndsWith(".exe", System.StringComparison.OrdinalIgnoreCase));
-
-                if (exeAsset.ValueKind == JsonValueKind.Object &&
-                    exeAsset.TryGetProperty("browser_download_url", out var urlEl))
-                {
-                    downloadUrl = urlEl.GetString();
-                }
-            }
+            var installer = FindInstallerAsset(root);
+            string? downloadUrl = installer.DownloadUrl;
+            string? installerSha256 = installer.Sha256;
 
             string? notes = root.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() : null;
             string? htmlUrl = root.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null;
 
             bool hasNewer = !string.IsNullOrEmpty(latestVersion) && IsNewer(latestVersion, currentVersion);
 
+            if (hasNewer && downloadUrl != null && installerSha256 == null)
+            {
+                return new UpdateCheckResult
+                {
+                    Status = UpdateCheckStatus.Error,
+                    CurrentVersion = currentVersion,
+                    LatestVersion = latestVersion,
+                    ErrorMessage = "В GitHub Release отсутствует контрольная сумма SHA-256 для установщика."
+                };
+            }
+
             return new UpdateCheckResult
             {
-                Status = hasNewer && downloadUrl != null ? UpdateCheckStatus.UpdateAvailable : UpdateCheckStatus.UpToDate,
+                Status = hasNewer && downloadUrl != null && installerSha256 != null ? UpdateCheckStatus.UpdateAvailable : UpdateCheckStatus.UpToDate,
                 CurrentVersion = currentVersion,
                 LatestVersion = string.IsNullOrEmpty(latestVersion) ? null : latestVersion,
                 DownloadUrl = downloadUrl,
+                InstallerSha256 = installerSha256,
                 ReleaseNotesUrl = htmlUrl,
                 ReleaseNotes = notes
             };
@@ -181,10 +189,12 @@ public static class UpdateChecker
                     && System.DateTimeOffset.TryParse(pubEl.GetString(), out var parsedDate))
                     publishedAt = parsedDate;
 
+                var installer = FindInstallerAsset(releaseEl);
                 releases.Add(new ReleaseListItem
                 {
                     Version = version,
-                    ExeDownloadUrl = FindExeAssetUrl(releaseEl),
+                    ExeDownloadUrl = installer.DownloadUrl,
+                    ExeSha256 = installer.Sha256,
                     ReleaseNotesUrl = releaseEl.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null,
                     ReleaseNotes = releaseEl.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() : null,
                     PublishedAt = publishedAt,
@@ -200,22 +210,33 @@ public static class UpdateChecker
         }
     }
 
-    private static string? FindExeAssetUrl(JsonElement releaseRoot)
+    private static (string? DownloadUrl, string? Sha256) FindInstallerAsset(JsonElement releaseRoot)
     {
         if (!releaseRoot.TryGetProperty("assets", out var assetsEl) || assetsEl.ValueKind != JsonValueKind.Array)
-            return null;
+            return (null, null);
 
         var matchingAssets = assetsEl.EnumerateArray()
             .Where(a => a.TryGetProperty("name", out var n) &&
                         (n.GetString() ?? "").EndsWith(".exe", System.StringComparison.OrdinalIgnoreCase))
             .ToList();
-        if (matchingAssets.Count == 0) return null;
+        if (matchingAssets.Count == 0) return (null, null);
 
         var best = matchingAssets.FirstOrDefault(a =>
             a.TryGetProperty("name", out var n) &&
             (n.GetString() ?? "").Contains("lumisense", System.StringComparison.OrdinalIgnoreCase));
         if (best.ValueKind != JsonValueKind.Object) best = matchingAssets[0];
-        return best.TryGetProperty("browser_download_url", out var urlEl) ? urlEl.GetString() : null;
+
+        string? downloadUrl = best.TryGetProperty("browser_download_url", out var urlEl) ? urlEl.GetString() : null;
+        return (downloadUrl, GetAssetSha256(best));
+    }
+
+    private static string? GetAssetSha256(JsonElement asset)
+    {
+        if (!asset.TryGetProperty("digest", out var digestEl) || digestEl.ValueKind != JsonValueKind.String ||
+            !TryParseSha256(digestEl.GetString(), out var hash))
+            return null;
+
+        return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
     // Версия программы берётся из того же changelog.json, что и карточка "О плеере" в
@@ -280,16 +301,20 @@ public static class UpdateChecker
     // Скачивает установщик во временную папку и сообщает размер, процент и скорость.
     public static async Task<string> DownloadInstallerAsync(
         string downloadUrl,
+        string expectedSha256,
         System.IProgress<DownloadProgressInfo>? progress,
         CancellationToken ct)
     {
         if (!TryValidateDownloadUrl(downloadUrl, out var uri))
             throw new InvalidOperationException("Источник обновления не входит в список доверенных HTTPS-адресов.");
+        if (!TryParseSha256(expectedSha256, out var expectedHash))
+            throw new InvalidDataException("Контрольная сумма SHA-256 установщика отсутствует или имеет недопустимый формат.");
 
         string tempPath = Path.Combine(Path.GetTempPath(), $"Lumisense_Setup_{Guid.NewGuid():N}.part");
         bool completed = false;
         try
         {
+            using var sha256 = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
             using var response = await Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
@@ -310,6 +335,7 @@ public static class UpdateChecker
                 while ((read = await httpStream.ReadAsync(buffer, ct)) > 0)
                 {
                     readTotal += read;
+                    sha256.AppendData(buffer, 0, read);
                     if (readTotal > MaxInstallerBytes)
                         throw new InvalidDataException("Размер установщика превышает допустимый лимит.");
 
@@ -340,6 +366,9 @@ public static class UpdateChecker
                     BytesPerSecond = 0
                 });
             }
+
+            if (!CryptographicOperations.FixedTimeEquals(sha256.GetHashAndReset(), expectedHash))
+                throw new InvalidDataException("Контрольная сумма скачанного установщика не совпадает с опубликованной в GitHub Release.");
 
             string finalPath = Path.ChangeExtension(tempPath, ".exe");
             File.Move(tempPath, finalPath);
@@ -372,6 +401,26 @@ public static class UpdateChecker
         return uri.Host.EndsWith("gh-proxy.org", StringComparison.OrdinalIgnoreCase);
     }
 
+    private static bool TryParseSha256(string? value, out byte[] hash)
+    {
+        hash = Array.Empty<byte>();
+        const string prefix = "sha256:";
+        if (string.IsNullOrWhiteSpace(value)) return false;
+
+        string hex = value.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) ? value[prefix.Length..] : value;
+        if (hex.Length != 64) return false;
+
+        try
+        {
+            hash = Convert.FromHexString(hex);
+            return hash.Length == 32;
+        }
+        catch (FormatException)
+        {
+            return false;
+        }
+    }
+
     private static void TryDelete(string path)
     {
         try { if (File.Exists(path)) File.Delete(path); }
@@ -379,11 +428,19 @@ public static class UpdateChecker
     }
 
     // Запускает установщик через оболочку (Inno Setup сам запросит права администратора)
-    // и завершает текущий процесс, чтобы установщик мог перезаписать используемые им файлы
-    public static void LaunchInstallerAndExit(string installerPath)
+    // и завершает текущий процесс, чтобы установщик мог перезаписать используемые им файлы.
+    // Перед запуском файл проверяется повторно: путь мог быть изменён между скачиванием и стартом.
+    public static void LaunchInstallerAndExit(string installerPath, string expectedSha256)
     {
-        if (!File.Exists(installerPath) || !AuthenticodeVerifier.IsValid(installerPath))
-            throw new InvalidDataException("Цифровая подпись установщика недействительна или отсутствует.");
+        if (!File.Exists(installerPath) || !TryParseSha256(expectedSha256, out var expectedHash))
+            throw new InvalidDataException("Загруженный установщик не прошёл проверку SHA-256.");
+
+        using (var stream = File.OpenRead(installerPath))
+        {
+            byte[] actualHash = SHA256.HashData(stream);
+            if (!CryptographicOperations.FixedTimeEquals(actualHash, expectedHash))
+                throw new InvalidDataException("Загруженный установщик не прошёл проверку SHA-256.");
+        }
 
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
         {

@@ -87,6 +87,13 @@ public partial class UpdateAvailableWindow : FluentWindow
             return;
         }
 
+        string expectedSha256 = _result.InstallerSha256 ?? "";
+        if (string.IsNullOrEmpty(expectedSha256))
+        {
+            ShowError("В GitHub Release отсутствует контрольная сумма SHA-256 для установщика.");
+            return;
+        }
+
         SetDownloading(true);
 
         _downloadCts = new CancellationTokenSource();
@@ -97,7 +104,8 @@ public partial class UpdateAvailableWindow : FluentWindow
             string source = _settings?.UpdateDownloadSource ?? "GitHub";
             string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.DownloadUrl, source);
 
-            string exePath = await UpdateChecker.DownloadInstallerAsync(downloadUrl, progress, _downloadCts.Token);
+            string exePath = await UpdateChecker.DownloadInstallerAsync(
+                downloadUrl, expectedSha256, progress, _downloadCts.Token);
 
             // Перед запуском самого установщика тоже показываем "Подготовка…" — по сути пауза
             // тут почти нулевая (просто передать управление Process.Start), но без этой фазы
@@ -105,7 +113,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             // остаётся открытым.
             SetPreparing();
 
-            UpdateChecker.LaunchInstallerAndExit(exePath);
+            UpdateChecker.LaunchInstallerAndExit(exePath, expectedSha256);
         }
         catch (OperationCanceledException)
         {

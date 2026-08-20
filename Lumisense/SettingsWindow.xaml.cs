@@ -484,8 +484,11 @@ public partial class SettingsWindow : FluentWindow
                         LocalizationService.IsEnglish ? "en-US" : "ru-RU"))
                     : LocalizationService.Translate("Дата публикации неизвестна");
 
-                bool canInstall = !string.IsNullOrEmpty(r.ExeDownloadUrl);
-                if (!canInstall) subtitle += $" · {LocalizationService.Translate("В релизе нет .exe-установщика")}";
+                bool canInstall = !string.IsNullOrEmpty(r.ExeDownloadUrl) && !string.IsNullOrEmpty(r.ExeSha256);
+                if (string.IsNullOrEmpty(r.ExeDownloadUrl))
+                    subtitle += $" · {LocalizationService.Translate("В релизе нет .exe-установщика")}";
+                else if (string.IsNullOrEmpty(r.ExeSha256))
+                    subtitle += $" · {LocalizationService.Translate("В релизе отсутствует SHA-256 установщика")}";
 
                 string action = LocalizationService.Translate(isCurrent ? "Переустановить" : "Установить");
 
@@ -508,6 +511,7 @@ public partial class SettingsWindow : FluentWindow
             CurrentVersion = UpdateChecker.GetCurrentVersion(),
             LatestVersion = item.Release.Version,
             DownloadUrl = item.Release.ExeDownloadUrl,
+            InstallerSha256 = item.Release.ExeSha256,
             ReleaseNotesUrl = item.Release.ReleaseNotesUrl,
             ReleaseNotes = item.Release.ReleaseNotes,
         };
