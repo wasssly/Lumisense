@@ -8,7 +8,7 @@
   <a href="#russian" title="Русский">🇷🇺</a>&nbsp;&nbsp;&nbsp;<a href="#english" title="English">🇬🇧</a>
 </p>
 
-<details id="russian" name="lumisense-language" open>
+<details id="russian" open>
 <summary><strong>Русский</strong></summary>
 
 <br>
@@ -145,7 +145,7 @@ Lumisense/
 
 </details>
 
-<details id="english" name="lumisense-language">
+<details id="english" open>
 <summary><strong>English</strong></summary>
 
 <br>
