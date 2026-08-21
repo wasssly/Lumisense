@@ -15,6 +15,9 @@ internal static class WindowSnapHelper
     public const int WM_ENTERSIZEMOVE = 0x0231;
     public const int WM_MOVING = 0x0216;
     public const int WM_EXITSIZEMOVE = 0x0232;
+    public const int WM_WINDOWPOSCHANGED = 0x0047;
+    public const int WM_DISPLAYCHANGE = 0x007E;
+    public const int WM_DPICHANGED = 0x02E0;
 
     [StructLayout(LayoutKind.Sequential)]
     public struct RECT
@@ -45,6 +48,7 @@ internal static class WindowSnapHelper
     public static readonly IntPtr HWND_TOPMOST = new(-1);
     public const uint SWP_NOMOVE = 0x0002;
     public const uint SWP_NOSIZE = 0x0001;
+    public const uint SWP_NOZORDER = 0x0004;
     public const uint SWP_NOACTIVATE = 0x0010;
 
     // Дистанция в физических пикселях, на которой окно "магнитится" к краю рабочей области

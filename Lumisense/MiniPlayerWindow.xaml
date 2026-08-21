@@ -102,12 +102,91 @@
              галочки, иконки и ползунки не расходятся с реальным состоянием приложения. -->
         <Border.ContextMenu>
             <ContextMenu Opened="MiniPlayerContextMenu_Opened">
+                <ContextMenu.Resources>
+                    <!-- Локальный шаблон применяется исключительно к двум переключаемым пунктам.
+                         Он заменяет дефектный check-glyph MenuItem одним обычным CheckBox — тем
+                         же контролом и тем же Fluent-стилем, что в SettingsWindow. Визуально это
+                         одна штатная область галочки слева, а не дополнительный элемент меню. -->
+                    <Style x:Key="MiniPlayerToggleMenuItemStyle" TargetType="{x:Type MenuItem}">
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <Setter Property="Background" Value="Transparent" />
+                        <Setter Property="Padding" Value="8,5" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type MenuItem}">
+                                    <Border x:Name="ItemBackground" Background="{TemplateBinding Background}"
+                                            Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <!-- IsChecked принадлежит самому MenuItem; CheckBox здесь лишь
+                                                 отображает его штатным Fluent-шаблоном и не создаёт второе
+                                                 состояние или отдельный кликабельный элемент. -->
+                                            <!-- Это тот же CheckBox, что используется на странице
+                                                 «Мини-плеер» в настройках. Его встроенный Fluent
+                                                 ControlTemplate сохраняет собственную анимацию
+                                                 перехода IsChecked. -->
+                                            <CheckBox x:Name="ToggleCheckBox" Grid.Column="0"
+                                                      IsHitTestVisible="False" Focusable="False"
+                                                      VerticalAlignment="Center"
+                                                      RenderTransformOrigin="0.5,0.5"
+                                                      IsChecked="{TemplateBinding IsChecked}">
+                                                <CheckBox.RenderTransform>
+                                                    <ScaleTransform ScaleX="1" ScaleY="1" />
+                                                </CheckBox.RenderTransform>
+                                            </CheckBox>
+                                            <!-- Чуть компактнее, чем у полного CheckBox в настройках:
+                                                 подпись остаётся визуально связанной с галочкой в меню. -->
+                                            <ContentPresenter Grid.Column="1" ContentSource="Header"
+                                                              Margin="5,0,0,0"
+                                                              VerticalAlignment="Center"
+                                                              RecognizesAccessKey="True" />
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsHighlighted" Value="True">
+                                            <Setter TargetName="ItemBackground" Property="Background"
+                                                    Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                        </Trigger>
+                                        <!-- Меню закрывается сразу после выбора, как прежде. Поэтому
+                                             анимация запускается при появлении уже активной галочки
+                                             на открытии меню, а не только при клике. -->
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Trigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetName="ToggleCheckBox"
+                                                                         Storyboard.TargetProperty="Opacity"
+                                                                         From="0" To="1" Duration="0:0:0.16" />
+                                                        <DoubleAnimation Storyboard.TargetName="ToggleCheckBox"
+                                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                                         From="0.72" To="1" Duration="0:0:0.20" />
+                                                        <DoubleAnimation Storyboard.TargetName="ToggleCheckBox"
+                                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                                         From="0.72" To="1" Duration="0:0:0.20" />
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </Trigger.EnterActions>
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter Property="Opacity" Value="0.45" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </ContextMenu.Resources>
                 <MenuItem Header="Настройки" Click="SettingsMenuItem_Click" />
                 <MenuItem Header="Now Playing (полный экран)" Click="NowPlayingMenuItem_Click" />
                 <Separator />
                 <MenuItem x:Name="PinnedMenuItem" Header="Закрепить" IsCheckable="True"
+                          Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           Click="PinnedMenuItem_Click" />
                 <MenuItem x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
+                          Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           Click="TopmostMenuItem_Click" />
                 <Separator />
                 <!-- Выбор единственной второй кнопки управления. Три компактные иконки сохраняют

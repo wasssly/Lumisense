@@ -1109,7 +1109,7 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.MiniPlayerPinned = MiniPinnedCheckBox.IsChecked == true;
+        _owner.SetMiniPlayerPinned(MiniPinnedCheckBox.IsChecked == true);
     }
 
     private void MiniSnapToEdgesCheckBox_Changed(object sender, RoutedEventArgs e)

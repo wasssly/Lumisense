@@ -53,6 +53,8 @@ public partial class MainWindow : FluentWindow
     // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
     // громкость (AudioFileReader.Volume) применяется ДО эквалайзера, он только красит частоты.
     private EqualizerSampleProvider? _equalizer;
+    // Измеряет уже обработанный эквалайзером сигнал для визуальной реакции Now Playing.
+    private AudioLevelSampleProvider? _audioLevelMeter;
     private FadeInOutSampleProvider? _activeFade;
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
@@ -124,6 +126,14 @@ public partial class MainWindow : FluentWindow
     // привязан к ней один раз и получает только реально новые/удалённые папки через
     // CollectionChanged, без пересоздания контейнеров всех папок при каждом добавлении.
     private readonly ObservableCollection<PlaylistFolder> _folders = new();
+
+    // Отслеживание добавлений в дисковые папки плейлиста. FileSystemWatcher сообщает о
+    // нескольких промежуточных событиях при копировании файла, поэтому объединяем их в один
+    // повторный скан после короткой паузы, а не пересобираем список при каждом уведомлении.
+    private readonly List<FileSystemWatcher> _folderWatchers = new();
+    private readonly HashSet<string> _pendingFolderRefreshPaths = new(StringComparer.OrdinalIgnoreCase);
+    private readonly DispatcherTimer _folderRefreshDebounceTimer = new() { Interval = TimeSpan.FromSeconds(2) };
+    private bool _isFolderRefreshInProgress;
 
     // Пока конструктор не завершил перенос SavedPlaylistFolders в _folders, любое сохранение
     // пустой коллекции опасно: при исключении в ранней инициализации оно могло затереть
@@ -292,6 +302,7 @@ public partial class MainWindow : FluentWindow
     public double CurrentPlaybackSeconds => _audioFile?.CurrentTime.TotalSeconds ?? 0;
     public double CurrentTrackDurationSeconds => _audioFile?.TotalTime.TotalSeconds ?? 0;
     public bool IsPlayingNow => _isPlaying;
+    public AudioLevelSampleProvider? AudioLevelMeter => _audioLevelMeter;
 
     // Для мини-плеера — узнать текущий режим повтора сразу при открытии, до первого события
     // RepeatModeChanged (тем же способом, каким мини-плеер узнаёт текущий трек/состояние
@@ -356,6 +367,7 @@ public partial class MainWindow : FluentWindow
 
         _progressTimer.Tick += ProgressTimer_Tick;
         _playlistSearchDebounceTimer.Tick += PlaylistSearchDebounceTimer_Tick;
+        _folderRefreshDebounceTimer.Tick += FolderRefreshDebounceTimer_Tick;
         _hotkeyTrackStepTimer.Tick += (_, _) => CommitPendingHotkeyTrackStep();
         _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
 
@@ -683,6 +695,7 @@ public partial class MainWindow : FluentWindow
         if (_settings.SavedPlaylistFolders.Count == 0)
         {
             _playlistRestoreCompleted = true;
+            StartFolderWatchers();
             return System.Threading.Tasks.Task.CompletedTask;
         }
 
@@ -709,6 +722,8 @@ public partial class MainWindow : FluentWindow
             RefreshPlaylistView();
             RestoreShuffleSessionState();
             _playlistRestoreCompleted = true;
+            StartFolderWatchers();
+            QueueAllFolderRefreshes();
 
             // Fire-and-forget — удаление устаревших записей не должно задерживать ни показ
             // плейлиста (уже показан), ни загрузку последнего трека чуть ниже.
@@ -744,6 +759,7 @@ public partial class MainWindow : FluentWindow
     {
         var foldersToCheck = _folders.ToList();
         bool anyChanged = false;
+        bool folderWasRemoved = false;
 
         foreach (var folder in foldersToCheck)
         {
@@ -766,7 +782,10 @@ public partial class MainWindow : FluentWindow
             // убираем саму папку, а не оставляем пустой заголовок. См. комментарий у
             // foldersThatWereNonEmpty в RestoreSavedPlaylistAsync.
             if (folder.Tracks.Count == 0 && foldersThatWereNonEmpty.Contains(folder))
+            {
                 _folders.Remove(folder);
+                folderWasRemoved = true;
+            }
         }
 
         // folder.Tracks — ObservableCollection<string>, а не элемент плоского отображаемого
@@ -774,6 +793,7 @@ public partial class MainWindow : FluentWindow
         // изменения в ней сами по себе не отражаются на уже построенном плоском списке. Нужен
         // один пересбор в конце, и только если реально что-то изменилось.
         if (anyChanged) RefreshPlaylistView();
+        if (folderWasRemoved) StartFolderWatchers();
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -1993,6 +2013,160 @@ public partial class MainWindow : FluentWindow
             LoadAndPlay(actuallyNew[0]);
     }
 
+    // ---------- Автоматическое обновление дисковых папок плейлиста ----------
+
+    private void StartFolderWatchers()
+    {
+        StopFolderWatchers();
+        if (_isExiting || !_settings.AutoRefreshPlaylistFolders) return;
+
+        foreach (string folderPath in _folders
+                     .Select(folder => folder.SourcePath)
+                     .Where(path => !string.IsNullOrWhiteSpace(path))
+                     .Cast<string>()
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            try
+            {
+                if (!Directory.Exists(folderPath)) continue;
+
+                var watcher = new FileSystemWatcher(folderPath, "*.*")
+                {
+                    IncludeSubdirectories = true,
+                    NotifyFilter = NotifyFilters.FileName | NotifyFilters.DirectoryName
+                };
+                watcher.Created += FolderWatcher_FileChanged;
+                watcher.Renamed += FolderWatcher_FileChanged;
+                watcher.Error += FolderWatcher_Error;
+                watcher.EnableRaisingEvents = true;
+                _folderWatchers.Add(watcher);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                // Одна недоступная сетевая/удалённая папка не должна ломать слежение за остальными.
+                Logger.Warn($"Не удалось включить автообновление папки {folderPath}: {ex.Message}");
+            }
+        }
+    }
+
+    private void StopFolderWatchers()
+    {
+        _folderRefreshDebounceTimer.Stop();
+        _pendingFolderRefreshPaths.Clear();
+
+        foreach (FileSystemWatcher watcher in _folderWatchers)
+        {
+            watcher.EnableRaisingEvents = false;
+            watcher.Created -= FolderWatcher_FileChanged;
+            watcher.Renamed -= FolderWatcher_FileChanged;
+            watcher.Error -= FolderWatcher_Error;
+            watcher.Dispose();
+        }
+        _folderWatchers.Clear();
+    }
+
+    private void FolderWatcher_FileChanged(object sender, FileSystemEventArgs e)
+    {
+        // Во время копирования большого файла событие может приходить несколько раз, а при
+        // переносе целого каталога — только для него. В обоих случаях повторный скан корневой
+        // папки после debounce найдёт все действительно готовые поддерживаемые файлы.
+        bool isDirectory = Directory.Exists(e.FullPath);
+        bool isSupportedAudio = SupportedExtensions.Contains(Path.GetExtension(e.FullPath), StringComparer.OrdinalIgnoreCase);
+        if (!isDirectory && !isSupportedAudio) return;
+        if (sender is not FileSystemWatcher watcher) return;
+
+        QueueFolderRefresh(watcher.Path);
+    }
+
+    private void FolderWatcher_Error(object sender, ErrorEventArgs e)
+    {
+        if (sender is not FileSystemWatcher watcher) return;
+        Logger.Warn($"Буфер отслеживания папки {watcher.Path} переполнен или недоступен: {e.GetException().Message}");
+        QueueFolderRefresh(watcher.Path);
+    }
+
+    private void QueueAllFolderRefreshes()
+    {
+        if (!_settings.AutoRefreshPlaylistFolders) return;
+
+        foreach (string folderPath in _folders
+                     .Select(folder => folder.SourcePath)
+                     .Where(path => !string.IsNullOrWhiteSpace(path))
+                     .Cast<string>()
+                     .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            // FileSystemWatcher не знает о событиях, произошедших до запуска приложения.
+            // Один отложенный скан после восстановления закрывает этот случай и использует
+            // ту же дедупликацию AddFolderPathAsync, что и уведомления в текущем сеансе.
+            QueueFolderRefresh(folderPath);
+        }
+    }
+
+    private void QueueFolderRefresh(string folderPath)
+    {
+        if (_isExiting || !_settings.AutoRefreshPlaylistFolders || !_playlistRestoreCompleted || Dispatcher.HasShutdownStarted)
+            return;
+
+        try
+        {
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (_isExiting || !_settings.AutoRefreshPlaylistFolders || !_playlistRestoreCompleted) return;
+                _pendingFolderRefreshPaths.Add(folderPath);
+                _folderRefreshDebounceTimer.Stop();
+                _folderRefreshDebounceTimer.Start();
+            }));
+        }
+        catch (InvalidOperationException)
+        {
+            // Dispatcher уже завершает работу приложения; очищать watcher будет OnClosed.
+        }
+    }
+
+    private async void FolderRefreshDebounceTimer_Tick(object? sender, EventArgs e)
+    {
+        _folderRefreshDebounceTimer.Stop();
+        if (_isExiting || !_settings.AutoRefreshPlaylistFolders || _pendingFolderRefreshPaths.Count == 0)
+            return;
+
+        // Новые события, пришедшие пока Directory.EnumerateFiles работает в фоне, будут
+        // обработаны следующим debounce-циклом, а не потеряны.
+        if (_isFolderRefreshInProgress)
+        {
+            _folderRefreshDebounceTimer.Start();
+            return;
+        }
+
+        string[] pathsToRefresh = _pendingFolderRefreshPaths.ToArray();
+        _pendingFolderRefreshPaths.Clear();
+        _isFolderRefreshInProgress = true;
+        try
+        {
+            foreach (string folderPath in pathsToRefresh)
+            {
+                if (_isExiting || _lifetimeCts.IsCancellationRequested) break;
+                if (!_folders.Any(folder => string.Equals(folder.SourcePath, folderPath, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+
+                await AddFolderPathAsync(folderPath);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Нормальный путь при выходе из приложения.
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось автоматически обновить папку плейлиста", ex);
+        }
+        finally
+        {
+            _isFolderRefreshInProgress = false;
+            if (!_isExiting && _settings.AutoRefreshPlaylistFolders && _pendingFolderRefreshPaths.Count > 0)
+                _folderRefreshDebounceTimer.Start();
+        }
+    }
+
     // ---------- Добавление папки (рекурсивно), в том числе нескольких сразу ----------
 
     private async void AddFolderMenuItem_Click(object sender, RoutedEventArgs e)
@@ -2072,6 +2246,7 @@ public partial class MainWindow : FluentWindow
             f.SourcePath != null && string.Equals(f.SourcePath, folderPath, StringComparison.OrdinalIgnoreCase));
 
         string? firstNewTrack = null;
+        bool createdFolder = false;
 
         if (existingFolder != null)
         {
@@ -2095,9 +2270,12 @@ public partial class MainWindow : FluentWindow
             folder.Tracks.AddRange(filesInFolder);
             firstNewTrack = filesInFolder[0];
             _folders.Add(folder);
+            createdFolder = true;
         }
 
         RefreshPlaylistView();
+        if (createdFolder)
+            StartFolderWatchers();
 
         // Если до этого ничего не играло — сразу запускаем первый добавленный трек
         if (wasEmptyBeforeAdd && firstNewTrack != null)
@@ -2302,10 +2480,9 @@ public partial class MainWindow : FluentWindow
         if (_isFavoritesView) RefreshFavoritesTrackList();
     }
 
-    // Единственный способ подхватить файлы, добавленные в папку на диске уже после того, как
-    // она попала в плейлист — раньше это дополнительно делалось тихо на каждом старте, что на
-    // большой/сетевой библиотеке ощущалось как лишнее фоновое сканирование. Переиспользует
-    // AddFolderPath — он и так умеет добавлять только недостающие файлы.
+    // Ручное обновление остаётся доступным как запасной вариант для сетевых папок и файловых
+    // систем, которые не посылают события FileSystemWatcher. Как и автообновление, оно
+    // переиспользует AddFolderPathAsync и добавляет только отсутствующие файлы.
     private async void RescanFolderButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
@@ -2333,6 +2510,7 @@ public partial class MainWindow : FluentWindow
         // к первому доступному активному треку, раз текущего уже нет в списке.
         _folders.Remove(folder);
         RefreshPlaylistView();
+        StartFolderWatchers();
     }
 
     // В отличие от удаления одной группы (см. выше), очистка плейлиста целиком не оставляет
@@ -2357,6 +2535,7 @@ public partial class MainWindow : FluentWindow
         _currentTrackPath = null;
         _folders.Clear();
         RefreshPlaylistView();
+        StartFolderWatchers();
 
         TrackTitleText.Text = LocalizationService.Translate("Файл не выбран");
         TrackArtistText.Text = "—";
@@ -3239,7 +3418,8 @@ public partial class MainWindow : FluentWindow
             TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
             ProgressChanged?.Invoke(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
 
-            var fadeIn = new FadeInOutSampleProvider(_equalizer!, initiallySilent: true);
+            _audioLevelMeter = new AudioLevelSampleProvider(_equalizer!);
+            var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
             fadeIn.BeginFadeIn(70);
             _activeFade = fadeIn;
             _outputDevice ??= new WaveOutEvent();
@@ -3871,6 +4051,7 @@ public partial class MainWindow : FluentWindow
             _audioFile = null;
         }
         _equalizer = null;
+        _audioLevelMeter = null;
         _activeFade = null;
         _isPlaying = false;
 
@@ -4737,6 +4918,7 @@ public partial class MainWindow : FluentWindow
     public void SetMiniPlayerPinned(bool pinned)
     {
         _settings.MiniPlayerPinned = pinned;
+        _miniPlayerWindow?.ApplyPinnedStateLive(pinned);
         _settingsWindow?.RefreshMiniPlayerToggles();
     }
 
@@ -5354,6 +5536,7 @@ public partial class MainWindow : FluentWindow
         _playlistSearchCts?.Cancel();
         _settings.PlaybackSpeed = _runtimePlaybackRate;
         _isExiting = true;
+        StopFolderWatchers();
         LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         _lifetimeCts.Cancel();
         _trackLoadCts?.Cancel();

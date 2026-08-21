@@ -52,6 +52,7 @@ public partial class MiniPlayerWindow : Window
     private static readonly IntPtr HWND_TOPMOST = WindowSnapHelper.HWND_TOPMOST;
     private const uint SWP_NOMOVE = WindowSnapHelper.SWP_NOMOVE;
     private const uint SWP_NOSIZE = WindowSnapHelper.SWP_NOSIZE;
+    private const uint SWP_NOZORDER = WindowSnapHelper.SWP_NOZORDER;
     private const uint SWP_NOACTIVATE = WindowSnapHelper.SWP_NOACTIVATE;
 
     // Windows иногда молча теряет топмост-состояние окна (флаг формально остаётся, а
@@ -59,6 +60,17 @@ public partial class MiniPlayerWindow : Window
     // и т.п. Раз в несколько секунд принудительно переустанавливаем окно поверх остальных
     // через Win32 SetWindowPos — это чинит уже "отвалившийся" топмост, а не только поддерживает.
     private readonly DispatcherTimer _topmostTimer = new() { Interval = TimeSpan.FromSeconds(3) };
+
+    // Закрепление должно блокировать не только DragMove, но и внешнее перемещение окна со
+    // стороны Windows. Полноэкранные игры часто на короткое время меняют разрешение/DPI и
+    // Windows пересчитывает координаты transparent-окна; снимок последней намеренной позиции
+    // пользователя позволяет вернуть мини-плеер после того, как серия таких сообщений утихнет.
+    private readonly DispatcherTimer _pinnedPositionRestoreTimer = new() { Interval = TimeSpan.FromMilliseconds(260) };
+    private const double PinnedPositionTolerance = 0.5;
+    private bool _hasPinnedPosition;
+    private bool _isRestoringPinnedPosition;
+    private double _pinnedLeft;
+    private double _pinnedTop;
 
     private IntPtr _hwnd;
 
@@ -103,10 +115,17 @@ public partial class MiniPlayerWindow : Window
 
         // Название могло быть длинным ещё до открытия мини-плеера — пересчитываем бегущую
         // строку после первого прохода layout, когда TitleClipBorder.ActualWidth уже известен.
-        Loaded += (_, _) => UpdateTitleMarquee();
+        // В этот момент MainWindow уже восстановил Left/Top, поэтому это также корректная
+        // точка для первого снимка закреплённой позиции.
+        Loaded += (_, _) =>
+        {
+            UpdateTitleMarquee();
+            ApplyPinnedStateLive(_mainWindow.Settings.MiniPlayerPinned);
+        };
 
         _topmostTimer.Tick += TopmostTimer_Tick;
         _topmostTimer.Start();
+        _pinnedPositionRestoreTimer.Tick += PinnedPositionRestoreTimer_Tick;
     }
 
     // См. комментарий у объявления _topmostTimer — периодически принудительно возвращаем
@@ -118,6 +137,68 @@ public partial class MiniPlayerWindow : Window
         if (!Topmost || _hwnd == IntPtr.Zero || WindowState == WindowState.Minimized) return;
 
         WindowSnapHelper.SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    }
+
+    // Вызывается из настроек и из контекстного меню. При включении фиксируем именно текущую
+    // позицию, а при отключении отменяем отложенный возврат — пользователь сразу снова может
+    // свободно перетаскивать окно.
+    public void ApplyPinnedStateLive(bool pinned)
+    {
+        _pinnedPositionRestoreTimer.Stop();
+        _hasPinnedPosition = false;
+
+        if (!pinned || !IsLoaded) return;
+
+        _pinnedLeft = Left;
+        _pinnedTop = Top;
+        _hasPinnedPosition = true;
+    }
+
+    private void RequestPinnedPositionRestore()
+    {
+        if (!_mainWindow.Settings.MiniPlayerPinned || !_hasPinnedPosition || _isRestoringPinnedPosition)
+            return;
+
+        // Игры обычно посылают несколько WM_DISPLAYCHANGE/WM_DPICHANGED подряд. Небольшая
+        // задержка даёт Windows завершить переход и не превращает восстановление в дрожание.
+        _pinnedPositionRestoreTimer.Stop();
+        _pinnedPositionRestoreTimer.Start();
+    }
+
+    private void PinnedPositionRestoreTimer_Tick(object? sender, EventArgs e)
+    {
+        _pinnedPositionRestoreTimer.Stop();
+        RestorePinnedPositionIfNeeded();
+    }
+
+    private void RestorePinnedPositionIfNeeded()
+    {
+        if (!_mainWindow.Settings.MiniPlayerPinned || !_hasPinnedPosition || _isRestoringPinnedPosition
+            || _hwnd == IntPtr.Zero || WindowState == WindowState.Minimized)
+            return;
+
+        if (Math.Abs(Left - _pinnedLeft) <= PinnedPositionTolerance
+            && Math.Abs(Top - _pinnedTop) <= PinnedPositionTolerance)
+            return;
+
+        _isRestoringPinnedPosition = true;
+        try
+        {
+            // WPF Left/Top задаются в DIP, SetWindowPos — в физических пикселях. Применяем оба
+            // слоя: Win32 немедленно возвращает HWND после смены режима игры, а WPF сохраняет
+            // согласованные DIP-координаты для следующего layout-прохода.
+            double scale = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+            int x = (int)Math.Round(_pinnedLeft * scale);
+            int y = (int)Math.Round(_pinnedTop * scale);
+            WindowSnapHelper.SetWindowPos(_hwnd, IntPtr.Zero, x, y, 0, 0,
+                SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+            Left = _pinnedLeft;
+            Top = _pinnedTop;
+        }
+        finally
+        {
+            _isRestoringPinnedPosition = false;
+        }
     }
 
     // Перехватываем оконные сообщения на уровне Win32: это единственный способ подправить
@@ -175,6 +256,33 @@ public partial class MiniPlayerWindow : Window
                     handled = true;
                     return new IntPtr(1); // приложение обязано вернуть TRUE, если само обработало WM_MOVING
                 }
+
+            case WindowSnapHelper.WM_MOVING when _mainWindow.Settings.MiniPlayerPinned && _hasPinnedPosition:
+                {
+                    // Защита второго уровня: даже если Windows начала системное перемещение
+                    // окна (например, в момент переключения полноэкранного режима), не даём ей
+                    // принять новый прямоугольник. Координаты WM_MOVING — физические пиксели.
+                    double scale = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
+                    WindowSnapHelper.GetWindowRect(_hwnd, out var currentRect);
+                    int width = currentRect.Right - currentRect.Left;
+                    int height = currentRect.Bottom - currentRect.Top;
+                    var lockedRect = new WindowSnapHelper.RECT
+                    {
+                        Left = (int)Math.Round(_pinnedLeft * scale),
+                        Top = (int)Math.Round(_pinnedTop * scale)
+                    };
+                    lockedRect.Right = lockedRect.Left + width;
+                    lockedRect.Bottom = lockedRect.Top + height;
+                    Marshal.StructureToPtr(lockedRect, lParam, false);
+                    handled = true;
+                    return new IntPtr(1);
+                }
+
+            case WindowSnapHelper.WM_DISPLAYCHANGE:
+            case WindowSnapHelper.WM_DPICHANGED:
+            case WindowSnapHelper.WM_WINDOWPOSCHANGED:
+                RequestPinnedPositionRestore();
+                break;
 
             case WindowSnapHelper.WM_EXITSIZEMOVE:
                 _isDragging = false;
@@ -713,8 +821,13 @@ public partial class MiniPlayerWindow : Window
 
     private void MiniPlayerContextMenu_Opened(object sender, RoutedEventArgs e)
     {
-        PinnedMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerPinned;
-        TopmostMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerAlwaysOnTop;
+        SyncContextMenuToggleStates();
+
+        // App.xaml применяет локализацию к ContextMenu на том же событии Opened. WPF вызывает
+        // class handler после/до обычного обработчика в зависимости от источника открытия, и
+        // шаблон MenuItem иногда успевал отрисовать исходное пустое состояние. Второй проход в
+        // ContextIdle закрепляет визуальное значение уже после завершения layout/локализации.
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(SyncContextMenuToggleStates));
 
         _isSyncingOpacitySlider = true;
         MiniOpacityContextSlider.Value = _mainWindow.Settings.MiniPlayerOpacity;
@@ -734,6 +847,14 @@ public partial class MiniPlayerWindow : Window
         {
             _isSyncingPlaybackContextSliders = false;
         }
+    }
+
+    private void SyncContextMenuToggleStates()
+    {
+        PinnedMenuItem.IsCheckable = true;
+        TopmostMenuItem.IsCheckable = true;
+        PinnedMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerPinned;
+        TopmostMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerAlwaysOnTop;
     }
 
     private void MiniSecondaryContextButton_Click(object sender, RoutedEventArgs e)
@@ -954,6 +1075,18 @@ public partial class MiniPlayerWindow : Window
     protected override void OnLocationChanged(EventArgs e)
     {
         base.OnLocationChanged(e);
+
+        if (_isRestoringPinnedPosition) return;
+
+        if (_mainWindow.Settings.MiniPlayerPinned && _hasPinnedPosition)
+        {
+            // Не сохраняем временные координаты, которые Windows могла подставить при входе
+            // игры в fullscreen/изменении DPI. Вместо этого после завершения серии сообщений
+            // вернём зафиксированное пользователем положение.
+            RequestPinnedPositionRestore();
+            return;
+        }
+
         _mainWindow.SaveMiniPlayerPosition(Left, Top);
     }
 
@@ -1246,6 +1379,8 @@ public partial class MiniPlayerWindow : Window
     {
         _topmostTimer.Stop();
         _topmostTimer.Tick -= TopmostTimer_Tick;
+        _pinnedPositionRestoreTimer.Stop();
+        _pinnedPositionRestoreTimer.Tick -= PinnedPositionRestoreTimer_Tick;
         StopVinylRotation();
         _volumeOverlayRestoreTimer?.Stop();
         if (_volumeOverlayRestoreTimer is not null)

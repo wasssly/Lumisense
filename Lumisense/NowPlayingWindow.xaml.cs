@@ -503,6 +503,20 @@ public partial class NowPlayingWindow : Window
 
     private void AmbientMotionTimer_Tick(object? sender, EventArgs e)
     {
+        // Скорость облаков берётся из реальной энергии уже обработанного аудиосигнала. Корень
+        // делает реакцию заметной и в тихих фрагментах, а сглаживание _ambientSpeed ниже
+        // сохраняет расслабляющее движение без резких рывков на каждом ударе.
+        if (_owner.IsPlayingNow)
+        {
+            double level = Math.Clamp(_owner.AudioLevelMeter?.NormalizedLevel ?? 0d, 0d, 1d);
+            double shapedLevel = Math.Sqrt(level);
+            _ambientTargetSpeed = 0.72 + shapedLevel * 0.88;
+        }
+        else
+        {
+            _ambientTargetSpeed = 0.15;
+        }
+
         // Каждая сфера медленно проходит сцену по собственной линии и мягко растворяется у края.
         // Прозрачность зависит от фактически видимой части окружности, поэтому исчезновение не выглядит резким.
         _ambientSpeed += (_ambientTargetSpeed - _ambientSpeed) * 0.032;
@@ -606,7 +620,9 @@ public partial class NowPlayingWindow : Window
 
     private void UpdateAmbientAnimation(bool isPlaying)
     {
-        _ambientTargetSpeed = isPlaying ? 1.0 : 0.15;
+        // При воспроизведении значение уточняется по AudioLevelMeter на каждом тике;
+        // здесь задаётся спокойная стартовая скорость до первого аудиосэмпла.
+        _ambientTargetSpeed = isPlaying ? 0.72 : 0.15;
         if (_ambientMotionTimer is not null)
             _ambientMotionTimer.IsEnabled = true;
     }
