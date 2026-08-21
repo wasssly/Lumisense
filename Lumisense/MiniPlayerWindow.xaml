@@ -101,7 +101,7 @@
              показом MiniPlayerContextMenu_Opened подставляет актуальные значения, поэтому
              галочки, иконки и ползунки не расходятся с реальным состоянием приложения. -->
         <Border.ContextMenu>
-            <ContextMenu Opened="MiniPlayerContextMenu_Opened">
+            <ContextMenu x:Name="MiniPlayerContextMenu" Opened="MiniPlayerContextMenu_Opened">
                 <ContextMenu.Resources>
                     <!-- Локальный шаблон применяется исключительно к двум переключаемым пунктам.
                          Он заменяет дефектный check-glyph MenuItem одним обычным CheckBox — тем

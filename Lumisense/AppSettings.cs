@@ -95,6 +95,11 @@ public class AppSettings
     public string AccentColorMode { get; set; } = "System";
     public string AccentColorHex { get; set; } = "#0078D4";
 
+    // Оформление синхронного LRC-текста в панели главного окна. Старые settings.json не
+    // содержат эти поля, поэтому значения по умолчанию сохраняют нейтральный читаемый вид.
+    public double SyncedLyricsFontSize { get; set; } = 14.0;
+    public string SyncedLyricsHighlightEffect { get; set; } = "Glow";
+
     // Независимо от AccentColorMode добавляет к основе главного окна приглушённый цвет
     // текущей обложки. Поэтому можно, например, оставить системный акцент и включить
     // цветную основу, либо взять акцент от обложки без изменения основы окна.

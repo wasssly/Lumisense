@@ -120,6 +120,12 @@ public partial class SettingsWindow : FluentWindow
         BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault();
         CoverBaseFromCoverCheckBox.IsChecked = _settings.CoverBaseFromCover;
 
+        SyncedLyricsFontSizeSlider.Value = Math.Clamp(_settings.SyncedLyricsFontSize, 12, 20);
+        SyncedLyricsFontSizeValueText.Text = $"{SyncedLyricsFontSizeSlider.Value:0} px";
+        SyncedLyricsEffectNoneRadio.IsChecked = _settings.SyncedLyricsHighlightEffect == "None";
+        // Старые значения Scale/GlowScale после обновления корректно воспринимаются как Glow.
+        SyncedLyricsEffectGlowRadio.IsChecked = !SyncedLyricsEffectNoneRadio.IsChecked.GetValueOrDefault();
+
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
@@ -788,6 +794,28 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
         _settings.CoverBaseFromCover = CoverBaseFromCoverCheckBox.IsChecked == true;
         _owner.ApplyCoverBaseTheme();
+    }
+
+    private void SyncedLyricsFontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        // Slider вызывает ValueChanged ещё во время загрузки XAML: в этот момент сам Slider
+        // уже создан, но следующий за ним SyncedLyricsFontSizeValueText может ещё не попасть
+        // в namescope. Не трогаем элементы/настройки до завершения InitializeComponent.
+        if (_isInitializing || SyncedLyricsFontSizeValueText is null) return;
+
+        SyncedLyricsFontSizeValueText.Text = $"{e.NewValue:0} px";
+        _settings.SyncedLyricsFontSize = Math.Clamp(Math.Round(e.NewValue), 12, 20);
+        _owner.ApplySyncedLyricsAppearance();
+    }
+
+    private void SyncedLyricsEffectRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.SyncedLyricsHighlightEffect = SyncedLyricsEffectNoneRadio.IsChecked == true
+            ? "None"
+            : "Glow";
+        _owner.ApplySyncedLyricsAppearance();
     }
 
 

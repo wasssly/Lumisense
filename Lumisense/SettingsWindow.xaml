@@ -623,6 +623,36 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.SyncedLyricsFontSize/SyncedLyricsHighlightEffect. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Синхронный текст" Margin="0,0,0,10" />
+
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="42" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Размер шрифта" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                    <Slider x:Name="SyncedLyricsFontSizeSlider" Grid.Column="1"
+                                            Minimum="12" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True"
+                                            ValueChanged="SyncedLyricsFontSizeSlider_ValueChanged" />
+                                    <TextBlock x:Name="SyncedLyricsFontSizeValueText" Grid.Column="2"
+                                               HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                </Grid>
+
+                                <TextBlock Text="Эффект активной строки" Margin="0,0,0,8" />
+                                <RadioButton x:Name="SyncedLyricsEffectNoneRadio" Content="Без эффекта"
+                                             GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed"
+                                             Margin="0,0,0,8" />
+                                <RadioButton x:Name="SyncedLyricsEffectGlowRadio" Content="Мягкое свечение"
+                                             GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed" />
+                                <TextBlock Text="Активная строка остаётся белой, неактивные — приглушённо-серыми. Настройки применяются сразу в панели текста главного окна."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.WindowBackdropType. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>

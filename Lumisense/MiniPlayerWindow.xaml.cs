@@ -786,6 +786,7 @@ public partial class MiniPlayerWindow : Window
     // когда состояние НЕ менялось, а сменился только сам цвет акцента.
     public void RefreshAccentButtons()
     {
+        ApplyContextMenuAccent();
         PlayPauseButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor()); // всегда акцентная
 
         bool secondaryActive = SecondaryButtonMode switch
@@ -821,6 +822,7 @@ public partial class MiniPlayerWindow : Window
 
     private void MiniPlayerContextMenu_Opened(object sender, RoutedEventArgs e)
     {
+        ApplyContextMenuAccent();
         SyncContextMenuToggleStates();
 
         // App.xaml применяет локализацию к ContextMenu на том же событии Opened. WPF вызывает
@@ -847,6 +849,18 @@ public partial class MiniPlayerWindow : Window
         {
             _isSyncingPlaybackContextSliders = false;
         }
+    }
+
+    // Popup-контекст WPF образует отдельное дерево ресурсов. Поэтому Fluent CheckBox внутри
+    // меню иначе мог брать системный accent вместо выбранного пользователем цвета Lumisense.
+    // Локально публикуем и цвет, и основные accent-brush ключи — DynamicResource чекбокса
+    // обновляется сразу при открытии меню либо живой смене оформления в Settings.
+    private void ApplyContextMenuAccent()
+    {
+        Color accent = _mainWindow.GetResolvedAccentColor();
+        MiniPlayerContextMenu.Resources["SystemAccentColor"] = accent;
+        MiniPlayerContextMenu.Resources["AccentFillColorDefaultBrush"] = new SolidColorBrush(accent);
+        MiniPlayerContextMenu.Resources["AccentFillColorSecondaryBrush"] = new SolidColorBrush(accent);
     }
 
     private void SyncContextMenuToggleStates()

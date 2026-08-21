@@ -157,6 +157,69 @@ public partial class MainWindow : FluentWindow
     // PlaylistFoldersControl, и на то, какой список треков используют "Далее"/"Назад"/шафл
     // (см. FlattenAll/FlattenActive).
     private bool _isFavoritesView;
+
+    // Панель текста занимает место плейлиста, не создавая второго окна. Отдельный CTS
+    // отменяет локальное чтение и онлайн-поиск при смене трека, скрытии панели или закрытии.
+    private bool _isLyricsPanelActive;
+    private CancellationTokenSource? _mainWindowLyricsCts;
+    private string? _mainWindowLyricsTrackPath;
+    private LyricsDocument _mainWindowLyrics = LyricsDocument.Empty;
+    private readonly ObservableCollection<MainWindowLyricLine> _mainWindowSyncedLyrics = new();
+
+    // ScrollViewer не имеет анимируемого DependencyProperty для VerticalOffset. Небольшое
+    // attached-свойство проксирует значение анимации в ScrollToVerticalOffset, поэтому активная
+    // LRC-строка перемещается плавно, а не перескакивает при каждом timestamp.
+    private static readonly DependencyProperty AnimatedScrollOffsetProperty = DependencyProperty.RegisterAttached(
+        "AnimatedScrollOffset", typeof(double), typeof(MainWindow),
+        new PropertyMetadata(0.0, OnAnimatedScrollOffsetChanged));
+    private int _activeMainWindowLyricIndex = -2;
+
+    private sealed class MainWindowLyricLine : System.ComponentModel.INotifyPropertyChanged
+    {
+        private bool _isActive;
+        private double _fontSize = 14;
+        private double _lineHeight = 23;
+
+        public required TimeSpan Time { get; init; }
+        public required string Text { get; init; }
+        public SolidColorBrush Foreground { get; } = new(Color.FromRgb(142, 142, 142));
+        public ScaleTransform ScaleTransform { get; } = new(1, 1);
+        public System.Windows.Media.Effects.DropShadowEffect GlowEffect { get; } = new()
+        {
+            Color = Colors.White,
+            BlurRadius = 16,
+            ShadowDepth = 0,
+            Opacity = 0
+        };
+
+        public bool IsActive
+        {
+            get => _isActive;
+            set => Set(ref _isActive, value, nameof(IsActive));
+        }
+
+        public double FontSize
+        {
+            get => _fontSize;
+            set => Set(ref _fontSize, value, nameof(FontSize));
+        }
+
+        public double LineHeight
+        {
+            get => _lineHeight;
+            set => Set(ref _lineHeight, value, nameof(LineHeight));
+        }
+
+        private void Set<T>(ref T field, T value, string propertyName)
+        {
+            if (EqualityComparer<T>.Default.Equals(field, value)) return;
+            field = value;
+            PropertyChanged?.Invoke(this, new System.ComponentModel.PropertyChangedEventArgs(propertyName));
+        }
+
+        public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+    }
+
     private List<string>? _allTracksCache;
     private List<string>? _activeTracksCache;
     private bool _trackCachesAreFavoritesView;
@@ -351,6 +414,7 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         InitializeComponent();
+        LyricsPanelSyncedList.ItemsSource = _mainWindowSyncedLyrics;
         LocalizationService.Initialize(_settings, _isFirstLaunch);
         LocalizationService.Apply(this);
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
@@ -1341,6 +1405,8 @@ public partial class MainWindow : FluentWindow
             _ => RepeatButton.Icon
         };
         SetAccentButtonActive(RepeatButton, _repeatMode != RepeatMode.Off);
+        SetAccentButtonActive(LyricsPanelButton, _isLyricsPanelActive);
+        IconResources.SetOnAccent(LyricsPanelButtonIcon, _isLyricsPanelActive);
 
         if (_isFavoritesView)
         {
@@ -1675,7 +1741,6 @@ public partial class MainWindow : FluentWindow
         else
         {
             _heightBeforeHidingPlaylist = Height;
-
             PlaylistBorder.Visibility = Visibility.Collapsed;
             BodyGrid.RowDefinitions[6].Height = new GridLength(0);
 
@@ -1692,8 +1757,384 @@ public partial class MainWindow : FluentWindow
             Height = collapsedHeight;
         }
 
+        UpdatePlaylistSurface();
         TogglePlaylistButton.Icon = IconResources.Make(_isPlaylistVisible ? "IconChevronDown" : "IconChevronRight");
         TogglePlaylistButton.ToolTip = _isPlaylistVisible ? "Скрыть плейлист" : "Показать плейлист";
+    }
+
+    // Одна панель может показывать три взаимоисключающих представления: обычный плейлист,
+    // избранное и текст композиции. Разделяем выбор содержимого и саму видимость панели: шеврон
+    // продолжает сворачивать весь блок, а кнопка текста заменяет только его внутренности.
+    private void UpdatePlaylistSurface()
+    {
+        bool panelVisible = _isPlaylistVisible;
+        bool showLyrics = panelVisible && _isLyricsPanelActive;
+        bool showFavorites = panelVisible && !_isLyricsPanelActive && _isFavoritesView;
+        bool showPlaylist = panelVisible && !_isLyricsPanelActive && !_isFavoritesView;
+
+        PlaylistBorder.Visibility = panelVisible ? Visibility.Visible : Visibility.Collapsed;
+        LyricsPanel.Visibility = showLyrics ? Visibility.Visible : Visibility.Collapsed;
+        PlaylistSearchBox.Visibility = showPlaylist || showFavorites ? Visibility.Visible : Visibility.Collapsed;
+        PlaylistFoldersControl.Visibility = showPlaylist ? Visibility.Visible : Visibility.Collapsed;
+        FavoritesTrackListView.Visibility = showFavorites ? Visibility.Visible : Visibility.Collapsed;
+        PlaylistScrollTrack.Visibility = showLyrics ? Visibility.Collapsed : Visibility.Visible;
+
+        PlaylistHeaderText.Text = LocalizationService.Translate(showLyrics
+            ? "Текст песни"
+            : _isFavoritesView ? "Избранное" : "Плейлист");
+
+        FavoritesButton.Visibility = showLyrics ? Visibility.Collapsed : Visibility.Visible;
+        AddButton.Visibility = showPlaylist ? Visibility.Visible : Visibility.Collapsed;
+        ClearPlaylistButton.Visibility = showPlaylist ? Visibility.Visible : Visibility.Collapsed;
+        SetAccentButtonActive(FavoritesButton, _isFavoritesView && !showLyrics);
+        SetAccentButtonActive(LyricsPanelButton, showLyrics);
+        IconResources.SetOnAccent(LyricsPanelButtonIcon, showLyrics);
+    }
+
+    private void LyricsPanelButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetLyricsPanelActive(!_isLyricsPanelActive);
+    }
+
+    private void SetLyricsPanelActive(bool active)
+    {
+        if (active && !_isPlaylistVisible)
+            SetPlaylistVisibility(true);
+
+        _isLyricsPanelActive = active;
+        bool wasFavoritesView = _isFavoritesView;
+        if (active)
+        {
+            _isFavoritesView = false;
+            FavoritesButtonIcon.Icon = "IconHeart";
+            IconResources.SetOnAccent(FavoritesButtonIcon, false);
+        }
+
+        UpdatePlaylistSurface();
+        if (active && wasFavoritesView)
+            QueuePlaylistSearch();
+
+        if (active)
+            FireAndForget(LoadMainWindowLyricsAsync(_currentTrackPath), "LoadMainWindowLyricsAsync");
+        else
+            CancelMainWindowLyricsLoad();
+    }
+
+    private void CancelMainWindowLyricsLoad()
+    {
+        CancellationTokenSource? previous = Interlocked.Exchange(ref _mainWindowLyricsCts, null);
+        previous?.Cancel();
+    }
+
+    private async Task LoadMainWindowLyricsAsync(string? trackPath)
+    {
+        CancelMainWindowLyricsLoad();
+        var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
+        _mainWindowLyricsCts = cts;
+        CancellationToken token = cts.Token;
+        _mainWindowLyricsTrackPath = trackPath;
+        _mainWindowLyrics = LyricsDocument.Empty;
+        ApplyMainWindowLyricsLoading();
+
+        try
+        {
+            LyricsDocument document = await LyricsService.LoadAsync(trackPath, token);
+            if (!IsMainWindowLyricsRequestCurrent(trackPath, token)) return;
+
+            // Такое же безопасное автодополнение, как в Now Playing: онлайн-результат берём
+            // только при точном совпадении title + artist и сохраняем в соседний LRC/TXT.
+            if (document.Kind == LyricsKind.None && !string.IsNullOrWhiteSpace(trackPath))
+            {
+                LyricsPanelSourceText.Text = LocalizationService.Translate("Ищем текст…");
+                IReadOnlyList<OnlineLyricsResult> results = await LyricsService.SearchOnlineAsync(
+                    CurrentTitle, CurrentArtist, token);
+                if (!IsMainWindowLyricsRequestCurrent(trackPath, token)) return;
+
+                OnlineLyricsResult? exact = results.FirstOrDefault(result =>
+                    SameLyricsTrackField(result.TrackName, CurrentTitle) &&
+                    SameLyricsTrackField(result.ArtistName, CurrentArtist));
+                if (exact is not null)
+                {
+                    await LyricsService.SaveOnlineResultAsync(trackPath, exact, token);
+                    if (!IsMainWindowLyricsRequestCurrent(trackPath, token)) return;
+                    document = LyricsService.CreateDocumentFromOnlineResult(exact);
+                }
+            }
+
+            _mainWindowLyrics = document;
+            ApplyMainWindowLyricsDocument(document);
+        }
+        catch (LyricsRateLimitException)
+        {
+            if (IsMainWindowLyricsRequestCurrent(trackPath, token))
+                ApplyMainWindowLyricsEmpty("Поиск временно ограничен");
+        }
+        catch (OperationCanceledException)
+        {
+            // Нормально при смене трека, закрытии панели или завершении приложения.
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось загрузить текст для панели главного окна", ex);
+            if (IsMainWindowLyricsRequestCurrent(trackPath, token))
+                ApplyMainWindowLyricsEmpty("Текст не найден");
+        }
+        finally
+        {
+            if (ReferenceEquals(_mainWindowLyricsCts, cts))
+                _mainWindowLyricsCts = null;
+            cts.Dispose();
+        }
+    }
+
+    private bool IsMainWindowLyricsRequestCurrent(string? trackPath, CancellationToken token) =>
+        _isLyricsPanelActive && !token.IsCancellationRequested &&
+        string.Equals(trackPath, _mainWindowLyricsTrackPath, StringComparison.OrdinalIgnoreCase) &&
+        string.Equals(trackPath, _currentTrackPath, StringComparison.OrdinalIgnoreCase);
+
+    private static bool SameLyricsTrackField(string left, string right)
+    {
+        static string Normalize(string value) => new(value
+            .Where(char.IsLetterOrDigit)
+            .Select(char.ToLowerInvariant)
+            .ToArray());
+
+        string normalizedLeft = Normalize(left);
+        string normalizedRight = Normalize(right);
+        return normalizedLeft.Length > 0 && normalizedLeft == normalizedRight;
+    }
+
+    private void ApplyMainWindowLyricsLoading()
+    {
+        _mainWindowSyncedLyrics.Clear();
+        _activeMainWindowLyricIndex = -2;
+        ResetMainWindowSyncedLyricsScroll();
+        LyricsPanelTitleText.Text = LocalizationService.Translate("Текст песни");
+        LyricsPanelSourceText.Text = LocalizationService.Translate("Загружаем текст…");
+        LyricsPanelText.Text = string.Empty;
+        LyricsPanelSyncedList.Visibility = Visibility.Collapsed;
+        LyricsPanelScrollViewer.Visibility = Visibility.Visible;
+        LyricsPanelEmptyState.Visibility = Visibility.Collapsed;
+    }
+
+    private void ApplyMainWindowLyricsDocument(LyricsDocument document)
+    {
+        _mainWindowSyncedLyrics.Clear();
+        _activeMainWindowLyricIndex = -2;
+        ResetMainWindowSyncedLyricsScroll();
+        if (document.Kind == LyricsKind.None)
+        {
+            ApplyMainWindowLyricsEmpty("Текст не найден");
+            return;
+        }
+
+        LyricsPanelTitleText.Text = LocalizationService.Translate(document.Kind == LyricsKind.Synced
+            ? "Синхронный текст" : "Текст песни");
+        LyricsPanelSourceText.Text = LocalizationService.Translate(document.SourceLabel);
+        LyricsPanelEmptyState.Visibility = Visibility.Collapsed;
+
+        if (document.Kind == LyricsKind.Synced)
+        {
+            foreach (LyricLine line in document.Lines)
+            {
+                var lyricLine = new MainWindowLyricLine { Time = line.Time, Text = line.Text };
+                ApplySyncedLyricsLineAppearance(lyricLine, active: false, animate: false);
+                _mainWindowSyncedLyrics.Add(lyricLine);
+            }
+
+            LyricsPanelText.Text = string.Empty;
+            LyricsPanelScrollViewer.Visibility = Visibility.Collapsed;
+            LyricsPanelSyncedList.Visibility = Visibility.Visible;
+
+            // Новый документ всегда начинается с первой LRC-строки: не считываем здесь
+            // прежнюю позицию аудио/старого списка, иначе новая песня визуально открывалась
+            // в середине. После layout повторяем ScrollToTop для уже видимого ListBox.
+            UpdateMainWindowSyncedLyrics(TimeSpan.Zero, forceScroll: true);
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                if (_isLyricsPanelActive && _mainWindowLyrics.Kind == LyricsKind.Synced)
+                    ResetMainWindowSyncedLyricsScroll();
+            }));
+            return;
+        }
+
+        LyricsPanelText.Text = document.PlainText;
+        LyricsPanelSyncedList.Visibility = Visibility.Collapsed;
+        LyricsPanelScrollViewer.Visibility = Visibility.Visible;
+        LyricsPanelScrollViewer.ScrollToTop();
+    }
+
+    private void ApplyMainWindowLyricsEmpty(string status)
+    {
+        _mainWindowSyncedLyrics.Clear();
+        _activeMainWindowLyricIndex = -2;
+        ResetMainWindowSyncedLyricsScroll();
+        LyricsPanelTitleText.Text = LocalizationService.Translate("Текст песни");
+        LyricsPanelSourceText.Text = LocalizationService.Translate(status);
+        LyricsPanelText.Text = string.Empty;
+        LyricsPanelSyncedList.Visibility = Visibility.Collapsed;
+        LyricsPanelScrollViewer.Visibility = Visibility.Collapsed;
+        LyricsPanelEmptyState.Visibility = Visibility.Visible;
+    }
+
+    private void UpdateMainWindowSyncedLyrics(TimeSpan position, bool forceScroll = false)
+    {
+        if (!_isLyricsPanelActive || _mainWindowLyrics.Kind != LyricsKind.Synced || _mainWindowSyncedLyrics.Count == 0)
+            return;
+
+        int activeIndex = LyricsService.FindActiveLineIndex(_mainWindowLyrics.Lines, position);
+        if (!forceScroll && activeIndex == _activeMainWindowLyricIndex)
+            return;
+
+        if (_activeMainWindowLyricIndex >= 0 && _activeMainWindowLyricIndex < _mainWindowSyncedLyrics.Count)
+        {
+            MainWindowLyricLine previousLine = _mainWindowSyncedLyrics[_activeMainWindowLyricIndex];
+            previousLine.IsActive = false;
+            ApplySyncedLyricsLineAppearance(previousLine, active: false, animate: true);
+        }
+
+        _activeMainWindowLyricIndex = activeIndex;
+        if (activeIndex < 0 || activeIndex >= _mainWindowSyncedLyrics.Count)
+            return;
+
+        MainWindowLyricLine activeLine = _mainWindowSyncedLyrics[activeIndex];
+        activeLine.IsActive = true;
+        ApplySyncedLyricsLineAppearance(activeLine, active: true, animate: true);
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            if (_isLyricsPanelActive && _activeMainWindowLyricIndex == activeIndex)
+                SmoothScrollLyricsToActiveLine(activeLine);
+        }));
+    }
+
+    private void ResetMainWindowSyncedLyricsScroll()
+    {
+        System.Windows.Controls.ScrollViewer? scrollViewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(LyricsPanelSyncedList);
+        if (scrollViewer is null) return;
+
+        scrollViewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
+        scrollViewer.ScrollToTop();
+    }
+
+    private static void OnAnimatedScrollOffsetChanged(DependencyObject dependencyObject, DependencyPropertyChangedEventArgs args)
+    {
+        if (dependencyObject is System.Windows.Controls.ScrollViewer scrollViewer && args.NewValue is double offset)
+            scrollViewer.ScrollToVerticalOffset(offset);
+    }
+
+    private void SmoothScrollLyricsToActiveLine(MainWindowLyricLine activeLine)
+    {
+        // CanContentScroll=False в XAML переводит ScrollViewer в пиксельные единицы. Поэтому
+        // ExtentHeight, ViewportHeight и смещение ниже находятся в одной системе координат и
+        // анимация не смешивает индекс элементов с пикселями (прежняя причина скачка в конец).
+        LyricsPanelSyncedList.UpdateLayout();
+        if (LyricsPanelSyncedList.ItemContainerGenerator.ContainerFromItem(activeLine) is not FrameworkElement container)
+        {
+            LyricsPanelSyncedList.ScrollIntoView(activeLine);
+            LyricsPanelSyncedList.UpdateLayout();
+            container = LyricsPanelSyncedList.ItemContainerGenerator.ContainerFromItem(activeLine) as FrameworkElement;
+            if (container is null) return;
+        }
+
+        System.Windows.Controls.ScrollViewer? scrollViewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(LyricsPanelSyncedList);
+        if (scrollViewer is null || scrollViewer.ViewportHeight <= 0 || container.ActualHeight <= 0) return;
+
+        try
+        {
+            Point itemTop = container.TranslatePoint(new Point(0, 0), LyricsPanelSyncedList);
+            double viewportHeight = Math.Min(scrollViewer.ViewportHeight, LyricsPanelSyncedList.ActualHeight);
+            double maxOffset = Math.Max(0, scrollViewer.ExtentHeight - scrollViewer.ViewportHeight);
+            double targetOffset = Math.Clamp(
+                scrollViewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) / 2,
+                0, maxOffset);
+
+            var animation = new DoubleAnimation(scrollViewer.VerticalOffset, targetOffset,
+                new Duration(TimeSpan.FromMilliseconds(360)))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+            };
+            scrollViewer.BeginAnimation(AnimatedScrollOffsetProperty, animation, HandoffBehavior.SnapshotAndReplace);
+        }
+        catch (InvalidOperationException)
+        {
+            // В момент пересоздания контейнеров ListBox WPF может временно разорвать visual tree.
+        }
+    }
+
+    private void LyricsPanelSyncedList_PreviewMouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (_audioFile is null) return;
+        if (System.Windows.Controls.ItemsControl.ContainerFromElement(LyricsPanelSyncedList, e.OriginalSource as DependencyObject)
+            is not System.Windows.Controls.ListBoxItem { DataContext: MainWindowLyricLine line })
+            return;
+
+        TimeSpan target = line.Time;
+        if (_audioFile.TotalTime > TimeSpan.Zero)
+            target = target > _audioFile.TotalTime ? _audioFile.TotalTime : target;
+
+        _audioFile.CurrentTime = target;
+
+        // Обновляем полосу и активную строку сразу, не дожидаясь следующего тика таймера.
+        _isSyncingProgressFromPlayback = true;
+        try
+        {
+            ProgressSlider.Value = Math.Clamp(target.TotalSeconds, ProgressSlider.Minimum, ProgressSlider.Maximum);
+        }
+        finally
+        {
+            _isSyncingProgressFromPlayback = false;
+        }
+        UpdateMainWindowSyncedLyrics(target, forceScroll: true);
+        LyricsPanelSyncedList.SelectedItem = null;
+        e.Handled = true;
+    }
+
+    // Настройки из SettingsWindow меняются без перезапуска: применяем их ко всем уже
+    // созданным строкам. Активная строка всегда белая, неактивные — серые; акцент приложения
+    // здесь намеренно не используется, чтобы текст оставался нейтральным при любой теме.
+    public void ApplySyncedLyricsAppearance()
+    {
+        for (int index = 0; index < _mainWindowSyncedLyrics.Count; index++)
+            ApplySyncedLyricsLineAppearance(_mainWindowSyncedLyrics[index], index == _activeMainWindowLyricIndex, animate: true);
+    }
+
+    private void ApplySyncedLyricsLineAppearance(MainWindowLyricLine line, bool active, bool animate)
+    {
+        double fontSize = Math.Clamp(_settings.SyncedLyricsFontSize, 12, 20);
+        line.FontSize = fontSize;
+        line.LineHeight = Math.Max(21, Math.Round(fontSize * 1.58));
+
+        // Масштабирование больше не предлагается в настройках: остаются нейтральный режим
+        // и мягкое свечение. Старые значения Scale/GlowScale безопасно читаются как Glow.
+        bool useScale = false;
+        bool useGlow = active && _settings.SyncedLyricsHighlightEffect != "None";
+        Color foreground = active ? Colors.White : Color.FromRgb(142, 142, 142);
+        double scale = useScale ? 1.055 : 1.0;
+        double glowOpacity = useGlow ? 0.62 : 0.0;
+
+        if (!animate)
+        {
+            line.Foreground.BeginAnimation(SolidColorBrush.ColorProperty, null);
+            line.Foreground.Color = foreground;
+            line.ScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            line.ScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            line.ScaleTransform.ScaleX = scale;
+            line.ScaleTransform.ScaleY = scale;
+            line.GlowEffect.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, null);
+            line.GlowEffect.Opacity = glowOpacity;
+            return;
+        }
+
+        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+        var duration = new Duration(TimeSpan.FromMilliseconds(230));
+        line.Foreground.BeginAnimation(SolidColorBrush.ColorProperty,
+            new ColorAnimation(foreground, duration) { EasingFunction = easing });
+        line.ScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty,
+            new DoubleAnimation(scale, duration) { EasingFunction = easing });
+        line.ScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty,
+            new DoubleAnimation(scale, duration) { EasingFunction = easing });
+        line.GlowEffect.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty,
+            new DoubleAnimation(glowOpacity, duration) { EasingFunction = easing });
     }
 
     // ---------- Вид плеера (квадратный / прямоугольный / мини-плеер) ----------
@@ -1865,8 +2306,32 @@ public partial class MainWindow : FluentWindow
         menu.IsOpen = true;
     }
 
+    private void MainViewContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        ApplyMainViewContextMenuAccent();
+        UpdateViewModeMenuChecks();
+
+        // App.xaml локализует Popup в тот же момент. Повтор после ContextIdle гарантирует,
+        // что новый локальный шаблон трёх MenuItem увидит окончательное IsChecked.
+        Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(UpdateViewModeMenuChecks));
+    }
+
+    // ContextMenu WPF открывается в собственном Popup-дереве и может не наследовать
+    // application accent. Публикуем локальные ресурсы, чтобы Fluent CheckBox трёх пунктов
+    // выбора вида брал реальный текущий цвет Lumisense.
+    private void ApplyMainViewContextMenuAccent()
+    {
+        Color accent = GetResolvedAccentColor();
+        MainViewContextMenu.Resources["SystemAccentColor"] = accent;
+        MainViewContextMenu.Resources["AccentFillColorDefaultBrush"] = new SolidColorBrush(accent);
+        MainViewContextMenu.Resources["AccentFillColorSecondaryBrush"] = new SolidColorBrush(accent);
+    }
+
     private void UpdateViewModeMenuChecks()
     {
+        SquareViewMenuItem.IsCheckable = true;
+        RectangularViewMenuItem.IsCheckable = true;
+        MiniViewMenuItem.IsCheckable = true;
         SquareViewMenuItem.IsChecked = _viewMode == PlayerViewMode.Square;
         RectangularViewMenuItem.IsChecked = _viewMode == PlayerViewMode.Rectangular;
         MiniViewMenuItem.IsChecked = _viewMode == PlayerViewMode.Mini;
@@ -2698,17 +3163,15 @@ public partial class MainWindow : FluentWindow
     private void SetFavoritesViewActive(bool active)
     {
         _isFavoritesView = active;
+        if (active)
+        {
+            _isLyricsPanelActive = false;
+            CancelMainWindowLyricsLoad();
+        }
 
-        PlaylistHeaderText.Text = LocalizationService.Translate(active ? "Избранное" : "Плейлист");
-        SetAccentButtonActive(FavoritesButton, active);
         FavoritesButtonIcon.Icon = active ? "IconHeartFilled" : "IconHeart";
         IconResources.SetOnAccent(FavoritesButtonIcon, active);
-
-        AddButton.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
-        ClearPlaylistButton.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
-
-        PlaylistFoldersControl.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
-        FavoritesTrackListView.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        UpdatePlaylistSurface();
 
         if (active)
             RefreshFavoritesTrackList();
@@ -3417,6 +3880,12 @@ public partial class MainWindow : FluentWindow
             _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
             TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
             ProgressChanged?.Invoke(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+
+            // Панель текста не выполняет работу в фоне, пока скрыта. Если пользователь уже
+            // открыл её, новая композиция сразу отменяет предыдущий запрос и загружает свой
+            // LRC/TXT/кэш или точное онлайн-совпадение.
+            if (_isLyricsPanelActive)
+                FireAndForget(LoadMainWindowLyricsAsync(filePath), "LoadMainWindowLyricsAsync");
 
             _audioLevelMeter = new AudioLevelSampleProvider(_equalizer!);
             var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
@@ -5172,6 +5641,7 @@ public partial class MainWindow : FluentWindow
 
         CurrentTimeText.Text = _audioFile.CurrentTime.ToString(@"mm\:ss");
         ProgressChanged?.Invoke(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+        UpdateMainWindowSyncedLyrics(_audioFile.CurrentTime);
 
         // Статистика (см. StatisticsWindow) — суммарное время реального воспроизведения.
         // Таймер тикает только пока трек действительно играет (см. _progressTimer.Start/Stop
@@ -5211,6 +5681,7 @@ public partial class MainWindow : FluentWindow
         // SeekBy — поэтому проще синхронизировать сюда прогресс waveform-полосы один раз, чем
         // дублировать это же присваивание в каждом из тех мест по отдельности.
         ProgressWaveform.Progress = ProgressSlider.Maximum > 0 ? e.NewValue / ProgressSlider.Maximum : 0;
+        UpdateMainWindowSyncedLyrics(TimeSpan.FromSeconds(e.NewValue));
 
         // Пропускаем seek, если это сам таймер обновил слайдер под текущую позицию воспроизведения —
         // иначе будет лишняя перемотка 4 раза в секунду даже когда никто не трогает ползунок
@@ -5601,6 +6072,7 @@ public partial class MainWindow : FluentWindow
         _trackLoadCts?.Cancel();
         _replayGainCts?.Cancel();
         _waveformCts?.Cancel();
+        CancelMainWindowLyricsLoad();
 
         // Сохраняем состояние ДО остановки — StopPlayback ниже обнуляет _audioFile, а
         // PersistPlaybackAndPlaylistState читает текущую позицию именно из него.
