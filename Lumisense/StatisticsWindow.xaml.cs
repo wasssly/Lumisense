@@ -174,23 +174,11 @@ public partial class StatisticsWindow : FluentWindow
             : $"{(int)span.TotalSeconds} сек";
     }
 
-    // Русское склонение "прослушивание/прослушивания/прослушиваний" по числу — те же три
-    // формы, что и у слова "год"/"файл" и т.п.: 1 (но не 11) — единственное число; 2-4
-    // (кроме 12-14) — "прослушивания"; всё остальное, включая 11-14, — "прослушиваний".
-    private static string PluralizeListens(int count)
-    {
-        if (LocalizationService.IsEnglish)
-            return $"{count} {(count == 1 ? "listen" : "listens")}";
-
-        int tens = count % 100;
-        int last = count % 10;
-
-        string word = last == 1 && tens != 11 ? "прослушивание"
-            : last is >= 2 and <= 4 && tens is < 12 or > 14 ? "прослушивания"
-            : "прослушиваний";
-
-        return $"{count} {word}";
-    }
+    // Формы прослушиваний определяются централизованно в LocalizationService: для русского
+    // это one/few/many, для английского — one/other. Окно статистики не хранит собственную
+    // лингвистическую логику и использует тот же ключевой механизм, что новые динамические UI.
+    private static string PluralizeListens(int count) =>
+        LocalizationService.FormatPlural(LocalizationKey.StatisticsListens, count);
 
     // Сброс необратим (счётчики прослушиваний по трекам теряются безвозвратно), поэтому —
     // MessageBox с YesNo и предупреждающей иконкой, тот же паттерн подтверждения, что и у

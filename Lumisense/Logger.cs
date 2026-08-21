@@ -2,39 +2,41 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Text;
+using System.Text.RegularExpressions;
 
 namespace AudioPlayer;
 
-// Простой файловый логгер — своя реализация, а не внешняя библиотека (Serilog и т.п.): всё,
-// что реально нужно — "если плеер упал или повёл себя странно, куда посмотреть, что случилось",
-// а не гибкая система с синками/шаблонами. Пишет в %AppData%\Lumisense\logs\, рядом с тем же
-// местом, где лежит settings.json (см. SettingsManager).
-//
-// Каждый запуск — отдельный файл (а не один общий, вечно дописываемый) — так сразу видно
-// границы конкретной сессии, не нужно вручную выискивать в общем файле, где закончился
-// предыдущий запуск и начался этот. См. OpenLogsFolder — кнопка в настройках открывает эту же
-// папку в Проводнике, чтобы файлы было легко найти и приложить к сообщению об ошибке.
+// Файловый журнал для локальной диагностики. Он не отправляется по сети, но может быть
+// приложен к issue, поэтому перед записью удаляются персональные сегменты абсолютных путей.
+// Ограничения по размеру защищают папку %AppData% от неограниченного роста при долгой работе.
 public static class Logger
 {
     private static readonly string LogsDir = Path.Combine(
         System.Environment.GetFolderPath(System.Environment.SpecialFolder.ApplicationData),
         "Lumisense", "logs");
 
-    private static readonly string LogFilePath = Path.Combine(
-        LogsDir, $"lumisense_{System.DateTime.Now:yyyy-MM-dd_HH-mm-ss}.log");
+    private static readonly string SessionStamp = System.DateTime.Now.ToString("yyyy-MM-dd_HH-mm-ss");
+    private static string _logFilePath = BuildLogFilePath(0);
 
-    // Пишем строго последовательно — записи могут прилететь одновременно из разных потоков
-    // (UI, фоновые задачи, обработчики необработанных исключений в App.xaml.cs), без лока
-    // строки в файле могли бы перемежаться и ломать читаемость.
     private static readonly object Lock = new();
-
     private static bool _initialized;
     private static bool _initFailed;
+    private static int _currentLogPart;
 
-    // Держим только последние MaxLogFiles файлов — иначе за месяцы использования папка logs
-    // накопила бы сотни файлов. Каждый файл сам по себе небольшой (текстовые строки за одну
-    // сессию), поэтому ограничение по количеству, а не по суммарному размеру, вполне достаточно.
     private const int MaxLogFiles = 50;
+    private const long MaxSingleLogBytes = 1L * 1024 * 1024;
+    private const long MaxTotalLogBytes = 16L * 1024 * 1024;
+    private const int MaxMessageCharacters = 12_000;
+
+    private static readonly Regex UserProfilePathRegex = new(
+        @"(?i)([A-Z]:\\Users\\)([^\\\r\n]+)", RegexOptions.Compiled);
+    private static readonly Regex NetworkPathRegex = new(
+        @"(?<![A-Za-z0-9])\\\\[^\\\s\r\n]+(?:\\[^\\\s\r\n]+)*", RegexOptions.Compiled);
+
+    private static string BuildLogFilePath(int part) => Path.Combine(
+        LogsDir,
+        part == 0 ? $"lumisense_{SessionStamp}.log" : $"lumisense_{SessionStamp}_part-{part:D2}.log");
 
     private static void EnsureInitialized()
     {
@@ -48,43 +50,59 @@ public static class Logger
         }
         catch
         {
-            // Нет прав на запись, диск заполнен и т.п. — само логирование не должно ронять
-            // приложение или мешать ему работать; просто перестаём пытаться писать в файл
-            // (Info/Warn/Error всё ещё дублируют в консоль, см. Write ниже).
+            // Отсутствие прав/места на диске не должно мешать самому плееру.
             _initFailed = true;
         }
     }
 
     private static void PruneOldLogs()
     {
-        var oldFiles = new DirectoryInfo(LogsDir).GetFiles("lumisense_*.log")
-            .OrderByDescending(f => f.CreationTimeUtc)
-            .Skip(MaxLogFiles);
+        var files = new DirectoryInfo(LogsDir).GetFiles("lumisense_*.log")
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            .ToList();
 
-        foreach (var file in oldFiles)
+        foreach (var file in files.Skip(MaxLogFiles))
+            TryDelete(file);
+
+        files = new DirectoryInfo(LogsDir).GetFiles("lumisense_*.log")
+            .OrderByDescending(f => f.LastWriteTimeUtc)
+            .ToList();
+        long totalBytes = files.Sum(file => file.Length);
+        foreach (var file in files.OrderBy(file => file.LastWriteTimeUtc))
         {
-            try { file.Delete(); }
-            catch { /* не критично — попробуем удалить в следующий раз */ }
+            if (totalBytes <= MaxTotalLogBytes) break;
+            long length = file.Length;
+            if (TryDelete(file)) totalBytes -= length;
+        }
+    }
+
+    private static bool TryDelete(FileInfo file)
+    {
+        try
+        {
+            file.Delete();
+            return true;
+        }
+        catch
+        {
+            // Занятый файл будет снова рассмотрен при следующем запуске/ротации.
+            return false;
         }
     }
 
     public static void Info(string message) => Write("INFO", message);
     public static void Warn(string message) => Write("WARN", message);
 
-    public static void Error(string message, System.Exception? ex = null)
-    {
+    public static void Error(string message, System.Exception? ex = null) =>
         Write("ERROR", ex == null ? message : $"{message}: {ex}");
-    }
 
     private static void Write(string level, string message)
     {
-        string line = $"{System.DateTime.Now:HH:mm:ss.fff} [{level}] {message}";
+        string safeMessage = SanitizeForLog(message);
+        string line = $"{System.DateTime.Now:HH:mm:ss.fff} [{level}] {safeMessage}";
 
-        // Дублируем в консоль — тот же смысл, который раньше был у прямых Console.WriteLine
-        // в App.xaml.cs: для тех, кто запускает плеер из консоли/PowerShell и смотрит туда
-        // напрямую. Файл — не замена этому, а дополнение на случай "уже закрылось, а я не видел".
-        try { Console.WriteLine(line); }
-        catch { /* нет подключённой консоли (обычный запуск двойным кликом) — и не нужно */ }
+        try { System.Console.WriteLine(line); }
+        catch { /* нет подключённой консоли — обычный запуск двойным кликом */ }
 
         EnsureInitialized();
         if (_initFailed) return;
@@ -93,18 +111,49 @@ public static class Logger
         {
             try
             {
-                File.AppendAllText(LogFilePath, line + System.Environment.NewLine);
+                int byteCount = Encoding.UTF8.GetByteCount(line + System.Environment.NewLine);
+                RotateIfRequired(byteCount);
+                File.AppendAllText(_logFilePath, line + System.Environment.NewLine, Encoding.UTF8);
             }
             catch
             {
-                // См. EnsureInitialized выше — не роняем приложение из-за проблем с самим логом.
+                // Проблемы самого журнала не должны ронять приложение.
             }
         }
     }
 
-    // Открывает папку с логами в Проводнике (см. кнопку в настройках, страница "Обновления").
-    // Создаёт папку заранее, если в ней ещё ни разу ничего не залогировали — иначе Проводник
-    // просто не откроется на несуществующем пути.
+    // Сохраняет диагностическую ценность имени файла/ошибки, но скрывает имя профиля Windows
+    // и сетевые UNC-пути, которые обычно не нужны при отправке лога разработчику.
+    internal static string SanitizeForLog(string? value)
+    {
+        string result = value ?? string.Empty;
+        if (result.Length > MaxMessageCharacters)
+            result = result[..MaxMessageCharacters] + " … [truncated]";
+
+        result = UserProfilePathRegex.Replace(result, "$1<user>");
+        result = NetworkPathRegex.Replace(result, "<network-path>");
+        return result;
+    }
+
+    private static void RotateIfRequired(int pendingBytes)
+    {
+        try
+        {
+            if (File.Exists(_logFilePath) && new FileInfo(_logFilePath).Length + pendingBytes > MaxSingleLogBytes)
+            {
+                _currentLogPart++;
+                _logFilePath = BuildLogFilePath(_currentLogPart);
+                PruneOldLogs();
+            }
+        }
+        catch
+        {
+            // Если размер проверить нельзя, AppendAllText ниже остаётся безопасной последней попыткой.
+        }
+    }
+
+    // Открывает папку с логами в Проводнике. Создаёт её заранее, если в текущем сеансе ещё не
+    // было записи — иначе Проводник не смог бы открыть несуществующий путь.
     public static void OpenLogsFolder()
     {
         try

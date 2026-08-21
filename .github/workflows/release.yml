@@ -39,7 +39,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Determine version
         id: ver
@@ -65,12 +65,23 @@ jobs:
             -Version "${{ steps.ver.outputs.version }}"
 
       - name: Setup .NET 8
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with:
           dotnet-version: "8.0.x"
 
       - name: Publish Lumisense (self-contained win-x64)
         run: dotnet publish Lumisense/Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.ver.outputs.version }}
+
+      - name: Verify published assembly version
+        shell: pwsh
+        run: |
+          $exe = "Lumisense\\bin\\Release\\net8.0-windows10.0.19041.0\\win-x64\\publish\\Lumisense.exe"
+          if (-not (Test-Path $exe)) { throw "Published Lumisense.exe was not found." }
+          $productVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($exe).ProductVersion
+          if ($productVersion -notmatch "^${{ steps.ver.outputs.version }}(?:[+\\-].*)?$") {
+            throw "Published assembly version '$productVersion' does not match release version '${{ steps.ver.outputs.version }}'."
+          }
+          Write-Host "Verified assembly version $productVersion"
 
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
@@ -81,16 +92,39 @@ jobs:
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" "Installer\Lumisense.iss"
 
       - name: Create GitHub Release
+        id: release
         if: github.event_name != 'workflow_dispatch'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           name: "Lumisense ${{ steps.ver.outputs.version }}"
           body_path: release_notes.md
           files: Lumisense_Setup.exe
 
+      - name: Verify published release asset
+        if: github.event_name != 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          $headers = @{
+            Accept = "application/vnd.github+json"
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $release = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$env:RELEASE_VERSION"
+          $assets = @($release.assets | Where-Object { $_.name -eq "Lumisense_Setup.exe" })
+          if ($assets.Count -ne 1) { throw "Expected exactly one Lumisense_Setup.exe asset, found $($assets.Count)." }
+          $asset = $assets[0]
+          if ($asset.size -le 0) { throw "Published installer asset is empty." }
+          if ([string]$asset.digest -notmatch '^sha256:[0-9a-fA-F]{64}$') {
+            throw "Published installer asset does not expose a valid SHA-256 digest."
+          }
+          Write-Host "Verified published asset: size=$($asset.size), digest=$($asset.digest)"
+
       - name: Upload build artifact (manual test run)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: Lumisense_Setup
           path: Lumisense_Setup.exe

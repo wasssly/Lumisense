@@ -54,6 +54,7 @@ public partial class NowPlayingWindow : Window
     {
         _owner = owner;
         InitializeComponent();
+        AccessibilityPreferences.ApplyToWindow(this, _owner.Settings);
 
         SyncedLyricsList.ItemsSource = _syncedLines;
         OnlineLyricsResultsList.ItemsSource = _onlineResults;
@@ -65,21 +66,33 @@ public partial class NowPlayingWindow : Window
     private void NowPlayingWindow_Loaded(object sender, RoutedEventArgs e)
     {
         _owner.TrackInfoChanged += Owner_TrackInfoChanged;
-        _owner.PlaybackStateChanged += Owner_PlaybackStateChanged;
-        _owner.ProgressChanged += Owner_ProgressChanged;
+        _owner.PlaybackState.Changed += Owner_PlaybackSnapshotChanged;
 
         InitializeAmbientAnimation();
         RefreshTrackPresentation();
-        UpdatePlaybackState(_owner.IsPlayingNow);
-        UpdateProgress(_owner.CurrentPlaybackSeconds, _owner.CurrentTrackDurationSeconds);
+        Owner_PlaybackSnapshotChanged(_owner.PlaybackState.Current);
         UpdateLyricsLayout();
+    }
+
+    public void ApplyAccessibilityPreferences()
+    {
+        AccessibilityPreferences.ApplyToWindow(this, _owner.Settings);
+
+        if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
+        {
+            _ambientSpeed = 0;
+            _ambientTargetSpeed = 0;
+            _ambientMotionTimer?.Stop();
+            return;
+        }
+
+        UpdateAmbientAnimation(_owner.IsPlayingNow);
     }
 
     private void NowPlayingWindow_Closed(object? sender, EventArgs e)
     {
         _owner.TrackInfoChanged -= Owner_TrackInfoChanged;
-        _owner.PlaybackStateChanged -= Owner_PlaybackStateChanged;
-        _owner.ProgressChanged -= Owner_ProgressChanged;
+        _owner.PlaybackState.Changed -= Owner_PlaybackSnapshotChanged;
         LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         CancelLyricsLoad();
         CancelOnlineSearch();
@@ -92,8 +105,12 @@ public partial class NowPlayingWindow : Window
     }
 
     private void Owner_TrackInfoChanged(string title, string artist, System.Windows.Media.Brush? _) => RefreshTrackPresentation();
-    private void Owner_PlaybackStateChanged(bool isPlaying) => UpdatePlaybackState(isPlaying);
-    private void Owner_ProgressChanged(double currentSeconds, double totalSeconds) => UpdateProgress(currentSeconds, totalSeconds);
+
+    private void Owner_PlaybackSnapshotChanged(PlaybackSnapshot snapshot)
+    {
+        UpdatePlaybackState(snapshot.IsPlaying);
+        UpdateProgress(snapshot.PositionSeconds, snapshot.DurationSeconds);
+    }
 
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
     {
@@ -102,7 +119,7 @@ public partial class NowPlayingWindow : Window
         // Заголовок, источник текста и подсказка play/pause формируются программно,
         // поэтому их нужно обновить отдельно от обхода статического visual tree.
         ApplyLyricsDocument(_lyrics);
-        UpdatePlaybackState(_owner.IsPlayingNow);
+        Owner_PlaybackSnapshotChanged(_owner.PlaybackState.Current);
     }
 
     private void NowPlayingWindow_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -408,6 +425,14 @@ public partial class NowPlayingWindow : Window
         _onlineSearchCts = searchCts;
         CancellationToken token = searchCts.Token;
 
+        if (_owner.Settings.LyricsSearchPolicy != "AutoExact")
+        {
+            LyricsModeText.Text = LocalizationService.Translate(_owner.Settings.LyricsSearchPolicy == "ManualOnly"
+                ? "Текст можно найти вручную"
+                : "Онлайн-поиск текста отключён");
+            return;
+        }
+
         try
         {
             LyricsModeText.Text = LocalizationService.Translate("Ищем текст…");
@@ -506,6 +531,14 @@ public partial class NowPlayingWindow : Window
         // Скорость облаков берётся из реальной энергии уже обработанного аудиосигнала. Корень
         // делает реакцию заметной и в тихих фрагментах, а сглаживание _ambientSpeed ниже
         // сохраняет расслабляющее движение без резких рывков на каждом ударе.
+        if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
+        {
+            // Сцена остаётся визуально цельной, но прекращает декоративное движение сразу.
+            _ambientSpeed = 0;
+            _ambientTargetSpeed = 0;
+            return;
+        }
+
         if (_owner.IsPlayingNow)
         {
             double level = Math.Clamp(_owner.AudioLevelMeter?.NormalizedLevel ?? 0d, 0d, 1d);
@@ -622,7 +655,9 @@ public partial class NowPlayingWindow : Window
     {
         // При воспроизведении значение уточняется по AudioLevelMeter на каждом тике;
         // здесь задаётся спокойная стартовая скорость до первого аудиосэмпла.
-        _ambientTargetSpeed = isPlaying ? 0.72 : 0.15;
+        _ambientTargetSpeed = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings)
+            ? 0
+            : isPlaying ? 0.72 : 0.15;
         if (_ambientMotionTimer is not null)
             _ambientMotionTimer.IsEnabled = true;
     }
@@ -754,6 +789,15 @@ public partial class NowPlayingWindow : Window
         OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Ищу текст…");
         FindLyricsButton.IsEnabled = false;
         RunLyricsSearchButton.IsEnabled = false;
+        if (_owner.Settings.LyricsSearchPolicy == "LocalOnly")
+        {
+            OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Онлайн-поиск текста отключён");
+            FindLyricsButton.IsEnabled = true;
+            RunLyricsSearchButton.IsEnabled = true;
+            LyricsSearchQueryTextBox.IsEnabled = true;
+            return;
+        }
+
         LyricsSearchQueryTextBox.IsEnabled = false;
 
         try

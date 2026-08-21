@@ -16,7 +16,18 @@ public class PlaylistFolder : INotifyPropertyChanged
     // и для папок, созданных вручную ("Новую папку…" в меню добавления).
     public string? SourcePath { get; init; }
 
-    public string DisplayName { get; init; } = "";
+    private string _persistedDisplayName = "";
+
+    // Имя системной группы отдельных файлов не является пользовательским: оно отображается
+    // на текущем языке, а в settings.json сохраняется исходное значение только для обратной
+    // совместимости. Имена папок, созданных пользователем, остаются неизменными.
+    public string DisplayName
+    {
+        get => IsLooseFilesBucket ? LocalizationService.Get(LocalizationKey.PlaylistLooseFiles) : _persistedDisplayName;
+        init => _persistedDisplayName = value;
+    }
+
+    public string PersistedDisplayName => _persistedDisplayName;
 
     // true только у единственной автосоздаваемой группы "Отдельные файлы" (см. AddLooseFiles
     // в MainWindow.xaml.cs) — отличает её от папок, созданных вручную через "Новую папку…",
@@ -91,7 +102,11 @@ public class PlaylistFolder : INotifyPropertyChanged
         }
     }
 
-    public void RefreshLocalizedSubtitle() => OnPropertyChanged(nameof(SubtitleText));
+    public void RefreshLocalizedSubtitle()
+    {
+        OnPropertyChanged(nameof(DisplayName));
+        OnPropertyChanged(nameof(SubtitleText));
+    }
 
     private static string TrackWord(int count)
     {

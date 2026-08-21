@@ -11,6 +11,10 @@ namespace AudioPlayer;
 
 public enum UpdateCheckStatus { UpdateAvailable, UpToDate, Error }
 
+// Причина ошибки передаётся из сетевого слоя без локализованного текста. UI формирует
+// понятное RU/EN-сообщение в UpdateFailureExperience, а TechnicalDetail остаётся для журнала.
+public enum UpdateFailureKind { None, HttpStatus, InvalidResponse, MissingInstallerChecksum, Network }
+
 // Результат обращения к GitHub — см. UpdateChecker.CheckAsync
 public sealed class UpdateCheckResult
 {
@@ -33,7 +37,19 @@ public sealed class UpdateCheckResult
     // показывается в диалоге, полностью — по ссылке ReleaseNotesUrl.
     public string? ReleaseNotes { get; init; }
 
-    public string? ErrorMessage { get; init; }
+    public UpdateFailureKind FailureKind { get; init; }
+    public int? HttpStatusCode { get; init; }
+    public string? TechnicalDetail { get; init; }
+}
+
+// Результат загрузки списка опубликованных релизов для настроек и Changelog.
+public sealed class ReleaseListResult
+{
+    public List<ReleaseListItem> Releases { get; init; } = new();
+    public UpdateFailureKind FailureKind { get; init; }
+    public int? HttpStatusCode { get; init; }
+    public string? TechnicalDetail { get; init; }
+    public bool IsSuccess => FailureKind == UpdateFailureKind.None;
 }
 
 // Подробность скачивания установщика для отображения в окне обновления.
@@ -105,7 +121,8 @@ public static class UpdateChecker
                 {
                     Status = UpdateCheckStatus.Error,
                     CurrentVersion = currentVersion,
-                    ErrorMessage = $"GitHub вернул код {(int)response.StatusCode}"
+                    FailureKind = UpdateFailureKind.HttpStatus,
+                    HttpStatusCode = (int)response.StatusCode
                 };
             }
 
@@ -132,7 +149,7 @@ public static class UpdateChecker
                     Status = UpdateCheckStatus.Error,
                     CurrentVersion = currentVersion,
                     LatestVersion = latestVersion,
-                    ErrorMessage = "В GitHub Release отсутствует контрольная сумма SHA-256 для установщика."
+                    FailureKind = UpdateFailureKind.MissingInstallerChecksum
                 };
             }
 
@@ -149,32 +166,38 @@ public static class UpdateChecker
         }
         catch (System.Exception ex)
         {
-            // Нет сети, таймаут, репозиторий/релиз ещё не существует и т.п. — не критично,
-            // просто молча (при тихой проверке на старте) или с сообщением (по кнопке)
-            // сообщаем, что проверить не удалось.
+            // Нет сети, таймаут, репозиторий/релиз ещё не существует и т.п. — не критично.
+            // Техническая подробность нужна для диагностики, но в UI показывается локализованная
+            // причина UpdateFailureKind, а не текст исключения.
+            Logger.Warn($"Не удалось проверить обновление: {ex.Message}");
             return new UpdateCheckResult
             {
                 Status = UpdateCheckStatus.Error,
                 CurrentVersion = currentVersion,
-                ErrorMessage = ex.Message
+                FailureKind = UpdateFailureKind.Network,
+                TechnicalDetail = ex.Message
             };
         }
     }
 
     // Полный список опубликованных релизов для выбора версии и отката.
-    public static async Task<(List<ReleaseListItem> Releases, string? ErrorMessage)> GetAllReleasesAsync(CancellationToken ct = default)
+    public static async Task<ReleaseListResult> GetAllReleasesAsync(CancellationToken ct = default)
     {
         try
         {
             string url = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases?per_page=100";
             using var response = await Http.GetAsync(url, ct);
             if (!response.IsSuccessStatusCode)
-                return (new List<ReleaseListItem>(), $"GitHub вернул код {(int)response.StatusCode}");
+                return new ReleaseListResult
+                {
+                    FailureKind = UpdateFailureKind.HttpStatus,
+                    HttpStatusCode = (int)response.StatusCode
+                };
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct);
             using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
             if (doc.RootElement.ValueKind != JsonValueKind.Array)
-                return (new List<ReleaseListItem>(), "Неожиданный ответ GitHub — ожидался список релизов.");
+                return new ReleaseListResult { FailureKind = UpdateFailureKind.InvalidResponse };
 
             var releases = new List<ReleaseListItem>();
             foreach (var releaseEl in doc.RootElement.EnumerateArray())
@@ -202,11 +225,16 @@ public static class UpdateChecker
                 });
             }
 
-            return (releases, null);
+            return new ReleaseListResult { Releases = releases };
         }
         catch (System.Exception ex)
         {
-            return (new List<ReleaseListItem>(), ex.Message);
+            Logger.Warn($"Не удалось загрузить список релизов: {ex.Message}");
+            return new ReleaseListResult
+            {
+                FailureKind = UpdateFailureKind.Network,
+                TechnicalDetail = ex.Message
+            };
         }
     }
 
@@ -239,11 +267,29 @@ public static class UpdateChecker
         return Convert.ToHexString(hash).ToLowerInvariant();
     }
 
-    // Версия программы берётся из того же changelog.json, что и карточка "О плеере" в
-    // настройках (см. SettingsWindow.RefreshAppVersionText) — единственное место, где она
-    // задаётся, чтобы номер нигде не мог разойтись.
+    // Версия берётся из assembly metadata, которую CI сверяет с тегом релиза. Это устраняет
+    // прежнюю зависимость update-механизма от эвристически вычисляемой версии changelog.
     public static string GetCurrentVersion()
     {
+        var assembly = typeof(UpdateChecker).Assembly;
+        string? informationalVersion = assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), inherit: false)
+            .OfType<System.Reflection.AssemblyInformationalVersionAttribute>()
+            .FirstOrDefault()
+            ?.InformationalVersion;
+
+        if (SemanticVersion.TryParse(informationalVersion, out var semanticVersion))
+            return semanticVersion.ToString();
+
+        var assemblyVersion = assembly.GetName().Version;
+        if (assemblyVersion != null && assemblyVersion.Major >= 0 && assemblyVersion.Minor >= 0)
+        {
+            int patch = assemblyVersion.Build >= 0 ? assemblyVersion.Build : 0;
+            return $"{assemblyVersion.Major}.{assemblyVersion.Minor}.{patch}";
+        }
+
+        // Fallback нужен только для локального запуска устаревшей/самодельной сборки без
+        // assembly version; он не участвует в опубликованных CI-релизах.
         var entries = ChangelogLoader.Load();
         var current = entries.FirstOrDefault(e => e.IsCurrent) ?? entries.FirstOrDefault();
         return current?.Version ?? "0.0.0";
@@ -251,28 +297,14 @@ public static class UpdateChecker
 
     private static bool IsNewer(string latest, string current)
     {
-        if (System.Version.TryParse(NormalizeForVersion(latest), out var lv) &&
-            System.Version.TryParse(NormalizeForVersion(current), out var cv))
+        if (!SemanticVersion.TryParse(latest, out var latestVersion) ||
+            !SemanticVersion.TryParse(current, out var currentVersion))
         {
-            return lv > cv;
+            Logger.Warn($"Пропущена проверка обновления с недопустимой SemVer-версией: latest='{latest}', current='{current}'.");
+            return false;
         }
 
-        // Не удалось распарсить как X.Y.Z (например, тег вида "beta") — на всякий случай не
-        // считаем это обновлением молча, но и не ломаемся: просто сравниваем как строки.
-        return !string.Equals(latest, current, System.StringComparison.OrdinalIgnoreCase);
-    }
-
-    // System.Version требует минимум два компонента ("major.minor") — на случай, если где-то
-    // указана всего одна цифра версии.
-    private static string NormalizeForVersion(string v)
-    {
-        var parts = v.Split('.');
-        return parts.Length switch
-        {
-            0 => "0.0",
-            1 => $"{v}.0",
-            _ => v
-        };
+        return latestVersion.CompareTo(currentVersion) > 0;
     }
 
     // gh-proxy — сторонний прокси для github.com/githubusercontent.com на случай, если сам

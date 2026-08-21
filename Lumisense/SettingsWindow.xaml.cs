@@ -22,6 +22,7 @@ public partial class SettingsWindow : FluentWindow
     private readonly AppSettings _settings;
     private readonly MainWindow _owner;
     private bool _isInitializing = true;
+    private bool _isRefreshingOutputDevices;
 
     // См. LoadDeveloperAvatar — держит BitmapImage живым на время асинхронной загрузки, чтобы
     // его не собрал GC до того, как скачивание завершится.
@@ -91,6 +92,7 @@ public partial class SettingsWindow : FluentWindow
 
         _settings = settings;
         _owner = owner;
+        AccessibilityPreferences.ApplyToWindow(this, _settings);
 
         // WPF-свойство Owner намеренно НЕ выставляется: Windows не даёт окну-владельцу
         // оказаться в z-порядке выше своего owned-окна, пока то открыто (это на уровне
@@ -120,17 +122,26 @@ public partial class SettingsWindow : FluentWindow
         BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault();
         CoverBaseFromCoverCheckBox.IsChecked = _settings.CoverBaseFromCover;
 
+        InterfaceScaleSlider.Value = AccessibilityPreferences.NormalizeScale(_settings.InterfaceScale) * 100;
+        InterfaceScaleValueText.Text = $"{InterfaceScaleSlider.Value:0}%";
+        ReduceMotionCheckBox.IsChecked = _settings.ReduceMotion;
+
         SyncedLyricsFontSizeSlider.Value = Math.Clamp(_settings.SyncedLyricsFontSize, 12, 20);
         SyncedLyricsFontSizeValueText.Text = $"{SyncedLyricsFontSizeSlider.Value:0} px";
         SyncedLyricsEffectNoneRadio.IsChecked = _settings.SyncedLyricsHighlightEffect == "None";
         // Старые значения Scale/GlowScale после обновления корректно воспринимаются как Glow.
         SyncedLyricsEffectGlowRadio.IsChecked = !SyncedLyricsEffectNoneRadio.IsChecked.GetValueOrDefault();
+        LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
+        LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
+        LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
 
         AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
+        InitializeOutputDeviceCombo();
         NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked = _settings.NeverAutoPlayLastTrackOnStartup;
         TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
+        InitializeToastPolicy();
         InitializeToastPositionAndSize();
         InitializeToastMonitorCombo();
         MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
@@ -221,6 +232,8 @@ public partial class SettingsWindow : FluentWindow
 
         RefreshAppVersionText();
         LoadDeveloperAvatar();
+        RefreshLyricsCacheInfo();
+        RefreshResetRecoveryButton();
 
         _isInitializing = false;
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
@@ -368,16 +381,13 @@ public partial class SettingsWindow : FluentWindow
         _owner.SetPlayerViewModeByName(modeName);
     }
 
-    // Номер версии в карточке "О плеере" берётся не из отдельного захардкоженного текста,
-    // а из того же changelog.json, что и окно "Список изменений" — самая первая (самая новая,
-    // см. ChangelogLoader) запись и есть текущая версия программы. Так номер версии задаётся
-    // ровно в одном месте — в changelog.json — и не может разъехаться с тем, что показывает
-    // окно списка изменений.
+    // Номер версии в карточке «О плеере» берётся из assembly metadata — того же источника,
+    // который использует UpdateChecker и который release workflow сверяет с тегом релиза.
+    // Changelog по-прежнему отвечает за историю изменений, но не за runtime-версию сборки.
     private void RefreshAppVersionText()
     {
-        var entries = ChangelogLoader.Load();
-        var current = entries.FirstOrDefault(e => e.IsCurrent) ?? entries.FirstOrDefault();
-        AppVersionText.Text = current != null ? $"Версия {current.Version}" : "Версия";
+        AppVersionText.Text = LocalizationService.FormatKey(
+            LocalizationKey.ApplicationVersion, UpdateChecker.GetCurrentVersion());
     }
 
     // Ручная проверка обновлений (кнопка на странице "О плеере"). В отличие от тихой
@@ -408,7 +418,8 @@ public partial class SettingsWindow : FluentWindow
 
                 case UpdateCheckStatus.Error:
                 default:
-                    CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate($"Не удалось проверить: {result.ErrorMessage}");
+                    CheckUpdatesButtonSubtitle.Text = UpdateFailureExperience.Describe(
+                        result.FailureKind, result.HttpStatusCode);
                     break;
             }
         }
@@ -448,17 +459,18 @@ public partial class SettingsWindow : FluentWindow
         if (_allVersionsLoaded) return;
         _allVersionsLoaded = true;
 
-        var (releases, errorMessage) = await UpdateChecker.GetAllReleasesAsync();
+        ReleaseListResult releaseResult = await UpdateChecker.GetAllReleasesAsync();
 
         AllVersionsLoadingText.Visibility = Visibility.Collapsed;
 
-        if (errorMessage != null)
+        if (!releaseResult.IsSuccess)
         {
-            AllVersionsErrorText.Text = LocalizationService.Translate($"Не удалось загрузить список версий: {errorMessage}");
+            AllVersionsErrorText.Text = UpdateFailureExperience.DescribeVersionListFailure(releaseResult);
             AllVersionsErrorText.Visibility = Visibility.Visible;
             return;
         }
 
+        IReadOnlyList<ReleaseListItem> releases = releaseResult.Releases;
         if (releases.Count == 0)
         {
             AllVersionsErrorText.Text = LocalizationService.Translate("На GitHub пока нет ни одного опубликованного релиза.");
@@ -537,6 +549,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
+        Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация accessibility scale motion");
         Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд fly transition album art cover");
         Add("Жесты на обложке", "Оформление", "Appearance", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
         Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
@@ -577,15 +590,19 @@ public partial class SettingsWindow : FluentWindow
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
+        Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output device");
         Add("Полоса воспроизведения", "Воспроизведение", "Playback", ProgressBarWaveformRadio, "waveform форма звука soundcloud полоса прогресс seek слайдер");
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
+        Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
         Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
         Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
+        Add("Кэш текстов песен", "Профиль", "Profile", ClearLyricsCacheButton, "текст lyrics кэш очистить память локальный cache lyrics clear");
         Add("Сбросить плеер к исходному состоянию", "Профиль", "Profile", ResetPlayerButton, "сброс сбросить умолчание reset default настройки factory");
+        Add("Вернуть состояние до последнего сброса", "Профиль", "Profile", RestoreResetSnapshotButton, "восстановить вернуть точка сброса backup restore reset recovery");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "Обновления", "Updates", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Все версии", "Обновления", "Updates", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
@@ -796,6 +813,26 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyCoverBaseTheme();
     }
 
+    public void ApplyAccessibilityPreferences() => AccessibilityPreferences.ApplyToWindow(this, _settings);
+
+    private void InterfaceScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing || InterfaceScaleValueText is null) return;
+
+        _settings.InterfaceScale = AccessibilityPreferences.NormalizeScale(e.NewValue / 100d);
+        InterfaceScaleValueText.Text = $"{_settings.InterfaceScale * 100:0}%";
+        ApplyAccessibilityPreferences();
+        _owner.ApplyAccessibilityPreferences();
+    }
+
+    private void ReduceMotionCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ReduceMotion = ReduceMotionCheckBox.IsChecked == true;
+        _owner.ApplyAccessibilityPreferences();
+    }
+
     private void SyncedLyricsFontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         // Slider вызывает ValueChanged ещё во время загрузки XAML: в этот момент сам Slider
@@ -806,6 +843,14 @@ public partial class SettingsWindow : FluentWindow
         SyncedLyricsFontSizeValueText.Text = $"{e.NewValue:0} px";
         _settings.SyncedLyricsFontSize = Math.Clamp(Math.Round(e.NewValue), 12, 20);
         _owner.ApplySyncedLyricsAppearance();
+    }
+
+    private void LyricsPolicyRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _settings.LyricsSearchPolicy = LyricsPolicyLocalOnlyRadio.IsChecked == true ? "LocalOnly"
+            : LyricsPolicyManualOnlyRadio.IsChecked == true ? "ManualOnly"
+            : "AutoExact";
     }
 
     private void SyncedLyricsEffectRadio_Changed(object sender, RoutedEventArgs e)
@@ -889,8 +934,53 @@ public partial class SettingsWindow : FluentWindow
         return $"{bytes / (1024.0 * 1024.0):0.#} МБ";
     }
 
+    private void RefreshLyricsCacheInfo()
+    {
+        LyricsCacheInfo info = LyricsService.GetPastedLyricsCacheInfo();
+        LyricsCacheInfoText.Text = LocalizationService.FormatKey(LocalizationKey.ProfileLyricsCacheInfo,
+            info.EntryCount, FormatLyricsCacheSize(info.TotalBytes));
+        ClearLyricsCacheButton.IsEnabled = !info.IsEmpty;
+    }
+
+    private static string FormatLyricsCacheSize(long bytes)
+    {
+        string bytesUnit = LocalizationService.IsEnglish ? "B" : "Б";
+        string kilobytesUnit = LocalizationService.IsEnglish ? "KB" : "КБ";
+        string megabytesUnit = LocalizationService.IsEnglish ? "MB" : "МБ";
+        if (bytes < 1024) return $"{bytes} {bytesUnit}";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} {kilobytesUnit}";
+        return $"{bytes / (1024.0 * 1024.0):0.#} {megabytesUnit}";
+    }
+
+    private void RefreshResetRecoveryButton() =>
+        RestoreResetSnapshotButton.IsEnabled = SettingsResetRecoveryService.HasRecoverySnapshot;
+
+    private void ClearLyricsCacheButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (LyricsService.GetPastedLyricsCacheInfo().IsEmpty)
+        {
+            RefreshLyricsCacheInfo();
+            return;
+        }
+
+        var confirm = LocalizedMessageBox.Show(this,
+            LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearConfirm),
+            LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearTitle), System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        if (!LyricsService.ClearPastedLyricsCache())
+        {
+            LocalizedMessageBox.Show(this, LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearFailed),
+                LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearErrorTitle), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+
+        RefreshLyricsCacheInfo();
+    }
+
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
     {
+        RefreshAppVersionText();
+        InitializeOutputDeviceCombo();
         InitializeToastMonitorCombo();
         UpdateDiscordRichPresenceConnectionStatus();
 
@@ -899,6 +989,8 @@ public partial class SettingsWindow : FluentWindow
 
         if (_loadedReleases is not null)
             RenderAllVersions(_loadedReleases);
+
+        RefreshLyricsCacheInfo();
     }
 
     private void DiscordRichPresenceEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -956,11 +1048,90 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyDiscordRichPresenceSettingsLive();
     }
 
+    private void InitializeOutputDeviceCombo()
+    {
+        _isRefreshingOutputDevices = true;
+        try
+        {
+            OutputDeviceCombo.Items.Clear();
+            var systemDefault = new System.Windows.Controls.ComboBoxItem
+            {
+                Content = LocalizationService.Translate("Системное устройство по умолчанию"),
+                Tag = AudioOutputDeviceService.SystemDefaultDeviceName
+            };
+            OutputDeviceCombo.Items.Add(systemDefault);
+
+            foreach (AudioOutputDeviceService.Option device in AudioOutputDeviceService.GetAvailableDevices())
+            {
+                OutputDeviceCombo.Items.Add(new System.Windows.Controls.ComboBoxItem
+                {
+                    Content = device.DisplayName,
+                    Tag = device.DeviceName
+                });
+            }
+
+            var selected = OutputDeviceCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+                .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.OutputDeviceName, StringComparison.OrdinalIgnoreCase));
+            bool fallbackToSystemDefault = selected is null;
+            OutputDeviceCombo.SelectedItem = selected ?? systemDefault;
+            if (fallbackToSystemDefault)
+                _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
+
+            RefreshOutputDeviceStatus(fallbackToSystemDefault);
+        }
+        finally
+        {
+            _isRefreshingOutputDevices = false;
+        }
+    }
+
+    public void RefreshOutputDeviceSelection() => InitializeOutputDeviceCombo();
+
+    private void RefreshOutputDeviceStatus(bool fellBackToSystemDefault = false)
+    {
+        OutputDeviceStatusText.Text = fellBackToSystemDefault
+            ? LocalizationService.Translate("Выбранное устройство недоступно. Будет использовано системное устройство Windows.")
+            : string.IsNullOrWhiteSpace(_settings.OutputDeviceName)
+                ? LocalizationService.Translate("Используется системное устройство Windows.")
+                : LocalizationService.Translate("Устройство применяется сразу; текущий трек продолжится с сохранённой позиции.");
+    }
+
+    private void OutputDeviceCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing || _isRefreshingOutputDevices) return;
+
+        string selectedDeviceName = OutputDeviceCombo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag }
+            ? tag
+            : AudioOutputDeviceService.SystemDefaultDeviceName;
+        if (string.Equals(_settings.OutputDeviceName, selectedDeviceName, StringComparison.OrdinalIgnoreCase)) return;
+
+        _settings.OutputDeviceName = selectedDeviceName;
+        RefreshOutputDeviceStatus();
+        _owner.ApplyOutputDeviceSelection();
+    }
+
     private void TrackChangeToastCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
 
         _settings.ShowTrackChangeToast = TrackChangeToastCheckBox.IsChecked == true;
+    }
+
+    private void InitializeToastPolicy()
+    {
+        ToastPolicyPlaybackOnlyRadio.IsChecked = _settings.TrackChangeToastPolicy == "PlaybackOnly";
+        ToastPolicyManualOnlyRadio.IsChecked = _settings.TrackChangeToastPolicy == "ManualOnly";
+        ToastPolicyEveryTrackChangeRadio.IsChecked = !ToastPolicyPlaybackOnlyRadio.IsChecked.GetValueOrDefault()
+            && !ToastPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
+    }
+
+    private void ToastPolicyRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastPolicy = ToastPolicyPlaybackOnlyRadio.IsChecked == true ? "PlaybackOnly"
+            : ToastPolicyManualOnlyRadio.IsChecked == true ? "ManualOnly"
+            : "EveryTrackChange";
     }
 
     private void InitializeToastPositionAndSize()
@@ -1655,6 +1826,13 @@ public partial class SettingsWindow : FluentWindow
             "Сбросить плеер?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
+        if (!SettingsResetRecoveryService.TryCreateSnapshot(_settings))
+        {
+            LocalizedMessageBox.Show(this, LocalizationService.Get(LocalizationKey.ProfileResetSnapshotCreateFailedSettings),
+                LocalizationService.Get(LocalizationKey.ProfileResetCancelledTitle), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            return;
+        }
+
         LumiProfileIO.ResetToDefaults(_settings);
         LocalizationService.ChangeLanguage(_settings, _settings.Language);
         _owner.ApplyImportedSettingsLive();
@@ -1668,6 +1846,29 @@ public partial class SettingsWindow : FluentWindow
         _owner.ShowSettingsWindow("Profile");
     }
 
+    private void RestoreResetSnapshotButton_Click(object sender, RoutedEventArgs e)
+    {
+        var confirm = LocalizedMessageBox.Show(this,
+            LocalizationService.Get(LocalizationKey.ProfileRestoreConfirm),
+            LocalizationService.Get(LocalizationKey.ProfileRestoreConfirmTitle), System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        if (!_owner.TryRestoreLastSettingsReset())
+        {
+            LocalizedMessageBox.Show(this, LocalizationService.Get(LocalizationKey.ProfileRestoreUnavailable),
+                LocalizationService.Get(LocalizationKey.ProfileRestoreUnavailableTitle), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            RefreshResetRecoveryButton();
+            return;
+        }
+
+        LocalizationService.ChangeLanguage(_settings, _settings.Language);
+        LocalizedMessageBox.Show(this,
+            LocalizationService.Get(LocalizationKey.ProfileRestoreCompleted),
+            LocalizationService.Get(LocalizationKey.ProfileRestoreCompletedTitle), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        Close();
+        _owner.ShowSettingsWindow("Profile");
+    }
+
     private void ResetAllDataButton_Click(object sender, RoutedEventArgs e)
     {
         var confirm = LocalizedMessageBox.Show(this,
@@ -1677,9 +1878,16 @@ public partial class SettingsWindow : FluentWindow
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
         var secondConfirm = LocalizedMessageBox.Show(this,
-            "Это действие нельзя отменить. Выполнить полный сброс сейчас?",
+            LocalizationService.Get(LocalizationKey.ProfileResetFullConfirm),
             "Подтвердите полный сброс", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
         if (secondConfirm != System.Windows.MessageBoxResult.Yes) return;
+
+        if (!SettingsResetRecoveryService.TryCreateSnapshot(_settings))
+        {
+            LocalizedMessageBox.Show(this, LocalizationService.Get(LocalizationKey.ProfileResetSnapshotCreateFailedFull),
+                LocalizationService.Get(LocalizationKey.ProfileResetCancelledTitle), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            return;
+        }
 
         _owner.ResetAllUserData();
         LocalizedMessageBox.Show(this,

@@ -21,7 +21,7 @@ public sealed class ChangeItemViewModel
     {
         var info = ChangeTypeCatalog.Resolve(source.Type);
 
-        Text = LocalizationService.Translate(source.Text);
+        Text = ChangelogTranslationCatalog.Translate(source.Text, LocalizationService.IsEnglish);
         TypeKey = info.Key;
         TypeLabel = info.Label;
         IconKey = info.IconKey;

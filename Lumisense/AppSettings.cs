@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
@@ -51,6 +52,11 @@ public class HotkeyBinding
 // Настройки приложения, сохраняемые между запусками
 public class AppSettings
 {
+    // Увеличивается только при изменении формата или семантики settings.json. Старые файлы
+    // без поля считаются схемой 0 и мигрируются в SettingsIntegrityService.
+    public const int CurrentSettingsSchemaVersion = 7;
+    public int SettingsSchemaVersion { get; set; } = CurrentSettingsSchemaVersion;
+
     // "Dark" / "Light" — выбирается в настройках (страница "Оформление").
     public string Theme { get; set; } = "Dark";
 
@@ -94,6 +100,11 @@ public class AppSettings
     // "System" — акцент Windows, "Manual" — AccentColorHex, "Cover" — цвет от текущей обложки.
     public string AccentColorMode { get; set; } = "System";
     public string AccentColorHex { get; set; } = "#0078D4";
+
+    // Доступность интерфейса. Масштаб влияет на базовый размер шрифта окон, а режим
+    // снижения движения отключает необязательные декоративные переходы.
+    public double InterfaceScale { get; set; } = 1.0;
+    public bool ReduceMotion { get; set; }
 
     // Оформление синхронного LRC-текста в панели главного окна. Старые settings.json не
     // содержат эти поля, поэтому значения по умолчанию сохраняют нейтральный читаемый вид.
@@ -172,8 +183,11 @@ public class AppSettings
     // поведение после обновления, а при необходимости может быть отключено в конфигурации.
     public bool AutoRefreshPlaylistFolders { get; set; } = true;
 
-    // Старое плоское поле оставлено только для миграции плейлистов, сохранённых
-    // предыдущей версией плеера. Само приложение больше в него не пишет.
+    // Старое плоское поле читается только для миграции плейлистов, сохранённых
+    // версиями до групп SavedPlaylistFolders. После переноса оно намеренно становится
+    // null и не сериализуется: новые settings.json не сохраняют устаревшую копию данных,
+    // но старые установки продолжают восстанавливаться без потери плейлиста.
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public List<string>? SavedPlaylist { get; set; }
 
     // Пути избранных треков — общий список, не привязанный к группе плейлиста. Из него на лету
@@ -250,9 +264,20 @@ public class AppSettings
     // прогресс-баром (см. MiniPlayerWindow.OnProgressChanged/UpdateSecondaryLine).
     public string MiniPlayerInfoMode { get; set; } = "TitleArtist";
 
+    // Имя явно выбранного WaveOut-устройства. Пустое значение означает системный audio mapper
+    // Windows: при отключении USB/Bluetooth-наушников он может направить звук на новое устройство
+    // по умолчанию. Индекс устройства намеренно не сохраняем, потому что он меняется между сессиями.
+    public string OutputDeviceName { get; set; } = "";
+    public string LyricsSearchPolicy { get; set; } = "AutoExact";
+
     // Всплывающее уведомление в углу экрана при смене трека (обложка + название, исчезает
     // само через пару секунд) — см. TrackChangeToastWindow и MainWindow.ShowTrackChangeToast.
     public bool ShowTrackChangeToast { get; set; } = true;
+
+    // Когда показывать карточку новой композиции: EveryTrackChange сохраняет прежнее
+    // поведение; PlaybackOnly исключает выбор на паузе; ManualOnly не отвлекает при
+    // естественном переходе, восстановлении сессии и перезагрузке после внешнего редактирования.
+    public string TrackChangeToastPolicy { get; set; } = "EveryTrackChange";
 
     // Где на экране показывать уведомление — "BottomRight" (по умолчанию, как было всегда),
     // "BottomLeft", "BottomCenter", "TopRight", "TopLeft" или "TopCenter".
@@ -427,7 +452,6 @@ public class AppSettings
 // Загрузка и сохранение настроек в %AppData%\Lumisense\settings.json
 public static class SettingsManager
 {
-    private const long MaxSettingsBytes = 8L * 1024 * 1024;
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true, MaxDepth = 16 };
     private static readonly SemaphoreSlim SaveGate = new(1, 1);
     private static long NextSaveRevision;
@@ -457,53 +481,19 @@ public static class SettingsManager
 
     public static AppSettings Load()
     {
-        try
-        {
-            if (File.Exists(SettingsFilePath) && new FileInfo(SettingsFilePath).Length <= MaxSettingsBytes)
-            {
-                var json = File.ReadAllText(SettingsFilePath);
-                var settings = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);
-                if (settings != null)
-                {
-                    // До разделения настроек режим AccentColorMode=Cover одновременно красил
-                    // акцент и основу окна. Сохраняем это ожидаемое поведение для старых файлов,
-                    // в которых новый независимый флаг ещё отсутствует.
-                    if (!json.Contains("\"CoverBaseFromCover\"", StringComparison.Ordinal)
-                        && settings.AccentColorMode == "Cover")
-                    {
-                        settings.CoverBaseFromCover = true;
-                    }
+        if (SettingsIntegrityService.TryLoad(SettingsFilePath, out AppSettings? settings, out string? failure) && settings != null)
+            return settings;
 
-                    MigrateOldFlatPlaylist(settings);
-                    return settings;
-                }
-            }
-        }
-        catch
+        if (File.Exists(SettingsFilePath))
+            Logger.Warn($"Не удалось прочитать settings.json ({SettingsFilePath}): {failure ?? "неизвестная ошибка"}");
+
+        if (SettingsIntegrityService.TryLoadLatestRecoveryBackup(SettingsFilePath, out AppSettings? recovered) && recovered != null)
         {
-            // Повреждённый или недоступный файл настроек — просто используем значения по умолчанию
-            Logger.Warn($"Не удалось прочитать settings.json ({SettingsFilePath}) — используются значения по умолчанию");
+            Logger.Warn("Основной settings.json недоступен — восстановлено последнее корректное поколение резервной копии.");
+            return recovered;
         }
 
         return new AppSettings();
-    }
-
-    // Плейлисты, сохранённые старой версией плеера, хранились одним плоским списком путей.
-    // Заворачиваем их в единственную группу "Загруженные файлы", чтобы ничего не потерялось.
-    private static void MigrateOldFlatPlaylist(AppSettings settings)
-    {
-        if (settings.SavedPlaylistFolders.Count > 0) return;
-        if (settings.SavedPlaylist == null || settings.SavedPlaylist.Count == 0) return;
-
-        settings.SavedPlaylistFolders.Add(new SavedPlaylistFolder
-        {
-            DisplayName = "Загруженные файлы",
-            SourcePath = null,
-            IsEnabled = true,
-            Tracks = settings.SavedPlaylist.ToList()
-        });
-
-        settings.SavedPlaylist = null;
     }
 
     public static void Save(AppSettings settings)
@@ -568,44 +558,10 @@ public static class SettingsManager
         }
     }
 
-    private static void TryBackupUserData(string candidateJson)
-    {
-        try
-        {
-            using var document = JsonDocument.Parse(candidateJson);
-            var root = document.RootElement;
-
-            bool hasFolderTracks = root.TryGetProperty("SavedPlaylistFolders", out var folders) &&
-                folders.ValueKind == JsonValueKind.Array &&
-                folders.EnumerateArray().Any(folder =>
-                    folder.TryGetProperty("Tracks", out var tracks) && tracks.ValueKind == JsonValueKind.Array &&
-                    tracks.GetArrayLength() > 0);
-            bool hasLegacyTracks = root.TryGetProperty("SavedPlaylist", out var legacy) &&
-                legacy.ValueKind == JsonValueKind.Array && legacy.GetArrayLength() > 0;
-            bool hasFavorites = HasNonEmptyArray(root, "FavoriteTracks") || HasNonEmptyArray(root, "PinnedFavoriteTracks");
-            bool hasPlayCounts = root.TryGetProperty("PlayCounts", out var playCounts) &&
-                playCounts.ValueKind == JsonValueKind.Object && playCounts.EnumerateObject().Any();
-            bool hasListenTime = root.TryGetProperty("TotalListenSeconds", out var listenSeconds) &&
-                listenSeconds.ValueKind == JsonValueKind.Number && listenSeconds.GetDouble() > 0;
-            bool hasResumeState = root.TryGetProperty("LastTrackPath", out var lastTrack) &&
-                lastTrack.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(lastTrack.GetString());
-
-            if (!(hasFolderTracks || hasLegacyTracks || hasFavorites || hasPlayCounts || hasListenTime || hasResumeState))
-                return;
-
-            File.WriteAllText(UserDataRecoveryBackupPath, candidateJson);
-            // Совместимость с резервной копией, созданной предыдущей тестовой сборкой.
-            File.WriteAllText(PlaylistRecoveryBackupPath, candidateJson);
-        }
-        catch (Exception ex)
-        {
-            // Сохранение текущих настроек не должно блокироваться, если резервную копию
-            // нельзя обновить, но причина остаётся в логе для диагностики.
-            Logger.Warn($"Не удалось обновить резервную копию пользовательских данных: {ex.Message}");
-        }
-    }
-
-    private static bool HasNonEmptyArray(JsonElement root, string propertyName) =>
-        root.TryGetProperty(propertyName, out var value) &&
-        value.ValueKind == JsonValueKind.Array && value.GetArrayLength() > 0;
+    private static void TryBackupUserData(string candidateJson) =>
+        SettingsIntegrityService.CreateRecoveryBackups(
+            candidateJson,
+            SettingsFilePath,
+            UserDataRecoveryBackupPath,
+            PlaylistRecoveryBackupPath);
 }

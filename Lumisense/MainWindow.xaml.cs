@@ -37,8 +37,6 @@ public partial class MainWindow : FluentWindow
     // Поддерживаемые расширения — используются при сканировании папок
     private static readonly string[] SupportedExtensions = { ".mp3", ".wav", ".wma", ".flac", ".m4a", ".aac", ".ogg" };
 
-    private const string LooseFilesDisplayName = "Отдельные файлы";
-
     // AudioFileReader умеет читать mp3/wav/wma и сразу даёт регулировку громкости
     private AudioFileReader? _audioFile;
     private SoundTouchWaveStream? _tempoStream;
@@ -49,6 +47,7 @@ public partial class MainWindow : FluentWindow
     // аудиоустройства на уровне драйвера — отдельно от щелчка "холодного старта" эквалайзера,
     // который маскирует fade-in в LoadAndPlay.
     private WaveOutEvent? _outputDevice;
+    private bool _isOutputRecoveryInProgress;
 
     // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
     // громкость (AudioFileReader.Volume) применяется ДО эквалайзера, он только красит частоты.
@@ -250,6 +249,7 @@ public partial class MainWindow : FluentWindow
     private bool _isUserInteractingWithProgress;
     private bool _isSyncingProgressFromPlayback;
     private bool _isPlaying;
+    private TrackUserState _trackUserState = TrackUserState.NoTrack;
     private bool _isShuffleEnabled;
 
     // История треков, сыгранных в режиме шафла: "Вперёд" на новом месте генерирует
@@ -333,6 +333,10 @@ public partial class MainWindow : FluentWindow
     public event Action<double, double>? ProgressChanged;
     public event Action<bool>? PlaybackStateChanged;
 
+    // Единый независимый снимок для мини-плеера, Now Playing и будущих интеграций. Старые
+    // узкие события ниже сохраняются как совместимый фасад для уже существующих подписчиков.
+    public PlaybackStateStore PlaybackState { get; } = new();
+
     // Тоже только для мини-плеера — у него теперь своя кнопка повтора (см.
     // MiniPlayerWindow.RepeatButton_Click), и её вид должен оставаться в синхроне с основным
     // окном, чем бы режим ни переключили: этой кнопкой, кнопкой в основном окне или хоткеем.
@@ -350,8 +354,48 @@ public partial class MainWindow : FluentWindow
     // громкость 0..1, как в VolumeSlider.Value.
     public event Action<double>? VolumeChanged;
 
+    private void PublishPlaybackSnapshot()
+    {
+        PlaybackState.Publish(new PlaybackSnapshot(
+            _currentTrackPath,
+            TrackTitleText.Text,
+            TrackArtistText.Text,
+            _isPlaying,
+            CurrentPlaybackSeconds,
+            CurrentTrackDurationSeconds));
+    }
+
+    private void RaiseTrackInfoChanged(string title, string artist, Brush? artBrush)
+    {
+        PublishPlaybackSnapshot();
+        TrackInfoChanged?.Invoke(title, artist, artBrush);
+    }
+
+    private void RaiseProgressChanged(double currentSeconds, double totalSeconds)
+    {
+        PublishPlaybackSnapshot();
+        ProgressChanged?.Invoke(currentSeconds, totalSeconds);
+    }
+
+    private void RaisePlaybackStateChanged(bool isPlaying)
+    {
+        PublishPlaybackSnapshot();
+        PlaybackStateChanged?.Invoke(isPlaying);
+    }
+
     public bool IsMiniMode => _isMiniMode;
     public AppSettings Settings => _settings;
+
+    // Применяет изменённый масштаб/режим движения к уже открытым окнам, не создавая новых
+    // экземпляров и не меняя состояние воспроизведения.
+    public void ApplyAccessibilityPreferences()
+    {
+        AccessibilityPreferences.ApplyToWindow(this, _settings);
+        _settingsWindow?.ApplyAccessibilityPreferences();
+        _miniPlayerWindow?.ApplyAccessibilityPreferences();
+        _nowPlayingWindow?.ApplyAccessibilityPreferences();
+    }
+
     public string CurrentTitle => TrackTitleText.Text;
     public string CurrentArtist => TrackArtistText.Text;
     public Brush? CurrentArtBrush => AlbumArtIcon.Visibility == Visibility.Visible ? null : AlbumArtBorder.Background;
@@ -414,9 +458,11 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         InitializeComponent();
+        AccessibilityPreferences.ApplyToWindow(this, _settings);
         LyricsPanelSyncedList.ItemsSource = _mainWindowSyncedLyrics;
         LocalizationService.Initialize(_settings, _isFirstLaunch);
         LocalizationService.Apply(this);
+        SetTrackUserState(TrackUserState.NoTrack);
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
         ConfigureSystemTitleBarActions();
         // В этот момент ValueChanged от XAML уже мог сработать, но был проигнорирован до
@@ -471,6 +517,7 @@ public partial class MainWindow : FluentWindow
         foreach (PlaylistFolder folder in _folders)
             folder.RefreshLocalizedSubtitle();
         _favoritesFolder.RefreshLocalizedSubtitle();
+        UpdateTrackUserStatePresentation();
     }
 
     // Первое применение акцента в ApplySettingsOnStartup происходит в конструкторе, до Show()
@@ -803,7 +850,8 @@ public partial class MainWindow : FluentWindow
             bool resumePlayback = _settings.WasPlayingOnClose && !_settings.NeverAutoPlayLastTrackOnStartup;
             LoadAndPlay(_settings.LastTrackPath, autoPlay: resumePlayback,
                 startPosition: TimeSpan.FromSeconds(Math.Max(_settings.LastPositionSeconds, 0)),
-                albumArtDirection: AlbumArtTransitionDirection.None);
+                albumArtDirection: AlbumArtTransitionDirection.None,
+                changeOrigin: TrackChangeOrigin.SessionRestore);
         }
         catch (Exception ex)
         {
@@ -2760,7 +2808,12 @@ public partial class MainWindow : FluentWindow
         var looseFolder = _folders.FirstOrDefault(f => f.IsLooseFilesBucket);
         if (looseFolder == null)
         {
-            looseFolder = new PlaylistFolder { SourcePath = null, DisplayName = LooseFilesDisplayName, IsLooseFilesBucket = true };
+            looseFolder = new PlaylistFolder
+            {
+                SourcePath = null,
+                DisplayName = LocalizationService.Get(LocalizationKey.PlaylistLooseFiles),
+                IsLooseFilesBucket = true
+            };
             _folders.Add(looseFolder);
         }
 
@@ -2900,7 +2953,7 @@ public partial class MainWindow : FluentWindow
             _currentTrackPath, _currentTrackTaggedArtist, _currentTrackTaggedTitle, "—");
         SetTrackInfoText(metadata.Title, metadata.Artist);
         _nowPlaying?.UpdateTrackInfo(metadata.Title, metadata.Artist);
-        TrackInfoChanged?.Invoke(metadata.Title, metadata.Artist, CurrentArtBrush);
+        RaiseTrackInfoChanged(metadata.Title, metadata.Artist, CurrentArtBrush);
     }
 
     private void ApplyNormalizedTrackPaths(IReadOnlyDictionary<string, string> renamedPaths)
@@ -3004,10 +3057,11 @@ public partial class MainWindow : FluentWindow
 
         TrackTitleText.Text = LocalizationService.Translate("Файл не выбран");
         TrackArtistText.Text = "—";
+        SetTrackUserState(TrackUserState.NoTrack);
         TotalTimeText.Text = "00:00";
         ResetAlbumArtPlaceholder();
 
-        TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
+        RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
     }
 
     // Полный пересбор списка при каждом изменении _folders — дёшево благодаря виртуализации
@@ -3645,7 +3699,7 @@ public partial class MainWindow : FluentWindow
         {
             LoadAlbumArt(filePath);
             _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
-            TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
+            RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
         }
     }
 
@@ -3785,7 +3839,8 @@ public partial class MainWindow : FluentWindow
             // пользовательский трек всё ещё существует. Возвращаем его на прежнюю позицию,
             // чтобы не превращать временную ошибку корзины/прав доступа в потерю воспроизведения.
             if (isCurrentlyLoaded && File.Exists(filePath))
-                LoadAndPlay(filePath, autoPlay: wasPlaying, startPosition: previousPosition);
+                LoadAndPlay(filePath, autoPlay: wasPlaying, startPosition: previousPosition,
+                    changeOrigin: TrackChangeOrigin.ExternalEdit);
 
             LocalizedMessageBox.Show(ownerWindow, $"Не удалось удалить файл:\n{filePath}\n\n{ex.Message}",
                 "Ошибка удаления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
@@ -3809,13 +3864,14 @@ public partial class MainWindow : FluentWindow
         // сохраняя состояние "играло/было на паузе", а не просто останавливаемся на месте
         // удалённого трека.
         if (nextPath != null)
-            LoadAndPlay(nextPath, autoPlay: wasPlaying);
+            LoadAndPlay(nextPath, autoPlay: wasPlaying, changeOrigin: TrackChangeOrigin.Automatic);
     }
 
     // ---------- Загрузка и воспроизведение ----------
 
     private async void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
-        AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next)
+        AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next,
+        TrackChangeOrigin changeOrigin = TrackChangeOrigin.User)
     {
         var previousLoad = Interlocked.Exchange(ref _trackLoadCts, null);
         previousLoad?.Cancel();
@@ -3826,10 +3882,13 @@ public partial class MainWindow : FluentWindow
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
         _trackLoadCts = cts;
         PreparedTrack? prepared = null;
+        var performance = new TrackLoadPerformanceMeasurement();
 
         try
         {
+            SetTrackUserState(TrackUserState.Loading);
             await FadeOutBeforeTrackChangeAsync(cts.Token);
+            performance.MarkStage("fade-out");
             if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
                 return;
 
@@ -3841,6 +3900,7 @@ public partial class MainWindow : FluentWindow
         double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
         prepared = await PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
             equalizerEnabled, equalizerGains, playbackSpeed, playbackPitch, cts.Token);
+            performance.MarkStage("prepare-audio-and-metadata");
 
             cts.Token.ThrowIfCancellationRequested();
             if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
@@ -3864,6 +3924,7 @@ public partial class MainWindow : FluentWindow
             _currentTrackPath = filePath;
             _halfPlayCounted = false;
             ApplyPreparedAlbumArt(loaded, albumArtDirection);
+            performance.MarkStage("apply-track-ui");
 
             if (_settings.ProgressBarStyle == "Waveform")
                 FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
@@ -3878,8 +3939,8 @@ public partial class MainWindow : FluentWindow
                 ? position.TotalSeconds / _audioFile.TotalTime.TotalSeconds
                 : 0;
             _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
-            TrackInfoChanged?.Invoke(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
-            ProgressChanged?.Invoke(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+            RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
+            RaiseProgressChanged(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
 
             // Панель текста не выполняет работу в фоне, пока скрыта. Если пользователь уже
             // открыл её, новая композиция сразу отменяет предыдущий запрос и загружает свой
@@ -3891,9 +3952,9 @@ public partial class MainWindow : FluentWindow
             var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
             fadeIn.BeginFadeIn(70);
             _activeFade = fadeIn;
-            _outputDevice ??= new WaveOutEvent();
-            _outputDevice.Init(fadeIn);
-            _outputDevice.PlaybackStopped += OutputDevice_PlaybackStopped;
+            InitializeOutputDevice(fadeIn);
+            performance.MarkStage("initialize-output");
+            _outputDevice!.PlaybackStopped += OutputDevice_PlaybackStopped;
             ReapplySavedPlaybackRateAfterTrackReady(generation);
             if (autoPlay)
             {
@@ -3903,21 +3964,24 @@ public partial class MainWindow : FluentWindow
                 _progressTimer.Start();
                 _playbackClock.Start();
                 _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
-                PlaybackStateChanged?.Invoke(true);
+                RaisePlaybackStateChanged(true);
             }
             else
             {
                 _isPlaying = false;
                 PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
                 _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
-                PlaybackStateChanged?.Invoke(false);
+                RaisePlaybackStateChanged(false);
             }
 
-            // Уведомление сообщает о смене текущего трека, а не о начале воспроизведения.
-            // Поэтому его нужно показать и при выборе/загрузке трека на паузе: метаданные и
-            // обложка уже готовы, а пользователь должен видеть, что именно было выбрано.
-            ShowTrackChangeToast();
+            SetTrackUserState(autoPlay ? TrackUserState.Playing : TrackUserState.Paused);
+
+            // Причина и факт запуска передаются политике уведомлений явно: так автопереход,
+            // выбор трека на паузе и восстановление сессии не маскируются друг под друга.
+            ShowTrackChangeToast(changeOrigin, autoPlay);
             ScrollPlaylistToCurrentTrack();
+            performance.MarkStage("ready");
+            performance.Complete(succeeded: true);
         }
         catch (OperationCanceledException)
         {
@@ -3925,6 +3989,8 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
+            performance.MarkStage("failed");
+            performance.Complete(succeeded: false);
             StopPlayback();
             _outputDevice?.Dispose();
             _outputDevice = null;
@@ -3933,10 +3999,9 @@ public partial class MainWindow : FluentWindow
             SetTrackInfoText("Файл не выбран", "—");
             TotalTimeText.Text = "00:00";
             ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
-            Logger.Error($"Не удалось открыть аудиофайл: {filePath}", ex);
+            SetTrackUserState(TrackUserState.Error);
             if (!_isExiting)
-                LocalizedMessageBox.Show(this, $"Не удалось открыть файл:\n{filePath}\n\n{ex.Message}",
-                    "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                PlaybackErrorExperience.Show(this, filePath, ex);
         }
         finally
         {
@@ -4116,6 +4181,29 @@ public partial class MainWindow : FluentWindow
         TrackArtistText.Text = artist;
     }
 
+    private void SetTrackUserState(TrackUserState state)
+    {
+        _trackUserState = state;
+        UpdateTrackUserStatePresentation();
+    }
+
+    private void UpdateTrackUserStatePresentation()
+    {
+        (string textKey, string hintKey) = _trackUserState switch
+        {
+            TrackUserState.Loading => (LocalizationKey.TrackStateLoading, LocalizationKey.TrackStateLoadingHint),
+            TrackUserState.Playing => (LocalizationKey.TrackStatePlaying, LocalizationKey.TrackStatePlayingHint),
+            TrackUserState.Paused => (LocalizationKey.TrackStatePaused, LocalizationKey.TrackStatePausedHint),
+            TrackUserState.Stopped => (LocalizationKey.TrackStateStopped, LocalizationKey.TrackStateStoppedHint),
+            TrackUserState.Error => (LocalizationKey.TrackStateError, LocalizationKey.TrackStateErrorHint),
+            _ => (LocalizationKey.TrackStateNoTrack, LocalizationKey.TrackStateNoTrackHint)
+        };
+
+        TrackStateText.Text = LocalizationService.Get(textKey);
+        TrackStateText.ToolTip = LocalizationService.Get(hintKey);
+        TrackStateBadge.Opacity = _trackUserState == TrackUserState.Error ? 1.0 : 0.82;
+    }
+
     private void ApplyPreparedAlbumArt(PreparedTrack loaded, AlbumArtTransitionDirection direction)
     {
         if (loaded.AlbumArt is not null)
@@ -4213,7 +4301,8 @@ public partial class MainWindow : FluentWindow
     // в настройках и т.п.).
     private void AnimateAlbumArtTransition(AlbumArtTransitionDirection direction, Action applyNewArt)
     {
-        if (direction == AlbumArtTransitionDirection.None || !_settings.AlbumArtTransitionEnabled || !IsLoaded)
+        if (direction == AlbumArtTransitionDirection.None || !_settings.AlbumArtTransitionEnabled ||
+            AccessibilityPreferences.ShouldReduceMotion(_settings) || !IsLoaded)
         {
             applyNewArt();
             return;
@@ -4285,6 +4374,7 @@ public partial class MainWindow : FluentWindow
         // следующего трека.
         int generation = Volatile.Read(ref _trackLoadGeneration);
         string? stoppedPath = _currentTrackPath;
+        Exception? playbackError = e.Exception;
         if (_isExiting || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
 
         try
@@ -4296,6 +4386,12 @@ public partial class MainWindow : FluentWindow
                     if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) ||
                         !string.Equals(stoppedPath, _currentTrackPath, StringComparison.Ordinal))
                         return;
+
+                    if (playbackError is not null)
+                    {
+                        RecoverOutputDeviceAfterFailure(playbackError, resumePlayback: _isPlaying);
+                        return;
+                    }
 
                     if (_audioFile != null && _audioFile.TotalTime - _audioFile.CurrentTime <= TimeSpan.FromMilliseconds(750))
                         HandleTrackFinishedNaturally();
@@ -4325,11 +4421,11 @@ public partial class MainWindow : FluentWindow
         {
             case RepeatMode.One:
                 // Повторяем тот же самый трек с начала
-                LoadAndPlay(currentPath);
+                LoadAndPlay(currentPath, changeOrigin: TrackChangeOrigin.Automatic);
                 break;
 
             case RepeatMode.All:
-                PlayNextTrack();
+                PlayNextTrack(TrackChangeOrigin.Automatic);
                 break;
 
             case RepeatMode.Off:
@@ -4342,7 +4438,7 @@ public partial class MainWindow : FluentWindow
                 if (isLastTrack)
                     StopPlayback();
                 else
-                    PlayNextTrack();
+                    PlayNextTrack(TrackChangeOrigin.Automatic);
                 break;
         }
     }
@@ -4374,18 +4470,18 @@ public partial class MainWindow : FluentWindow
             catch (Exception ex)
             {
                 // Устройство вывода могло исчезнуть прямо во время работы (наушники/колонки
-                // отключили, драйвер упал) — такие ошибки NAudio не редкость, и раньше
-                // необработанное исключение здесь прямо из обработчика клика по кнопке
-                // приводило к падению всего плеера. Логируем и продолжаем — состояние UI
-                // (иконка, таймер) всё равно переключаем ниже, даже если сама пауза на
-                // устройстве не удалась.
-                Logger.Error("Не удалось поставить воспроизведение на паузу", ex);
+                // отключили, драйвер упал). Не выдаём желаемое состояние «На паузе» за факт:
+                // аудио могло продолжить играть, поэтому оставляем существующий playback state
+                // и показываем понятную ошибку с подсказкой в индикаторе трека.
+                RecoverOutputDeviceAfterFailure(ex, resumePlayback: true);
+                return;
             }
 
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
             StopProgressTimerAndAnimation();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
-            PlaybackStateChanged?.Invoke(false);
+            RaisePlaybackStateChanged(false);
+            SetTrackUserState(TrackUserState.Paused);
 
             // На паузе часто и надолго оставляют трек, не закрывая плеер вовсе — сохраняем
             // позицию сразу же, а не ждём следующего реального закрытия (см. PersistPlaybackAndPlaylistState).
@@ -4401,16 +4497,7 @@ public partial class MainWindow : FluentWindow
             {
                 // См. комментарий у Pause() выше — та же защита от падения из-за проблем с
                 // самим устройством вывода, а не с плеером как таковым.
-                Logger.Error("Не удалось запустить воспроизведение", ex);
-                StopPlayback();
-                DisposeOutputDeviceSafely();
-                _currentTrackPath = null;
-                _replayGainFactor = 1.0;
-                ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
-                if (!_isExiting)
-                    LocalizedMessageBox.Show(this,
-                        $"Не удалось запустить воспроизведение — возможно, устройство вывода звука недоступно.\n\n{ex.Message}",
-                        "Ошибка воспроизведения", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                RecoverOutputDeviceAfterFailure(ex, resumePlayback: true);
                 return;
             }
 
@@ -4418,7 +4505,8 @@ public partial class MainWindow : FluentWindow
             _progressTimer.Start();
             _playbackClock.Start();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
-            PlaybackStateChanged?.Invoke(true);
+            RaisePlaybackStateChanged(true);
+            SetTrackUserState(TrackUserState.Playing);
         }
         _isPlaying = !_isPlaying;
     }
@@ -4444,6 +4532,98 @@ public partial class MainWindow : FluentWindow
         }
 
         StopPlayback(disposeOnly: true);
+    }
+
+    private void InitializeOutputDevice(ISampleProvider waveProvider)
+    {
+        EnsureOutputDevice();
+        try
+        {
+            _outputDevice!.Init(waveProvider);
+        }
+        catch (Exception ex) when (!string.IsNullOrWhiteSpace(_settings.OutputDeviceName))
+        {
+            // Сохранённое устройство всё ещё могло присутствовать в WaveOut-списке, но уже
+            // отказаться открываться (например, Bluetooth гарнитура отключилась между
+            // перечислением и Init). Однократно пробуем системный audio mapper.
+            Logger.Error("Не удалось инициализировать выбранное устройство вывода; используется системное устройство", ex);
+            DisposeOutputDeviceSafely();
+            _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
+            _ = SettingsManager.SaveAsync(_settings);
+            _settingsWindow?.RefreshOutputDeviceSelection();
+            EnsureOutputDevice();
+            _outputDevice!.Init(waveProvider);
+        }
+    }
+
+    private void EnsureOutputDevice()
+    {
+        if (_outputDevice is not null) return;
+
+        int deviceNumber = AudioOutputDeviceService.ResolveDeviceNumber(_settings.OutputDeviceName, out bool usedFallback);
+        if (usedFallback)
+        {
+            Logger.Warn($"Выбранное устройство вывода недоступно: {_settings.OutputDeviceName}. Используется системное устройство Windows.");
+            _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
+            _ = SettingsManager.SaveAsync(_settings);
+            _settingsWindow?.RefreshOutputDeviceSelection();
+        }
+
+        _outputDevice = new WaveOutEvent { DeviceNumber = deviceNumber };
+    }
+
+    // Вызывается из SettingsWindow сразу после выбора устройства. Если трек уже загружен,
+    // сохраняем позицию/состояние, создаём новый вывод и возвращаемся к тому же месту.
+    public void ApplyOutputDeviceSelection()
+    {
+        if (_isExiting) return;
+
+        string? currentPath = _currentTrackPath;
+        TimeSpan position = _audioFile?.CurrentTime ?? TimeSpan.Zero;
+        bool wasPlaying = _isPlaying;
+        StopPlayback(disposeOnly: true);
+        DisposeOutputDeviceSafely();
+
+        if (!string.IsNullOrWhiteSpace(currentPath) && File.Exists(currentPath))
+        {
+            LoadAndPlay(currentPath, autoPlay: wasPlaying, startPosition: position,
+                changeOrigin: TrackChangeOrigin.Automatic);
+        }
+    }
+
+    // Устройство могло исчезнуть в процессе Play/Pause или прислать PlaybackStopped с ошибкой.
+    // Один controlled retry через Windows audio mapper лучше, чем повторные сообщения об ошибке:
+    // при отключении USB/Bluetooth это обычно уже новое системное устройство Windows.
+    private void RecoverOutputDeviceAfterFailure(Exception error, bool resumePlayback)
+    {
+        Logger.Error("Ошибка устройства вывода; выполняется восстановление через системное устройство", error);
+        if (_isOutputRecoveryInProgress || _isExiting) return;
+
+        string? currentPath = _currentTrackPath;
+        TimeSpan position = _audioFile?.CurrentTime ?? TimeSpan.Zero;
+        if (string.IsNullOrWhiteSpace(currentPath) || !File.Exists(currentPath))
+        {
+            StopPlayback();
+            DisposeOutputDeviceSafely();
+            SetTrackUserState(TrackUserState.Error);
+            return;
+        }
+
+        _isOutputRecoveryInProgress = true;
+        try
+        {
+            StopPlayback(disposeOnly: true);
+            DisposeOutputDeviceSafely();
+            _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
+            _ = SettingsManager.SaveAsync(_settings);
+            _settingsWindow?.RefreshOutputDeviceSelection();
+            LoadAndPlay(currentPath, autoPlay: resumePlayback, startPosition: position,
+                changeOrigin: TrackChangeOrigin.Automatic);
+        }
+        finally
+        {
+            _isOutputRecoveryInProgress = false;
+        }
     }
 
     private void DisposeOutputDeviceSafely()
@@ -4481,7 +4661,8 @@ public partial class MainWindow : FluentWindow
 
     public void ResumeAfterExternalWrite(string filePath, (TimeSpan Position, bool WasPlaying) snapshot)
     {
-        LoadAndPlay(filePath, autoPlay: snapshot.WasPlaying, startPosition: snapshot.Position);
+        LoadAndPlay(filePath, autoPlay: snapshot.WasPlaying, startPosition: snapshot.Position,
+            changeOrigin: TrackChangeOrigin.ExternalEdit);
     }
 
     private void StopPlayback(bool disposeOnly = false)
@@ -4531,8 +4712,9 @@ public partial class MainWindow : FluentWindow
             ProgressWaveform.Peaks = null;
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Stopped);
-            PlaybackStateChanged?.Invoke(false);
+            RaisePlaybackStateChanged(false);
             _discordRichPresence.ClearAndDispose();
+            SetTrackUserState(TrackUserState.Stopped);
         }
     }
 
@@ -4544,10 +4726,10 @@ public partial class MainWindow : FluentWindow
 
     private void NextButton_Click(object sender, RoutedEventArgs e) => PlayNextTrack();
 
-    private void PlayNextTrack()
+    private void PlayNextTrack(TrackChangeOrigin changeOrigin = TrackChangeOrigin.User)
     {
         if (ComputeNextTrackPath(GetCurrentTrackPath()) is { } nextPath)
-            LoadAndPlay(nextPath, autoPlay: _isPlaying);
+            LoadAndPlay(nextPath, autoPlay: _isPlaying, changeOrigin: changeOrigin);
     }
 
     // Чистое вычисление пути к следующему/предыдущему треку — без загрузки и воспроизведения.
@@ -4862,6 +5044,7 @@ public partial class MainWindow : FluentWindow
         FlushPlaybackClock();
         StopPlayback();
 
+        StopFolderWatchers();
         _folders.Clear();
         _favoritesFolder.Tracks.Clear();
         FavoritesManager.Reset();
@@ -4885,11 +5068,58 @@ public partial class MainWindow : FluentWindow
         ResetShuffleState();
         _replayGainFactor = 1.0;
         SetTrackInfoText("Файл не выбран", "—");
+        SetTrackUserState(TrackUserState.NoTrack);
         TotalTimeText.Text = "00:00";
         ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
         RefreshPlaylistView();
         if (_isFavoritesView) RefreshFavoritesTrackList();
+        StartFolderWatchers();
         SettingsManager.Save(_settings);
+    }
+
+    // Возвращает последний полный снимок, созданный перед явным сбросом. Здесь восстанавливаем
+    // не только AppSettings, но и runtime-коллекции, которые при полном сбросе уже были очищены.
+    // Сохранённый трек загружается на паузе: возврат настроек не должен внезапно начать музыку.
+    public bool TryRestoreLastSettingsReset()
+    {
+        if (!SettingsResetRecoveryService.TryRestoreLatest(_settings)) return false;
+
+        FlushPlaybackClock();
+        StopPlayback();
+        StopFolderWatchers();
+        _folders.Clear();
+        _favoritesFolder.Tracks.Clear();
+        FavoritesManager.Initialize(_settings.FavoriteTracks, _settings.PinnedFavoriteTracks);
+        FavoritesChangeNotifier.Instance.Bump();
+        PlayCountManager.Initialize(_settings.PlayCounts);
+
+        _currentTrackPath = null;
+        ResetShuffleState();
+        _replayGainFactor = 1.0;
+        SetTrackInfoText("Файл не выбран", "—");
+        SetTrackUserState(TrackUserState.NoTrack);
+        TotalTimeText.Text = "00:00";
+        ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
+
+        SetShuffleEnabled(_settings.IsShuffleEnabled, resetSessionHistory: false);
+        RepeatMode restoredRepeatMode = Enum.TryParse(_settings.RepeatMode, ignoreCase: true, out RepeatMode parsedRepeatMode)
+            ? parsedRepeatMode
+            : RepeatMode.Off;
+        SetRepeatMode(restoredRepeatMode);
+
+        // RestoreSavedPlaylistAsync выполняет построение списка синхронно и только проверку
+        // файлов продолжает в фоне. Временно выключаем resume, чтобы возврат был предсказуемым.
+        bool wasPlayingOnClose = _settings.WasPlayingOnClose;
+        _settings.WasPlayingOnClose = false;
+        _playlistRestoreCompleted = false;
+        RestoreSavedPlaylistAsync();
+        _settings.WasPlayingOnClose = wasPlayingOnClose;
+
+        if (_isFavoritesView) RefreshFavoritesTrackList();
+        ApplyImportedSettingsLive();
+        ApplyAccessibilityPreferences();
+        SettingsManager.Save(_settings);
+        return true;
     }
 
     public void ResetShuffleState()
@@ -5163,20 +5393,26 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.ApplyInfoModeLive();
     }
 
-    // Всплывающее уведомление о смене трека (см. AppSettings.ShowTrackChangeToast и
-    // TrackChangeToastWindow) — вызывается только из ветки autoPlay в LoadAndPlay, то есть
-    // на реальный старт воспроизведения нового трека, а не на обычное возобновление после
-    // паузы (PlayPauseButton_Click не вызывает LoadAndPlay вовсе) и не на восстановление
-    // последнего трека на паузе при запуске приложения (autoPlay=false).
-    private void ShowTrackChangeToast()
+    // Всплывающая карточка показывается только после готовности метаданных и обложки. Решение
+    // принимает явная политика: каждый новый трек, только фактический старт или лишь ручной
+    // выбор/переключение. Возобновление той же композиции не вызывает этот метод вообще.
+    private void ShowTrackChangeToast(TrackChangeOrigin origin, bool autoPlay)
     {
-        if (!_settings.ShowTrackChangeToast) return;
+        if (!_settings.ShowTrackChangeToast || !ShouldShowTrackChangeToast(origin, autoPlay)) return;
 
         _trackChangeToastWindow ??= new TrackChangeToastWindow();
         _trackChangeToastWindow.ShowToast(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
             _settings.IsLightThemeResolved(), ResolveToastScreen(),
             _settings.TrackChangeToastPosition, _settings.TrackChangeToastSize, _settings.TrackChangeToastWidth);
     }
+
+    private bool ShouldShowTrackChangeToast(TrackChangeOrigin origin, bool autoPlay) =>
+        _settings.TrackChangeToastPolicy switch
+        {
+            "PlaybackOnly" => autoPlay,
+            "ManualOnly" => origin == TrackChangeOrigin.User,
+            _ => true // EveryTrackChange
+        };
 
     // Монитор для всплывающего уведомления (см. AppSettings.TrackChangeToastMonitor) — если
     // выбран конкретный и он всё ещё подключён, используем его; иначе (пусто, либо сохранённый
@@ -5552,7 +5788,7 @@ public partial class MainWindow : FluentWindow
         _audioFile.CurrentTime = newTime;
         ProgressSlider.Value = newTime.TotalSeconds;
         CurrentTimeText.Text = newTime.ToString(@"mm\:ss");
-        ProgressChanged?.Invoke(newTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+        RaiseProgressChanged(newTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
     }
 
     // Прокрутка колесом мыши над прогресс-баром — перемотка с тем же шагом, что и хоткеи
@@ -5640,7 +5876,7 @@ public partial class MainWindow : FluentWindow
         SetProgressSliderValue(_audioFile.CurrentTime.TotalSeconds);
 
         CurrentTimeText.Text = _audioFile.CurrentTime.ToString(@"mm\:ss");
-        ProgressChanged?.Invoke(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+        RaiseProgressChanged(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
         UpdateMainWindowSyncedLyrics(_audioFile.CurrentTime);
 
         // Статистика (см. StatisticsWindow) — суммарное время реального воспроизведения.
@@ -6024,7 +6260,7 @@ public partial class MainWindow : FluentWindow
         {
             _settings.SavedPlaylistFolders = _folders.Select(f => new SavedPlaylistFolder
             {
-                DisplayName = f.DisplayName,
+                DisplayName = f.PersistedDisplayName,
                 SourcePath = f.SourcePath,
                 IsEnabled = f.IsEnabled,
                 IsExpanded = f.IsExpanded,

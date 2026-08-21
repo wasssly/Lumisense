@@ -70,7 +70,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             if (!inCodeBlock && trimmed.StartsWith("[!IMPORTANT]", StringComparison.OrdinalIgnoreCase))
             {
                 AddBlankLineBeforeSection(lines);
-                lines.Add(LocalizationService.Translate("Важно:"));
+                lines.Add(LocalizationService.Get(LocalizationKey.UpdateImportant));
                 continue;
             }
 

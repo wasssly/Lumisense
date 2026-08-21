@@ -60,11 +60,11 @@ public partial class ChangelogWindow : FluentWindow
         Loaded -= ChangelogWindow_Loaded;
         _releaseAvailabilityCts = new System.Threading.CancellationTokenSource();
 
-        var (releases, _) = await UpdateChecker.GetAllReleasesAsync(_releaseAvailabilityCts.Token);
+        ReleaseListResult releaseResult = await UpdateChecker.GetAllReleasesAsync(_releaseAvailabilityCts.Token);
         if (_isClosed || _releaseAvailabilityCts.IsCancellationRequested)
             return;
 
-        _githubReleaseUrls = releases
+        _githubReleaseUrls = releaseResult.Releases
             .Where(release =>
                 !string.IsNullOrWhiteSpace(release.Version) &&
                 !string.IsNullOrWhiteSpace(release.ReleaseNotesUrl) &&

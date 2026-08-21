@@ -48,6 +48,7 @@ public static class LumiProfileIO
         clone.SavedPlaylistFolders = new List<SavedPlaylistFolder>();
         clone.SavedPlaylist = null;
         clone.FavoriteTracks = new List<string>();
+        clone.PinnedFavoriteTracks = new List<string>();
         clone.LastTrackPath = null;
         clone.LastPositionSeconds = 0;
         clone.WasPlayingOnClose = false;
@@ -86,11 +87,24 @@ public static class LumiProfileIO
             (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkStyle?.Length ?? 0) > 32 ||
+            (settings.OutputDeviceName?.Length ?? 0) > 128 ||
+            (settings.LyricsSearchPolicy?.Length ?? 0) > 32 ||
+            (settings.TrackChangeToastPolicy?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkProgressColorMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkProgressColorHex?.Length ?? 0) > 32 ||
             (settings.FileNameNormalizationTemplate?.Length ?? 0) > 180)
             return false;
 
+        if (settings.TrackChangeToastPolicy is not "EveryTrackChange" and not "PlaybackOnly" and not "ManualOnly")
+            return false;
+        if (settings.LyricsSearchPolicy is not "LocalOnly" and not "AutoExact" and not "ManualOnly")
+            return false;
+        if (!double.IsFinite(settings.InterfaceScale) || settings.InterfaceScale < AccessibilityPreferences.MinimumInterfaceScale ||
+            settings.InterfaceScale > AccessibilityPreferences.MaximumInterfaceScale)
+            return false;
+        if (!double.IsFinite(settings.SyncedLyricsFontSize) || settings.SyncedLyricsFontSize < 11 || settings.SyncedLyricsFontSize > 28 ||
+            (settings.SyncedLyricsHighlightEffect?.Length ?? 0) > 32)
+            return false;
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
             return false;
         if (!double.IsFinite(settings.PlaybackPitchSemitones) || settings.PlaybackPitchSemitones < -12.0 || settings.PlaybackPitchSemitones > 12.0)
@@ -130,6 +144,10 @@ public static class LumiProfileIO
         target.Language = source.Language;
         target.AccentColorMode = source.AccentColorMode;
         target.AccentColorHex = source.AccentColorHex;
+        target.InterfaceScale = source.InterfaceScale;
+        target.ReduceMotion = source.ReduceMotion;
+        target.SyncedLyricsFontSize = source.SyncedLyricsFontSize;
+        target.SyncedLyricsHighlightEffect = source.SyncedLyricsHighlightEffect;
         target.CoverBaseFromCover = source.CoverBaseFromCover;
         target.WindowBackdropType = source.WindowBackdropType;
         target.ProgressBarStyle = source.ProgressBarStyle;
@@ -159,7 +177,10 @@ public static class LumiProfileIO
         target.MiniPlayerSnapToEdges = source.MiniPlayerSnapToEdges;
         target.MiniPlayerSecondaryButton = source.MiniPlayerSecondaryButton;
         target.MiniPlayerInfoMode = source.MiniPlayerInfoMode;
+        target.OutputDeviceName = source.OutputDeviceName;
+        target.LyricsSearchPolicy = source.LyricsSearchPolicy;
         target.ShowTrackChangeToast = source.ShowTrackChangeToast;
+        target.TrackChangeToastPolicy = source.TrackChangeToastPolicy;
         target.TrackChangeToastPosition = source.TrackChangeToastPosition;
         target.TrackChangeToastMonitor = source.TrackChangeToastMonitor;
         target.TrackChangeToastSize = source.TrackChangeToastSize;

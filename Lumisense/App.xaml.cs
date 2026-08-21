@@ -75,31 +75,43 @@ public partial class App : Application
             Logger.Error("Необработанное исключение (AppDomain, приложение сейчас завершится)",
                 args.ExceptionObject as Exception);
 
-        // В отличие от AppDomain.UnhandledException выше (после него процесс так или иначе
-        // завершается — CLR ловит это только для протоколирования, помешать выходу нельзя),
-        // здесь можно предотвратить падение целиком: большинство таких исключений — это
-        // необработанная ошибка в одном конкретном обработчике события UI-потока (клик по
-        // кнопке, таймер и т.п.), а не повреждённое состояние всего процесса. Логируем,
-        // сообщаем пользователю, что что-то пошло не так, и e.Handled = true — плеер
-        // продолжает работать дальше, вместо гарантированного падения на ровном месте.
+        // DispatcherUnhandledException позволяет предотвратить падение UI, но делать это для
+        // ЛЮБОЙ ошибки небезопасно: неизвестное исключение может оставить аудио-цепочку или
+        // визуальное дерево в повреждённом состоянии. Продолжаем работу только для ограниченного
+        // набора ожидаемых локальных ошибок; для остальных даём WPF корректно завершить процесс.
         DispatcherUnhandledException += (_, args) =>
         {
-            Logger.Error("Необработанное исключение в UI-потоке", args.Exception);
+            UiExceptionRecoveryAction action = UiExceptionRecoveryPolicy.Classify(args.Exception);
+            Logger.Error($"Необработанное исключение в UI-потоке; действие: {action}", args.Exception);
+
+            if (action == UiExceptionRecoveryAction.Ignore)
+            {
+                args.Handled = true;
+                return;
+            }
 
             try
             {
+                if (action == UiExceptionRecoveryAction.Continue)
+                {
+                    LocalizedMessageBox.Show(
+                        $"Что-то пошло не так, но плеер попробует продолжить работу.\n\nПодробности сохранены в лог-файл, его можно найти в настройках (страница \"Обновления\") или в папке %AppData%\\Lumisense\\logs.\n\n{args.Exception.Message}",
+                        "Lumisense — внутренняя ошибка",
+                        System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    args.Handled = true;
+                    return;
+                }
+
                 LocalizedMessageBox.Show(
-                    $"Что-то пошло не так, но плеер попробует продолжить работу.\n\nПодробности сохранены в лог-файл, его можно найти в настройках (страница \"Обновления\") или в папке %AppData%\\Lumisense\\logs.\n\n{args.Exception.Message}",
-                    "Lumisense — внутренняя ошибка",
-                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    $"В Lumisense произошла непредвиденная ошибка. Чтобы защитить данные и состояние воспроизведения, приложение будет закрыто.\n\nПодробности сохранены в лог-файл, его можно найти в папке %AppData%\\Lumisense\\logs.\n\n{args.Exception.Message}",
+                    "Lumisense — критическая ошибка",
+                    System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
             catch
             {
-                // Если даже показать MessageBox не удалось (сама WPF-подсистема в нерабочем
-                // состоянии) — по крайней мере в лог оно уже записано строкой выше.
+                // Если даже показать сообщение не удалось, WPF всё равно завершит приложение:
+                // args.Handled намеренно остаётся false для неизвестного критического состояния.
             }
-
-            args.Handled = true;
         };
 
         // В дополнение к двум обработчикам выше — исключения из "забытых" async-задач

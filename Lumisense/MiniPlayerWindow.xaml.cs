@@ -94,9 +94,9 @@ public partial class MiniPlayerWindow : Window
         InitializeComponent();
 
         _mainWindow = mainWindow;
+        ApplyAccessibilityPreferences();
         _mainWindow.TrackInfoChanged += OnTrackInfoChanged;
-        _mainWindow.ProgressChanged += OnProgressChanged;
-        _mainWindow.PlaybackStateChanged += OnPlaybackStateChanged;
+        _mainWindow.PlaybackState.Changed += OnPlaybackSnapshotChanged;
         _mainWindow.VolumeChanged += OnVolumeChanged;
         _mainWindow.RepeatModeChanged += OnRepeatModeChanged;
         _mainWindow.ShuffleStateChanged += OnShuffleStateChanged;
@@ -108,9 +108,9 @@ public partial class MiniPlayerWindow : Window
         ApplyArtworkProgressColor();
         ApplyArtworkStyle();
 
-        // Сразу отображаем текущее состояние плеера
+        // Сразу отображаем текущие визуальные данные и единый runtime-снимок плеера.
         OnTrackInfoChanged(_mainWindow.CurrentTitle, _mainWindow.CurrentArtist, _mainWindow.CurrentArtBrush);
-        OnPlaybackStateChanged(_mainWindow.IsPlayingNow);
+        OnPlaybackSnapshotChanged(_mainWindow.PlaybackState.Current);
         UpdateSecondaryButton();
 
         // Название могло быть длинным ещё до открытия мини-плеера — пересчитываем бегущую
@@ -127,6 +127,9 @@ public partial class MiniPlayerWindow : Window
         _topmostTimer.Start();
         _pinnedPositionRestoreTimer.Tick += PinnedPositionRestoreTimer_Tick;
     }
+
+    public void ApplyAccessibilityPreferences() =>
+        AccessibilityPreferences.ApplyToWindow(this, _mainWindow.Settings);
 
     // См. комментарий у объявления _topmostTimer — периодически принудительно возвращаем
     // окно в топмост через Win32, а не полагаемся на то, что WPF Topmost=true держится сам.
@@ -630,6 +633,12 @@ public partial class MiniPlayerWindow : Window
             ControlsPanel.Visibility = Visibility.Visible;
             HeaderPanel.Visibility = Visibility.Collapsed;
         }
+    }
+
+    private void OnPlaybackSnapshotChanged(PlaybackSnapshot snapshot)
+    {
+        OnPlaybackStateChanged(snapshot.IsPlaying);
+        OnProgressChanged(snapshot.PositionSeconds, snapshot.DurationSeconds);
     }
 
     private void OnProgressChanged(double currentSeconds, double totalSeconds)
@@ -1402,8 +1411,7 @@ public partial class MiniPlayerWindow : Window
         _volumeOverlayRestoreTimer = null;
 
         _mainWindow.TrackInfoChanged -= OnTrackInfoChanged;
-        _mainWindow.ProgressChanged -= OnProgressChanged;
-        _mainWindow.PlaybackStateChanged -= OnPlaybackStateChanged;
+        _mainWindow.PlaybackState.Changed -= OnPlaybackSnapshotChanged;
         _mainWindow.VolumeChanged -= OnVolumeChanged;
         _mainWindow.RepeatModeChanged -= OnRepeatModeChanged;
         _mainWindow.ShuffleStateChanged -= OnShuffleStateChanged;

@@ -11,6 +11,9 @@
     <ApplicationIcon>Icons\app\lumisense.ico</ApplicationIcon>
     <RootNamespace>AudioPlayer</RootNamespace>
     <AssemblyName>Lumisense</AssemblyName>
+    <!-- Базовая версия локальной сборки; release workflow передаёт -p:Version из vX.Y.Z тега. -->
+    <Version>1.14.1</Version>
+    <InformationalVersion>$(Version)</InformationalVersion>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>

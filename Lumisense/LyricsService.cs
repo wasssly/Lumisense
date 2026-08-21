@@ -22,6 +22,13 @@ public enum LyricsKind
 
 public sealed record LyricLine(TimeSpan Time, string Text);
 
+// Сводка локального кэша вручную вставленных текстов. В кэше хранятся только тексты и
+// непрозрачные SHA-256-имена файлов, а исходный путь к аудио в файл не записывается.
+public readonly record struct LyricsCacheInfo(int EntryCount, long TotalBytes)
+{
+    public bool IsEmpty => EntryCount == 0;
+}
+
 public sealed record LyricsDocument(LyricsKind Kind, IReadOnlyList<LyricLine> Lines, string PlainText, string SourceLabel)
 {
     public static readonly LyricsDocument Empty = new(LyricsKind.None, Array.Empty<LyricLine>(), string.Empty, "Нет текста");
@@ -54,6 +61,10 @@ public static class LyricsService
     private const string LrcLibSearchEndpoint = "https://lrclib.net/api/search";
     private const int MaxSearchResponseBytes = 1_500_000;
     private const int MaxCachedLyricsBytes = 2 * 1024 * 1024;
+    private const int MaxCachedLyricsEntries = 200;
+    private const long MaxTotalCachedLyricsBytes = 32L * 1024 * 1024;
+    private static readonly TimeSpan CachedLyricsRetention = TimeSpan.FromDays(180);
+    private static readonly object CacheMaintenanceGate = new();
     private static readonly string PastedLyricsCacheDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumisense", "lyrics-cache");
     private static readonly HttpClient Http = CreateHttpClient();
@@ -138,6 +149,7 @@ public static class LyricsService
             await File.WriteAllTextAsync(temporaryPath, normalized + Environment.NewLine, Encoding.UTF8, cancellationToken)
                 .ConfigureAwait(false);
             File.Move(temporaryPath, cachePath, overwrite: true);
+            PrunePastedLyricsCache();
         }
         finally
         {
@@ -152,18 +164,62 @@ public static class LyricsService
         }
     }
 
+    // Вызывается со страницы «Профиль»: показывает фактический размер уже после удаления
+    // просроченных/слишком больших записей. Никаких обращений к сети и путей аудиофайлов нет.
+    public static LyricsCacheInfo GetPastedLyricsCacheInfo()
+    {
+        lock (CacheMaintenanceGate)
+        {
+            PrunePastedLyricsCacheUnsafe();
+            return GetPastedLyricsCacheInfoUnsafe();
+        }
+    }
+
+    // Удаляет только собственную папку Lumisense с хешированными текстами. .lrc/.txt рядом с
+    // аудиофайлами и тексты в тегах никогда не считаются кэшем и этим действием не затрагиваются.
+    public static bool ClearPastedLyricsCache()
+    {
+        lock (CacheMaintenanceGate)
+        {
+            try
+            {
+                if (!Directory.Exists(PastedLyricsCacheDirectory)) return true;
+                Directory.Delete(PastedLyricsCacheDirectory, recursive: true);
+                return true;
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                Logger.Warn($"Не удалось очистить кэш текста песен: {ex.Message}");
+                return false;
+            }
+        }
+    }
+
     private static async Task<LyricsDocument> LoadPastedLyricsCacheAsync(string audioPath, CancellationToken cancellationToken)
     {
         string cachePath = GetPastedLyricsCachePath(audioPath);
         try
         {
-            if (!File.Exists(cachePath) || new FileInfo(cachePath).Length > MaxCachedLyricsBytes)
+            if (!File.Exists(cachePath)) return LyricsDocument.Empty;
+
+            var info = new FileInfo(cachePath);
+            if (info.Length <= 0 || info.Length > MaxCachedLyricsBytes ||
+                info.LastWriteTimeUtc < DateTime.UtcNow - CachedLyricsRetention)
+            {
+                TryDeleteCacheFile(cachePath);
                 return LyricsDocument.Empty;
+            }
 
             string text = await File.ReadAllTextAsync(cachePath, cancellationToken).ConfigureAwait(false);
-            return string.IsNullOrWhiteSpace(text)
-                ? LyricsDocument.Empty
-                : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), text.Trim(), "Кэш вставленного текста");
+            if (string.IsNullOrWhiteSpace(text))
+                return LyricsDocument.Empty;
+
+            // LastWriteTime служит LRU-меткой. Одно лёгкое обновление позволяет не удалить
+            // текст часто слушаемого трека раньше редких старых записей при лимите размера.
+            try { File.SetLastWriteTimeUtc(cachePath, DateTime.UtcNow); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Logger.Warn($"Не удалось обновить время кэша текста: {ex.Message}"); }
+
+            return new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), text.Trim(), "Кэш вставленного текста");
         }
         catch (OperationCanceledException)
         {
@@ -172,6 +228,90 @@ public static class LyricsService
         catch
         {
             return LyricsDocument.Empty;
+        }
+    }
+
+    private static void PrunePastedLyricsCache()
+    {
+        lock (CacheMaintenanceGate)
+            PrunePastedLyricsCacheUnsafe();
+    }
+
+    private static void PrunePastedLyricsCacheUnsafe()
+    {
+        try
+        {
+            if (!Directory.Exists(PastedLyricsCacheDirectory)) return;
+
+            DateTime expiry = DateTime.UtcNow - CachedLyricsRetention;
+            var entries = new List<FileInfo>();
+            foreach (string path in Directory.EnumerateFiles(PastedLyricsCacheDirectory, "*.txt", SearchOption.TopDirectoryOnly))
+            {
+                var info = new FileInfo(path);
+                if (info.Length <= 0 || info.Length > MaxCachedLyricsBytes || info.LastWriteTimeUtc < expiry)
+                {
+                    TryDeleteCacheFile(path);
+                    continue;
+                }
+
+                entries.Add(info);
+            }
+
+            // Прерванная атомарная запись не должна занимать место бесконечно.
+            foreach (string temporaryPath in Directory.EnumerateFiles(PastedLyricsCacheDirectory, "*.tmp-*", SearchOption.TopDirectoryOnly))
+            {
+                if (File.GetLastWriteTimeUtc(temporaryPath) < DateTime.UtcNow - TimeSpan.FromDays(1))
+                    TryDeleteCacheFile(temporaryPath);
+            }
+
+            long totalBytes = entries.Sum(entry => entry.Length);
+            foreach (FileInfo entry in entries.OrderBy(entry => entry.LastWriteTimeUtc).ThenBy(entry => entry.Name).ToList())
+            {
+                if (entries.Count <= MaxCachedLyricsEntries && totalBytes <= MaxTotalCachedLyricsBytes) break;
+                long length = entry.Length;
+                if (TryDeleteCacheFile(entry.FullName))
+                {
+                    entries.Remove(entry);
+                    totalBytes -= length;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Logger.Warn($"Не удалось обслужить кэш текста песен: {ex.Message}");
+        }
+    }
+
+    private static LyricsCacheInfo GetPastedLyricsCacheInfoUnsafe()
+    {
+        try
+        {
+            var entries = Directory.Exists(PastedLyricsCacheDirectory)
+                ? Directory.EnumerateFiles(PastedLyricsCacheDirectory, "*.txt", SearchOption.TopDirectoryOnly)
+                    .Select(path => new FileInfo(path))
+                    .Where(info => info.Exists && info.Length > 0 && info.Length <= MaxCachedLyricsBytes)
+                    .ToList()
+                : new List<FileInfo>();
+            return new LyricsCacheInfo(entries.Count, entries.Sum(entry => entry.Length));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Logger.Warn($"Не удалось получить размер кэша текста песен: {ex.Message}");
+            return default;
+        }
+    }
+
+    private static bool TryDeleteCacheFile(string path)
+    {
+        try
+        {
+            if (File.Exists(path)) File.Delete(path);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            Logger.Warn($"Не удалось удалить файл кэша текста: {ex.Message}");
+            return false;
         }
     }
 
@@ -378,7 +518,7 @@ public static class LyricsService
     private static HttpClient CreateHttpClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("Lumisense/1.13 (https://github.com/wasssly/Lumisense)");
+        LyricsNetworkIdentity.Apply(client);
         return client;
     }
 

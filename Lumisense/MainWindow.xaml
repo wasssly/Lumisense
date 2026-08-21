@@ -637,6 +637,13 @@
             <TextBlock x:Name="TrackArtistText" Text="—"
                        FontSize="12" Opacity="0.6"
                        HorizontalAlignment="Center" />
+
+            <Border x:Name="TrackStateBadge" CornerRadius="8" Padding="8,3" Margin="0,8,0,0"
+                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                    HorizontalAlignment="Center">
+                <TextBlock x:Name="TrackStateText" Text="Трек не выбран" FontSize="11" Opacity="0.78"
+                           ToolTip="Выберите трек в плейлисте или нажмите воспроизведение." />
+            </Border>
         </StackPanel>
 
         <!-- Прогресс воспроизведения -->
