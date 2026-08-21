@@ -60,8 +60,11 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private bool _customSeekForwardRegistered;
     private bool _customSeekBackwardRegistered;
 
-    public event Action? NextPressed;
-    public event Action? PreviousPressed;
+    // Next/Previous передают виртуальный код фактически нажатой клавиши. Это позволяет
+    // MainWindow самостоятельно определить, удерживается ли именно этот хоткей, и не
+    // зависеть от системной частоты повторных WM_HOTKEY.
+    public event Action<int>? NextPressed;
+    public event Action<int>? PreviousPressed;
     public event Action? StopPressed;
     public event Action? PlayPausePressed;
     public event Action? VolumeUpPressed;
@@ -158,12 +161,12 @@ public sealed class GlobalMediaHotKeys : IDisposable
             {
                 case IdNext:
                 case IdCustomNext:
-                    NextPressed?.Invoke();
+                    NextPressed?.Invoke(GetVirtualKey(lParam));
                     handled = true;
                     break;
                 case IdPrev:
                 case IdCustomPrevious:
-                    PreviousPressed?.Invoke();
+                    PreviousPressed?.Invoke(GetVirtualKey(lParam));
                     handled = true;
                     break;
                 case IdStop:
@@ -214,6 +217,14 @@ public sealed class GlobalMediaHotKeys : IDisposable
         return IntPtr.Zero;
     }
 
+    // Старший бит GetAsyncKeyState показывает физическое состояние клавиши в момент
+    // опроса. Для Next/Previous это надёжнее, чем ждать следующего WM_HOTKEY: Windows
+    // сначала делает системную паузу повторения, а затем использует заданную пользователем
+    // частоту, которая может быть слишком медленной или слишком высокой.
+    public static bool IsVirtualKeyDown(int virtualKey) => (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
+
+    private static int GetVirtualKey(IntPtr lParam) => (int)((lParam.ToInt64() >> 16) & 0xFFFF);
+
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
@@ -237,6 +248,9 @@ public sealed class GlobalMediaHotKeys : IDisposable
 
         _source.RemoveHook(WndProc);
     }
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int vKey);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);

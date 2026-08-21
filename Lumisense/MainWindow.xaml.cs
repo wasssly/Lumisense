@@ -368,7 +368,7 @@ public partial class MainWindow : FluentWindow
         _progressTimer.Tick += ProgressTimer_Tick;
         _playlistSearchDebounceTimer.Tick += PlaylistSearchDebounceTimer_Tick;
         _folderRefreshDebounceTimer.Tick += FolderRefreshDebounceTimer_Tick;
-        _hotkeyTrackStepTimer.Tick += (_, _) => CommitPendingHotkeyTrackStep();
+        _hotkeyTrackStepTimer.Tick += HotkeyTrackStepTimer_Tick;
         _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
 
         // Rich Presence использует те же единые события, что и мини-плеер: это исключает
@@ -809,8 +809,8 @@ public partial class MainWindow : FluentWindow
         {
             _mediaHotKeys = new GlobalMediaHotKeys(this);
             _mediaHotKeys.PlayPausePressed += () => Dispatcher.BeginInvoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.NextPressed += () => Dispatcher.BeginInvoke(HandleHotkeyNext);
-            _mediaHotKeys.PreviousPressed += () => Dispatcher.BeginInvoke(HandleHotkeyPrevious);
+            _mediaHotKeys.NextPressed += virtualKey => Dispatcher.BeginInvoke(() => HandleHotkeyNext(virtualKey));
+            _mediaHotKeys.PreviousPressed += virtualKey => Dispatcher.BeginInvoke(() => HandleHotkeyPrevious(virtualKey));
             _mediaHotKeys.StopPressed += () => Dispatcher.BeginInvoke(() => StopButton_Click(this, new RoutedEventArgs()));
             _mediaHotKeys.VolumeUpPressed += () => Dispatcher.BeginInvoke(() => ChangeVolumeBy(0.02));
             _mediaHotKeys.VolumeDownPressed += () => Dispatcher.BeginInvoke(() => ChangeVolumeBy(-0.02));
@@ -4130,62 +4130,120 @@ public partial class MainWindow : FluentWindow
     }
 
     // ---------- Быстрое переключение треков зажатой хоткей-клавишей ----------
-    // GlobalMediaHotKeys не ставит MOD_NOREPEAT, поэтому зажатая клавиша шлёт WM_HOTKEY 20-30
-    // раз в секунду — быстрее, чем успевает отрабатывать полная загрузка трека. Повторы копятся
-    // как счётчик шагов (_pendingHotkeyNetSteps) и коммитятся одним прыжком по таймеру.
-    // ComputeNextTrackPath/ComputePreviousTrackPath мутируют _shuffleHistory в режиме шафла,
-    // поэтому вызываются только один раз при коммите (см. CommitPendingHotkeyTrackStep), а не
-    // на каждое нажатие — иначе непроигранные шаги портили последующую навигацию.
-    private const int HotkeyTrackStepThrottleMs = 200;
-    private readonly DispatcherTimer _hotkeyTrackStepTimer = new() { Interval = TimeSpan.FromMilliseconds(150) };
-    private int _pendingHotkeyNetSteps;
-    private DateTime _lastHotkeyTrackStepCommit = DateTime.MinValue;
-
-    private void HandleHotkeyNext() => HandleHotkeyTrackStep(+1);
-
-    private void HandleHotkeyPrevious() => HandleHotkeyTrackStep(-1);
-
-    private void HandleHotkeyTrackStep(int stepDirection)
+    // Первый переход выполняется сразу. Если клавиша остаётся зажатой, после 280 мс запускается
+    // независимый от системных WM_HOTKEY повтор каждые 140 мс (максимум около 7 треков/сек).
+    // Это устраняет зависимость от настроек автоповтора Windows и не позволяет породить десятки
+    // одновременных загрузок: LoadAndPlay отменяет предыдущую подготовку, а между шагами есть
+    // жёсткое ограничение частоты.
+    private const int HotkeyTrackInitialHoldDelayMs = 280;
+    private const int HotkeyTrackRepeatIntervalMs = 140;
+    // Короткий опрос нужен только до начала повтора: он быстро замечает отпускание клавиши,
+    // поэтому два отдельных быстрых нажатия не смешиваются с её удержанием.
+    private const int HotkeyTrackReleasePollIntervalMs = 30;
+    private readonly DispatcherTimer _hotkeyTrackStepTimer = new()
     {
+        Interval = TimeSpan.FromMilliseconds(HotkeyTrackReleasePollIntervalMs)
+    };
+    private int _pendingHotkeyNetSteps;
+    private int _heldHotkeyVirtualKey;
+    private int _heldHotkeyDirection;
+    private bool _hotkeyTrackRepeatStarted;
+    private DateTime _hotkeyTrackHoldStartedUtc;
+    private string? _hotkeyTrackNavigationCursor;
+
+    private void HandleHotkeyNext(int virtualKey) => HandleHotkeyTrackStep(+1, virtualKey);
+
+    private void HandleHotkeyPrevious(int virtualKey) => HandleHotkeyTrackStep(-1, virtualKey);
+
+    private void HandleHotkeyTrackStep(int stepDirection, int virtualKey)
+    {
+        // После первого WM_HOTKEY система продолжит присылать повторы, пока клавиша нажата.
+        // Их игнорируем целиком: собственный таймер уже опрашивает физическое отпускание и
+        // выдаёт шаги с фиксированной безопасной частотой, независимо от настроек Windows.
+        bool sameHeldKey = _hotkeyTrackStepTimer.IsEnabled
+            && _heldHotkeyVirtualKey == virtualKey && _heldHotkeyDirection == stepDirection;
+        if (sameHeldKey)
+            return;
+
         _pendingHotkeyNetSteps += stepDirection;
+        CommitPendingHotkeyTrackStep();
+
+        _heldHotkeyVirtualKey = virtualKey;
+        _heldHotkeyDirection = stepDirection;
+        _hotkeyTrackRepeatStarted = false;
+        _hotkeyTrackHoldStartedUtc = DateTime.UtcNow;
         _hotkeyTrackStepTimer.Stop();
 
-        bool looksLikeHeldKeyRepeat =
-            (DateTime.UtcNow - _lastHotkeyTrackStepCommit).TotalMilliseconds < HotkeyTrackStepThrottleMs;
-
-        if (looksLikeHeldKeyRepeat)
+        // Короткий polling начинается сразу: он отделяет быстрое одиночное нажатие от
+        // удержания. Само повторение начнётся только через HotkeyTrackInitialHoldDelayMs.
+        if (virtualKey != 0 && GlobalMediaHotKeys.IsVirtualKeyDown(virtualKey))
+        {
+            _hotkeyTrackStepTimer.Interval = TimeSpan.FromMilliseconds(HotkeyTrackReleasePollIntervalMs);
             _hotkeyTrackStepTimer.Start();
-        else
-            CommitPendingHotkeyTrackStep();
+        }
+    }
+
+    private void HotkeyTrackStepTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_heldHotkeyVirtualKey == 0 || !GlobalMediaHotKeys.IsVirtualKeyDown(_heldHotkeyVirtualKey))
+        {
+            StopHotkeyTrackRepeat();
+            return;
+        }
+
+        if (!_hotkeyTrackRepeatStarted)
+        {
+            double heldMilliseconds = (DateTime.UtcNow - _hotkeyTrackHoldStartedUtc).TotalMilliseconds;
+            if (heldMilliseconds < HotkeyTrackInitialHoldDelayMs)
+            {
+                _hotkeyTrackStepTimer.Interval = TimeSpan.FromMilliseconds(HotkeyTrackReleasePollIntervalMs);
+                _hotkeyTrackStepTimer.Start();
+                return;
+            }
+
+            _hotkeyTrackRepeatStarted = true;
+        }
+
+        _pendingHotkeyNetSteps += _heldHotkeyDirection;
+        CommitPendingHotkeyTrackStep();
+        _hotkeyTrackStepTimer.Interval = TimeSpan.FromMilliseconds(HotkeyTrackRepeatIntervalMs);
+        _hotkeyTrackStepTimer.Start();
+    }
+
+    private void StopHotkeyTrackRepeat()
+    {
+        _hotkeyTrackStepTimer.Stop();
+        _pendingHotkeyNetSteps = 0;
+        _heldHotkeyVirtualKey = 0;
+        _heldHotkeyDirection = 0;
+        _hotkeyTrackRepeatStarted = false;
+        _hotkeyTrackHoldStartedUtc = DateTime.MinValue;
+        _hotkeyTrackNavigationCursor = null;
     }
 
     private void CommitPendingHotkeyTrackStep()
     {
-        _hotkeyTrackStepTimer.Stop();
-        _lastHotkeyTrackStepCommit = DateTime.UtcNow;
-
         int steps = _pendingHotkeyNetSteps;
         _pendingHotkeyNetSteps = 0;
         if (steps == 0) return;
 
-        // Реально продвигаем историю шафла (или обычный индекс плейлиста — вне шафла обе
-        // функции ниже чистые, повторный вызов подряд безвреден) ровно на |steps| шагов, по
-        // одному за раз, начиная от текущего трека — то есть ровно то же самое, как если бы
-        // пользователь нажимал Next/Previous по одному разу и дожидался загрузки между
-        // нажатиями, просто без промежуточных загрузок аудио.
+        // NavigationCursor хранит уже запрошенный путь, пока асинхронная загрузка ещё не успела
+        // сделать его CurrentTrackPath. Благодаря этому удержание действительно проходит по
+        // последовательности треков, а не повторно запрашивает один и тот же следующий файл.
         var direction = steps > 0 ? AlbumArtTransitionDirection.Next : AlbumArtTransitionDirection.Previous;
-        string? path = GetCurrentTrackPath();
+        string? path = _hotkeyTrackNavigationCursor ?? GetCurrentTrackPath();
         string? targetPath = null;
 
         for (int i = 0; i < Math.Abs(steps); i++)
         {
             string? next = steps > 0 ? ComputeNextTrackPath(path) : ComputePreviousTrackPath(path);
-            if (next == null) break; // плейлист пуст/кончился — дальше двигаться некуда, останавливаемся на последнем валидном шаге
+            if (next == null) break;
             targetPath = next;
             path = next;
         }
 
         if (targetPath == null) return;
+        _hotkeyTrackNavigationCursor = targetPath;
         LoadAndPlay(targetPath, autoPlay: _isPlaying, albumArtDirection: direction);
     }
 
@@ -5533,6 +5591,7 @@ public partial class MainWindow : FluentWindow
         // параллельно с закрытием окна.
         _playbackRatePersistenceTimer.Stop();
         _playlistSearchDebounceTimer.Stop();
+        StopHotkeyTrackRepeat();
         _playlistSearchCts?.Cancel();
         _settings.PlaybackSpeed = _runtimePlaybackRate;
         _isExiting = true;
