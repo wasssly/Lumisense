@@ -927,7 +927,7 @@
                 </ui:Button.Icon>
             </ui:Button>
 
-            <ui:Button Grid.Column="6" x:Name="SettingsButton" Appearance="Secondary"
+            <ui:Button Grid.Column="7" x:Name="SettingsButton" Appearance="Secondary"
                        Width="32" Height="32" Padding="0" Margin="4,0,0,0"
                        Click="SettingsButton_Click" ToolTip="Настройки">
                 <ui:Button.Icon>
@@ -936,9 +936,9 @@
             </ui:Button>
 
             <!-- Переключает содержимое той же панели: вместо плейлиста показывает текст
-                 текущей композиции. Кнопка расположена в конце панели управления, чтобы не
-                 менять привычный порядок «Избранное / Добавить / Очистить / Статистика». -->
-            <ui:Button Grid.Column="7" x:Name="LyricsPanelButton" Appearance="Secondary"
+                 текущей композиции. Настройки расположены последними в ряду, поэтому кнопка
+                 текста остаётся непосредственно перед ними. -->
+            <ui:Button Grid.Column="6" x:Name="LyricsPanelButton" Appearance="Secondary"
                        Width="32" Height="32" Padding="0" Margin="4,0,0,0"
                        Click="LyricsPanelButton_Click" ToolTip="Текст песни">
                 <ui:Button.Icon>

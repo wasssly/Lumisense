@@ -5,8 +5,8 @@
         xmlns:local="clr-namespace:AudioPlayer"
         Title="Настройки"
         Icon="/Icons/app/lumisense-settings.ico"
-        Height="760" Width="920"
-        MinHeight="600" MinWidth="800"
+        Height="860" Width="1180"
+        MinHeight="680" MinWidth="980"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
         WindowStartupLocation="Manual"
@@ -15,12 +15,18 @@
 
     <ui:FluentWindow.Resources>
 
+        <!-- Подписи CheckBox/RadioButton всегда переносятся по доступной ширине. Это исключает
+             выход длинного текста за границы карточки на узком окне и в английской локализации. -->
+        <DataTemplate x:Key="SettingsChoiceContentTemplate">
+            <TextBlock Text="{Binding}" TextWrapping="Wrap" VerticalAlignment="Center" />
+        </DataTemplate>
+
         <!-- Явные шаблоны контролов выбора. Они читают кисти как DynamicResource, поэтому
              цвет индикатора обновляется сразу после смены cover-акцента. -->
         <Style TargetType="CheckBox">
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Margin" Value="0,0,0,12" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="CheckBox">
@@ -52,7 +58,8 @@
                                     </Path>
                                 </Grid>
                             </Border>
-                            <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center"
+                            <ContentPresenter Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                                              ContentTemplate="{StaticResource SettingsChoiceContentTemplate}"
                                               RecognizesAccessKey="True" />
                         </Grid>
                         <ControlTemplate.Triggers>
@@ -124,7 +131,7 @@
         <Style TargetType="RadioButton">
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Margin" Value="0,0,0,10" />
+            <Setter Property="Margin" Value="0,0,0,12" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
@@ -152,7 +159,8 @@
                                              Fill="{DynamicResource AccentFillColorDefaultBrush}"
                                              Opacity="0" />
                                 </Grid>
-                                <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center"
+                                <ContentPresenter Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center"
+                                                  ContentTemplate="{StaticResource SettingsChoiceContentTemplate}"
                                                   RecognizesAccessKey="True" />
                             </Grid>
                         </Border>
@@ -257,32 +265,49 @@
             </Setter>
         </Style>
 
-        <!-- Стиль пунктов панели навигации слева: RadioButton без "кружка", вместо этого
-             вся строка (иконка + подпись) подсвечивается фоном, когда пункт выбран. -->
+        <!-- Вертикальная навигация нового окна: активный раздел получает отдельную
+             акцентную полосу и поверхность, но остаётся спокойным для длинного списка. -->
         <Style x:Key="NavItemStyle" TargetType="RadioButton">
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Margin" Value="0,0,0,4" />
-            <Setter Property="HorizontalContentAlignment" Value="Left" />
-            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="Margin" Value="0,0,0,2" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Bg" CornerRadius="8" Background="Transparent">
-                            <ContentPresenter Margin="12,10" />
+                        <Border x:Name="Bg" CornerRadius="10" Background="Transparent" Padding="0">
+                            <Grid Height="38">
+                                <Border x:Name="Indicator" Width="3" CornerRadius="2"
+                                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                        HorizontalAlignment="Left" Margin="6,7,0,7" Opacity="0" />
+                                <ContentPresenter Margin="15,0,10,0" VerticalAlignment="Center" />
+                            </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Bg" Property="Background"
-                                        Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                                        Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                <Setter TargetName="Indicator" Property="Opacity" Value="1" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bg" Property="Background"
-                                        Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                        Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
+        </Style>
+
+        <Style x:Key="NavSectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="Margin" Value="10,14,10,5" />
+            <Setter Property="FontSize" Value="9" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
         </Style>
 
         <!-- Карточка-превью вида плеера в настройках: RadioButton с картинкой-миниатюрой
@@ -312,19 +337,53 @@
             </Setter>
         </Style>
 
-        <!-- Карточка-секция настроек: используется на каждой странице -->
+        <!-- Карточка-секция настроек: единый спокойный фон, тонкая обводка и увеличенная
+             внутренняя сетка делают длинные страницы легче для сканирования. -->
         <Style x:Key="SettingsCardStyle" TargetType="Border">
-            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
-            <Setter Property="CornerRadius" Value="10" />
-            <Setter Property="Padding" Value="16,18" />
-            <Setter Property="Margin" Value="0,0,0,14" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="18" />
+            <Setter Property="Padding" Value="28,24" />
+            <Setter Property="Margin" Value="0,0,0,16" />
         </Style>
 
-        <!-- Заголовок страницы настроек -->
+        <!-- Заголовок и подзаголовок формируют устойчивую иерархию каждой страницы. -->
         <Style x:Key="PageTitleStyle" TargetType="TextBlock">
-            <Setter Property="FontSize" Value="20" />
+            <Setter Property="FontSize" Value="28" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Margin" Value="0,0,0,18" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="PageDescriptionStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,0,0,30" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+
+        <!-- Первый уровень внутри карточки — название группы параметров; второй — краткое
+             пояснение. Это отделяет подписи от самих вариантов выбора. -->
+        <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,0,0,6" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="SettingsFieldLabelStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,18,0,8" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+        </Style>
+
+        <Style x:Key="SettingsHelperTextStyle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="Margin" Value="0,8,0,0" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
         </Style>
 
         <!-- Строка результата поиска настроек: прозрачная кнопка на всю ширину со скруглённой
@@ -366,33 +425,44 @@
              AppTitleBar): ShowMaximize="True", раз окно и так уже CanResize. -->
         <ui:TitleBar Grid.Row="0" Title="Настройки" ShowMaximize="True" />
 
-        <Grid Grid.Row="1">
+        <Grid Grid.Row="1" Background="{DynamicResource LayerFillColorDefaultBrush}">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="236" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- ===== Панель навигации ===== -->
-            <Border Grid.Column="0" Background="{DynamicResource LayerFillColorDefaultBrush}"
-                    BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
-                <Grid Margin="12,12,12,12">
+            <!-- ===== Навигация: отдельная скруглённая поверхность ===== -->
+            <Border Grid.Column="0" Margin="14,14,0,16" Padding="10"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="20">
+                <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
-                    <ui:TextBox x:Name="SettingsSearchBox" Grid.Row="0" Margin="0,0,0,10"
+                    <StackPanel Grid.Row="0" Margin="1,1,1,8">
+                        <TextBlock Text="НАСТРОЙКИ" FontSize="9" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextFillColorTertiaryBrush}" />
+                        <TextBlock Text="Lumisense" FontSize="14" FontWeight="SemiBold"
+                                   Margin="0,2,0,8" />
+                        <ui:TextBox x:Name="SettingsSearchBox"
                                 PlaceholderText="Поиск настроек"
                                 ClearButtonEnabled="True"
                                 TextChanged="SettingsSearchBox_TextChanged">
-                        <ui:TextBox.Icon>
-                            <local:SvgPathIcon Icon="IconSearch" />
-                        </ui:TextBox.Icon>
-                    </ui:TextBox>
+                            <ui:TextBox.Icon>
+                                <local:SvgPathIcon Icon="IconSearch" />
+                            </ui:TextBox.Icon>
+                        </ui:TextBox>
+                    </StackPanel>
 
                     <Grid Grid.Row="1">
-                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-                        <StackPanel x:Name="NavCategoriesPanel">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled"
+                                      Padding="0,0,12,0">
+                        <StackPanel x:Name="NavCategoriesPanel" Margin="0,0,2,8">
+
+                    <TextBlock Text="ОСНОВНОЕ" Style="{StaticResource NavSectionTitleStyle}" />
 
                     <RadioButton x:Name="NavAppearance" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Appearance"
@@ -410,6 +480,8 @@
                             <TextBlock Text="Окно и запуск" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
+
+                    <TextBlock Text="ЗВУК И ВОСПРОИЗВЕДЕНИЕ" Style="{StaticResource NavSectionTitleStyle}" />
 
                     <RadioButton x:Name="NavPlayback" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Playback" Checked="NavItem_Checked">
@@ -477,7 +549,7 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <Separator Margin="4,8" Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                    <TextBlock Text="СИСТЕМА" Style="{StaticResource NavSectionTitleStyle}" />
 
                     <!-- Вынесено в отдельную страницу из "О плеере" — проверка обновлений,
                          выбор источника загрузки и полный список версий разрослись до трёх
@@ -504,8 +576,8 @@
 
                         <!-- ===== Результаты поиска настроек (заменяют список категорий, пока идёт поиск) ===== -->
                         <Grid x:Name="SearchResultsHost" Visibility="Collapsed">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                <ItemsControl x:Name="SearchResultsList">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
+                                <ItemsControl x:Name="SearchResultsList" Margin="0,0,2,12">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Button Style="{StaticResource SearchResultItemStyle}" Click="SearchResultItem_Click">
@@ -535,28 +607,33 @@
                  сохранялся между вкладками: если долистать вниз на одной странице и переключиться
                  на другую, та открывалась не сверху, а с той же прокруткой, что осталась от
                  предыдущей — см. явный сброс в PART_ContentScroll.ScrollToTop() в NavItem_Checked. -->
-            <ScrollViewer x:Name="PART_ContentScroll" Grid.Column="1" VerticalScrollBarVisibility="Auto">
-                <Grid Margin="24,20,24,20">
+            <Border Grid.Column="1" Margin="18,14,18,16" Padding="0"
+                    Background="{DynamicResource ControlFillColorDefaultBrush}"
+                    BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
+                    CornerRadius="22">
+                <ScrollViewer x:Name="PART_ContentScroll" VerticalScrollBarVisibility="Auto">
+                    <Grid Margin="46,40,46,44" HorizontalAlignment="Stretch">
 
                     <!-- Оформление -->
                     <StackPanel x:Name="PageAppearance">
                         <TextBlock Text="Оформление" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Внешний вид, акцент и взаимодействие с текстом." Style="{StaticResource PageDescriptionStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Язык интерфейса" Margin="0,0,0,10" />
+                                <TextBlock Text="Язык интерфейса" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="LanguageRussianRadio" Content="Русский" GroupName="InterfaceLanguage"
                                              Checked="LanguageRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="LanguageEnglishRadio" Content="English" GroupName="InterfaceLanguage"
                                              Checked="LanguageRadio_Changed" />
                                 <TextBlock Text="Выберите язык Lumisense. Изменение применяется сразу ко всем открытым окнам."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,8,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,10,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Тема" Margin="0,0,0,10" />
+                                <TextBlock Text="Тема" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="ThemeDarkRadio" Content="Тёмная" GroupName="Theme"
                                              Checked="ThemeRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="ThemeLightRadio" Content="Светлая" GroupName="Theme"
@@ -570,7 +647,7 @@
                              см. RefreshAccentSwatchSelection. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Акцентный цвет" Margin="0,0,0,10" />
+                                <TextBlock Text="Акцентный цвет" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="AccentSystemRadio" Content="Системный (как в Windows)"
                                              GroupName="AccentMode" Checked="AccentModeRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="AccentCoverRadio" Content="От текущей обложки"
@@ -626,61 +703,69 @@
                         <!-- См. AppSettings.SyncedLyricsFontSize/SyncedLyricsHighlightEffect. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Синхронный текст" Margin="0,0,0,10" />
+                                <TextBlock Text="Синхронный текст" Style="{StaticResource SettingsSectionTitleStyle}" />
 
-                                <Grid Margin="0,0,0,12">
+                                <TextBlock Text="Размер шрифта" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <Grid Margin="0,0,0,2">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="42" />
+                                        <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Размер шрифта" VerticalAlignment="Center" Margin="0,0,12,0" />
-                                    <Slider x:Name="SyncedLyricsFontSizeSlider" Grid.Column="1"
+                                    <Slider x:Name="SyncedLyricsFontSizeSlider" Grid.Column="0"
                                             Minimum="12" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True"
                                             ValueChanged="SyncedLyricsFontSizeSlider_ValueChanged" />
-                                    <TextBlock x:Name="SyncedLyricsFontSizeValueText" Grid.Column="2"
-                                               HorizontalAlignment="Right" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                    <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                            Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                        <TextBlock x:Name="SyncedLyricsFontSizeValueText"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" FontWeight="SemiBold"
+                                                   TextAlignment="Center" />
+                                    </Border>
                                 </Grid>
 
-                                <TextBlock Text="Эффект активной строки" Margin="0,0,0,8" />
-                                <RadioButton x:Name="SyncedLyricsEffectNoneRadio" Content="Без эффекта"
-                                             GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed"
-                                             Margin="0,0,0,8" />
-                                <RadioButton x:Name="SyncedLyricsEffectGlowRadio" Content="Мягкое свечение"
-                                             GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed" />
-                                <TextBlock Text="Активная строка остаётся белой, неактивные — приглушённо-серыми. Настройки применяются сразу в панели текста главного окна."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,8,0,0" />
+                                <Border Margin="0,16,0,0" Padding="14,12" CornerRadius="10"
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                    <StackPanel>
+                                        <TextBlock Text="Эффект активной строки" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                        <RadioButton x:Name="SyncedLyricsEffectNoneRadio" Content="Без эффекта"
+                                                     GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed"
+                                                     Margin="0,0,0,8" />
+                                        <RadioButton x:Name="SyncedLyricsEffectGlowRadio" Content="Мягкое свечение"
+                                                     GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed" />
+                                        <TextBlock Text="Активная строка остаётся белой, неактивные — приглушённо-серыми. Настройки применяются сразу в панели текста главного окна."
+                                                   Style="{StaticResource SettingsHelperTextStyle}" Margin="0,10,0,0" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
                         <!-- См. AppSettings.WindowBackdropType. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Основа окна" Margin="0,0,0,10" />
+                                <TextBlock Text="Основа окна" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,10" />
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" />
+                                <TextBlock Text="Mica и Acrylic применяются к главному окну, окну настроек и статистике."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="CoverBaseFromCoverCheckBox" Content="Цвет основы от текущей обложки"
                                           Checked="CoverBaseFromCoverCheckBox_Changed"
                                           Unchecked="CoverBaseFromCoverCheckBox_Changed" Margin="0,0,0,10" />
-                                <TextBlock Text="Этот вариант независим от акцентного цвета: можно включить цвет основы от обложки отдельно или совместить его с любым акцентом."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,4" />
-                                <TextBlock Text="Mica/Acrylic применяется к главному окну, окну настроек и статистике."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                                <TextBlock Text="Цвет основы от обложки можно включить независимо от акцентного цвета или совместить с любым акцентом."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
                         <!-- См. AppSettings.AlbumArtTransitionEnabled. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Анимация смены обложки" Margin="0,0,0,10" />
+                                <TextBlock Text="Анимация смены обложки" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="AlbumArtTransitionOffRadio" Content="Без анимации" GroupName="AlbumArtTransition"
                                              Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="AlbumArtTransitionOnRadio" Content="С анимацией" GroupName="AlbumArtTransition"
                                              Checked="AlbumArtTransitionRadio_Changed" />
                                 <TextBlock Text="При переключении трека старая обложка «улетает» в сторону, а новая «влетает» с противоположной — как в iTunes."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,8" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,8" />
                             </StackPanel>
                         </Border>
 
@@ -690,7 +775,7 @@
                                           Checked="AlbumArtGesturesCheckBox_Changed"
                                           Unchecked="AlbumArtGesturesCheckBox_Changed" />
                                 <TextBlock Text="Касание — пуск/пауза; свайп влево или вправо — смена трека; свайп вверх или вниз — громкость. При отключении клик снова открывает обложку."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -699,12 +784,13 @@
                     <!-- Окно и запуск -->
                     <StackPanel x:Name="PageWindow" Visibility="Collapsed">
                         <TextBlock Text="Окно и запуск" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Режим окна и поведение приложения при запуске." Style="{StaticResource PageDescriptionStyle}" />
 
                         <Border x:Name="PlayerViewModeCard" Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Вид плеера" FontWeight="SemiBold" Margin="0,0,0,2" />
+                                <TextBlock Text="Вид плеера" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <TextBlock Text="Как выглядит и какого размера главное окно плеера"
-                                           Opacity="0.6" FontSize="12" Margin="0,0,0,12" TextWrapping="Wrap" />
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,14" />
 
                                 <StackPanel Orientation="Horizontal">
 
@@ -814,22 +900,26 @@
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="AlwaysOnTopCheckBox" Content="Поверх всех окон"
-                                          Checked="AlwaysOnTopCheckBox_Changed" Unchecked="AlwaysOnTopCheckBox_Changed"
-                                          Margin="0,0,0,10" />
+                                          Checked="AlwaysOnTopCheckBox_Changed" Unchecked="AlwaysOnTopCheckBox_Changed" />
+                                <TextBlock Text="Окно плеера остаётся видимым поверх других приложений."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="MinimizeToTrayCheckBox" Content="Сворачивать в трей при закрытии"
                                           Checked="MinimizeToTrayCheckBox_Changed" Unchecked="MinimizeToTrayCheckBox_Changed" />
+                                <TextBlock Text="Кнопка закрытия не завершает Lumisense: плеер остаётся доступен через значок в области уведомлений."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="LaunchOnStartupCheckBox" Content="Запускать вместе с Windows"
-                                          Checked="LaunchOnStartupCheckBox_Changed" Unchecked="LaunchOnStartupCheckBox_Changed"
-                                          Margin="0,0,0,10" />
+                                          Checked="LaunchOnStartupCheckBox_Changed" Unchecked="LaunchOnStartupCheckBox_Changed" />
+                                <TextBlock Text="Lumisense будет открываться после входа в Windows."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="StartHiddenInTrayCheckBox" Content="Запускать свёрнутым в трей"
                                           Checked="StartHiddenInTrayCheckBox_Changed" Unchecked="StartHiddenInTrayCheckBox_Changed" />
-                                <TextBlock Text="Окно плеера не появляется при запуске — сразу только значок в трее. Работает и без автозапуска с Windows: например, вместе с ярлыком в папке автозагрузки, если предпочитаете такой способ."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                <TextBlock Text="При запуске появляется только значок в области уведомлений; плеер можно открыть из него в любой момент."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -837,16 +927,18 @@
                     <!-- Воспроизведение -->
                     <StackPanel x:Name="PagePlayback" Visibility="Collapsed">
                         <TextBlock Text="Воспроизведение" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Громкость, продолжение воспроизведения и поведение плейлиста." Style="{StaticResource PageDescriptionStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="RememberVolumeCheckBox" Content="Запоминать громкость между запусками"
-                                          Checked="RememberVolumeCheckBox_Changed" Unchecked="RememberVolumeCheckBox_Changed"
-                                          Margin="0,0,0,10" />
+                                          Checked="RememberVolumeCheckBox_Changed" Unchecked="RememberVolumeCheckBox_Changed" />
+                                <TextBlock Text="При следующем запуске плеер восстановит последний выбранный уровень громкости."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="LogarithmicVolumeCheckBox" Content="Логарифмическая регулировка громкости"
                                           Checked="LogarithmicVolumeCheckBox_Changed" Unchecked="LogarithmicVolumeCheckBox_Changed" />
                                 <TextBlock Text="Ползунок громкости меняет уровень так, как его воспринимает слух: заметный на глаз ход в начале и в конце шкалы звучит одинаково плавно, без резкого скачка на малой громкости."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -858,16 +950,16 @@
                                           Checked="NeverAutoPlayLastTrackOnStartupCheckBox_Changed"
                                           Unchecked="NeverAutoPlayLastTrackOnStartupCheckBox_Changed" />
                                 <TextBlock Text="По умолчанию Lumisense продолжает трек с сохранённой позиции, только если он играл при закрытии приложения. С этой настройкой трек всё равно откроется, но останется на паузе."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
                         <!-- Кэш обложек из CoverArtSearchWindow хранится локально в %AppData%\Lumisense\cover-cache. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Кэш интернет-обложек" Margin="0,0,0,4" />
+                                <TextBlock Text="Кэш интернет-обложек" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <TextBlock Text="Повторно открытые варианты обложек берутся из локальной папки, чтобы не скачивать изображения заново."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,0" />
                                 <ui:Button x:Name="ClearArtworkCacheButton" Appearance="Secondary"
                                            HorizontalAlignment="Left" Margin="0,12,0,0"
                                            Click="ClearArtworkCacheButton_Click"
@@ -881,10 +973,10 @@
                              предпросмотра и подтверждения; см. FileNameNormalizer/MainWindow. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Нормализация имён файлов" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <TextBlock Text="Нормализация имён файлов" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <TextBlock Text="Переименовывает файлы в исходных папках по тегам. Перед изменением Lumisense покажет примеры и пропустит занятые имена или текущий трек."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                <TextBlock Text="Шаблон" FontSize="12" Opacity="0.7" Margin="0,0,0,6" />
+                                <TextBlock Text="Шаблон" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
                                 <ui:TextBox x:Name="FileNameNormalizationTemplateTextBox"
                                             PlaceholderText="Например: {Artist} - {Title}{Extension}"
                                             TextChanged="FileNameNormalizationTemplateTextBox_TextChanged">
@@ -904,10 +996,10 @@
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Действия контекстного меню трека" FontWeight="SemiBold" Margin="0,0,0,4" />
+                                <TextBlock Text="Действия контекстного меню трека" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <TextBlock Text="Снимите галочки, чтобы скрыть ненужные действия при нажатии правой кнопкой по треку в плейлисте. «Воспроизвести» остаётся доступным всегда."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                <UniformGrid Columns="2">
+                                <UniformGrid Columns="1" Margin="0,2,0,0">
                                     <CheckBox x:Name="TrackContextFavoriteCheckBox" Tag="Favorite" Content="Избранное"
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextShowInExplorerCheckBox" Tag="ShowInExplorer" Content="Показать в проводнике"
@@ -941,20 +1033,20 @@
                                 <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
                                           Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
                                 <TextBlock Text="Вместо чисто случайного выбора трека на каждом шаге сначала тасуется весь плейлист целиком, а треки проигрываются по порядку из этой тасовки — так один и тот же трек не может повториться, пока не сыграют все остальные."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
                         <!-- См. AppSettings.ProgressBarStyle / WaveformView / WaveformGenerator. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Полоса воспроизведения" Margin="0,0,0,10" />
+                                <TextBlock Text="Полоса воспроизведения" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="ProgressBarSliderRadio" Content="Обычная (по умолчанию)"
                                              GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="ProgressBarWaveformRadio" Content="Waveform (форма звука, как в SoundCloud)"
                                              GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,10" />
                                 <TextBlock Text="Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -964,7 +1056,7 @@
                                 <CheckBox x:Name="ReplayGainCheckBox" Content="ReplayGain"
                                           Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
                                 <TextBlock Text="Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -972,8 +1064,7 @@
                     <!-- Интеграции -->
                     <StackPanel x:Name="PageIntegrations" Visibility="Collapsed">
                         <TextBlock Text="Интеграции" Style="{StaticResource PageTitleStyle}" />
-                        <TextBlock Text="Подключение внешних сервисов, параметры приватности и диагностика."
-                                   FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,14" />
+                        <TextBlock Text="Внешние сервисы, приватность и диагностика подключений." Style="{StaticResource PageDescriptionStyle}" />
 
                         <!-- Discord Rich Presence — локальный Discord IPC, см. DiscordRichPresenceManager. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
@@ -983,7 +1074,7 @@
                                           Unchecked="DiscordRichPresenceEnabledCheckBox_Changed"
                                           Margin="0,0,0,10" />
                                 <TextBlock Text="Показывает активность Lumisense в профиле Discord через локальное соединение. Discord и обмен статусами должны быть включены в самом клиенте Discord."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,14" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,14" />
 
                                 <ui:Button x:Name="ConnectDiscordButton" Appearance="Secondary" HorizontalAlignment="Left"
                                            Content="Подключить Discord"
@@ -996,7 +1087,7 @@
                                 <TextBlock Text="Журнал сохраняет события подключения, отправки статуса и ошибки Discord Rich Presence — он поможет при диагностике проблем интеграции."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
 
-                                <TextBlock Text="Приватность" FontWeight="SemiBold" Margin="0,18,0,8" />
+                                <TextBlock Text="Приватность" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <CheckBox x:Name="DiscordRichPresenceShowTrackInfoCheckBox"
                                           Content="Показывать название и исполнителя"
                                           Checked="DiscordRichPresencePrivacyCheckBox_Changed"
@@ -1007,7 +1098,7 @@
                                           Checked="DiscordRichPresencePrivacyCheckBox_Changed"
                                           Unchecked="DiscordRichPresencePrivacyCheckBox_Changed" />
                                 <TextBlock Text="Локальные файлы и обложки не загружаются в Discord. Обложка может отображаться только как заранее добавленный asset приложения Lumisense."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -1018,6 +1109,7 @@
                          уведомление о смене трека (вкл/выкл, расположение, размер, монитор). -->
                     <StackPanel x:Name="PageNotifications" Visibility="Collapsed">
                         <TextBlock Text="Уведомления" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Всплывающие карточки о смене трека." Style="{StaticResource PageDescriptionStyle}" />
 
                         <!-- См. AppSettings.ShowTrackChangeToast и TrackChangeToastWindow. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
@@ -1026,7 +1118,7 @@
                                           Checked="TrackChangeToastCheckBox_Changed" Unchecked="TrackChangeToastCheckBox_Changed"
                                           Margin="0,0,0,10" />
                                 <TextBlock Text="Маленькая карточка с обложкой и названием в углу экрана — появляется на пару секунд при каждом переключении трека и пропадает сама."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -1035,24 +1127,32 @@
                              в разметке заранее известен только первый пункт "Автоматически". -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Расположение уведомления" Margin="0,0,0,10" />
-                                <UniformGrid Columns="3" Margin="0,0,0,16">
-                                    <RadioButton x:Name="ToastPosTopLeftRadio" Content="Сверху слева"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
-                                    <RadioButton x:Name="ToastPosTopCenterRadio" Content="Сверху по центру"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
-                                    <RadioButton x:Name="ToastPosTopRightRadio" Content="Сверху справа"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
-                                    <RadioButton x:Name="ToastPosBottomLeftRadio" Content="Снизу слева"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
-                                    <RadioButton x:Name="ToastPosBottomCenterRadio" Content="Снизу по центру"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
-                                    <RadioButton x:Name="ToastPosBottomRightRadio" Content="Снизу справа"
-                                                 GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
-                                </UniformGrid>
+                                <TextBlock Text="Расположение уведомления" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <Grid Margin="0,2,0,18">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                        <RadioButton x:Name="ToastPosTopLeftRadio" Content="Сверху слева"
+                                                     GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
+                                        <RadioButton x:Name="ToastPosTopCenterRadio" Content="Сверху по центру"
+                                                     GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
+                                        <RadioButton x:Name="ToastPosTopRightRadio" Content="Сверху справа"
+                                                     GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <RadioButton x:Name="ToastPosBottomLeftRadio" Content="Снизу слева"
+                                                     GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
+                                        <RadioButton x:Name="ToastPosBottomCenterRadio" Content="Снизу по центру"
+                                                     GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" Margin="0,0,0,10" />
+                                        <RadioButton x:Name="ToastPosBottomRightRadio" Content="Снизу справа"
+                                                     GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                    </StackPanel>
+                                </Grid>
 
-                                <TextBlock Text="Размер" Margin="0,0,0,10" />
-                                <StackPanel Orientation="Horizontal" Margin="0,0,0,16">
+                                <TextBlock Text="Размер" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <WrapPanel Margin="0,0,0,16">
                                     <RadioButton x:Name="ToastSizeSmallRadio" Content="Маленький"
                                                  GroupName="ToastSize" Checked="ToastSizeRadio_Changed"
                                                  Margin="0,0,16,0" VerticalAlignment="Center" />
@@ -1062,11 +1162,11 @@
                                     <RadioButton x:Name="ToastSizeLargeRadio" Content="Большой"
                                                  GroupName="ToastSize" Checked="ToastSizeRadio_Changed"
                                                  Margin="0" VerticalAlignment="Center" />
-                                </StackPanel>
+                                </WrapPanel>
 
                                 <!-- См. AppSettings.TrackChangeToastWidth — независимо от размера выше,
                                      только ширина карточки (и то, сколько текста влезает в строку). -->
-                                <TextBlock Text="Ширина" Margin="0,0,0,10" />
+                                <TextBlock Text="Ширина" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <Grid Margin="0,0,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -1080,9 +1180,11 @@
                                         TickFrequency="10" IsSnapToTickEnabled="True"
                                         ValueChanged="ToastWidthSlider_ValueChanged" Margin="0,0,0,16" />
 
-                                <TextBlock Text="Монитор" Margin="0,0,0,10" />
+                                <TextBlock Text="Монитор" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <ComboBox x:Name="ToastMonitorCombo" SelectionChanged="ToastMonitorCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="220" />
+                                <TextBlock Text="Автоматический выбор использует экран, на котором находится окно плеера."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -1090,6 +1192,7 @@
                     <!-- Эквалайзер -->
                     <StackPanel x:Name="PageEqualizer" Visibility="Collapsed">
                         <TextBlock Text="Эквалайзер" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Точная настройка звучания и сохранённые пресеты." Style="{StaticResource PageDescriptionStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
@@ -1097,7 +1200,7 @@
                                           Checked="EqualizerEnabledCheckBox_Changed" Unchecked="EqualizerEnabledCheckBox_Changed"
                                           Margin="0,0,0,10" />
                                 <TextBlock Text="10 полос графического эквалайзера — регулировки применяются сразу же, без перезапуска трека."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,16" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
 
                                 <CheckBox x:Name="EqualizerBypassCheckBox"
                                           Content="EQ Bypass (временно отключить обработку)"
@@ -1105,7 +1208,7 @@
                                           Unchecked="EqualizerBypassCheckBox_Changed"
                                           Margin="0,0,0,0" />
                                 <TextBlock Text="Пропускает сигнал мимо фильтров, не меняя настройки полос. Удобно для быстрого сравнения звука с EQ и без."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,16" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
 
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -1221,7 +1324,7 @@
                             </StackPanel>
                         </Border>
 
-                        <TextBlock Text="Пресеты" FontSize="12" FontWeight="SemiBold" Opacity="0.55" Margin="0,4,0,8" />
+                        <TextBlock Text="Пресеты" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,4,0,8" />
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Сохрани текущие настройки полос как пресет, переключайся между ними или поделись файлом пресета с кем-то ещё."
@@ -1258,6 +1361,7 @@
                     <!-- Мини-плеер -->
                     <StackPanel x:Name="PageMiniPlayer" Visibility="Collapsed">
                         <TextBlock Text="Мини-плеер" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Компактный режим, оформление и поведение мини-плеера." Style="{StaticResource PageDescriptionStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
@@ -1266,7 +1370,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="Прозрачность окна" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="0" Text="Прозрачность окна" Style="{StaticResource SettingsSectionTitleStyle}" VerticalAlignment="Center" Margin="0" />
                                     <TextBlock x:Name="MiniOpacityValueText" Grid.Column="1" Text="100%"
                                                Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
@@ -1287,16 +1391,20 @@
                                 </Grid>
 
                                 <CheckBox x:Name="MiniAlwaysOnTopCheckBox" Content="Поверх всех окон (мини-плеер)"
-                                          Checked="MiniAlwaysOnTopCheckBox_Changed" Unchecked="MiniAlwaysOnTopCheckBox_Changed"
-                                          Margin="0,0,0,10" />
+                                          Checked="MiniAlwaysOnTopCheckBox_Changed" Unchecked="MiniAlwaysOnTopCheckBox_Changed" />
+                                <TextBlock Text="Мини-плеер остаётся видимым, пока вы работаете в других приложениях."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="MiniPinnedCheckBox" Content="Закрепить положение (запретить перетаскивание)"
-                                          Checked="MiniPinnedCheckBox_Changed" Unchecked="MiniPinnedCheckBox_Changed"
-                                          Margin="0,0,0,10" />
+                                          Checked="MiniPinnedCheckBox_Changed" Unchecked="MiniPinnedCheckBox_Changed" />
+                                <TextBlock Text="Защищает выбранную позицию мини-плеера при изменении режима экрана или запуске игры."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <!-- См. AppSettings.MiniPlayerSnapToEdges / WindowSnapHelper. Действует, только
                                      пока положение НЕ закреплено чекбоксом выше — если перетаскивания нет
                                      вообще, прилипать уже нечему. -->
                                 <CheckBox x:Name="MiniSnapToEdgesCheckBox" Content="Прилипание к краям экрана"
                                           Checked="MiniSnapToEdgesCheckBox_Changed" Unchecked="MiniSnapToEdgesCheckBox_Changed" />
+                                <TextBlock Text="При перетаскивании мини-плеер выравнивается по ближайшему краю экрана."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -1306,13 +1414,15 @@
                              и MiniPlayerWindow.UpdateSecondaryButton). -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Вторая кнопка в мини-плеере" Margin="0,0,0,10" />
+                                <TextBlock Text="Вторая кнопка в мини-плеере" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="MiniSecondaryRepeatRadio" Content="Повтор" GroupName="MiniSecondaryButton"
                                              Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniSecondaryShuffleRadio" Content="Перемешать" GroupName="MiniSecondaryButton"
                                              Checked="MiniSecondaryButtonRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniSecondaryFavoriteRadio" Content="Избранное" GroupName="MiniSecondaryButton"
                                              Checked="MiniSecondaryButtonRadio_Changed" />
+                                <TextBlock Text="Выберите действие дополнительной кнопки рядом с основными элементами управления."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -1320,7 +1430,7 @@
                              за подробностями, чем отличаются режимы. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Расположение кнопок управления" Margin="0,0,0,10" />
+                                <TextBlock Text="Расположение кнопок управления" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="MiniButtonsBelowRadio"
                                              Content="Снизу (окно немного подрастает при наведении)"
                                              GroupName="MiniButtonsLayout" Checked="MiniButtonsLayoutRadio_Changed"
@@ -1328,12 +1438,14 @@
                                 <RadioButton x:Name="MiniButtonsOverlayRadio"
                                              Content="На месте обложки и названия (размер окна не меняется)"
                                              GroupName="MiniButtonsLayout" Checked="MiniButtonsLayoutRadio_Changed" />
+                                <TextBlock Text="Нижний вариант раскрывает управление при наведении, а вариант поверх обложки сохраняет постоянный размер окна."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Отображение обложки" Margin="0,0,0,10" />
+                                <TextBlock Text="Отображение обложки" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="MiniArtworkDefaultRadio" Content="По умолчанию"
                                              GroupName="MiniPlayerArtworkStyle"
                                              Checked="MiniArtworkStyleRadio_Changed" Margin="0,0,0,10" />
@@ -1341,7 +1453,7 @@
                                              GroupName="MiniPlayerArtworkStyle"
                                              Checked="MiniArtworkStyleRadio_Changed" />
                                 <TextBlock Text="Виниловый режим делает обложку круглой и приостанавливает её вращение вместе с треком."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,8,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,10,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -1351,15 +1463,15 @@
                                 <CheckBox x:Name="MiniShowProgressCheckBox" Content="Показывать полосу прогресса"
                                           Checked="MiniShowProgressCheckBox_Changed" Unchecked="MiniShowProgressCheckBox_Changed" />
                                 <TextBlock Text="Окно мини-плеера становится немного компактнее, если полоса не нужна. Перемотка кликом по обложке/названию по-прежнему недоступна — только сама полоса."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,4,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 <CheckBox x:Name="MiniShowArtworkProgressCheckBox" Content="Показывать прогресс вокруг обложки"
                                           Checked="MiniShowArtworkProgressCheckBox_Changed"
                                           Unchecked="MiniShowArtworkProgressCheckBox_Changed"
                                           Margin="0,14,0,0" />
                                 <TextBlock Text="Тонкий акцентный контур повторяет скруглённую форму обложки и показывает прогресс текущего трека. Его можно включить отдельно от обычной полосы прогресса."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="26,0,0,0" />
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
 
-                                <TextBlock Text="Цвет контура" Margin="0,18,0,10" />
+                                <TextBlock Text="Цвет контура" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <RadioButton x:Name="MiniArtworkProgressAccentRadio"
                                              Content="Акцент из вкладки «Оформление»"
                                              GroupName="MiniArtworkProgressColorMode"
@@ -1418,13 +1530,15 @@
                              про вторую строку под ним. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Вторая строка в мини-плеере" Margin="0,0,0,10" />
+                                <TextBlock Text="Вторая строка в мини-плеере" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="MiniInfoArtistRadio" Content="Исполнитель" GroupName="MiniInfoMode"
                                              Checked="MiniInfoModeRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniInfoOnlyTitleRadio" Content="Ничего (только название трека)"
                                              GroupName="MiniInfoMode" Checked="MiniInfoModeRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniInfoRemainingRadio" Content="Оставшееся время трека"
                                              GroupName="MiniInfoMode" Checked="MiniInfoModeRadio_Changed" />
+                                <TextBlock Text="Эта настройка меняет только вторую строку: название трека остаётся видимым всегда."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -1432,11 +1546,13 @@
                     <!-- Горячие клавиши -->
                     <StackPanel x:Name="PageHotkeys" Visibility="Collapsed">
                         <TextBlock Text="Горячие клавиши" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Управляйте воспроизведением из любого приложения." Style="{StaticResource PageDescriptionStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Работают из любого окна, даже когда плеер свёрнут. Нажмите на комбинацию и введите новую — Esc отменяет запись."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,16" />
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,18" />
+                                <TextBlock Text="Сочетания клавиш" Style="{StaticResource SettingsSectionTitleStyle}" />
 
                                 <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
@@ -1653,6 +1769,7 @@
                          не входят — только тема, акцент, эквалайзер, хоткеи и т.п. -->
                     <StackPanel x:Name="PageProfile" Visibility="Collapsed">
                         <TextBlock Text="Профиль" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Перенос параметров и безопасный сброс настроек." Style="{StaticResource PageDescriptionStyle}" />
                         <TextBlock Text="Перенос настроек плеера на другой компьютер одним файлом — тема, акцентный цвет, эквалайзер, горячие клавиши и остальные переключатели на этих страницах. Плейлист, избранное и история прослушиваний сюда не входят."
                                    Opacity="0.6" FontSize="12" Margin="0,0,0,16" TextWrapping="Wrap" />
 
@@ -1703,7 +1820,7 @@
                         </ui:Button>
 
                         <!-- См. SettingsWindow.ResetPlayerButton_Click / AppSettings.ResetToDefaults. -->
-                        <TextBlock Text="Сброс" Style="{StaticResource PageTitleStyle}" FontSize="16" Margin="0,24,0,8" />
+                        <TextBlock Text="Сброс" Style="{StaticResource SettingsSectionTitleStyle}" Margin="0,26,0,8" />
                         <TextBlock Text="Возвращает тему, акцент, подложку окна, вид и размер плеера, громкость, шафл/повтор, горячие клавиши, мини-плеер и остальные переключатели к значениям по умолчанию. Плейлист, избранное, история прослушиваний, статистика и сохранённые пресеты эквалайзера не затрагиваются."
                                    Opacity="0.6" FontSize="12" Margin="0,0,0,16" TextWrapping="Wrap" />
 
@@ -1757,6 +1874,7 @@
                          до трёх самостоятельных блоков. -->
                     <StackPanel x:Name="PageUpdates" Visibility="Collapsed">
                         <TextBlock Text="Обновления" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Проверка версий и выбор источника загрузки." Style="{StaticResource PageDescriptionStyle}" />
 
                         <ui:Button x:Name="CheckUpdatesButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
@@ -1786,7 +1904,7 @@
                              видеть/трогать большинству, кому GitHub и так доступен напрямую. -->
                         <Expander Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch" Margin="0,20,0,0">
                             <Expander.Header>
-                                <TextBlock Text="Источник загрузки обновлений" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock Text="Источник загрузки обновлений" Style="{StaticResource SettingsSectionTitleStyle}" Margin="0" />
                             </Expander.Header>
                             <StackPanel>
                                 <TextBlock Text="Откуда скачивать обновление. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из зеркал gh-proxy. На саму проверку версии эта настройка не влияет."
@@ -1820,7 +1938,7 @@
                         <Expander x:Name="AllVersionsExpanderControl" Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch"
                                   Margin="0,14,0,0" IsExpanded="True" Expanded="AllVersionsExpander_Expanded">
                             <Expander.Header>
-                                <TextBlock Text="Все версии" FontSize="14" FontWeight="SemiBold" />
+                                <TextBlock Text="Все версии" Style="{StaticResource SettingsSectionTitleStyle}" Margin="0" />
                             </Expander.Header>
                             <StackPanel>
                                 <TextBlock Text="Полный список версий плеера с GitHub — можно поставить не только последнюю, но и любую другую, в том числе более старую."
@@ -1862,6 +1980,7 @@
                     <!-- О плеере (+ Патчноуты) -->
                     <StackPanel x:Name="PageAbout" Visibility="Collapsed">
                         <TextBlock Text="О плеере" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Сведения о приложении, разработчике и диагностике." Style="{StaticResource PageDescriptionStyle}" />
 
                         <!-- 1. Описание приложения — без изменений -->
                         <Border Style="{StaticResource SettingsCardStyle}" x:Name="AboutInfoCard">
@@ -2021,8 +2140,9 @@
                         </ui:Button>
                     </StackPanel>
 
-                </Grid>
-            </ScrollViewer>
+                    </Grid>
+                </ScrollViewer>
+            </Border>
 
         </Grid>
     </Grid>
