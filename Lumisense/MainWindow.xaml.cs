@@ -3255,7 +3255,6 @@ public partial class MainWindow : FluentWindow
                 _playbackClock.Start();
                 _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
                 PlaybackStateChanged?.Invoke(true);
-                ShowTrackChangeToast();
             }
             else
             {
@@ -3264,6 +3263,11 @@ public partial class MainWindow : FluentWindow
                 _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
                 PlaybackStateChanged?.Invoke(false);
             }
+
+            // Уведомление сообщает о смене текущего трека, а не о начале воспроизведения.
+            // Поэтому его нужно показать и при выборе/загрузке трека на паузе: метаданные и
+            // обложка уже готовы, а пользователь должен видеть, что именно было выбрано.
+            ShowTrackChangeToast();
             ScrollPlaylistToCurrentTrack();
         }
         catch (OperationCanceledException)

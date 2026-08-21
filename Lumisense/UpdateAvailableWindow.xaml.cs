@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -25,9 +26,10 @@ public partial class UpdateAvailableWindow : FluentWindow
 
         VersionsText.Text = LocalizationService.Translate($"Версия {result.LatestVersion} (у вас {result.CurrentVersion})");
 
-        if (!string.IsNullOrWhiteSpace(result.ReleaseNotes))
+        string releaseNotes = FormatReleaseNotes(result.ReleaseNotes);
+        if (!string.IsNullOrWhiteSpace(releaseNotes))
         {
-            NotesText.Text = result.ReleaseNotes.Trim();
+            NotesText.Text = releaseNotes;
         }
         else
         {
@@ -36,6 +38,82 @@ public partial class UpdateAvailableWindow : FluentWindow
 
         MoreButton.Visibility = string.IsNullOrEmpty(result.ReleaseNotesUrl) ? Visibility.Collapsed : Visibility.Visible;
 
+    }
+
+    // GitHub Release body приходит в Markdown, но TextBlock не умеет его рендерить и показывал
+    // пользователю служебные символы (#, **, [ссылка](url)). Для компактного диалога обновления
+    // нужен не полноценный HTML/Markdown-движок, а безопасное плоское представление: заголовки,
+    // маркеры и callout-блоки становятся обычным читаемым текстом, а ссылки отображаются подписью.
+    private static string FormatReleaseNotes(string? markdown)
+    {
+        if (string.IsNullOrWhiteSpace(markdown)) return string.Empty;
+
+        var lines = new List<string>();
+        bool inCodeBlock = false;
+
+        foreach (string rawLine in markdown.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+        {
+            string line = rawLine.TrimEnd();
+            string trimmed = line.TrimStart();
+
+            if (trimmed.StartsWith("```", StringComparison.Ordinal))
+            {
+                inCodeBlock = !inCodeBlock;
+                continue;
+            }
+
+            if (!inCodeBlock && trimmed.StartsWith('>'))
+            {
+                trimmed = trimmed[1..].TrimStart();
+            }
+
+            if (!inCodeBlock && trimmed.StartsWith("[!IMPORTANT]", StringComparison.OrdinalIgnoreCase))
+            {
+                AddBlankLineBeforeSection(lines);
+                lines.Add(LocalizationService.Translate("Важно:"));
+                continue;
+            }
+
+            if (!inCodeBlock)
+            {
+                int headingLength = 0;
+                while (headingLength < trimmed.Length && trimmed[headingLength] == '#') headingLength++;
+
+                if (headingLength > 0 && headingLength < trimmed.Length && char.IsWhiteSpace(trimmed[headingLength]))
+                {
+                    AddBlankLineBeforeSection(lines);
+                    trimmed = trimmed[headingLength..].TrimStart();
+                }
+                else if (trimmed is "---" or "***" or "___")
+                {
+                    AddBlankLineBeforeSection(lines);
+                    continue;
+                }
+                else if (trimmed.StartsWith("- ", StringComparison.Ordinal) ||
+                         trimmed.StartsWith("* ", StringComparison.Ordinal) ||
+                         trimmed.StartsWith("+ ", StringComparison.Ordinal))
+                {
+                    trimmed = "• " + trimmed[2..];
+                }
+            }
+
+            trimmed = Regex.Replace(trimmed, @"\[([^\]]+)\]\([^)]+\)", "$1");
+            trimmed = trimmed.Replace("**", string.Empty)
+                             .Replace("__", string.Empty)
+                             .Replace("~~", string.Empty)
+                             .Replace("`", string.Empty);
+
+            lines.Add(trimmed);
+        }
+
+        while (lines.Count > 0 && string.IsNullOrWhiteSpace(lines[0])) lines.RemoveAt(0);
+        while (lines.Count > 0 && string.IsNullOrWhiteSpace(lines[^1])) lines.RemoveAt(lines.Count - 1);
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static void AddBlankLineBeforeSection(List<string> lines)
+    {
+        if (lines.Count > 0 && !string.IsNullOrWhiteSpace(lines[^1])) lines.Add(string.Empty);
     }
 
     private void LaterButton_Click(object sender, RoutedEventArgs e)

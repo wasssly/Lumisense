@@ -61,9 +61,10 @@
                        Opacity="0.8" Margin="0,12,0,6"
                        Visibility="{Binding ElementName=NotesText, Path=Visibility}" />
 
-            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto">
-                <TextBlock x:Name="NotesText" TextWrapping="Wrap" FontSize="13" Opacity="0.85"
-                           Text="" />
+            <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                          HorizontalScrollBarVisibility="Disabled" Margin="0,0,4,0">
+                <TextBlock x:Name="NotesText" TextWrapping="Wrap" FontSize="13" LineHeight="18"
+                           Opacity="0.85" Text="" />
             </ScrollViewer>
 
             <!-- Раньше DownloadProgressBar/PhaseText/StatusText делили одну и ту же строку Grid

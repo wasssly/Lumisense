@@ -1897,17 +1897,17 @@
                                          Тот же приём уже используется у TrackFavoriteButton/
                                          TrackPinButton в MainWindow.xaml. -->
                                     <ui:Button x:Name="DeveloperGitHubButton" Appearance="Secondary"
-                                               Width="38" Height="38" Padding="0" Margin="0,0,8,0"
+                                               Width="40" Height="40" Padding="0" Margin="0,0,8,0"
                                                Click="DeveloperGitHubButton_Click" ToolTip="github.com/wasssly">
                                         <ui:Button.Icon>
-                                            <local:SvgPathIcon Icon="IconGitHub" Size="16" />
+                                            <local:SvgPathIcon Icon="IconGitHub" Size="21" />
                                         </ui:Button.Icon>
                                     </ui:Button>
                                     <ui:Button x:Name="DeveloperTelegramButton" Appearance="Secondary"
-                                               Width="38" Height="38" Padding="0"
+                                               Width="40" Height="40" Padding="0"
                                                Click="DeveloperTelegramButton_Click" ToolTip="t.me/dontwritetoblame">
                                         <ui:Button.Icon>
-                                            <local:SvgPathIcon Icon="IconTelegram" Size="16" />
+                                            <local:SvgPathIcon Icon="IconTelegram" Size="21" />
                                         </ui:Button.Icon>
                                     </ui:Button>
                                 </StackPanel>

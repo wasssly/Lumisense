@@ -51,15 +51,22 @@ public partial class TrackChangeToastWindow : Window
         ApplySizePreset(size);
         ApplyWidth(width, size);
 
-        if (art != null)
+        if (art is ImageBrush { ImageSource: not null } imageBrush)
         {
-            ArtBorder.Background = art;
+            // Не используем ImageBrush как Background: на небольшой обложке уведомления WPF
+            // может выбрать низкокачественное масштабирование. Явный Image в XAML работает
+            // так же, как проверенное отображение в мини-плеере.
+            ArtImage.Source = imageBrush.ImageSource;
+            ArtImage.Visibility = Visibility.Visible;
+            ArtBorder.Background = Brushes.Transparent;
             ArtIcon.Visibility = Visibility.Collapsed;
         }
         else
         {
-            ArtBorder.Background = (Brush)FindResource("ControlFillColorSecondaryBrush");
-            ArtIcon.Visibility = Visibility.Visible;
+            ArtImage.Source = null;
+            ArtImage.Visibility = Visibility.Collapsed;
+            ArtBorder.Background = art ?? (Brush)FindResource("ControlFillColorSecondaryBrush");
+            ArtIcon.Visibility = art is null ? Visibility.Visible : Visibility.Collapsed;
         }
 
         ToastBackgroundBrush.Color = isLightTheme ? LightBackground : DarkBackground;
@@ -120,6 +127,11 @@ public partial class TrackChangeToastWindow : Window
         Height = preset.Height;
         ArtBorder.Width = preset.Art;
         ArtBorder.Height = preset.Art;
+        // Border не обрезает дочерний Image по CornerRadius автоматически. Явный Clip нужен,
+        // чтобы обложка не оставалась квадратной при HighQuality-отрисовке; пересчитываем его
+        // для каждого выбранного размера уведомления.
+        double cornerRadius = Math.Min(8.0, preset.Art / 6.0);
+        ArtImage.Clip = new RectangleGeometry(new Rect(0, 0, preset.Art, preset.Art), cornerRadius, cornerRadius);
         ArtIcon.Size = preset.Art * 0.42; // та же пропорция иконки к обложке, что и раньше (20/48)
         ToastTitleText.FontSize = preset.TitleFont;
         ToastArtistText.FontSize = preset.ArtistFont;

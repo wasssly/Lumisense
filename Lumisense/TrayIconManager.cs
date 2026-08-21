@@ -19,8 +19,12 @@ public sealed class TrayIconManager : IDisposable
     private static readonly Color Accent = Color.FromArgb(96, 92, 255);
     private const int CornerRadius = 8;
     private const int ItemCornerRadius = 6;
-    private const int ArtThumbnailSize = 28;
-    private const int ArtCornerRadius = 8;
+    // Миниатюра не должна диктовать высоту всему меню: крупная 28px-обложка и длинная строка
+    // текущего трека делали контекстное меню заметно больше обычного. 20px достаточно для
+    // узнаваемости и оставляет пункты меню компактными при любом DPI.
+    private const int ArtThumbnailSize = 20;
+    private const int ArtCornerRadius = 6;
+    private const int NowPlayingTextLimit = 34;
 
     private readonly NotifyIcon _notifyIcon;
     private readonly RoundedContextMenuStrip _menu;
@@ -184,7 +188,7 @@ public sealed class TrayIconManager : IDisposable
         var text = string.IsNullOrWhiteSpace(_nowPlayingTitle)
             ? LocalizationService.Translate("Ничего не играет")
             : $"{_nowPlayingTitle} — {_nowPlayingArtist}";
-        _nowPlayingItem.Text = Truncate(text, 60);
+        _nowPlayingItem.Text = TruncateWithEllipsis(text, NowPlayingTextLimit);
     }
 
     // Декодирование могло бы упасть на битых/незнакомых по формату тегах — сам плеер в этом
@@ -310,6 +314,12 @@ public sealed class TrayIconManager : IDisposable
 
     private static string Truncate(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength];
+
+    // У пункта контекстного меню нет безопасного MaxWidth, который одинаково работает во всех
+    // DPI/темах WinForms. Ограничиваем именно данные: длинное название не сможет растянуть
+    // выпадающее меню, а многоточие честно показывает, что строка сокращена.
+    private static string TruncateWithEllipsis(string value, int maxLength) =>
+        value.Length <= maxLength ? value : value[..Math.Max(1, maxLength - 1)] + "…";
 
     public void Dispose()
     {
