@@ -37,6 +37,10 @@ public static class LocalizationKey
     public const string UpdateFailureNetwork = "update.failure.network";
     public const string UpdateFailureLoadVersionList = "update.failure.loadVersionList";
 
+    public const string ChangelogOpenReleaseOnGitHub = "changelog.openReleaseOnGitHub";
+    public const string ChangelogNoDescription = "changelog.noDescription";
+    public const string ChangelogChanges = "changelog.changes";
+
     public const string TrackStateNoTrack = "track.state.noTrack";
     public const string TrackStateNoTrackHint = "track.state.noTrackHint";
     public const string TrackStateLoading = "track.state.loading";
@@ -87,6 +91,13 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateFailureNetwork] = "Не удалось подключиться к GitHub. Проверьте подключение к интернету и повторите попытку.",
         [LocalizationKey.UpdateFailureLoadVersionList] = "Не удалось загрузить список версий: {0}",
 
+        [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Открыть релиз на GitHub",
+        [LocalizationKey.ChangelogNoDescription] = "Нет описания",
+        [LocalizationKey.ChangelogChanges + ".one"] = "{0} изменение",
+        [LocalizationKey.ChangelogChanges + ".few"] = "{0} изменения",
+        [LocalizationKey.ChangelogChanges + ".many"] = "{0} изменений",
+        [LocalizationKey.ChangelogChanges + ".other"] = "{0} изменений",
+
         [LocalizationKey.TrackStateNoTrack] = "Трек не выбран",
         [LocalizationKey.TrackStateNoTrackHint] = "Выберите трек в плейлисте или нажмите воспроизведение.",
         [LocalizationKey.TrackStateLoading] = "Загрузка трека",
@@ -132,6 +143,11 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateFailureMissingInstallerChecksum] = "The GitHub Release does not contain an installer SHA-256 checksum.",
         [LocalizationKey.UpdateFailureNetwork] = "Could not connect to GitHub. Check your internet connection and try again.",
         [LocalizationKey.UpdateFailureLoadVersionList] = "Could not load the version list: {0}",
+
+        [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Open release on GitHub",
+        [LocalizationKey.ChangelogNoDescription] = "No description",
+        [LocalizationKey.ChangelogChanges + ".one"] = "{0} change",
+        [LocalizationKey.ChangelogChanges + ".other"] = "{0} changes",
 
         [LocalizationKey.TrackStateNoTrack] = "No track selected",
         [LocalizationKey.TrackStateNoTrackHint] = "Select a track in the playlist or press Play.",

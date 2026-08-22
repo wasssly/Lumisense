@@ -13,7 +13,7 @@ public sealed class ChangelogEntryViewModel
     public string? GitHubReleaseUrl { get; }
     public bool HasGitHubRelease => !string.IsNullOrWhiteSpace(GitHubReleaseUrl);
     public string? GitHubReleaseToolTip => HasGitHubRelease
-        ? LocalizationService.Translate("Открыть релиз на GitHub")
+        ? LocalizationService.Get(LocalizationKey.ChangelogOpenReleaseOnGitHub)
         : null;
     public IReadOnlyList<ChangeItemViewModel> Items { get; }
 
@@ -44,10 +44,8 @@ public sealed class ChangelogEntryViewModel
 
     // Подпись под версией в списке слева должна обновляться вместе с языком интерфейса.
     public string ChangesCountLabel => Items.Count == 0
-        ? LocalizationService.Translate("Нет описания")
-        : LocalizationService.IsEnglish
-            ? $"{Items.Count} {(Items.Count == 1 ? "change" : "changes")}"
-            : $"{Items.Count} {Pluralize(Items.Count)}";
+        ? LocalizationService.Get(LocalizationKey.ChangelogNoDescription)
+        : LocalizationService.FormatPlural(LocalizationKey.ChangelogChanges, Items.Count);
 
     public ChangelogEntryViewModel(ChangelogEntry source, string? gitHubReleaseUrl = null)
     {
@@ -102,16 +100,4 @@ public sealed class ChangelogEntryViewModel
         return false;
     }
 
-    private static string Pluralize(int count)
-    {
-        int mod100 = count % 100;
-        if (mod100 is >= 11 and <= 14) return "изменений";
-
-        return (count % 10) switch
-        {
-            1 => "изменение",
-            2 or 3 or 4 => "изменения",
-            _ => "изменений"
-        };
-    }
 }

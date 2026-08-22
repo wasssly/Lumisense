@@ -293,7 +293,7 @@ public partial class MainWindow : FluentWindow
 
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
-    private TrackChangeToastWindow? _trackChangeToastWindow;
+    private readonly TrackChangeToastController _trackChangeToastController = new();
     private CoverArtWindow? _coverArtWindow;
     private NowPlayingWindow? _nowPlayingWindow;
 
@@ -2076,7 +2076,8 @@ public partial class MainWindow : FluentWindow
         // ExtentHeight, ViewportHeight и смещение ниже находятся в одной системе координат и
         // анимация не смешивает индекс элементов с пикселями (прежняя причина скачка в конец).
         LyricsPanelSyncedList.UpdateLayout();
-        if (LyricsPanelSyncedList.ItemContainerGenerator.ContainerFromItem(activeLine) is not FrameworkElement container)
+        FrameworkElement? container = LyricsPanelSyncedList.ItemContainerGenerator.ContainerFromItem(activeLine) as FrameworkElement;
+        if (container is null)
         {
             LyricsPanelSyncedList.ScrollIntoView(activeLine);
             LyricsPanelSyncedList.UpdateLayout();
@@ -5400,10 +5401,9 @@ public partial class MainWindow : FluentWindow
     {
         if (!_settings.ShowTrackChangeToast || !ShouldShowTrackChangeToast(origin, autoPlay)) return;
 
-        _trackChangeToastWindow ??= new TrackChangeToastWindow();
-        _trackChangeToastWindow.ShowToast(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
-            _settings.IsLightThemeResolved(), ResolveToastScreen(),
-            _settings.TrackChangeToastPosition, _settings.TrackChangeToastSize, _settings.TrackChangeToastWidth);
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        _trackChangeToastController.Show(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
+            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, handle), _settings);
     }
 
     private bool ShouldShowTrackChangeToast(TrackChangeOrigin origin, bool autoPlay) =>
@@ -5414,25 +5414,6 @@ public partial class MainWindow : FluentWindow
             _ => true // EveryTrackChange
         };
 
-    // Монитор для всплывающего уведомления (см. AppSettings.TrackChangeToastMonitor) — если
-    // выбран конкретный и он всё ещё подключён, используем его; иначе (пусто, либо сохранённый
-    // монитор отключили или это уже другой компьютер) — тот, на котором сейчас находится само
-    // окно плеера, а не жёстко прибитый к "основному" монитору Windows: так уведомление скорее
-    // всего выскочит там, куда человек и так сейчас смотрит.
-    private System.Windows.Forms.Screen ResolveToastScreen()
-    {
-        if (!string.IsNullOrEmpty(_settings.TrackChangeToastMonitor))
-        {
-            var saved = System.Windows.Forms.Screen.AllScreens
-                .FirstOrDefault(s => s.DeviceName == _settings.TrackChangeToastMonitor);
-            if (saved != null) return saved;
-        }
-
-        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-        if (handle != IntPtr.Zero) return System.Windows.Forms.Screen.FromHandle(handle);
-
-        return System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
-    }
 
     // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
     // Настройки читаются/пишутся здесь, а не прямо из SettingsWindow — EqualizerSampleProvider
@@ -6328,7 +6309,7 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.Close();
         _settingsWindow?.Close();
         _statisticsWindow?.Close();
-        _trackChangeToastWindow?.Close();
+        _trackChangeToastController.Dispose();
         _changelogWindow?.Close();
         _coverArtWindow?.Close();
         _nowPlayingWindow?.Close();

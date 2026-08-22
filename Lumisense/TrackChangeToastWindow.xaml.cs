@@ -14,7 +14,6 @@ public partial class TrackChangeToastWindow : Window
 {
     private static readonly TimeSpan VisibleDuration = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(200);
-    private const double ScreenMargin = 20;
 
     // Те же самые RGB, что и у фона мини-плеера (см. MiniPlayerWindow.ApplyBackground) —
     // визуальная согласованность между двумя "плавающими поверх рабочего стола" окнами
@@ -71,8 +70,6 @@ public partial class TrackChangeToastWindow : Window
 
         ToastBackgroundBrush.Color = isLightTheme ? LightBackground : DarkBackground;
 
-        PositionOnScreen(screen, position);
-
         // Останавливаем и таймер, и любую уже идущую анимацию (например, недоигравший
         // fade-out от предыдущего, слишком быстро сменившегося трека) — иначе её Completed
         // мог бы сработать уже ПОСЛЕ того, как мы только что показали уведомление для нового
@@ -80,7 +77,15 @@ public partial class TrackChangeToastWindow : Window
         _hideTimer.Stop();
         RootBorder.BeginAnimation(UIElement.OpacityProperty, null);
 
-        if (!IsVisible) Show();
+        // HWND нужен для точного SetWindowPos в физических пикселях конкретного монитора.
+        // Первое создание остаётся невидимым, поэтому пользователь не увидит промежуточное
+        // размещение на основном дисплее до per-monitor DPI-позиционирования.
+        if (!IsVisible)
+        {
+            RootBorder.Opacity = 0;
+            Show();
+        }
+        PositionOnScreen(screen, position);
 
         RootBorder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, FadeDuration));
         _hideTimer.Start();
@@ -148,39 +153,27 @@ public partial class TrackChangeToastWindow : Window
         ToastTextPanel.MaxWidth = Math.Max(width - GetSizePreset(size).NonTextWidth, 40.0);
     }
 
-    // Выбранный угол рабочей области ВЫБРАННОГО монитора (без учёта панели задач на нём).
-    // Экран передаётся уже разрешённым (см. MainWindow.ResolveToastScreen) — это окно только
-    // переводит его WorkingArea (физические пиксели конкретного монитора) в WPF-единицы.
-    //
-    // Пересчёт через один общий коэффициент масштаба (см. GetDpiScale) корректен, когда все
-    // мониторы работают с одинаковым масштабированием в Windows — это подавляющее большинство
-    // реальных многомониторных настроек. На смешанном DPI (разный масштаб на разных мониторах)
-    // расстояние от края экрана может оказаться чуть неточным на мониторах с масштабом,
-    // отличным от того, на котором в этот момент физически находится само окно уведомления —
-    // корректный по-honestly монитор-DPI-aware пересчёт потребовал бы работы с HWND и
-    // Win32 API уровня GetDpiForMonitor, что для всплывающей карточки, которая и так исчезает
-    // через 3 секунды, явно избыточно.
+    // Рабочая область Screen задаётся физическими пикселями. Получаем DPI именно выбранного
+    // монитора, рассчитываем физический прямоугольник и передаём его HWND через SetWindowPos.
+    // Поэтому 100% + 150% и другие mixed-DPI конфигурации не зависят от монитора, на котором
+    // toast находился при предыдущем показе.
     private void PositionOnScreen(System.Windows.Forms.Screen screen, string position)
     {
-        double scale = GetDpiScale();
-        var area = screen.WorkingArea;
+        double scale = ToastMonitorDpi.GetScale(screen, GetDpiScale());
+        ToastPlacement placement = ToastPlacementCalculator.Calculate(screen.WorkingArea, Width, Height, scale, position);
+        IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
 
-        double areaLeft = area.Left / scale;
-        double areaTop = area.Top / scale;
-        double areaRight = area.Right / scale;
-        double areaBottom = area.Bottom / scale;
-
-        double centerLeft = areaLeft + (areaRight - areaLeft - Width) / 2;
-
-        (Left, Top) = position switch
+        if (hwnd != IntPtr.Zero)
         {
-            "TopLeft" => (areaLeft + ScreenMargin, areaTop + ScreenMargin),
-            "TopRight" => (areaRight - Width - ScreenMargin, areaTop + ScreenMargin),
-            "TopCenter" => (centerLeft, areaTop + ScreenMargin),
-            "BottomLeft" => (areaLeft + ScreenMargin, areaBottom - Height - ScreenMargin),
-            "BottomCenter" => (centerLeft, areaBottom - Height - ScreenMargin),
-            _ => (areaRight - Width - ScreenMargin, areaBottom - Height - ScreenMargin) // "BottomRight"
-        };
+            WindowSnapHelper.SetWindowPos(hwnd, IntPtr.Zero, placement.X, placement.Y, placement.Width, placement.Height,
+                WindowSnapHelper.SWP_NOZORDER | WindowSnapHelper.SWP_NOACTIVATE);
+            return;
+        }
+
+        // Страховка для необычного жизненного цикла окна без HWND; обычный ShowToast создаёт
+        // handle до этого вызова, поэтому основной путь всегда использует физические координаты.
+        Left = placement.X / scale;
+        Top = placement.Y / scale;
     }
 
     // Масштаб текущего окна (1.0 = 100%, 1.25 = 125% и т.д.). До первого показа
