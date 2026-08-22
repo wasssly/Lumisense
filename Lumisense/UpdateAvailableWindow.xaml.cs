@@ -242,7 +242,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         catch (Exception ex)
         {
             SetDownloading(false);
-            ShowError($"{LocalizationService.Get(LocalizationKey.UpdateMsiMigrationUnavailable)}\n{ex.Message}");
+            Logger.Warn($"Не удалось скачать MSI для перехода: {ex.Message}");
+            ShowError($"{LocalizationService.Get(LocalizationKey.UpdateMsiMigrationDownloadFailed)}\n\n{ex.Message}");
         }
     }
 

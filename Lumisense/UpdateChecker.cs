@@ -105,6 +105,11 @@ public static class UpdateChecker
     private const string RepoName = "Lumisense";
 
     private const long MaxInstallerBytes = 250L * 1024 * 1024;
+    private const int DownloadAttemptCount = 3;
+    // Медленное зеркало допустимо, пока оно продолжает передавать данные. Ограничиваем не общую
+    // длительность скачивания, а только период полного отсутствия байтов, чтобы не обрывать
+    // рабочую загрузку на медленном соединении и всё же выходить из реально зависшего запроса.
+    private static readonly System.TimeSpan DownloadReadIdleTimeout = System.TimeSpan.FromSeconds(90);
     private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
     {
         "github.com", "objects.githubusercontent.com", "gh-proxy.org", "v4.gh-proxy.org",
@@ -115,7 +120,9 @@ public static class UpdateChecker
 
     private static HttpClient CreateClient()
     {
-        var client = new HttpClient { Timeout = System.TimeSpan.FromSeconds(10) };
+        // Этот лимит относится к установлению HTTP-ответа и API-запросам. Для тела большого
+        // установщика используется ResponseHeadersRead и отдельный read-idle timeout ниже.
+        var client = new HttpClient { Timeout = System.TimeSpan.FromSeconds(30) };
         // GitHub API отклоняет запросы без User-Agent
         client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Lumisense-AudioPlayer", "1.0"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
@@ -426,6 +433,41 @@ public static class UpdateChecker
         if (!TryParseSha256(expectedSha256, out var expectedHash))
             throw new InvalidDataException("Контрольная сумма SHA-256 установщика отсутствует или имеет недопустимый формат.");
 
+        // CDN или промежуточный proxy способны оборвать большой ответ после отправки заголовков.
+        // Неполный файл никогда не запускается: он удаляется, а новая попытка скачивает asset
+        // заново и допускается к запуску лишь после полной сверки SHA-256.
+        Exception? lastRetryableFailure = null;
+        for (int attempt = 1; attempt <= DownloadAttemptCount; attempt++)
+        {
+            try
+            {
+                return await DownloadReleaseAssetOnceAsync(uri, expectedHash, extension, progress, ct);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (Exception ex) when (IsRetryableDownloadFailure(ex))
+            {
+                lastRetryableFailure = ex;
+                if (attempt == DownloadAttemptCount) break;
+
+                Logger.Warn($"Скачивание установщика оборвалось (попытка {attempt}/{DownloadAttemptCount}): {ex.Message}. Повторяем загрузку.");
+                progress?.Report(new DownloadProgressInfo { BytesReceived = 0, TotalBytes = null, Fraction = 0, BytesPerSecond = 0 });
+                await Task.Delay(System.TimeSpan.FromMilliseconds(750 * attempt), ct);
+            }
+        }
+
+        throw new IOException($"Не удалось скачать установщик после {DownloadAttemptCount} попыток.", lastRetryableFailure);
+    }
+
+    private static async Task<string> DownloadReleaseAssetOnceAsync(
+        Uri uri,
+        byte[] expectedHash,
+        string extension,
+        System.IProgress<DownloadProgressInfo>? progress,
+        CancellationToken ct)
+    {
         string tempPath = Path.Combine(Path.GetTempPath(), $"Lumisense_Update_{Guid.NewGuid():N}.part");
         bool completed = false;
         try
@@ -448,8 +490,20 @@ public static class UpdateChecker
                 var lastReportAt = stopwatch.Elapsed;
                 int read;
 
-                while ((read = await httpStream.ReadAsync(buffer, ct)) > 0)
+                while (true)
                 {
+                    using var readIdleCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    readIdleCts.CancelAfter(DownloadReadIdleTimeout);
+                    try
+                    {
+                        read = await httpStream.ReadAsync(buffer, readIdleCts.Token);
+                    }
+                    catch (OperationCanceledException ex) when (!ct.IsCancellationRequested && readIdleCts.IsCancellationRequested)
+                    {
+                        throw new IOException($"Скачивание не получало данных более {DownloadReadIdleTimeout.TotalSeconds:F0} секунд.", ex);
+                    }
+
+                    if (read == 0) break;
                     readTotal += read;
                     sha256.AppendData(buffer, 0, read);
                     if (readTotal > MaxInstallerBytes)
@@ -497,6 +551,13 @@ public static class UpdateChecker
                 TryDelete(tempPath);
         }
     }
+
+    private static bool IsRetryableDownloadFailure(Exception exception) =>
+        exception is IOException ||
+        exception is OperationCanceledException ||
+        exception is HttpRequestException requestException &&
+        (requestException.StatusCode is null or System.Net.HttpStatusCode.RequestTimeout or
+         System.Net.HttpStatusCode.TooManyRequests or >= System.Net.HttpStatusCode.InternalServerError);
 
     internal static bool IsTrustedReleaseNotesUrl(string value)
     {

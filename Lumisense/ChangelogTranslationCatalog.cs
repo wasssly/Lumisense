@@ -372,6 +372,10 @@ internal static class ChangelogTranslationCatalog
 
             // Release 1.16.1
             ["Исправлено предложение перейти на MSI-версию: оно доступно из актуальной EXE-копии без ожидания следующего обновления"] = "Fixed the MSI migration offer: it is available from the current EXE copy without waiting for the next update",
+
+            // Release 1.16.2
+            ["Повышена надёжность скачивания EXE- и MSI-установщиков: при временном обрыве сети выполняются безопасные полные повторы, а неполные файлы удаляются"] = "Improved EXE and MSI installer download reliability: temporary network interruptions now trigger safe full retries and incomplete files are removed",
+            ["Исправлено ложное сообщение об отсутствии MSI при сетевой ошибке; медленное, но активное скачивание больше не ограничивается общим лимитом времени"] = "Fixed the false missing-MSI message on a network error; slow but active downloads are no longer limited by a total time cap",
         };
 
     public static string Translate(string source, bool isEnglish)

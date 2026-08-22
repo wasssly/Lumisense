@@ -48,6 +48,7 @@ public static class LocalizationKey
     public const string UpdateMsiMigrationConfirmMessage = "update.msiMigration.confirmMessage";
     public const string UpdateMsiMigrationLaunching = "update.msiMigration.launching";
     public const string UpdateMsiMigrationUnavailable = "update.msiMigration.unavailable";
+    public const string UpdateMsiMigrationDownloadFailed = "update.msiMigration.downloadFailed";
     public const string UpdateMsiMigrationAvailableTitle = "update.msiMigration.availableTitle";
     public const string UpdateMsiMigrationCurrentVersion = "update.msiMigration.currentVersion";
     public const string UpdateMsiMigrationManualSubtitle = "update.msiMigration.manualSubtitle";
@@ -118,6 +119,7 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateMsiMigrationConfirmMessage] = "Будет скачан проверенный MSI-установщик и запущена стандартная установка Windows. Система может запросить права администратора.\n\nСтарая EXE-копия Lumisense не будет удалена автоматически: сначала убедитесь, что новая копия запускается и работает корректно. Настройки, плейлист, избранное и статистика сохраняются. Продолжить?",
         [LocalizationKey.UpdateMsiMigrationLaunching] = "Запуск MSI-установщика…",
         [LocalizationKey.UpdateMsiMigrationUnavailable] = "В этом релизе нет проверенного MSI-пакета. Используйте обычный EXE-установщик или откройте релиз на GitHub.",
+        [LocalizationKey.UpdateMsiMigrationDownloadFailed] = "Не удалось полностью скачать MSI из-за временного сетевого сбоя. Проверьте подключение и повторите попытку.",
         [LocalizationKey.UpdateMsiMigrationAvailableTitle] = "Доступен переход на MSI",
         [LocalizationKey.UpdateMsiMigrationCurrentVersion] = "Текущая EXE-версия: {0}",
         [LocalizationKey.UpdateMsiMigrationManualSubtitle] = "Доступен добровольный переход на MSI с компактными обновлениями",
@@ -187,6 +189,7 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateMsiMigrationConfirmMessage] = "A verified MSI installer will be downloaded and Windows setup will start. Windows may ask for administrator permission.\n\nThe legacy EXE copy of Lumisense will not be removed automatically: first make sure the new copy starts and works correctly. Your settings, playlist, favorites, and statistics are preserved. Continue?",
         [LocalizationKey.UpdateMsiMigrationLaunching] = "Launching the MSI installer…",
         [LocalizationKey.UpdateMsiMigrationUnavailable] = "This release has no verified MSI package. Use the standard EXE installer or open the release on GitHub.",
+        [LocalizationKey.UpdateMsiMigrationDownloadFailed] = "The MSI could not be downloaded completely because of a temporary network error. Check your connection and try again.",
         [LocalizationKey.UpdateMsiMigrationAvailableTitle] = "MSI migration is available",
         [LocalizationKey.UpdateMsiMigrationCurrentVersion] = "Current EXE version: {0}",
         [LocalizationKey.UpdateMsiMigrationManualSubtitle] = "A voluntary move to MSI with compact updates is available",
