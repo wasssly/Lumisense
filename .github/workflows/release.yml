@@ -126,6 +126,21 @@ jobs:
             --instLocation PerMachine
           if ($LASTEXITCODE -ne 0) { throw "Velopack package creation failed." }
 
+      # Velopack создаёт дополнительный Setup bootstrapper. Для Lumisense он не нужен:
+      # пользователю предлагаются legacy Lumisense_Setup.exe или MSI migration path, а
+      # bootstrapper только дублирует MSI и создаёт путаницу в публичных assets.
+      - name: Exclude Velopack Setup bootstrapper from publication
+        shell: pwsh
+        run: |
+          $bootstrapperAssets = @(Get-ChildItem -Path VelopackReleases -File -Filter "*-Setup.exe")
+          foreach ($asset in $bootstrapperAssets) {
+            Write-Host "Removing non-public Velopack bootstrapper: $($asset.Name)"
+            Remove-Item -LiteralPath $asset.FullName -Force
+          }
+          if (Get-ChildItem -Path VelopackReleases -File -Filter "*-Setup.exe") {
+            throw "Velopack Setup bootstrapper must not be included in published release assets."
+          }
+
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
@@ -185,6 +200,10 @@ jobs:
           $velFeed = @($release.assets | Where-Object { $_.name -eq "releases.win.json" })
           $velFull = @($release.assets | Where-Object { $_.name -eq "Wasssly.Lumisense-$env:RELEASE_VERSION-full.nupkg" })
           $velMsi = @($release.assets | Where-Object { $_.name -eq "Wasssly.Lumisense-win.msi" })
+          $velBootstrapper = @($release.assets | Where-Object { $_.name -like "*-Setup.exe" })
+          if ($velBootstrapper.Count -ne 0) {
+            throw "Velopack Setup bootstrapper must not be published; use Lumisense_Setup.exe or the MSI migration asset."
+          }
           if ($velFeed.Count -ne 1 -or $velFull.Count -ne 1 -or $velMsi.Count -ne 1) {
             throw "Expected Velopack win feed, current full package and MSI migration asset on the release."
           }
@@ -193,7 +212,7 @@ jobs:
               throw "Published asset '$($asset.name)' is empty or has no valid SHA-256 digest."
             }
           }
-          Write-Host "Verified legacy installer plus Velopack win feed/full package/MSI assets."
+          Write-Host "Verified legacy installer plus Velopack win feed/full package/MSI assets; no Velopack bootstrapper was published."
 
       - name: Upload build artifact (manual test run)
         if: github.event_name == 'workflow_dispatch'

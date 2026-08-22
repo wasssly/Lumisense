@@ -242,7 +242,7 @@ internal static class SettingsIntegrityService
         settings.PlayerViewMode = AllowedOrNull(settings.PlayerViewMode, "Square", "Rectangular", "Mini");
         settings.RepeatMode = Allowed(settings.RepeatMode, defaults.RepeatMode, "Off", "All", "One");
         settings.MiniPlayerArtworkStyle = Allowed(settings.MiniPlayerArtworkStyle, defaults.MiniPlayerArtworkStyle, "Default", "Vinyl");
-        settings.MiniPlayerSecondaryButton = Allowed(settings.MiniPlayerSecondaryButton, defaults.MiniPlayerSecondaryButton, "Repeat", "Shuffle");
+        settings.MiniPlayerSecondaryButton = Allowed(settings.MiniPlayerSecondaryButton, defaults.MiniPlayerSecondaryButton, "Repeat", "Shuffle", "Favorite");
         settings.MiniPlayerInfoMode = Allowed(settings.MiniPlayerInfoMode, defaults.MiniPlayerInfoMode, "TitleArtist", "TitleOnly", "TitleRemaining");
         settings.MiniPlayerButtonsLayout = Allowed(settings.MiniPlayerButtonsLayout, defaults.MiniPlayerButtonsLayout, "Below", "Overlay");
         settings.MiniPlayerArtworkProgressColorMode = Allowed(settings.MiniPlayerArtworkProgressColorMode, defaults.MiniPlayerArtworkProgressColorMode, "Accent", "Fixed");

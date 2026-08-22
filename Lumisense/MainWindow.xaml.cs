@@ -59,6 +59,11 @@ public partial class MainWindow : FluentWindow
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _playbackRatePersistenceTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
 
+    // Большинство UI-настроек меняются сразу в памяти, а не по отдельному Save на каждое
+    // движение слайдера. Короткий checkpoint делает их устойчивыми к закрытию консоли, но
+    // SettingsManager пропускает полностью неизменившийся JSON и не создаёт лишних записей.
+    private readonly DispatcherTimer _settingsCheckpointTimer = new() { Interval = TimeSpan.FromSeconds(1) };
+
     // Поиск не меняет UI на каждый символ: небольшая пауза объединяет быстрый ввод в один
     // запрос, а фильтрация снимка списка выполняется вне Dispatcher. Это предотвращает длинную
     // перестройку раскладки тысяч ListViewItem при каждом нажатии клавиши.
@@ -455,6 +460,16 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    private void SettingsCheckpointTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_isExiting) return;
+        FireAndForget(SettingsManager.SaveIfChangedAsync(_settings), "SaveSettingsCheckpointAsync");
+    }
+
+    // Вызывается из last-chance обработчиков AppDomain/консоли. Не читает UI или аудио-объекты,
+    // поэтому безопасен как best-effort snapshot даже когда штатный WPF shutdown уже не начался.
+    internal void SaveSettingsForUnexpectedTermination() => SettingsManager.Save(_settings);
+
     public MainWindow()
     {
         InitializeComponent();
@@ -480,6 +495,7 @@ public partial class MainWindow : FluentWindow
         _folderRefreshDebounceTimer.Tick += FolderRefreshDebounceTimer_Tick;
         _hotkeyTrackStepTimer.Tick += HotkeyTrackStepTimer_Tick;
         _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
+        _settingsCheckpointTimer.Tick += SettingsCheckpointTimer_Tick;
 
         // Rich Presence использует те же единые события, что и мини-плеер: это исключает
         // отдельный таймер, опрос UI и расхождение со сменой состояния аудиоустройства.
@@ -488,6 +504,7 @@ public partial class MainWindow : FluentWindow
         ProgressChanged += (_, _) => UpdateDiscordRichPresence(force: false);
         ApplySettingsOnStartup();
         _playbackRatePersistenceTimer.Start();
+        _settingsCheckpointTimer.Start();
 
         // Не await — намеренно "запустили и забыли": файловая проверка треков и загрузка
         // последнего трека идут в фоне, окно тем временем показывается сразу, без ожидания
@@ -6286,6 +6303,7 @@ public partial class MainWindow : FluentWindow
         // Timer должен быть остановлен до финального Save, чтобы он не начал новую запись
         // параллельно с закрытием окна.
         _playbackRatePersistenceTimer.Stop();
+        _settingsCheckpointTimer.Stop();
         _playlistSearchDebounceTimer.Stop();
         StopHotkeyTrackRepeat();
         _playlistSearchCts?.Cancel();

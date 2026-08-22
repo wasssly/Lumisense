@@ -15,6 +15,8 @@ public partial class App : Application
     private Mutex? _singleInstanceMutex;
     private EventWaitHandle? _toggleViewEvent;
     private readonly CancellationTokenSource _shutdownCts = new();
+    private int _isOrderlyExit;
+    private int _lastChanceSettingsSaveStarted;
 
     // WinExe не создаёт консоль сам — без этого Console.WriteLine никуда не пишет, даже
     // при запуске из cmd/PowerShell. Подключаемся к консоли родителя, если она есть;
@@ -64,6 +66,12 @@ public partial class App : Application
 
         try { AttachConsole(AttachParentProcess); } catch { /* нет родительской консоли — и ладно */ }
 
+        // Для запуска из cmd/PowerShell Ctrl+C и закрытие консольного сеанса могут оборвать
+        // обычный WPF shutdown. Обработчики ниже — best-effort дополнение к односекундному
+        // checkpoint MainWindow: они синхронно записывают уже готовый snapshot без обращения к UI.
+        Console.CancelKeyPress += (_, _) => SaveSettingsOnUnexpectedTermination();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) => SaveSettingsOnUnexpectedTermination();
+
         // Логируем необработанные исключения максимально рано, иначе падение до показа первого
         // окна выглядело как полная тишина — раньше это шло только в консоль (Console.Error),
         // которую почти никто не видит при обычном запуске двойным кликом: окно консоли не
@@ -72,8 +80,11 @@ public partial class App : Application
         // ради случая "плеер упал, а почему — неизвестно": после падения файл в
         // %AppData%\Lumisense\logs\ остаётся, в отличие от текста в уже закрывшейся консоли.
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
+        {
             Logger.Error("Необработанное исключение (AppDomain, приложение сейчас завершится)",
                 args.ExceptionObject as Exception);
+            SaveSettingsOnUnexpectedTermination();
+        };
 
         // DispatcherUnhandledException позволяет предотвратить падение UI, но делать это для
         // ЛЮБОЙ ошибки небезопасно: неизвестное исключение может оставить аудио-цепочку или
@@ -231,8 +242,26 @@ public partial class App : Application
         thread.Start();
     }
 
+    private void SaveSettingsOnUnexpectedTermination()
+    {
+        if (Volatile.Read(ref _isOrderlyExit) != 0
+            || Interlocked.CompareExchange(ref _lastChanceSettingsSaveStarted, 1, 0) != 0)
+            return;
+
+        try
+        {
+            if (MainWindow is AudioPlayer.MainWindow window)
+                window.SaveSettingsForUnexpectedTermination();
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось выполнить last-chance сохранение настроек: {ex.Message}");
+        }
+    }
+
     protected override void OnExit(ExitEventArgs e)
     {
+        Volatile.Write(ref _isOrderlyExit, 1);
         Logger.Info($"Lumisense завершается (код выхода {e.ApplicationExitCode})");
 
         _shutdownCts.Cancel();

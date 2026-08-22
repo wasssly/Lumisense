@@ -456,6 +456,8 @@ public static class SettingsManager
     private static readonly SemaphoreSlim SaveGate = new(1, 1);
     private static long NextSaveRevision;
     private static long LastWrittenRevision;
+    private static string? LastObservedSettingsJson;
+    private static int CheckpointInProgress;
     private static readonly string SettingsFilePath = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
         "Lumisense", "settings.json");
@@ -482,7 +484,10 @@ public static class SettingsManager
     public static AppSettings Load()
     {
         if (SettingsIntegrityService.TryLoad(SettingsFilePath, out AppSettings? settings, out string? failure) && settings != null)
+        {
+            RememberObservedSnapshot(settings);
             return settings;
+        }
 
         if (File.Exists(SettingsFilePath))
             Logger.Warn($"Не удалось прочитать settings.json ({SettingsFilePath}): {failure ?? "неизвестная ошибка"}");
@@ -490,10 +495,13 @@ public static class SettingsManager
         if (SettingsIntegrityService.TryLoadLatestRecoveryBackup(SettingsFilePath, out AppSettings? recovered) && recovered != null)
         {
             Logger.Warn("Основной settings.json недоступен — восстановлено последнее корректное поколение резервной копии.");
+            RememberObservedSnapshot(recovered);
             return recovered;
         }
 
-        return new AppSettings();
+        var defaults = new AppSettings();
+        RememberObservedSnapshot(defaults);
+        return defaults;
     }
 
     public static void Save(AppSettings settings)
@@ -502,6 +510,7 @@ public static class SettingsManager
         {
             var json = JsonSerializer.Serialize(settings, JsonOptions);
             WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
+            Volatile.Write(ref LastObservedSettingsJson, json);
         }
         catch (Exception ex)
         {
@@ -520,10 +529,61 @@ public static class SettingsManager
             json = JsonSerializer.Serialize(settings, JsonOptions);
             var revision = Interlocked.Increment(ref NextSaveRevision);
             await Task.Run(() => WriteJsonAtomic(json, revision)).ConfigureAwait(false);
+            Volatile.Write(ref LastObservedSettingsJson, json);
         }
         catch (Exception ex)
         {
             Logger.Warn($"Не удалось асинхронно сохранить settings.json ({SettingsFilePath}): {ex.Message}");
+        }
+    }
+
+    // Общий checkpoint для изменений, которые пока существуют только в памяти. Сравнение
+    // готового JSON позволяет таймеру работать часто (для устойчивости к закрытию консоли),
+    // но не создавать запись на диск, когда пользователь ничего не менял.
+    public static async Task SaveIfChangedAsync(AppSettings settings)
+    {
+        if (Interlocked.CompareExchange(ref CheckpointInProgress, 1, 0) != 0)
+            return;
+
+        try
+        {
+            string json;
+            try
+            {
+                json = JsonSerializer.Serialize(settings, JsonOptions);
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Не удалось подготовить snapshot настроек ({SettingsFilePath}): {ex.Message}");
+                return;
+            }
+
+            if (string.Equals(json, Volatile.Read(ref LastObservedSettingsJson), StringComparison.Ordinal))
+                return;
+
+            var revision = Interlocked.Increment(ref NextSaveRevision);
+            await Task.Run(() => WriteJsonAtomic(json, revision)).ConfigureAwait(false);
+            Volatile.Write(ref LastObservedSettingsJson, json);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось записать checkpoint настроек ({SettingsFilePath}): {ex.Message}");
+        }
+        finally
+        {
+            Volatile.Write(ref CheckpointInProgress, 0);
+        }
+    }
+
+    private static void RememberObservedSnapshot(AppSettings settings)
+    {
+        try
+        {
+            Volatile.Write(ref LastObservedSettingsJson, JsonSerializer.Serialize(settings, JsonOptions));
+        }
+        catch
+        {
+            Volatile.Write(ref LastObservedSettingsJson, null);
         }
     }
 
