@@ -11,8 +11,10 @@
 #      изменений. Затем берёт последнюю запись в том же порядке, что и приложение
 #      (ChangelogLoader.AssignComputedFields), и формирует Markdown с разделами
 #      «Добавлено», «Изменено», «Исправлено» и «Удалено».
-#   4. Публикует релиз на GitHub с этим описанием и прикреплённым Lumisense_Setup.exe —
-#      его и находит UpdateChecker.cs в самом плеере при проверке обновлений.
+#   4. Собирает Velopack full/delta packages и MSI PerMachine для установок, которые уже
+#      прошли осознанный переход на новый updater. Legacy-копии остаются на Inno Setup.
+#   5. Публикует релиз на GitHub с Lumisense_Setup.exe и Velopack assets: legacy UpdateChecker
+#      находит только Inno EXE, а Velopack-managed копия читает releases.win.json.
 #
 # ВАЖНО перед тем как поставить тег: добавьте в Changelog/changelog.json новую запись со
 # списком изменений. Дату указывать больше не обязательно: новые записи привязаны к версии,
@@ -83,6 +85,47 @@ jobs:
           }
           Write-Host "Verified assembly version $productVersion"
 
+      # Получаем прошлый Velopack release feed до упаковки: это позволяет автоматически
+      # создать delta между уже установленной Velopack-версией и новым release. На самом первом
+      # migration-релизе Velo assets ещё отсутствуют — это ожидаемо, поэтому шаг не фатален.
+      - name: Install Velopack CLI and restore prior Windows feed
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          dotnet tool install --global vpk --version 1.2.0
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          New-Item -ItemType Directory -Path VelopackReleases -Force | Out-Null
+          vpk download github `
+            --repoUrl "https://github.com/${{ github.repository }}" `
+            --channel win `
+            --outputDir VelopackReleases `
+            --token $env:GITHUB_TOKEN
+          if ($LASTEXITCODE -ne 0) {
+            Write-Warning "No prior Velopack win feed is available yet; this migration release will publish a full package only."
+            $global:LASTEXITCODE = 0
+          }
+
+      - name: Package Velopack full/delta packages and MSI PerMachine
+        shell: pwsh
+        run: |
+          vpk pack `
+            --packId Wasssly.Lumisense `
+            --packVersion "${{ steps.ver.outputs.version }}" `
+            --packDir "Lumisense\bin\Release\net8.0-windows10.0.19041.0\win-x64\publish" `
+            --mainExe Lumisense.exe `
+            --runtime win-x64 `
+            --channel win `
+            --outputDir VelopackReleases `
+            --packTitle Lumisense `
+            --packAuthors wasssly `
+            --icon "Lumisense\Icons\app\lumisense.ico" `
+            --releaseNotes release_notes.md `
+            --noPortable true `
+            --msi true `
+            --instLocation PerMachine
+          if ($LASTEXITCODE -ne 0) { throw "Velopack package creation failed." }
+
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
@@ -100,7 +143,26 @@ jobs:
           body_path: release_notes.md
           files: Lumisense_Setup.exe
 
-      - name: Verify published release asset
+      # merge добавляет `releases.win.json`, full/delta nupkg и MSI в уже созданный GitHub
+      # Release. Он не нужен для legacy Inno Setup, но без него Velopack не сможет найти feed.
+      - name: Publish Velopack Windows feed to the existing GitHub Release
+        if: github.event_name != 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          vpk upload github `
+            --repoUrl "https://github.com/${{ github.repository }}" `
+            --channel win `
+            --outputDir VelopackReleases `
+            --token $env:GITHUB_TOKEN `
+            --publish true `
+            --merge true `
+            --releaseName "Lumisense ${{ steps.ver.outputs.version }}" `
+            --tag "v${{ steps.ver.outputs.version }}"
+          if ($LASTEXITCODE -ne 0) { throw "Velopack asset upload failed." }
+
+      - name: Verify published release assets
         if: github.event_name != 'workflow_dispatch'
         shell: pwsh
         env:
@@ -113,18 +175,31 @@ jobs:
             "X-GitHub-Api-Version" = "2022-11-28"
           }
           $release = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$env:RELEASE_VERSION"
-          $assets = @($release.assets | Where-Object { $_.name -eq "Lumisense_Setup.exe" })
-          if ($assets.Count -ne 1) { throw "Expected exactly one Lumisense_Setup.exe asset, found $($assets.Count)." }
-          $asset = $assets[0]
-          if ($asset.size -le 0) { throw "Published installer asset is empty." }
-          if ([string]$asset.digest -notmatch '^sha256:[0-9a-fA-F]{64}$') {
-            throw "Published installer asset does not expose a valid SHA-256 digest."
+          $legacyAssets = @($release.assets | Where-Object { $_.name -eq "Lumisense_Setup.exe" })
+          if ($legacyAssets.Count -ne 1) { throw "Expected exactly one Lumisense_Setup.exe asset, found $($legacyAssets.Count)." }
+          $legacyAsset = $legacyAssets[0]
+          if ($legacyAsset.size -le 0 -or [string]$legacyAsset.digest -notmatch '^sha256:[0-9a-fA-F]{64}$') {
+            throw "Published legacy installer is missing or has no valid SHA-256 digest."
           }
-          Write-Host "Verified published asset: size=$($asset.size), digest=$($asset.digest)"
+
+          $velFeed = @($release.assets | Where-Object { $_.name -eq "releases.win.json" })
+          $velFull = @($release.assets | Where-Object { $_.name -match "^Wasssly\\.Lumisense-${env:RELEASE_VERSION}-win-full\\.nupkg$" })
+          $velMsi = @($release.assets | Where-Object { $_.name -eq "Wasssly.Lumisense-win.msi" })
+          if ($velFeed.Count -ne 1 -or $velFull.Count -ne 1 -or $velMsi.Count -ne 1) {
+            throw "Expected Velopack win feed, current full package and MSI migration asset on the release."
+          }
+          foreach ($asset in @($legacyAsset, $velFeed[0], $velFull[0], $velMsi[0])) {
+            if ($asset.size -le 0 -or [string]$asset.digest -notmatch '^sha256:[0-9a-fA-F]{64}$') {
+              throw "Published asset '$($asset.name)' is empty or has no valid SHA-256 digest."
+            }
+          }
+          Write-Host "Verified legacy installer plus Velopack win feed/full package/MSI assets."
 
       - name: Upload build artifact (manual test run)
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: Lumisense_Setup
-          path: Lumisense_Setup.exe
+          name: Lumisense_migration_build
+          path: |
+            Lumisense_Setup.exe
+            VelopackReleases

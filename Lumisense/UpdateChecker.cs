@@ -6,10 +6,16 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
+using Velopack;
 
 namespace AudioPlayer;
 
 public enum UpdateCheckStatus { UpdateAvailable, UpToDate, Error }
+
+// Способ установки выбран строго по фактической модели установки, а не по версии приложения.
+// Старый Inno Setup продолжает работать с полным EXE и SHA-256; только Velopack-managed
+// установка может скачивать full/delta .nupkg через UpdateManager.
+public enum UpdateDeliveryKind { LegacyInnoSetup, Velopack }
 
 // Причина ошибки передаётся из сетевого слоя без локализованного текста. UI формирует
 // понятное RU/EN-сообщение в UpdateFailureExperience, а TechnicalDetail остаётся для журнала.
@@ -19,6 +25,7 @@ public enum UpdateFailureKind { None, HttpStatus, InvalidResponse, MissingInstal
 public sealed class UpdateCheckResult
 {
     public UpdateCheckStatus Status { get; init; }
+    public UpdateDeliveryKind DeliveryKind { get; init; } = UpdateDeliveryKind.LegacyInnoSetup;
     public string CurrentVersion { get; init; } = "";
     public string? LatestVersion { get; init; }
 
@@ -36,6 +43,10 @@ public sealed class UpdateCheckResult
     // Текст описания релиза (Markdown как есть, без рендеринга) — короткая выжимка
     // показывается в диалоге, полностью — по ссылке ReleaseNotesUrl.
     public string? ReleaseNotes { get; init; }
+
+    // Заполняется только для настоящей Velopack-установки. Не сериализуется и не используется
+    // legacy Inno Setup-кодом, поэтому старые сценарии отката/переустановки остаются прежними.
+    public UpdateInfo? VelopackUpdate { get; init; }
 
     public UpdateFailureKind FailureKind { get; init; }
     public int? HttpStatusCode { get; init; }
@@ -109,6 +120,41 @@ public static class UpdateChecker
     public static async Task<UpdateCheckResult> CheckAsync(CancellationToken ct = default)
     {
         string currentVersion = GetCurrentVersion();
+
+        // Никакой эвристики по номеру версии: delta-путь допустим лишь если UpdateManager
+        // подтверждает реальную Velopack-установку с package store и Update.exe.
+        var velopack = new VelopackUpdateService();
+        if (velopack.IsManagedInstall)
+        {
+            VelopackProbeResult probe = await velopack.CheckAsync(ct);
+            return probe.Status switch
+            {
+                VelopackProbeStatus.UpdateAvailable when probe.Update is not null => new UpdateCheckResult
+                {
+                    Status = UpdateCheckStatus.UpdateAvailable,
+                    DeliveryKind = UpdateDeliveryKind.Velopack,
+                    CurrentVersion = currentVersion,
+                    LatestVersion = probe.Update.TargetFullRelease.Version.ToString(),
+                    ReleaseNotes = probe.Update.TargetFullRelease.NotesMarkdown,
+                    ReleaseNotesUrl = $"https://github.com/{RepoOwner}/{RepoName}/releases/tag/v{probe.Update.TargetFullRelease.Version}",
+                    VelopackUpdate = probe.Update
+                },
+                VelopackProbeStatus.UpToDate => new UpdateCheckResult
+                {
+                    Status = UpdateCheckStatus.UpToDate,
+                    DeliveryKind = UpdateDeliveryKind.Velopack,
+                    CurrentVersion = currentVersion
+                },
+                _ => new UpdateCheckResult
+                {
+                    Status = UpdateCheckStatus.Error,
+                    DeliveryKind = UpdateDeliveryKind.Velopack,
+                    CurrentVersion = currentVersion,
+                    FailureKind = UpdateFailureKind.Network,
+                    TechnicalDetail = probe.TechnicalDetail
+                }
+            };
+        }
 
         try
         {

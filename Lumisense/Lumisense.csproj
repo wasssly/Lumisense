@@ -11,6 +11,8 @@
     <ApplicationIcon>Icons\app\lumisense.ico</ApplicationIcon>
     <RootNamespace>AudioPlayer</RootNamespace>
     <AssemblyName>Lumisense</AssemblyName>
+    <!-- Velopack должен обработать hooks до WPF App; generated App.Main не используется. -->
+    <StartupObject>AudioPlayer.Program</StartupObject>
     <!-- Базовая версия локальной сборки; release workflow передаёт -p:Version из vX.Y.Z тега. -->
     <Version>1.15.0</Version>
     <InformationalVersion>$(Version)</InformationalVersion>
@@ -32,6 +34,8 @@
     <PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
     <!-- Локальный Discord IPC / Rich Presence; фиксированная версия делает восстановление сборки воспроизводимым. -->
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
+    <!-- Прототип delta-обновлений; CLI vpk в workflow закреплён на ту же версию. -->
+    <PackageReference Include="Velopack" Version="1.2.0" />
   </ItemGroup>
 
   <ItemGroup>

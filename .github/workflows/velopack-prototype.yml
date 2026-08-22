@@ -1,0 +1,146 @@
+name: Velopack delta prototype
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_ref:
+        description: "Git ref для базовой версии (тег или commit SHA)"
+        required: true
+        default: "v1.15.0"
+      base_version:
+        description: "SemVer базового Velopack-пакета"
+        required: true
+        default: "1.15.0"
+      candidate_version:
+        description: "SemVer тестового Velopack-пакета"
+        required: true
+        default: "1.15.1-prototype.1"
+
+permissions:
+  contents: read
+
+# Это намеренно НЕ release workflow: он ничего не пушит, не создаёт GitHub Release
+# и не меняет теги. Его единственная цель — доказать, что full/delta-пакеты собираются,
+# проверить возможность восстановить full из delta и отдать артефакт для ручного тестирования.
+jobs:
+  package-and-measure:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout candidate source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Validate requested versions
+        shell: pwsh
+        run: |
+          $semVer = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
+          foreach ($value in @("${{ inputs.base_version }}", "${{ inputs.candidate_version }}")) {
+            if ($value -notmatch $semVer) { throw "Invalid SemVer: '$value'." }
+          }
+          if ("${{ inputs.base_version }}" -eq "${{ inputs.candidate_version }}") {
+            throw "Base and candidate versions must differ."
+          }
+
+      - name: Install pinned Velopack CLI
+        shell: pwsh
+        run: |
+          dotnet tool install --global vpk --version 1.2.0
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          vpk -h
+
+      # Пакет базы строится из настоящего опубликованного ref. --skipVeloAppCheck нужен
+      # только потому, что версия v1.15.0 ещё не содержала VelopackApp.Build().Run().
+      # Это достаточно для измерения бинарной дельты, но не является миграцией пользователя.
+      - name: Publish baseline source
+        shell: pwsh
+        run: |
+          git worktree add --detach ..\baseline "${{ inputs.base_ref }}"
+          dotnet publish ..\baseline\Lumisense\Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version="${{ inputs.base_version }}" -o baseline-publish
+
+      - name: Pack baseline full package
+        shell: pwsh
+        run: |
+          vpk pack `
+            --packId Wasssly.Lumisense `
+            --packVersion "${{ inputs.base_version }}" `
+            --packDir baseline-publish `
+            --mainExe Lumisense.exe `
+            --runtime win-x64 `
+            --outputDir Releases `
+            --channel prototype `
+            --noInst true `
+            --skipVeloAppCheck true
+
+      - name: Publish candidate source
+        shell: pwsh
+        run: |
+          dotnet publish Lumisense/Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version="${{ inputs.candidate_version }}" -o candidate-publish
+
+      # Здесь собираются: full .nupkg, delta .nupkg и MSI PerMachine. Ни один файл не
+      # публикуется в GitHub Release: результат остаётся workflow artifact.
+      - name: Pack candidate full, delta and MSI
+        shell: pwsh
+        run: |
+          vpk pack `
+            --packId Wasssly.Lumisense `
+            --packVersion "${{ inputs.candidate_version }}" `
+            --packDir candidate-publish `
+            --mainExe Lumisense.exe `
+            --runtime win-x64 `
+            --outputDir Releases `
+            --channel prototype `
+            --packTitle Lumisense `
+            --packAuthors wasssly `
+            --icon Lumisense\Icons\app\lumisense.ico `
+            --noPortable true `
+            --msi true `
+            --instLocation PerMachine
+
+      - name: Verify delta reconstruction and measure sizes
+        shell: pwsh
+        run: |
+          # Velopack includes the selected channel in the artifact name.
+          $channel = 'prototype'
+          $base = Get-ChildItem Releases -Filter "Wasssly.Lumisense-${{ inputs.base_version }}-$channel-full.nupkg" | Select-Object -First 1
+          $full = Get-ChildItem Releases -Filter "Wasssly.Lumisense-${{ inputs.candidate_version }}-$channel-full.nupkg" | Select-Object -First 1
+          $delta = Get-ChildItem Releases -Filter "Wasssly.Lumisense-${{ inputs.candidate_version }}-$channel-delta.nupkg" | Select-Object -First 1
+          $msi = Get-ChildItem Releases -Filter "*.msi" | Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1
+
+          if ($null -eq $base -or $null -eq $full -or $null -eq $delta -or $null -eq $msi) {
+            Get-ChildItem Releases | Format-Table Name, Length
+            throw "Expected baseline full package, candidate full package, delta package and MSI were not all created."
+          }
+
+          $reconstructed = Join-Path $PWD "reconstructed-${{ inputs.candidate_version }}.nupkg"
+          vpk delta patch --base $base.FullName --patch $delta.FullName --output $reconstructed
+
+          $expectedHash = (Get-FileHash $full.FullName -Algorithm SHA256).Hash
+          $actualHash = (Get-FileHash $reconstructed -Algorithm SHA256).Hash
+          if ($expectedHash -ne $actualHash) { throw "Reconstructed full package SHA-256 does not match candidate full package." }
+
+          $ratio = [math]::Round(($delta.Length / $full.Length) * 100, 2)
+          $measurement = [ordered]@{
+            baseVersion = "${{ inputs.base_version }}"
+            candidateVersion = "${{ inputs.candidate_version }}"
+            fullPackage = [ordered]@{ name = $full.Name; bytes = $full.Length; sha256 = $expectedHash }
+            deltaPackage = [ordered]@{ name = $delta.Name; bytes = $delta.Length; sha256 = (Get-FileHash $delta.FullName -Algorithm SHA256).Hash; percentOfFull = $ratio }
+            msi = [ordered]@{ name = $msi.Name; bytes = $msi.Length; sha256 = (Get-FileHash $msi.FullName -Algorithm SHA256).Hash }
+            reconstructedFullSha256 = $actualHash
+          }
+          $measurement | ConvertTo-Json -Depth 5 | Set-Content -Path Releases\delta-measurement.json -Encoding utf8
+          Get-Content Releases\delta-measurement.json
+
+      - name: Upload private prototype artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Lumisense-Velopack-delta-prototype
+          path: Releases
+          if-no-files-found: error
+          retention-days: 7

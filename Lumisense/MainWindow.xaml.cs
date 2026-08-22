@@ -650,6 +650,14 @@ public partial class MainWindow : FluentWindow
             ForceForeground(this);
         }
 
+        // Уведомление migration не блокирует построение окна и не появляется в скрытом/мини-старте.
+        // Оно срабатывает ровно раз после успешной установки Velopack MSI.
+        if (IsVisible)
+        {
+            Dispatcher.BeginInvoke(new Action(UpdateMigrationGuard.TryShowFirstRunNotice),
+                System.Windows.Threading.DispatcherPriority.ContextIdle);
+        }
+
         FireAndForget(CheckForUpdatesOnStartupAsync(), "CheckForUpdatesOnStartupAsync");
     }
 

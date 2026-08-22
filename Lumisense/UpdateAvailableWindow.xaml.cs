@@ -152,7 +152,46 @@ public partial class UpdateAvailableWindow : FluentWindow
             return;
         }
 
-        await InstallViaExeAsync();
+        if (_result.DeliveryKind == UpdateDeliveryKind.Velopack)
+            await InstallViaVelopackAsync();
+        else
+            await InstallViaExeAsync();
+    }
+
+    // Velopack сам выбирает delta или full package, скачивает его с верификацией и только
+    // после успешной подготовки получает разрешение закрыть приложение и перезапустить его.
+    // Этот путь недоступен legacy Inno Setup-установкам: проверка DeliveryKind происходит выше.
+    private async Task InstallViaVelopackAsync()
+    {
+        if (_result.VelopackUpdate is null)
+        {
+            ShowError(LocalizationService.Get(LocalizationKey.UpdateVelopackUnavailable));
+            return;
+        }
+
+        SetDownloading(true);
+        _downloadCts = new CancellationTokenSource();
+        var progress = new Progress<int>(UpdateVelopackProgressUi);
+
+        try
+        {
+            var service = new VelopackUpdateService();
+            await service.DownloadAsync(_result.VelopackUpdate, progress, _downloadCts.Token);
+
+            SetPreparing(isVelopack: true);
+            // При успехе Update.exe завершит этот процесс, применит уже проверенный package
+            // и запустит Lumisense заново. Если метод бросит исключение, UI останется живым.
+            service.ApplyAndRestart(_result.VelopackUpdate);
+        }
+        catch (OperationCanceledException)
+        {
+            SetDownloading(false);
+        }
+        catch (Exception ex)
+        {
+            SetDownloading(false);
+            ShowError($"{LocalizationService.Get(LocalizationKey.UpdateVelopackUnavailable)}\n{ex.Message}");
+        }
     }
 
     // Скачивает и запускает Inno Setup установщик. Отмена прерывает HTTP-запрос
@@ -189,7 +228,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             // тут почти нулевая (просто передать управление Process.Start), но без этой фазы
             // прогресс-бар так же "зависал" бы на 100% на те доли секунды, что окно ещё
             // остаётся открытым.
-            SetPreparing();
+            SetPreparing(isVelopack: false);
 
             UpdateChecker.LaunchInstallerAndExit(exePath, expectedSha256);
         }
@@ -212,7 +251,9 @@ public partial class UpdateAvailableWindow : FluentWindow
     private void SetDownloading(bool isDownloading)
     {
         _isDownloading = isDownloading;
-        InstallButton.Content = isDownloading ? "Отмена" : "Скачать и установить";
+        InstallButton.Content = isDownloading
+            ? LocalizationService.Translate("Отмена")
+            : LocalizationService.Translate("Скачать и установить");
         InstallButton.Appearance = isDownloading ? ControlAppearance.Secondary : ControlAppearance.Primary;
         LaterButton.IsEnabled = !isDownloading;
         MoreButton.IsEnabled = !isDownloading;
@@ -222,12 +263,27 @@ public partial class UpdateAvailableWindow : FluentWindow
         // выглядела как зависание сильнее, чем честная "думающая" анимация.
         DownloadProgressBar.IsIndeterminate = isDownloading;
         DownloadProgressBar.Value = 0;
-        PhaseText.Text = isDownloading ? "Скачивание…" : "";
+        PhaseText.Text = isDownloading
+            ? (_result.DeliveryKind == UpdateDeliveryKind.Velopack
+                ? LocalizationService.Get(LocalizationKey.UpdateVelopackDownload)
+                : LocalizationService.Translate("Скачивание…"))
+            : "";
         PhaseText.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
         StatusText.Visibility = Visibility.Collapsed;
     }
 
-    // Показывает размер, процент и текущую скорость скачивания установщика.
+    // UpdateManager сообщает нормализованный процент для full/delta-цепочки, но не обещает
+    // размер байтов. Показываем честный процент вместо выдуманного размера delta-пакета.
+    private void UpdateVelopackProgressUi(int percentage)
+    {
+        int normalized = Math.Clamp(percentage, 0, 100);
+        DownloadProgressBar.IsIndeterminate = false;
+        DownloadProgressBar.Value = normalized / 100d;
+        PhaseText.Text = $"{LocalizationService.Get(LocalizationKey.UpdateVelopackDownload)} {normalized}%";
+        PhaseText.Visibility = Visibility.Visible;
+    }
+
+    // Показывает размер, процент и текущую скорость скачивания legacy Inno Setup установщика.
     private void UpdateDownloadProgressUi(DownloadProgressInfo info)
     {
         bool knowsTotal = info.TotalBytes is > 0;
@@ -255,11 +311,13 @@ public partial class UpdateAvailableWindow : FluentWindow
         return $"{bytes} Б";
     }
 
-    // Короткая фаза передачи управления Inno Setup после завершения скачивания.
-    private void SetPreparing()
+    // Короткая фаза передачи управления выбранному updater после завершения скачивания.
+    private void SetPreparing(bool isVelopack)
     {
         DownloadProgressBar.IsIndeterminate = true;
-        PhaseText.Text = LocalizationService.Translate("Запуск установщика…");
+        PhaseText.Text = isVelopack
+            ? LocalizationService.Get(LocalizationKey.UpdateVelopackApplying)
+            : LocalizationService.Translate("Запуск установщика…");
         PhaseText.Visibility = Visibility.Visible;
     }
 

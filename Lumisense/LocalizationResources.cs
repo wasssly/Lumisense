@@ -36,6 +36,12 @@ public static class LocalizationKey
     public const string UpdateFailureMissingInstallerChecksum = "update.failure.missingInstallerChecksum";
     public const string UpdateFailureNetwork = "update.failure.network";
     public const string UpdateFailureLoadVersionList = "update.failure.loadVersionList";
+    public const string UpdateVelopackFirstRunTitle = "update.velopack.firstRunTitle";
+    public const string UpdateVelopackFirstRunMessage = "update.velopack.firstRunMessage";
+    public const string UpdateVelopackDownload = "update.velopack.download";
+    public const string UpdateVelopackPreparing = "update.velopack.preparing";
+    public const string UpdateVelopackApplying = "update.velopack.applying";
+    public const string UpdateVelopackUnavailable = "update.velopack.unavailable";
 
     public const string ChangelogOpenReleaseOnGitHub = "changelog.openReleaseOnGitHub";
     public const string ChangelogNoDescription = "changelog.noDescription";
@@ -90,6 +96,12 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateFailureMissingInstallerChecksum] = "В GitHub Release отсутствует контрольная сумма SHA-256 для установщика.",
         [LocalizationKey.UpdateFailureNetwork] = "Не удалось подключиться к GitHub. Проверьте подключение к интернету и повторите попытку.",
         [LocalizationKey.UpdateFailureLoadVersionList] = "Не удалось загрузить список версий: {0}",
+        [LocalizationKey.UpdateVelopackFirstRunTitle] = "Компактные обновления включены",
+        [LocalizationKey.UpdateVelopackFirstRunMessage] = "Эта копия Lumisense использует новый механизм обновлений: последующие версии могут загружаться как небольшие delta-пакеты. Убедитесь, что плеер работает корректно. Если на компьютере осталась старая копия Lumisense, удалите её позже через «Установленные приложения» Windows. Ваши настройки, плейлист, избранное и статистика хранятся отдельно и не будут удалены вместе со старой программой.",
+        [LocalizationKey.UpdateVelopackDownload] = "Скачивание компактного обновления…",
+        [LocalizationKey.UpdateVelopackPreparing] = "Проверка и подготовка обновления…",
+        [LocalizationKey.UpdateVelopackApplying] = "Перезапуск для установки обновления…",
+        [LocalizationKey.UpdateVelopackUnavailable] = "Компактное обновление недоступно для этой установки. Используйте полный установщик из GitHub Release.",
 
         [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Открыть релиз на GitHub",
         [LocalizationKey.ChangelogNoDescription] = "Нет описания",
@@ -143,6 +155,12 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateFailureMissingInstallerChecksum] = "The GitHub Release does not contain an installer SHA-256 checksum.",
         [LocalizationKey.UpdateFailureNetwork] = "Could not connect to GitHub. Check your internet connection and try again.",
         [LocalizationKey.UpdateFailureLoadVersionList] = "Could not load the version list: {0}",
+        [LocalizationKey.UpdateVelopackFirstRunTitle] = "Compact updates are enabled",
+        [LocalizationKey.UpdateVelopackFirstRunMessage] = "This copy of Lumisense uses the new update system: future versions may download as small delta packages. Make sure the player works correctly. If an older Lumisense copy remains on this computer, remove it later from Windows Installed apps. Your settings, playlist, favorites, and statistics are stored separately and will not be removed together with the old program.",
+        [LocalizationKey.UpdateVelopackDownload] = "Downloading compact update…",
+        [LocalizationKey.UpdateVelopackPreparing] = "Verifying and preparing update…",
+        [LocalizationKey.UpdateVelopackApplying] = "Restarting to install update…",
+        [LocalizationKey.UpdateVelopackUnavailable] = "A compact update is not available for this installation. Use the full installer from the GitHub Release.",
 
         [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Open release on GitHub",
         [LocalizationKey.ChangelogNoDescription] = "No description",

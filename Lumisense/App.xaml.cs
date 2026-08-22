@@ -128,6 +128,9 @@ public partial class App : Application
         };
 
         Logger.Info($"Lumisense запускается — версия ОС {Environment.OSVersion}, .NET {Environment.Version}, 64-бит: {Environment.Is64BitProcess}");
+        // Наблюдаемый migration guard: legacy Inno Setup остаётся основным путём, пока
+        // приложение не будет установлено через Velopack MSI в отдельном переходном релизе.
+        UpdateMigrationGuard.LogCurrentMode();
 
         // В мини-режиме окна плеера не видны на панели задач, поэтому повторный клик по ярлыку
         // запустил бы второй процесс вместо активации уже открытого. Именованный Mutex — обычный
