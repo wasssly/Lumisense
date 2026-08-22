@@ -2,7 +2,7 @@
 
 # Lumisense
 
-[![Release](https://img.shields.io/github/v/release/wasssly/Lumisense?display_name=tag&sort=semver&label=release)](https://github.com/wasssly/Lumisense/releases) [![Release workflow](https://github.com/wasssly/Lumisense/actions/workflows/release.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/release.yml) [![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4?logo=windows11&logoColor=white)](https://github.com/wasssly/Lumisense)
+[![Release](https://img.shields.io/github/v/release/wasssly/Lumisense?display_name=tag&sort=semver&label=release)](https://github.com/wasssly/Lumisense/releases) [![CI](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml) [![Release workflow](https://github.com/wasssly/Lumisense/actions/workflows/release.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/release.yml) [![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4?logo=windows11&logoColor=white)](https://github.com/wasssly/Lumisense)
 
 <p align="center">
   <a href="#russian" title="Русский">🇷🇺</a>&nbsp;&nbsp;&nbsp;<a href="#english" title="English">🇬🇧</a>
@@ -28,6 +28,7 @@
 - Регулировка громкости, включая плавную логарифмическую регулировку в нижнем диапазоне.
 - Десятиполосный эквалайзер с пресетами от 31 Гц до 16 кГц и режимом EQ Bypass для быстрого сравнения звука с обработкой и без неё. Пользовательские пресеты можно сохранять, экспортировать и импортировать.
 - Изменение скорости воспроизведения и тона с сохранением высоты тона.
+- Выбор устройства вывода Windows с безопасным переходом на системное устройство, если сохранённое устройство отключено.
 - Шафл и три режима повтора: без повтора, повтор плейлиста и повтор одного трека. История предыдущих треков при активном перемешивании сохраняется между запусками.
 
 #### Плейлист и медиатека
@@ -50,17 +51,18 @@
 - Русский и английский языки с мгновенным переключением открытых окон, меню, статистики, Now Playing и списка изменений.
 - Медиа-клавиши Windows, пользовательские горячие клавиши, значок в системном трее и Now Playing через System Media Transport Controls.
 - Необязательная интеграция Discord Rich Presence с настройками приватности.
-- Всплывающее уведомление о смене трека.
+- Настраиваемое уведомление о смене трека: политика показа, размер, ширина, угол и выбранный монитор. Позиционирование учитывает масштаб Windows конкретного монитора.
+- Масштаб интерфейса и режим снижения движения для более комфортного использования.
 - Автозапуск вместе с Windows, запуск свёрнутым в трей, сворачивание в трей вместо закрытия и создание ярлыка на рабочем столе.
 
 #### Метаданные и история
 
 - Чтение обложек из тегов, поиск обложек в интернете, ручная установка изображения и локальное кэширование найденных обложек.
 - Просмотр и редактирование свойств обложки.
-- Live Lyrics: синхронные тексты из `.lrc`, обычные тексты из `.txt` и тега Comment, встроенный поиск, ручная загрузка и локальное кэширование добавленных текстов.
+- Live Lyrics: синхронные тексты из `.lrc`, обычные тексты из `.txt` и тега Comment, встроенный поиск, ручная загрузка, локальное кэширование добавленных текстов и политика поиска текста.
 - Статистика прослушиваний со счётчиком для каждого трека и отдельным окном сводки.
 - Возобновление последнего трека после запуска с отдельной возможностью отключить автоматическое воспроизведение.
-- Защита данных плейлиста, избранного и статистики от раннего перезаписывания при запуске, включая резервное сохранение пользовательских данных.
+- Защита данных плейлиста, избранного и статистики от раннего перезаписывания при запуске, включая резервное сохранение пользовательских данных, миграции настроек и локальные точки восстановления перед сбросом.
 - Экспорт и импорт настроек в один `.lumi`-файл, включая выбранный язык интерфейса.
 - Список изменений внутри приложения с поиском, сортировкой, визуальными категориями и автоматическим расчётом версии по SemVer. Номер опубликованной версии открывает соответствующий GitHub Release.
 - Проверка обновлений через GitHub Releases и установка новой версии из приложения.
@@ -71,18 +73,24 @@
 
 ### Запуск из исходников
 
-1. Клонируйте репозиторий:
+1. Клонируйте репозиторий и перейдите в его корневую папку:
 
    ```powershell
    git clone https://github.com/wasssly/Lumisense.git
-   cd Lumisense/Lumisense
+   cd Lumisense
    ```
 
 2. Восстановите зависимости и запустите проект:
 
    ```powershell
-   dotnet restore
-   dotnet run
+   dotnet restore .\Lumisense\Lumisense.csproj
+   dotnet run --project .\Lumisense\Lumisense.csproj
+   ```
+
+3. Запустите unit-тесты:
+
+   ```powershell
+   dotnet test .\Lumisense.Tests\Lumisense.Tests.csproj -c Release
    ```
 
 Также можно открыть `Lumisense.csproj` в Visual Studio и запустить приложение клавишей **F5**. При первом восстановлении NuGet автоматически загрузит необходимые пакеты.
@@ -103,13 +111,16 @@
 - **DiscordRichPresence** — локальная интеграция Discord Rich Presence.
 - **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** — отображение SVG-иконок интерфейса.
 - **Windows Forms** — системный трей и `NotifyIcon`.
+- **xUnit** — unit-тесты чистой логики версий, локализации и размещения уведомлений.
 
 ### Структура репозитория
 
 ```text
 Lumisense/
+├── .github/workflows/ci.yml            — проверка сборки, unit-тестов и зависимостей
 ├── .github/workflows/release.yml       — сборка и публикация релизов по тегу
 ├── Installer/Lumisense.iss             — сценарий установщика Inno Setup
+├── Lumisense.Tests/                    — unit-тесты
 └── Lumisense/                          — исходный код плеера
     ├── Lumisense.csproj
     ├── App.xaml / .cs                   — точка входа и подключение тем
@@ -139,10 +150,6 @@ Lumisense/
 
 Если вы нашли ошибку или хотите предложить улучшение, создайте [issue в репозитории](https://github.com/wasssly/Lumisense/issues). В описании желательно указать версию приложения, шаги воспроизведения проблемы и, если возможно, фрагмент лога или скриншот.
 
-### Лицензия
-
-Информация о лицензии будет добавлена в репозиторий отдельно. До её публикации ознакомьтесь с условиями использования исходного кода и сторонних зависимостей, перечисленных в разделе [«Технологический стек»](#технологический-стек).
-
 </details>
 
 <details id="english" open>
@@ -165,6 +172,7 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 - Volume control, including smooth logarithmic adjustment in the lower range.
 - A ten-band equalizer with presets from 31 Hz to 16 kHz and an EQ Bypass mode for quickly comparing processed and unprocessed sound. Custom presets can be saved, exported, and imported.
 - Playback-speed and pitch adjustment while preserving pitch.
+- Windows output-device selection with a safe fallback to the system device if the saved endpoint becomes unavailable.
 - Shuffle and three repeat modes: no repeat, repeat playlist, and repeat one track. The previous-track history is retained between launches when shuffle is active.
 
 #### Playlist and library
@@ -187,17 +195,18 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 - Russian and English languages, with immediate updates to open windows, menus, statistics, Now Playing, and the changelog.
 - Windows media keys, custom hotkeys, a system-tray icon, and Now Playing via System Media Transport Controls.
 - Optional Discord Rich Presence integration with privacy settings.
-- A notification when the track changes.
+- A configurable track-change notification: display policy, size, width, corner, and monitor selection. Positioning uses the Windows scale of the selected monitor.
+- Interface scaling and a reduced-motion mode for a more comfortable experience.
 - Launching with Windows, starting minimized to the tray, minimizing to the tray instead of closing, and creating a desktop shortcut.
 
 #### Metadata and history
 
 - Reading embedded cover art, searching for cover art online, manually setting an image, and locally caching found artwork.
 - Viewing and editing cover-art properties.
-- Live Lyrics: synchronized text from `.lrc`, plain text from `.txt` and the Comment tag, built-in search, manual loading, and local caching of added lyrics.
+- Live Lyrics: synchronized text from `.lrc`, plain text from `.txt` and the Comment tag, built-in search, manual loading, local caching of added lyrics, and a lyrics-search policy.
 - Listening statistics with a per-track counter and a dedicated summary window.
 - Resuming the last track after launch, with a separate option to prevent automatic playback.
-- Protecting playlist, favorites, and statistics data from early overwrite at startup, including a backup of user data.
+- Protecting playlist, favorites, and statistics data from early overwrite at startup, including user-data backup, settings migrations, and local recovery points before reset.
 - Exporting and importing settings in a single `.lumi` file, including the selected interface language.
 - An in-app changelog with search, sorting, visual categories, and automatic SemVer version calculation. The number of a published version opens its corresponding GitHub Release.
 - Checking for updates through GitHub Releases and installing a new version from the application.
@@ -208,18 +217,24 @@ Running from source requires Windows 10 or Windows 11 with WPF and .NET 8 suppor
 
 ### Running from source
 
-1. Clone the repository:
+1. Clone the repository and change to its root directory:
 
    ```powershell
    git clone https://github.com/wasssly/Lumisense.git
-   cd Lumisense/Lumisense
+   cd Lumisense
    ```
 
 2. Restore dependencies and run the project:
 
    ```powershell
-   dotnet restore
-   dotnet run
+   dotnet restore .\Lumisense\Lumisense.csproj
+   dotnet run --project .\Lumisense\Lumisense.csproj
+   ```
+
+3. Run the unit tests:
+
+   ```powershell
+   dotnet test .\Lumisense.Tests\Lumisense.Tests.csproj -c Release
    ```
 
 You can also open `Lumisense.csproj` in Visual Studio and start the application with **F5**. NuGet will automatically download the required packages during the first restore.
@@ -240,13 +255,16 @@ The player can check GitHub Releases for new versions and notify the user about 
 - **DiscordRichPresence** for local Discord Rich Presence integration.
 - **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** for rendering SVG interface icons.
 - **Windows Forms** for the system tray and `NotifyIcon`.
+- **xUnit** for unit tests covering version handling, localization, and notification placement.
 
 ### Repository structure
 
 ```text
 Lumisense/
+├── .github/workflows/ci.yml            — build, unit-test, and dependency checks
 ├── .github/workflows/release.yml       — builds and publishes releases from tags
 ├── Installer/Lumisense.iss             — Inno Setup installer script
+├── Lumisense.Tests/                    — unit tests
 └── Lumisense/                          — player source code
     ├── Lumisense.csproj
     ├── App.xaml / .cs                   — entry point and theme setup
@@ -275,9 +293,5 @@ Lumisense/
 ### Feedback
 
 If you find a bug or would like to propose an improvement, please create an [issue in the repository](https://github.com/wasssly/Lumisense/issues). Include the application version, steps to reproduce the problem, and, if possible, a log excerpt or screenshot.
-
-### License
-
-License information will be added to the repository separately. Until then, review the terms governing the source code and third-party dependencies listed in the [Technology stack](#technology-stack) section.
 
 </details>
