@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using Velopack;
@@ -20,11 +21,41 @@ internal sealed class VelopackUpdateService
     internal const string ReleaseChannel = "win";
     private const string RepositoryUrl = "https://github.com/wasssly/Lumisense";
 
-    private readonly UpdateManager _manager = new(
-        new GithubSource(RepositoryUrl, accessToken: null, prerelease: false),
-        new UpdateOptions { ExplicitChannel = ReleaseChannel });
+#if VELOPACK_LOCAL_FEED_TEST
+    // Этот override существует только в ручном test build. В обычном release код ниже
+    // не компилируется и переменная среды не может перенаправить пользователей с GitHub.
+    internal const string LocalTestFeedEnvironmentVariable = "LUMISENSE_VELOPACK_TEST_FEED";
+#endif
+
+    private readonly UpdateManager _manager;
+
+    public VelopackUpdateService()
+    {
+        _manager = CreateManager(out bool usesLocalTestFeed);
+        UsesLocalTestFeed = usesLocalTestFeed;
+    }
 
     public bool IsManagedInstall => _manager.IsInstalled;
+    public bool UsesLocalTestFeed { get; }
+
+    private static UpdateManager CreateManager(out bool usesLocalTestFeed)
+    {
+        var options = new UpdateOptions { ExplicitChannel = ReleaseChannel };
+
+#if VELOPACK_LOCAL_FEED_TEST
+        string? localFeedPath = Environment.GetEnvironmentVariable(LocalTestFeedEnvironmentVariable);
+        if (!string.IsNullOrWhiteSpace(localFeedPath))
+        {
+            usesLocalTestFeed = true;
+            return new UpdateManager(new SimpleFileSource(new DirectoryInfo(localFeedPath)), options);
+        }
+#endif
+
+        usesLocalTestFeed = false;
+        return new UpdateManager(
+            new GithubSource(RepositoryUrl, accessToken: null, prerelease: false),
+            options);
+    }
 
     /// <summary>
     /// Не обращается к GitHub для обычных Inno Setup, portable и debug-запусков.
@@ -116,9 +147,24 @@ internal static class UpdateMigrationGuard
 
     public static void LogCurrentMode()
     {
-        Logger.Info(IsVelopackManagedInstall()
-            ? "Режим обновлений: Velopack (доступны full/delta пакеты)."
-            : "Режим обновлений: legacy Inno Setup (сохраняется проверенный SHA-256 установщик).");
+        try
+        {
+            var service = new VelopackUpdateService();
+            if (service.IsManagedInstall)
+            {
+                Logger.Info(service.UsesLocalTestFeed
+                    ? "Режим обновлений: Velopack test build (локальный update feed)."
+                    : "Режим обновлений: Velopack (доступны full/delta пакеты)."
+                );
+                return;
+            }
+        }
+        catch
+        {
+            // Ниже безопасный legacy log, если UpdateManager недоступен вне установки.
+        }
+
+        Logger.Info("Режим обновлений: legacy Inno Setup (сохраняется проверенный SHA-256 установщик).");
     }
 
     /// <summary>

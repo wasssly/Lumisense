@@ -26,6 +26,12 @@
 
   </PropertyGroup>
 
+  <!-- Локальный Velopack feed компилируется только в ручных тестовых сборках. Обычные
+       и tag-релизы не содержат этот код даже при наличии переменной среды. -->
+  <PropertyGroup Condition="'$(VelopackLocalFeedTest)' == 'true'">
+    <DefineConstants>$(DefineConstants);VELOPACK_LOCAL_FEED_TEST</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="3.0.5" />
     <PackageReference Include="NAudio" Version="1.9.0" />

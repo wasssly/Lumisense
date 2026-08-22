@@ -1,0 +1,164 @@
+name: Velopack local update test
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_version:
+        description: "Версия устанавливаемой test-only MSI-копии"
+        required: true
+        default: "1.16.0-test.2"
+      candidate_version:
+        description: "Версия, до которой test-only copy должна обновиться из локального feed"
+        required: true
+        default: "1.16.0-test.3"
+
+permissions:
+  contents: read
+
+# Не создаёт tag или GitHub Release. Artifact содержит: base MSI и локальный releases.win.json
+# с base/full/candidate/delta packages. Он предназначен только для Windows update-теста.
+jobs:
+  build-local-update-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout test source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Validate test versions
+        shell: pwsh
+        run: |
+          $semVer = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z][0-9A-Za-z.-]*)?$'
+          foreach ($value in @("${{ inputs.base_version }}", "${{ inputs.candidate_version }}")) {
+            if ($value -notmatch $semVer) { throw "Invalid SemVer: '$value'." }
+          }
+          if ("${{ inputs.base_version }}" -eq "${{ inputs.candidate_version }}") {
+            throw "Base and candidate versions must differ."
+          }
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install pinned Velopack CLI
+        shell: pwsh
+        run: |
+          dotnet tool install --global vpk --version 1.2.0
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          vpk -h
+
+      # Оба publish получают compile-time test flag. В обычном tag release он не передаётся,
+      # поэтому локальный source не попадает в production бинарники.
+      - name: Publish base test-only application
+        shell: pwsh
+        run: |
+          dotnet publish Lumisense/Lumisense.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:Version="${{ inputs.base_version }}" `
+            -p:VelopackLocalFeedTest=true `
+            -o base-publish
+
+      - name: Pack base MSI and local feed baseline
+        shell: pwsh
+        run: |
+          vpk pack `
+            --packId Wasssly.Lumisense `
+            --packVersion "${{ inputs.base_version }}" `
+            --packDir base-publish `
+            --mainExe Lumisense.exe `
+            --runtime win-x64 `
+            --channel win `
+            --outputDir LocalFeed `
+            --packTitle Lumisense `
+            --packAuthors wasssly `
+            --icon Lumisense\Icons\app\lumisense.ico `
+            --noPortable true `
+            --msi true `
+            --instLocation PerMachine
+          if ($LASTEXITCODE -ne 0) { throw "Base MSI packaging failed." }
+
+      - name: Publish candidate test-only application
+        shell: pwsh
+        run: |
+          dotnet publish Lumisense/Lumisense.csproj `
+            -c Release -r win-x64 --self-contained true `
+            -p:Version="${{ inputs.candidate_version }}" `
+            -p:VelopackLocalFeedTest=true `
+            -o candidate-publish
+
+      # --noPortable оставляет setup package допустимым, но не делает лишний portable bundle.
+      # LocalFeed уже содержит baseline full package, поэтому Velopack генерирует candidate delta.
+      - name: Pack candidate full and delta package into local feed
+        shell: pwsh
+        run: |
+          vpk pack `
+            --packId Wasssly.Lumisense `
+            --packVersion "${{ inputs.candidate_version }}" `
+            --packDir candidate-publish `
+            --mainExe Lumisense.exe `
+            --runtime win-x64 `
+            --channel win `
+            --outputDir LocalFeed `
+            --packTitle Lumisense `
+            --packAuthors wasssly `
+            --icon Lumisense\Icons\app\lumisense.ico `
+            --noPortable true
+          if ($LASTEXITCODE -ne 0) { throw "Candidate packaging failed." }
+
+      - name: Verify local feed and delta reconstruction
+        shell: pwsh
+        run: |
+          $channel = 'win'
+          $base = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.base_version }}-$channel-full.nupkg" | Select-Object -First 1
+          $full = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.candidate_version }}-$channel-full.nupkg" | Select-Object -First 1
+          $delta = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.candidate_version }}-$channel-delta.nupkg" | Select-Object -First 1
+          $msi = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-$channel.msi" | Select-Object -First 1
+          $feed = Get-Item LocalFeed\releases.win.json -ErrorAction SilentlyContinue
+          if ($null -eq $base -or $null -eq $full -or $null -eq $delta -or $null -eq $msi -or $null -eq $feed) {
+            Get-ChildItem LocalFeed | Format-Table Name, Length
+            throw "Local feed is missing a base/full/delta/MSI/feed artifact."
+          }
+
+          $reconstructed = Join-Path $PWD "reconstructed-${{ inputs.candidate_version }}.nupkg"
+          vpk delta patch --base $base.FullName --patch $delta.FullName --output $reconstructed
+          $expectedHash = (Get-FileHash $full.FullName -Algorithm SHA256).Hash
+          $actualHash = (Get-FileHash $reconstructed -Algorithm SHA256).Hash
+          if ($expectedHash -ne $actualHash) { throw "Reconstructed package SHA-256 does not match candidate full package." }
+
+          $measurement = [ordered]@{
+            baseVersion = "${{ inputs.base_version }}"
+            candidateVersion = "${{ inputs.candidate_version }}"
+            fullPackage = [ordered]@{ name = $full.Name; bytes = $full.Length; sha256 = $expectedHash }
+            deltaPackage = [ordered]@{ name = $delta.Name; bytes = $delta.Length; sha256 = (Get-FileHash $delta.FullName -Algorithm SHA256).Hash; percentOfFull = [math]::Round(($delta.Length / $full.Length) * 100, 3) }
+            msi = [ordered]@{ name = $msi.Name; bytes = $msi.Length; sha256 = (Get-FileHash $msi.FullName -Algorithm SHA256).Hash }
+            reconstructedFullSha256 = $actualHash
+          }
+          $measurement | ConvertTo-Json -Depth 5 | Set-Content -Path LocalFeed\delta-measurement.json -Encoding utf8
+          Get-Content LocalFeed\delta-measurement.json
+
+      - name: Add Windows test instructions to artifact
+        shell: pwsh
+        run: |
+          @"
+          # Lumisense local Velopack update test
+
+          1. Close Lumisense.
+          2. Install `Wasssly.Lumisense-win.msi` from this folder. It installs the base version ${{ inputs.base_version }}.
+          3. Set the per-user environment variable before launching Lumisense:
+             `[Environment]::SetEnvironmentVariable('LUMISENSE_VELOPACK_TEST_FEED', 'FULL_PATH_TO_THIS_LocalFeed_FOLDER', 'User')`
+          4. Start the MSI-installed Lumisense, open Settings -> About and press Check for updates.
+          5. The app must find ${{ inputs.candidate_version }}, download a compact update, restart, and report version ${{ inputs.candidate_version }}.
+          6. Clear the test override afterwards:
+             `[Environment]::SetEnvironmentVariable('LUMISENSE_VELOPACK_TEST_FEED', `$null, 'User')`
+
+          Do not publish or redistribute these unsigned packages.
+          "@ | Set-Content -Path LocalFeed\README-LOCAL-UPDATE-TEST.md -Encoding utf8
+
+      - name: Upload private local update test artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: Lumisense-Velopack-local-update-test
+          path: LocalFeed
+          if-no-files-found: error
+          retention-days: 7
