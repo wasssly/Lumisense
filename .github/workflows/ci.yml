@@ -26,7 +26,7 @@ jobs:
         shell: pwsh
         run: |
           [xml]$project = Get-Content "Lumisense/Lumisense.csproj"
-          $version = [string]$project.Project.PropertyGroup.Version
+          $version = ([string]$project.Project.PropertyGroup.Version).Trim()
           if ([string]::IsNullOrWhiteSpace($version) -or $version -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$') {
             throw "Project Version must use SemVer: '$version'."
           }
