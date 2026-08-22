@@ -104,9 +104,9 @@
             <ContextMenu x:Name="MiniPlayerContextMenu" Opened="MiniPlayerContextMenu_Opened">
                 <ContextMenu.Resources>
                     <!-- Локальный шаблон применяется исключительно к двум переключаемым пунктам.
-                         Он заменяет дефектный check-glyph MenuItem одним обычным CheckBox — тем
-                         же контролом и тем же Fluent-стилем, что в SettingsWindow. Визуально это
-                         одна штатная область галочки слева, а не дополнительный элемент меню. -->
+                         Используется тот же штатный WPF-UI CheckBox, что и на странице настроек:
+                         размер и геометрия индикатора полностью совпадают. IsChecked принадлежит
+                         самому MenuItem, а CheckBox служит только некликабельным отображением. -->
                     <Style x:Key="MiniPlayerToggleMenuItemStyle" TargetType="{x:Type MenuItem}">
                         <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                         <Setter Property="Background" Value="Transparent" />
@@ -121,16 +121,9 @@
                                                 <ColumnDefinition Width="24" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <!-- IsChecked принадлежит самому MenuItem; CheckBox здесь лишь
-                                                 отображает его штатным Fluent-шаблоном и не создаёт второе
-                                                 состояние или отдельный кликабельный элемент. -->
-                                            <!-- Это тот же CheckBox, что используется на странице
-                                                 «Мини-плеер» в настройках. Его встроенный Fluent
-                                                 ControlTemplate сохраняет собственную анимацию
-                                                 перехода IsChecked. -->
                                             <CheckBox x:Name="ToggleCheckBox" Grid.Column="0"
                                                       IsHitTestVisible="False" Focusable="False"
-                                                      VerticalAlignment="Center"
+                                                      VerticalAlignment="Center" HorizontalAlignment="Center"
                                                       RenderTransformOrigin="0.5,0.5"
                                                       IsChecked="{TemplateBinding IsChecked}">
                                                 <CheckBox.RenderTransform>
@@ -150,9 +143,8 @@
                                             <Setter TargetName="ItemBackground" Property="Background"
                                                     Value="{DynamicResource ControlFillColorSecondaryBrush}" />
                                         </Trigger>
-                                        <!-- Меню закрывается сразу после выбора, как прежде. Поэтому
-                                             анимация запускается при появлении уже активной галочки
-                                             на открытии меню, а не только при клике. -->
+                                        <!-- Accent-resources заполняются в ApplyContextMenuAccent: popup
+                                             использует выбранный в Lumisense цвет, а не системный Windows accent. -->
                                         <Trigger Property="IsChecked" Value="True">
                                             <Trigger.EnterActions>
                                                 <BeginStoryboard>

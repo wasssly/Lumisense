@@ -5356,6 +5356,7 @@ public partial class MainWindow : FluentWindow
             "Favorite" => "Favorite",
             _ => "Repeat"
         };
+        SettingsManager.Save(_settings);
 
         ApplyMiniPlayerSecondaryButtonLive();
         _settingsWindow?.RefreshMiniPlayerToggles();
@@ -5670,7 +5671,6 @@ public partial class MainWindow : FluentWindow
     public void SetMiniPlayerPinned(bool pinned)
     {
         _settings.MiniPlayerPinned = pinned;
-        _miniPlayerWindow?.ApplyPinnedStateLive(pinned);
         _settingsWindow?.RefreshMiniPlayerToggles();
     }
 
