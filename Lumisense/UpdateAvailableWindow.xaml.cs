@@ -16,6 +16,12 @@ public partial class UpdateAvailableWindow : FluentWindow
     private readonly UpdateCheckResult _result;
     private readonly AppSettings? _settings;
     private CancellationTokenSource? _downloadCts;
+    private DownloadPauseController? _pauseController;
+    private bool _isVelopackDownload;
+    private bool _isVelopackPaused;
+    // Смена источника никогда не смешивает байты разных зеркал: текущий запрос отменяется,
+    // его .part удаляется сетевым слоем, а новый полный запрос начинается только после этого.
+    private bool _restartLegacyDownloadFromNewSource;
     private readonly bool _isMsiMigrationOnly;
 
     public UpdateAvailableWindow(UpdateCheckResult result, AppSettings? settings = null)
@@ -28,6 +34,11 @@ public partial class UpdateAvailableWindow : FluentWindow
 
         ApplyMigrationPresentation();
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
+        Closing += (_, _) =>
+        {
+            _restartLegacyDownloadFromNewSource = false;
+            _downloadCts?.Cancel();
+        };
         Closed += (_, _) => LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
 
         string releaseNotes = FormatReleaseNotes(result.ReleaseNotes);
@@ -46,6 +57,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
     {
         ApplyMigrationPresentation();
+        RefreshDownloadControlLabels();
     }
 
     // В migration-only режиме текущая EXE-копия уже совпадает с последним release. Поэтому
@@ -199,6 +211,125 @@ public partial class UpdateAvailableWindow : FluentWindow
             await InstallViaExeAsync();
     }
 
+    private async void PauseDownloadButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isDownloading) return;
+
+        if (_isVelopackDownload)
+        {
+            if (_isVelopackPaused)
+            {
+                _isVelopackPaused = false;
+                await InstallViaVelopackAsync(isResuming: true);
+                return;
+            }
+
+            // Velopack 1.2.0 предоставляет отмену, но не API настоящей паузы потока. Остановка
+            // безопасна: при продолжении UpdateManager повторно проверяет пакеты и их checksums.
+            _isVelopackPaused = true;
+            PauseDownloadButton.IsEnabled = false;
+            PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackDownloadPaused);
+            PhaseText.Visibility = Visibility.Visible;
+            _downloadCts?.Cancel();
+            return;
+        }
+
+        if (_pauseController is null) return;
+        if (_pauseController.IsPaused)
+            _pauseController.Resume();
+        else
+            _pauseController.Pause();
+
+        RefreshDownloadControlLabels();
+        if (_pauseController.IsPaused)
+        {
+            PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateDownloadPaused);
+            PhaseText.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void CancelDownloadButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isDownloading) return;
+
+        _restartLegacyDownloadFromNewSource = false;
+        if (_isVelopackPaused)
+        {
+            _isVelopackPaused = false;
+            SetDownloading(false);
+            return;
+        }
+
+        CancelDownloadButton.IsEnabled = false;
+        PauseDownloadButton.IsEnabled = false;
+        ChangeDownloadSourceButton.IsEnabled = false;
+        PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateDownloadCancelling);
+        PhaseText.Visibility = Visibility.Visible;
+        _downloadCts?.Cancel();
+    }
+
+    private void ChangeDownloadSourceButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Velopack управляет своими пакетами сам и не предоставляет безопасную замену base URL
+        // в середине операции. Для EXE/MSI можно начать новый полный запрос с другого mirror.
+        if (!_isDownloading || _isVelopackDownload || _settings is null || _restartLegacyDownloadFromNewSource)
+            return;
+
+        var menu = new System.Windows.Controls.ContextMenu
+        {
+            PlacementTarget = ChangeDownloadSourceButton,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom
+        };
+
+        string currentSource = _settings.UpdateDownloadSource;
+        foreach (var source in UpdateChecker.DownloadSources)
+        {
+            string sourceKey = source.Key;
+            var item = new System.Windows.Controls.MenuItem
+            {
+                Header = source.DisplayName,
+                IsCheckable = true,
+                IsChecked = string.Equals(sourceKey, currentSource, StringComparison.Ordinal)
+            };
+            item.Click += (_, _) => RestartLegacyDownloadFromSource(sourceKey);
+            menu.Items.Add(item);
+        }
+
+        menu.IsOpen = true;
+    }
+
+    private void RestartLegacyDownloadFromSource(string sourceKey)
+    {
+        if (!_isDownloading || _isVelopackDownload || _settings is null ||
+            string.Equals(_settings.UpdateDownloadSource, sourceKey, StringComparison.Ordinal))
+            return;
+
+        string currentSourceName = GetSelectedDownloadSourceDisplayName();
+        string newSourceName = GetDownloadSourceDisplayName(sourceKey);
+        var confirmation = LocalizedMessageBox.Show(
+            this,
+            LocalizationService.FormatKey(
+                LocalizationKey.UpdateDownloadSourceChangeConfirmMessage, currentSourceName, newSourceName),
+            LocalizationService.Get(LocalizationKey.UpdateDownloadSourceChangeConfirmTitle),
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning,
+            System.Windows.MessageBoxResult.No);
+        if (confirmation != System.Windows.MessageBoxResult.Yes)
+            return;
+
+        // Сохраняем выбор сразу, как и в настройках. Следующая операция и последующие обновления
+        // используют новый источник; текущий .part не переиспользуется между разными URL.
+        _settings.UpdateDownloadSource = sourceKey;
+        SettingsManager.Save(_settings);
+        _restartLegacyDownloadFromNewSource = true;
+        PauseDownloadButton.IsEnabled = false;
+        ChangeDownloadSourceButton.IsEnabled = false;
+        PhaseText.Text = LocalizationService.FormatKey(
+            LocalizationKey.UpdateDownloadSourceChanging, GetSelectedDownloadSourceDisplayName());
+        PhaseText.Visibility = Visibility.Visible;
+        _downloadCts?.Cancel();
+    }
+
     private async void MigrateToMsiButton_Click(object sender, RoutedEventArgs e)
     {
         if (_isDownloading)
@@ -222,35 +353,13 @@ public partial class UpdateAvailableWindow : FluentWindow
             System.Windows.MessageBoxResult.No);
         if (confirmation != System.Windows.MessageBoxResult.Yes) return;
 
-        SetDownloading(true);
-        _downloadCts = new CancellationTokenSource();
-        var progress = new Progress<DownloadProgressInfo>(UpdateDownloadProgressUi);
-
-        try
-        {
-            string source = _settings?.UpdateDownloadSource ?? "GitHub";
-            string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.MsiDownloadUrl, source);
-            string msiPath = await UpdateChecker.DownloadMsiAsync(downloadUrl, _result.MsiSha256, progress, _downloadCts.Token);
-
-            SetPreparingForMsiMigration();
-            UpdateChecker.LaunchMsiAndExit(msiPath, _result.MsiSha256);
-        }
-        catch (OperationCanceledException)
-        {
-            SetDownloading(false);
-        }
-        catch (Exception ex)
-        {
-            SetDownloading(false);
-            Logger.Warn($"Не удалось скачать MSI для перехода: {ex.Message}");
-            ShowError($"{LocalizationService.Get(LocalizationKey.UpdateMsiMigrationDownloadFailed)}\n\n{ex.Message}");
-        }
+        await DownloadAndLaunchLegacyAssetAsync(isMsi: true);
     }
 
     // Velopack сам выбирает delta или full package, скачивает его с верификацией и только
     // после успешной подготовки получает разрешение закрыть приложение и перезапустить его.
     // Этот путь недоступен legacy Inno Setup-установкам: проверка DeliveryKind происходит выше.
-    private async Task InstallViaVelopackAsync()
+    private async Task InstallViaVelopackAsync(bool isResuming = false)
     {
         if (_result.VelopackUpdate is null)
         {
@@ -258,6 +367,10 @@ public partial class UpdateAvailableWindow : FluentWindow
             return;
         }
 
+        if (isResuming)
+            Logger.Info("Пользователь продолжил остановленную загрузку Velopack-обновления.");
+
+        _isVelopackDownload = true;
         SetDownloading(true);
         _downloadCts = new CancellationTokenSource();
         var progress = new Progress<int>(UpdateVelopackProgressUi);
@@ -274,7 +387,10 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
         catch (OperationCanceledException)
         {
-            SetDownloading(false);
+            if (_isVelopackPaused)
+                SetVelopackPausedUi();
+            else
+                SetDownloading(false);
         }
         catch (Exception ex)
         {
@@ -300,26 +416,57 @@ public partial class UpdateAvailableWindow : FluentWindow
             return;
         }
 
-        SetDownloading(true);
+        await DownloadAndLaunchLegacyAssetAsync(isMsi: false);
+    }
 
+    // EXE и MSI получают одинаковую проверку SHA-256 и один жизненный цикл. При выборе нового
+    // источника CancellationToken останавливает старый поток; после его завершения сетевой слой
+    // удаляет .part, и здесь начинается независимая полная загрузка с новым URL.
+    private async Task DownloadAndLaunchLegacyAssetAsync(bool isMsi)
+    {
+        string? originalUrl = isMsi ? _result.MsiDownloadUrl : _result.DownloadUrl;
+        string? expectedSha256 = isMsi ? _result.MsiSha256 : _result.InstallerSha256;
+        if (string.IsNullOrWhiteSpace(originalUrl) || string.IsNullOrWhiteSpace(expectedSha256))
+        {
+            SetDownloading(false);
+            ShowError(isMsi
+                ? LocalizationService.Get(LocalizationKey.UpdateMsiMigrationUnavailable)
+                : LocalizationService.Get(LocalizationKey.UpdateFailureMissingInstallerChecksum));
+            return;
+        }
+
+        SetDownloading(true);
+        _pauseController?.Dispose();
+        _pauseController = new DownloadPauseController();
+        _downloadCts?.Dispose();
         _downloadCts = new CancellationTokenSource();
         var progress = new Progress<DownloadProgressInfo>(UpdateDownloadProgressUi);
 
         try
         {
             string source = _settings?.UpdateDownloadSource ?? "GitHub";
-            string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.DownloadUrl, source);
+            string downloadUrl = UpdateChecker.ApplyDownloadSource(originalUrl, source);
+            string installerPath = isMsi
+                ? await UpdateChecker.DownloadMsiAsync(downloadUrl, expectedSha256, progress, _pauseController, _downloadCts.Token)
+                : await UpdateChecker.DownloadInstallerAsync(downloadUrl, expectedSha256, progress, _pauseController, _downloadCts.Token);
 
-            string exePath = await UpdateChecker.DownloadInstallerAsync(
-                downloadUrl, expectedSha256, progress, _downloadCts.Token);
-
-            // Перед запуском самого установщика тоже показываем "Подготовка…" — по сути пауза
-            // тут почти нулевая (просто передать управление Process.Start), но без этой фазы
-            // прогресс-бар так же "зависал" бы на 100% на те доли секунды, что окно ещё
-            // остаётся открытым.
-            SetPreparing(isVelopack: false);
-
-            UpdateChecker.LaunchInstallerAndExit(exePath, expectedSha256);
+            if (isMsi)
+            {
+                SetPreparingForMsiMigration();
+                UpdateChecker.LaunchMsiAndExit(installerPath, expectedSha256);
+            }
+            else
+            {
+                // Перед запуском самого установщика тоже показываем «Подготовка…», чтобы полоса
+                // прогресса не выглядела зависшей между 100% и передачей управления Windows.
+                SetPreparing(isVelopack: false);
+                UpdateChecker.LaunchInstallerAndExit(installerPath, expectedSha256);
+            }
+        }
+        catch (OperationCanceledException) when (_restartLegacyDownloadFromNewSource && IsLoaded)
+        {
+            _restartLegacyDownloadFromNewSource = false;
+            await DownloadAndLaunchLegacyAssetAsync(isMsi);
         }
         catch (OperationCanceledException)
         {
@@ -328,24 +475,49 @@ public partial class UpdateAvailableWindow : FluentWindow
         catch (Exception ex)
         {
             SetDownloading(false);
-            ShowError($"Не удалось скачать установщик: {ex.Message}");
+            Logger.Warn($"Не удалось скачать {(isMsi ? "MSI для перехода" : "EXE-установщик")}: {ex.Message}");
+            ShowError(isMsi
+                ? $"{LocalizationService.Get(LocalizationKey.UpdateMsiMigrationDownloadFailed)}\n\n{ex.Message}"
+                : $"Не удалось скачать установщик: {ex.Message}");
         }
     }
 
-    // Отмена переиспользует саму кнопку "Скачать и установить" (меняет подпись/поведение на
-    // время скачивания) вместо отдельной кнопки — во время скачивания она и так единственная
-    // активная в ряду.
+    // Состояние загрузки скрывает исходную кнопку установки и показывает отдельные явные
+    // действия PauseDownloadButton и CancelDownloadButton. Закрытие окна отменяет запрос.
     private bool _isDownloading;
 
     private void SetDownloading(bool isDownloading)
     {
         _isDownloading = isDownloading;
-        InstallButton.Content = isDownloading
-            ? LocalizationService.Translate("Отмена")
-            : LocalizationService.Translate("Скачать и установить");
-        InstallButton.Appearance = isDownloading ? ControlAppearance.Secondary : ControlAppearance.Primary;
+        if (!isDownloading)
+        {
+            _pauseController?.Dispose();
+            _pauseController = null;
+            _isVelopackDownload = false;
+            _isVelopackPaused = false;
+            _restartLegacyDownloadFromNewSource = false;
+        }
+
+        if (!_isMsiMigrationOnly)
+            InstallButton.Visibility = isDownloading ? Visibility.Collapsed : Visibility.Visible;
+        InstallButton.Content = LocalizationService.Translate("Скачать и установить");
+        InstallButton.Appearance = ControlAppearance.Primary;
+        PauseDownloadButton.IsEnabled = isDownloading;
+        PauseDownloadButton.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
+        CancelDownloadButton.Content = LocalizationService.Get(LocalizationKey.UpdateDownloadCancel);
+        CancelDownloadButton.IsEnabled = isDownloading;
+        CancelDownloadButton.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
+        bool canChangeLegacySource = isDownloading && !_isVelopackDownload && _settings is not null;
+        ChangeDownloadSourceButton.Content = LocalizationService.FormatKey(
+            LocalizationKey.UpdateDownloadChangeSource, GetSelectedDownloadSourceDisplayName());
+        ChangeDownloadSourceButton.IsEnabled = canChangeLegacySource && !_restartLegacyDownloadFromNewSource;
+        ChangeDownloadSourceButton.Visibility = canChangeLegacySource ? Visibility.Visible : Visibility.Collapsed;
         LaterButton.IsEnabled = !isDownloading;
+        LaterButton.Visibility = isDownloading ? Visibility.Collapsed : Visibility.Visible;
         MoreButton.IsEnabled = !isDownloading;
+        MoreButton.Visibility = !isDownloading && !string.IsNullOrEmpty(_result.ReleaseNotesUrl)
+            ? Visibility.Visible
+            : Visibility.Collapsed;
         MigrateToMsiButton.IsEnabled = !isDownloading;
         DownloadProgressBar.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
         // Неопределённый — пока не пришёл первый отчёт о прогрессе с известным общим размером
@@ -360,6 +532,45 @@ public partial class UpdateAvailableWindow : FluentWindow
             : "";
         PhaseText.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
         StatusText.Visibility = Visibility.Collapsed;
+        RefreshDownloadControlLabels();
+    }
+
+    private void SetVelopackPausedUi()
+    {
+        _isDownloading = true;
+        PauseDownloadButton.Visibility = Visibility.Visible;
+        PauseDownloadButton.IsEnabled = true;
+        CancelDownloadButton.Visibility = Visibility.Visible;
+        CancelDownloadButton.IsEnabled = true;
+        PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackDownloadPaused);
+        PhaseText.Visibility = Visibility.Visible;
+        RefreshDownloadControlLabels();
+    }
+
+    private void RefreshDownloadControlLabels()
+    {
+        if (!_isDownloading) return;
+
+        bool paused = _isVelopackPaused || _pauseController?.IsPaused == true;
+        PauseDownloadButton.Content = LocalizationService.Get(
+            paused ? LocalizationKey.UpdateDownloadResume : LocalizationKey.UpdateDownloadPause);
+        CancelDownloadButton.Content = LocalizationService.Get(LocalizationKey.UpdateDownloadCancel);
+        ChangeDownloadSourceButton.Content = LocalizationService.FormatKey(
+            LocalizationKey.UpdateDownloadChangeSource, GetSelectedDownloadSourceDisplayName());
+    }
+
+    private string GetSelectedDownloadSourceDisplayName() =>
+        GetDownloadSourceDisplayName(_settings?.UpdateDownloadSource ?? "GitHub");
+
+    private static string GetDownloadSourceDisplayName(string sourceKey)
+    {
+        foreach (var source in UpdateChecker.DownloadSources)
+        {
+            if (string.Equals(source.Key, sourceKey, StringComparison.Ordinal))
+                return source.DisplayName;
+        }
+
+        return UpdateChecker.DownloadSources[0].DisplayName;
     }
 
     // UpdateManager сообщает нормализованный процент для full/delta-цепочки, но не обещает
@@ -404,6 +615,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     // Короткая фаза передачи управления выбранному updater после завершения скачивания.
     private void SetPreparingForMsiMigration()
     {
+        CancelDownloadButton.IsEnabled = false;
         DownloadProgressBar.IsIndeterminate = true;
         PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationLaunching);
         PhaseText.Visibility = Visibility.Visible;
@@ -411,6 +623,7 @@ public partial class UpdateAvailableWindow : FluentWindow
 
     private void SetPreparing(bool isVelopack)
     {
+        CancelDownloadButton.IsEnabled = false;
         DownloadProgressBar.IsIndeterminate = true;
         PhaseText.Text = isVelopack
             ? LocalizationService.Get(LocalizationKey.UpdateVelopackApplying)

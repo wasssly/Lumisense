@@ -258,7 +258,7 @@ internal static class SettingsIntegrityService
         settings.TrackChangeToastPolicy = Allowed(settings.TrackChangeToastPolicy, defaults.TrackChangeToastPolicy,
             "EveryTrackChange", "PlaybackOnly", "ManualOnly");
         settings.UpdateDownloadSource = Allowed(settings.UpdateDownloadSource, defaults.UpdateDownloadSource,
-            "GitHub", "GhProxy", "GhProxyV4", "GhProxyV6", "GhProxyCdn");
+            "GitHub", "GhProxy", "GhProxyV4", "GhProxyV6", "GhProxyCdn", "GhProxyCom", "GhFast");
 
         settings.SavedPlaylistFolders = NormalizeFolders(settings.SavedPlaylistFolders);
         // Legacy-поле заполняется только при чтении schema 0 и очищается сразу после переноса.

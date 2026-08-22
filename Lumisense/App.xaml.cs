@@ -193,6 +193,10 @@ public partial class App : Application
 
         Logger.Info("Главное окно создано и показано — запуск завершён успешно.");
 
+        // Этот вызов возможен лишь после успешного создания MSI-окна. Он одноразово обрабатывает
+        // marker Velopack и только при точном обнаружении legacy Inno Setup предлагает cleanup.
+        UpdateMigrationGuard.TryShowFirstRunNotice();
+
         WaitForToggleSignal(window);
     }
 

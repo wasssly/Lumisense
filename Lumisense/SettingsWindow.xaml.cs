@@ -23,6 +23,8 @@ public partial class SettingsWindow : FluentWindow
     private readonly MainWindow _owner;
     private bool _isInitializing = true;
     private bool _isRefreshingOutputDevices;
+    private CancellationTokenSource? _sourceProbeCts;
+    private IReadOnlyList<UpdateSourceProbeResult>? _sourceProbeResults;
 
     // См. LoadDeveloperAvatar — держит BitmapImage живым на время асинхронной загрузки, чтобы
     // его не собрал GC до того, как скачивание завершится.
@@ -209,6 +211,8 @@ public partial class SettingsWindow : FluentWindow
             "GhProxyV4" => UpdateSourceGhProxyV4Radio,
             "GhProxyV6" => UpdateSourceGhProxyV6Radio,
             "GhProxyCdn" => UpdateSourceGhProxyCdnRadio,
+            "GhProxyCom" => UpdateSourceGhProxyComRadio,
+            "GhFast" => UpdateSourceGhFastRadio,
             _ => UpdateSourceGitHubRadio
         }).IsChecked = true;
 
@@ -234,10 +238,15 @@ public partial class SettingsWindow : FluentWindow
         LoadDeveloperAvatar();
         RefreshLyricsCacheInfo();
         RefreshResetRecoveryButton();
+        RefreshUpdateSourceProbePresentation();
 
         _isInitializing = false;
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
-        Closed += (_, _) => LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
+        Closed += (_, _) =>
+        {
+            _sourceProbeCts?.Cancel();
+            LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
+        };
         LocalizationService.Apply(this);
     }
 
@@ -435,16 +444,136 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    // Переключатель источника загрузки обновления (GitHub напрямую / одно из зеркал
-    // gh-proxy, см. UpdateChecker.DownloadSources) — сама проверка версии (кнопка выше) этой
-    // настройкой не затрагивается, она влияет только на скачивание ZIP-архива в UpdateAvailableWindow.
+        // Переключатель источника применяется сразу: UpdateAvailableWindow использует ту же
+    // in-memory модель _settings при следующем скачивании. Сразу сохраняем выбор, чтобы он
+    // пережил закрытие/перезапуск без ожидания общего сохранения настроек приложения.
     private void UpdateSourceRadio_Checked(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
         if (sender is not System.Windows.Controls.RadioButton { Tag: string key }) return;
-
         _settings.UpdateDownloadSource = key;
+        SettingsManager.Save(_settings);
     }
+
+    private async void ProbeUpdateSourcesButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!ProbeUpdateSourcesButton.IsEnabled) return;
+
+        ProbeUpdateSourcesButton.IsEnabled = false;
+        ClearUpdateSourceProbeRows();
+        _sourceProbeCts?.Cancel();
+        _sourceProbeCts = new CancellationTokenSource();
+        UpdateSourceProbeStatusText.Text = LocalizationService.Get(LocalizationKey.UpdateSourceProbeRunning);
+        UpdateSourceProbeStatusText.Visibility = Visibility.Visible;
+
+        try
+        {
+            _sourceProbeResults = await UpdateChecker.ProbeDownloadSourcesAsync(_sourceProbeCts.Token);
+            RenderUpdateSourceProbeResults(_sourceProbeResults);
+        }
+        catch (OperationCanceledException)
+        {
+            // Закрытие окна или новая проверка отменили предыдущий ограниченный test-запрос.
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось выполнить диагностику источников обновлений: {ex.Message}");
+            UpdateSourceProbeStatusText.Text = LocalizationService.Get(LocalizationKey.UpdateSourceProbeNoWorking);
+            UpdateSourceProbeStatusText.Visibility = Visibility.Visible;
+        }
+        finally
+        {
+            if (IsLoaded)
+                ProbeUpdateSourcesButton.IsEnabled = true;
+        }
+    }
+
+    private void RefreshUpdateSourceProbePresentation()
+    {
+        ProbeUpdateSourcesTitleText.Text = LocalizationService.Get(LocalizationKey.UpdateSourceProbeTitle);
+        ProbeUpdateSourcesSubtitleText.Text = LocalizationService.Get(LocalizationKey.UpdateSourceProbeSubtitle);
+    }
+
+    private void RenderUpdateSourceProbeResults(IReadOnlyList<UpdateSourceProbeResult> results)
+    {
+        foreach (UpdateSourceProbeResult result in results)
+        {
+            System.Windows.Controls.TextBlock? statusText = GetUpdateSourceProbeText(result.Key);
+            if (statusText is null) continue;
+
+            bool isSlow = result.IsAvailable &&
+                          (result.BytesPerSecond < 128 * 1024 || result.ResponseMilliseconds > 1500);
+            if (!result.IsAvailable)
+            {
+                statusText.Text = LocalizationService.Get(LocalizationKey.UpdateSourceProbeFailed);
+                statusText.Foreground = new SolidColorBrush(Color.FromRgb(224, 82, 82));
+            }
+            else if (isSlow)
+            {
+                statusText.Text = LocalizationService.FormatKey(LocalizationKey.UpdateSourceProbeRow,
+                    LocalizationService.Get(LocalizationKey.UpdateSourceProbeSlow),
+                    result.ResponseMilliseconds, FormatProbeRate(result.BytesPerSecond));
+                statusText.Foreground = new SolidColorBrush(Color.FromRgb(216, 158, 34));
+            }
+            else
+            {
+                statusText.Text = LocalizationService.FormatKey(LocalizationKey.UpdateSourceProbeRow,
+                    LocalizationService.Get(LocalizationKey.UpdateSourceProbeGood),
+                    result.ResponseMilliseconds, FormatProbeRate(result.BytesPerSecond));
+                statusText.Foreground = new SolidColorBrush(Color.FromRgb(63, 174, 106));
+            }
+
+            statusText.Visibility = Visibility.Visible;
+        }
+
+        UpdateSourceProbeResult? recommended = results
+            .Where(result => result.IsAvailable)
+            .OrderByDescending(result => result.BytesPerSecond)
+            .ThenBy(result => result.ResponseMilliseconds)
+            .FirstOrDefault();
+        UpdateSourceProbeStatusText.Text = recommended is null
+            ? LocalizationService.Get(LocalizationKey.UpdateSourceProbeNoWorking)
+            : LocalizationService.FormatKey(LocalizationKey.UpdateSourceProbeRecommended,
+                LocalizationService.Translate(recommended.DisplayName));
+        UpdateSourceProbeStatusText.Visibility = Visibility.Visible;
+    }
+
+    private System.Windows.Controls.TextBlock? GetUpdateSourceProbeText(string sourceKey) => sourceKey switch
+    {
+        "GitHub" => UpdateSourceGitHubProbeText,
+        "GhProxy" => UpdateSourceGhProxyProbeText,
+        "GhProxyV4" => UpdateSourceGhProxyV4ProbeText,
+        "GhProxyV6" => UpdateSourceGhProxyV6ProbeText,
+        "GhProxyCdn" => UpdateSourceGhProxyCdnProbeText,
+        "GhProxyCom" => UpdateSourceGhProxyComProbeText,
+        "GhFast" => UpdateSourceGhFastProbeText,
+        _ => null
+    };
+
+    private void ClearUpdateSourceProbeRows()
+    {
+        foreach (string sourceKey in UpdateChecker.DownloadSources.Select(source => source.Key))
+        {
+            System.Windows.Controls.TextBlock? statusText = GetUpdateSourceProbeText(sourceKey);
+            if (statusText is null) continue;
+            statusText.Text = string.Empty;
+            statusText.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private static string FormatProbeRate(double bytesPerSecond)
+    {
+        const double kib = 1024;
+        const double mib = kib * 1024;
+        string megabytes = LocalizationService.IsEnglish ? "MB" : "МБ";
+        string kilobytes = LocalizationService.IsEnglish ? "KB" : "КБ";
+        return bytesPerSecond >= mib
+            ? $"{bytesPerSecond / mib:F1} {megabytes}"
+            : bytesPerSecond >= kib
+                ? $"{bytesPerSecond / kib:F0} {kilobytes}"
+                : $"{bytesPerSecond:F0} B";
+    }
+
 
     // ---------- "Все версии" (страница "О плеере") ----------
     // Один элемент списка версий (см. AllVersionsList в XAML) — обёртка над ReleaseListItem
@@ -997,6 +1126,9 @@ public partial class SettingsWindow : FluentWindow
             RenderAllVersions(_loadedReleases);
 
         RefreshLyricsCacheInfo();
+        RefreshUpdateSourceProbePresentation();
+        if (_sourceProbeResults is not null)
+            RenderUpdateSourceProbeResults(_sourceProbeResults);
     }
 
     private void DiscordRichPresenceEnabledCheckBox_Changed(object sender, RoutedEventArgs e)

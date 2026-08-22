@@ -77,6 +77,89 @@ public sealed class DownloadProgressInfo
     public double BytesPerSecond { get; init; }
 }
 
+// Управляет паузой только на уровне чтения следующего сетевого блока. Уже записанные байты
+// остаются во временном файле и продолжают участвовать в той же SHA-256-проверке; отмена
+// по-прежнему немедленно прерывает ожидание через CancellationToken.
+public sealed class DownloadPauseController : IDisposable
+{
+    private readonly object _sync = new();
+    private TaskCompletionSource _resumeSignal = CreateCompletedSignal();
+    private bool _isPaused;
+    private bool _isDisposed;
+
+    public bool IsPaused
+    {
+        get
+        {
+            lock (_sync) return _isPaused;
+        }
+    }
+
+    public void Pause()
+    {
+        lock (_sync)
+        {
+            if (_isDisposed || _isPaused) return;
+            _isPaused = true;
+            _resumeSignal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        }
+    }
+
+    public void Resume()
+    {
+        TaskCompletionSource? signal = null;
+        lock (_sync)
+        {
+            if (_isDisposed || !_isPaused) return;
+            _isPaused = false;
+            signal = _resumeSignal;
+        }
+        signal.TrySetResult();
+    }
+
+    internal async Task WaitIfPausedAsync(CancellationToken cancellationToken)
+    {
+        Task waitTask;
+        lock (_sync)
+        {
+            if (_isDisposed || !_isPaused) return;
+            waitTask = _resumeSignal.Task;
+        }
+
+        await waitTask.WaitAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    public void Dispose()
+    {
+        TaskCompletionSource? signal = null;
+        lock (_sync)
+        {
+            if (_isDisposed) return;
+            _isDisposed = true;
+            signal = _resumeSignal;
+        }
+        signal.TrySetResult();
+    }
+
+    private static TaskCompletionSource CreateCompletedSignal()
+    {
+        var signal = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        signal.SetResult();
+        return signal;
+    }
+}
+
+public sealed class UpdateSourceProbeResult
+{
+    public string Key { get; init; } = "";
+    public string DisplayName { get; init; } = "";
+    public bool IsAvailable { get; init; }
+    public long ResponseMilliseconds { get; init; }
+    public double BytesPerSecond { get; init; }
+    public int BytesReceived { get; init; }
+    public string? ErrorDetail { get; init; }
+}
+
 // Одна запись из полного списка релизов для страницы «Все версии».
 // В EXE-only схеме хранится только ссылка на Inno Setup установщик.
 public sealed class ReleaseListItem
@@ -105,6 +188,8 @@ public static class UpdateChecker
     private const string RepoName = "Lumisense";
 
     private const long MaxInstallerBytes = 250L * 1024 * 1024;
+    private const int SourceProbeBytes = 256 * 1024;
+    private const string SourceProbeAssetUrl = "https://github.com/wasssly/Lumisense/releases/download/v1.16.1/Wasssly.Lumisense-win.msi";
     private const int DownloadAttemptCount = 3;
     // Медленное зеркало допустимо, пока оно продолжает передавать данные. Ограничиваем не общую
     // длительность скачивания, а только период полного отсутствия байтов, чтобы не обрывать
@@ -113,7 +198,7 @@ public static class UpdateChecker
     private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
     {
         "github.com", "objects.githubusercontent.com", "gh-proxy.org", "v4.gh-proxy.org",
-        "v6.gh-proxy.org", "cdn.gh-proxy.org"
+        "v6.gh-proxy.org", "cdn.gh-proxy.org", "gh-proxy.com", "ghfast.top"
     };
 
     private static readonly HttpClient Http = CreateClient();
@@ -393,6 +478,8 @@ public static class UpdateChecker
         ("GhProxyV4", "v4.gh-proxy.org (зеркало, IPv4)"),
         ("GhProxyV6", "v6.gh-proxy.org (зеркало, IPv6)"),
         ("GhProxyCdn", "cdn.gh-proxy.org (зеркало, CDN)"),
+        ("GhProxyCom", "gh-proxy.com (зеркало)"),
+        ("GhFast", "ghfast.top (зеркало)"),
     };
 
     // Подменяем ссылку на зеркало только перед скачиванием — CheckAsync (api.github.com) всегда
@@ -403,29 +490,106 @@ public static class UpdateChecker
         "GhProxyV4" => $"https://v4.gh-proxy.org/{githubUrl}",
         "GhProxyV6" => $"https://v6.gh-proxy.org/{githubUrl}",
         "GhProxyCdn" => $"https://cdn.gh-proxy.org/{githubUrl}",
+        "GhProxyCom" => $"https://gh-proxy.com/{githubUrl}",
+        "GhFast" => $"https://ghfast.top/{githubUrl}",
         _ => githubUrl
     };
+
+    // Диагностика не загружает и не запускает установщик: у каждого source запрашиваются
+    // только первые 256 KiB публичного MSI. Ответ принимается лишь при HTTP 206 и бинарном
+    // Content-Type; HTML/error-page не может ошибочно стать «работающим зеркалом».
+    public static async Task<IReadOnlyList<UpdateSourceProbeResult>> ProbeDownloadSourcesAsync(CancellationToken ct = default)
+    {
+        Task<UpdateSourceProbeResult>[] probes = DownloadSources
+            .Select(source => ProbeDownloadSourceAsync(source.Key, source.DisplayName, ct))
+            .ToArray();
+        return await Task.WhenAll(probes);
+    }
+
+    private static async Task<UpdateSourceProbeResult> ProbeDownloadSourceAsync(
+        string sourceKey,
+        string displayName,
+        CancellationToken ct)
+    {
+        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        try
+        {
+            string probeUrl = ApplyDownloadSource(SourceProbeAssetUrl, sourceKey);
+            if (!TryValidateDownloadUrl(probeUrl, out var uri))
+                throw new InvalidOperationException("Недоверенный адрес источника.");
+
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(System.TimeSpan.FromSeconds(12));
+            using var request = new HttpRequestMessage(HttpMethod.Get, uri);
+            request.Headers.Range = new RangeHeaderValue(0, SourceProbeBytes - 1);
+            using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+
+            if (response.StatusCode != System.Net.HttpStatusCode.PartialContent)
+                throw new HttpRequestException($"HTTP {(int)response.StatusCode}");
+            if (response.Content.Headers.ContentType?.MediaType?.StartsWith("text/", StringComparison.OrdinalIgnoreCase) == true)
+                throw new InvalidDataException("Получена HTML-страница вместо release-файла.");
+
+            await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+            byte[] buffer = new byte[81920];
+            int total = 0;
+            while (total < SourceProbeBytes)
+            {
+                int read = await stream.ReadAsync(buffer.AsMemory(0, Math.Min(buffer.Length, SourceProbeBytes - total)), timeout.Token);
+                if (read == 0) break;
+                total += read;
+            }
+
+            if (total != SourceProbeBytes)
+                throw new IOException($"Получено только {total} из {SourceProbeBytes} байт тестового диапазона.");
+
+            stopwatch.Stop();
+            return new UpdateSourceProbeResult
+            {
+                Key = sourceKey,
+                DisplayName = displayName,
+                IsAvailable = true,
+                ResponseMilliseconds = Math.Max(1, stopwatch.ElapsedMilliseconds),
+                BytesPerSecond = total / Math.Max(0.001, stopwatch.Elapsed.TotalSeconds),
+                BytesReceived = total
+            };
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            stopwatch.Stop();
+            return new UpdateSourceProbeResult
+            {
+                Key = sourceKey,
+                DisplayName = displayName,
+                IsAvailable = false,
+                ResponseMilliseconds = Math.Max(1, stopwatch.ElapsedMilliseconds),
+                ErrorDetail = ex.Message
+            };
+        }
+    }
 
     // Скачивает установщик во временную папку и сообщает размер, процент и скорость.
     public static Task<string> DownloadInstallerAsync(
         string downloadUrl,
         string expectedSha256,
         System.IProgress<DownloadProgressInfo>? progress,
+        DownloadPauseController? pauseController,
         CancellationToken ct) =>
-        DownloadReleaseAssetAsync(downloadUrl, expectedSha256, ".exe", progress, ct);
+        DownloadReleaseAssetAsync(downloadUrl, expectedSha256, ".exe", progress, pauseController, ct);
 
     public static Task<string> DownloadMsiAsync(
         string downloadUrl,
         string expectedSha256,
         System.IProgress<DownloadProgressInfo>? progress,
+        DownloadPauseController? pauseController,
         CancellationToken ct) =>
-        DownloadReleaseAssetAsync(downloadUrl, expectedSha256, ".msi", progress, ct);
+        DownloadReleaseAssetAsync(downloadUrl, expectedSha256, ".msi", progress, pauseController, ct);
 
     private static async Task<string> DownloadReleaseAssetAsync(
         string downloadUrl,
         string expectedSha256,
         string extension,
         System.IProgress<DownloadProgressInfo>? progress,
+        DownloadPauseController? pauseController,
         CancellationToken ct)
     {
         if (!TryValidateDownloadUrl(downloadUrl, out var uri))
@@ -433,15 +597,16 @@ public static class UpdateChecker
         if (!TryParseSha256(expectedSha256, out var expectedHash))
             throw new InvalidDataException("Контрольная сумма SHA-256 установщика отсутствует или имеет недопустимый формат.");
 
-        // CDN или промежуточный proxy способны оборвать большой ответ после отправки заголовков.
-        // Неполный файл никогда не запускается: он удаляется, а новая попытка скачивает asset
-        // заново и допускается к запуску лишь после полной сверки SHA-256.
+        // GitHub CDN или промежуточный proxy могут оборвать большой ответ после того, как уже
+        // отдали заголовок Content-Length. Не используем частичный файл: удаляем его и начинаем
+        // ограниченное число полных попыток заново; только полностью скачанный asset проходит
+        // сверку SHA-256 и может быть запущен.
         Exception? lastRetryableFailure = null;
         for (int attempt = 1; attempt <= DownloadAttemptCount; attempt++)
         {
             try
             {
-                return await DownloadReleaseAssetOnceAsync(uri, expectedHash, extension, progress, ct);
+                return await DownloadReleaseAssetOnceAsync(uri, expectedHash, extension, progress, pauseController, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -466,6 +631,7 @@ public static class UpdateChecker
         byte[] expectedHash,
         string extension,
         System.IProgress<DownloadProgressInfo>? progress,
+        DownloadPauseController? pauseController,
         CancellationToken ct)
     {
         string tempPath = Path.Combine(Path.GetTempPath(), $"Lumisense_Update_{Guid.NewGuid():N}.part");
@@ -492,11 +658,28 @@ public static class UpdateChecker
 
                 while (true)
                 {
+                    if (pauseController?.IsPaused == true)
+                    {
+                        stopwatch.Stop();
+                        await pauseController.WaitIfPausedAsync(ct).ConfigureAwait(false);
+                        stopwatch.Start();
+                    }
+
                     using var readIdleCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
                     readIdleCts.CancelAfter(DownloadReadIdleTimeout);
                     try
                     {
                         read = await httpStream.ReadAsync(buffer, readIdleCts.Token);
+                    }
+                    catch (OperationCanceledException) when (!ct.IsCancellationRequested && readIdleCts.IsCancellationRequested &&
+                                                              pauseController?.IsPaused == true)
+                    {
+                        // Пользователь мог нажать паузу во время ожидающего ReadAsync. Не считаем
+                        // это сетевым timeout: ждём Resume и продолжаем этот же безопасный поток.
+                        stopwatch.Stop();
+                        await pauseController.WaitIfPausedAsync(ct).ConfigureAwait(false);
+                        stopwatch.Start();
+                        continue;
                     }
                     catch (OperationCanceledException ex) when (!ct.IsCancellationRequested && readIdleCts.IsCancellationRequested)
                     {
@@ -575,7 +758,9 @@ public static class UpdateChecker
         if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
             return uri.AbsolutePath.StartsWith("/wasssly/Lumisense/releases/download/", StringComparison.OrdinalIgnoreCase);
 
-        return uri.Host.EndsWith("gh-proxy.org", StringComparison.OrdinalIgnoreCase);
+        return uri.Host.EndsWith("gh-proxy.org", StringComparison.OrdinalIgnoreCase) ||
+               uri.Host.Equals("gh-proxy.com", StringComparison.OrdinalIgnoreCase) ||
+               uri.Host.Equals("ghfast.top", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool TryParseSha256(string? value, out byte[] hash)

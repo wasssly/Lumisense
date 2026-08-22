@@ -16,6 +16,11 @@ public static class LocalizedMessageBox
         MessageBoxButton button, MessageBoxImage icon) =>
         MessageBox.Show(LocalizationService.Translate(messageBoxText), LocalizationService.Translate(caption), button, icon);
 
+    public static MessageBoxResult Show(string messageBoxText, string caption,
+        MessageBoxButton button, MessageBoxImage icon, MessageBoxResult defaultResult) =>
+        MessageBox.Show(LocalizationService.Translate(messageBoxText), LocalizationService.Translate(caption),
+            button, icon, defaultResult);
+
     public static MessageBoxResult Show(Window owner, string messageBoxText, string caption) =>
         MessageBox.Show(owner, LocalizationService.Translate(messageBoxText), LocalizationService.Translate(caption));
 

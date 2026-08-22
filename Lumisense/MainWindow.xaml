@@ -393,6 +393,75 @@
              введённом символе и мог надолго блокировать раскладку большого списка. -->
         <Style x:Key="SearchableTrackListViewItemStyle" TargetType="ListViewItem"
                BasedOn="{StaticResource {x:Type ListViewItem}}" />
+
+        <!-- Главные полосы времени и громкости рисуются часто (progress обновляется во время
+             воспроизведения) и занимают всего 4 DIP. Локальный template фиксирует их на
+             физических пикселях: это убирает размытые края и «дрожание» тонкой линии на
+             дробном Windows DPI, не меняя более крупные вертикальные слайдеры в настройках. -->
+        <Style x:Key="MainWindowPlaybackSliderStyle" TargetType="Slider">
+            <Setter Property="Height" Value="24" />
+            <Setter Property="Focusable" Value="True" />
+            <Setter Property="SnapsToDevicePixels" Value="True" />
+            <Setter Property="UseLayoutRounding" Value="True" />
+            <Setter Property="IsMoveToPointEnabled" Value="True" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Margin="0,5" Background="Transparent"
+                              SnapsToDevicePixels="True" UseLayoutRounding="True">
+                            <Border Height="4" CornerRadius="2"
+                                    Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                    SnapsToDevicePixels="True" />
+
+                            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}"
+                                   IsDirectionReversed="{TemplateBinding IsDirectionReversed}"
+                                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                   SnapsToDevicePixels="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Focusable="False"
+                                                  Background="Transparent" BorderThickness="0">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Height="4" CornerRadius="2"
+                                                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                        HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                                        SnapsToDevicePixels="True" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Focusable="False"
+                                                  Background="Transparent" BorderThickness="0">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.IncreaseRepeatButton>
+
+                                <Track.Thumb>
+                                    <Thumb Width="14" Height="14" Cursor="Hand"
+                                           SnapsToDevicePixels="True" UseLayoutRounding="True">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="{DynamicResource AccentFillColorDefaultBrush}"
+                                                         Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                         StrokeThickness="1"
+                                                         SnapsToDevicePixels="True" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <Grid x:Name="RootGrid" Background="Transparent">
@@ -419,8 +488,12 @@
                     MouseLeftButtonUp="TitleClickArea_MouseLeftButtonUp"
                     ToolTip="Вид плеера">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <Image Source="/Icons/app/lumisense.ico" Width="14" Height="14" Margin="0,0,6,0"
-                           Stretch="Uniform" />
+                    <!-- PNG сохраняет исходный детализированный 256px artwork. Для этой
+                         custom title area он лучше, чем упрощённый 16px frame ICO, а layout/
+                         scaling flags не дают ему размыться на дробном Windows DPI. -->
+                    <Image Source="/Icons/app/lumisense.png" Width="14" Height="14" Margin="0,0,6,0"
+                           Stretch="Uniform" SnapsToDevicePixels="True" UseLayoutRounding="True"
+                           RenderOptions.BitmapScalingMode="HighQuality" />
                     <TextBlock Text="Lumisense" FontSize="12" VerticalAlignment="Center" Opacity="0.9" />
                 </StackPanel>
                 <Border.ContextMenu>
@@ -654,8 +727,8 @@
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0">
-                <Slider x:Name="ProgressSlider" IsHitTestVisible="False"
-                        Minimum="0" Maximum="1" Value="0"
+                <Slider x:Name="ProgressSlider" Style="{StaticResource MainWindowPlaybackSliderStyle}"
+                        IsHitTestVisible="False" Minimum="0" Maximum="1" Value="0"
                         ValueChanged="ProgressSlider_ValueChanged" />
 
                 <!-- Альтернативный вид полосы — форма звука вместо сплошной заливки, см.
@@ -775,8 +848,8 @@
             </StackPanel>
 
             <Grid Grid.Column="1">
-                <Slider x:Name="VolumeSlider" IsHitTestVisible="False"
-                        Minimum="0" Maximum="1" Value="0.3"
+                <Slider x:Name="VolumeSlider" Style="{StaticResource MainWindowPlaybackSliderStyle}"
+                        IsHitTestVisible="False" Minimum="0" Maximum="1" Value="0.3"
                         ValueChanged="VolumeSlider_ValueChanged" VerticalAlignment="Center" />
 
                 <Border Background="Transparent" Height="24" VerticalAlignment="Center"
