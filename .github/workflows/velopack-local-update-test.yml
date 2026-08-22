@@ -110,9 +110,11 @@ jobs:
         shell: pwsh
         run: |
           $channel = 'win'
-          $base = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.base_version }}-$channel-full.nupkg" | Select-Object -First 1
-          $full = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.candidate_version }}-$channel-full.nupkg" | Select-Object -First 1
-          $delta = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.candidate_version }}-$channel-delta.nupkg" | Select-Object -First 1
+          # `win` — default channel Velopack, поэтому он присутствует в releases.win.json,
+          # но не добавляется в имя .nupkg/MSI. Нестандартные channels получают суффикс.
+          $base = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.base_version }}-full.nupkg" | Select-Object -First 1
+          $full = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.candidate_version }}-full.nupkg" | Select-Object -First 1
+          $delta = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-${{ inputs.candidate_version }}-delta.nupkg" | Select-Object -First 1
           $msi = Get-ChildItem LocalFeed -Filter "Wasssly.Lumisense-$channel.msi" | Select-Object -First 1
           $feed = Get-Item LocalFeed\releases.win.json -ErrorAction SilentlyContinue
           if ($null -eq $base -or $null -eq $full -or $null -eq $delta -or $null -eq $msi -or $null -eq $feed) {
