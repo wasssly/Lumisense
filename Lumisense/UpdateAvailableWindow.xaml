@@ -67,6 +67,16 @@
                            Opacity="0.85" Text="" />
             </ScrollViewer>
 
+            <Border x:Name="MsiMigrationPanel" Grid.Row="3" Margin="0,12,0,0" Padding="12,10"
+                    Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                    CornerRadius="8" Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock x:Name="MsiMigrationHintText" TextWrapping="Wrap" FontSize="12" Opacity="0.78" />
+                    <ui:Button x:Name="MigrateToMsiButton" Appearance="Secondary" Margin="0,10,0,0"
+                               HorizontalAlignment="Stretch" Click="MigrateToMsiButton_Click" />
+                </StackPanel>
+            </Border>
+
             <!-- Раньше DownloadProgressBar/PhaseText/StatusText делили одну и ту же строку Grid
                  (Grid.Row="4") без какого-либо разделения — при обычной, короткой фазе
                  "Подготовка…" это почти не было заметно, но с подробным текстом хода
@@ -83,11 +93,8 @@
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        TextWrapping="Wrap" Visibility="Collapsed" />
 
-            <!-- Все три кнопки одной ширины (см. запрос пользователя) — через равные Grid-колонки,
-                 а не фиксированный Width на каждой: подгоняется под фактическую ширину окна,
-                 вместо того чтобы держать наугад подобранное число пикселей, которое могло бы
-                 обрезать самый длинный текст ("Скачать и установить") при других настройках
-                 масштабирования Windows. -->
+            <!-- Основной EXE-путь сохранён без изменений; отдельная длинная MSI-кнопка выше
+                 показывается только для legacy-копии с опубликованным проверенным MSI. -->
             <Grid Grid.Row="7" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

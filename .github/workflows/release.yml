@@ -183,7 +183,7 @@ jobs:
           }
 
           $velFeed = @($release.assets | Where-Object { $_.name -eq "releases.win.json" })
-          $velFull = @($release.assets | Where-Object { $_.name -match "^Wasssly\\.Lumisense-${env:RELEASE_VERSION}-win-full\\.nupkg$" })
+          $velFull = @($release.assets | Where-Object { $_.name -match "^Wasssly\\.Lumisense-${env:RELEASE_VERSION}-full\\.nupkg$" })
           $velMsi = @($release.assets | Where-Object { $_.name -eq "Wasssly.Lumisense-win.msi" })
           if ($velFeed.Count -ne 1 -or $velFull.Count -ne 1 -or $velMsi.Count -ne 1) {
             throw "Expected Velopack win feed, current full package and MSI migration asset on the release."

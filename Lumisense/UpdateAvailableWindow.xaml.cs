@@ -38,6 +38,16 @@ public partial class UpdateAvailableWindow : FluentWindow
 
         MoreButton.Visibility = string.IsNullOrEmpty(result.ReleaseNotesUrl) ? Visibility.Collapsed : Visibility.Visible;
 
+        bool canOfferMsiMigration = result.DeliveryKind == UpdateDeliveryKind.LegacyInnoSetup &&
+                                    !string.IsNullOrWhiteSpace(result.MsiDownloadUrl) &&
+                                    !string.IsNullOrWhiteSpace(result.MsiSha256);
+        MsiMigrationPanel.Visibility = canOfferMsiMigration ? Visibility.Visible : Visibility.Collapsed;
+        MigrateToMsiButton.Visibility = canOfferMsiMigration ? Visibility.Visible : Visibility.Collapsed;
+        if (canOfferMsiMigration)
+        {
+            MsiMigrationHintText.Text = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationHint);
+            MigrateToMsiButton.Content = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationButton);
+        }
     }
 
     // GitHub Release body приходит в Markdown, но TextBlock не умеет его рендерить и показывал
@@ -158,6 +168,53 @@ public partial class UpdateAvailableWindow : FluentWindow
             await InstallViaExeAsync();
     }
 
+    private async void MigrateToMsiButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isDownloading)
+        {
+            _downloadCts?.Cancel();
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_result.MsiDownloadUrl) || string.IsNullOrWhiteSpace(_result.MsiSha256))
+        {
+            ShowError(LocalizationService.Get(LocalizationKey.UpdateMsiMigrationUnavailable));
+            return;
+        }
+
+        var confirmation = LocalizedMessageBox.Show(
+            this,
+            LocalizationService.Get(LocalizationKey.UpdateMsiMigrationConfirmMessage),
+            LocalizationService.Get(LocalizationKey.UpdateMsiMigrationConfirmTitle),
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Information,
+            System.Windows.MessageBoxResult.No);
+        if (confirmation != System.Windows.MessageBoxResult.Yes) return;
+
+        SetDownloading(true);
+        _downloadCts = new CancellationTokenSource();
+        var progress = new Progress<DownloadProgressInfo>(UpdateDownloadProgressUi);
+
+        try
+        {
+            string source = _settings?.UpdateDownloadSource ?? "GitHub";
+            string downloadUrl = UpdateChecker.ApplyDownloadSource(_result.MsiDownloadUrl, source);
+            string msiPath = await UpdateChecker.DownloadMsiAsync(downloadUrl, _result.MsiSha256, progress, _downloadCts.Token);
+
+            SetPreparingForMsiMigration();
+            UpdateChecker.LaunchMsiAndExit(msiPath, _result.MsiSha256);
+        }
+        catch (OperationCanceledException)
+        {
+            SetDownloading(false);
+        }
+        catch (Exception ex)
+        {
+            SetDownloading(false);
+            ShowError($"{LocalizationService.Get(LocalizationKey.UpdateMsiMigrationUnavailable)}\n{ex.Message}");
+        }
+    }
+
     // Velopack сам выбирает delta или full package, скачивает его с верификацией и только
     // после успешной подготовки получает разрешение закрыть приложение и перезапустить его.
     // Этот путь недоступен legacy Inno Setup-установкам: проверка DeliveryKind происходит выше.
@@ -257,6 +314,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         InstallButton.Appearance = isDownloading ? ControlAppearance.Secondary : ControlAppearance.Primary;
         LaterButton.IsEnabled = !isDownloading;
         MoreButton.IsEnabled = !isDownloading;
+        MigrateToMsiButton.IsEnabled = !isDownloading;
         DownloadProgressBar.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
         // Неопределённый — пока не пришёл первый отчёт о прогрессе с известным общим размером
         // (см. UpdateDownloadProgressUi); пустая полоса на 0% в первые доли секунды скачивания
@@ -312,6 +370,13 @@ public partial class UpdateAvailableWindow : FluentWindow
     }
 
     // Короткая фаза передачи управления выбранному updater после завершения скачивания.
+    private void SetPreparingForMsiMigration()
+    {
+        DownloadProgressBar.IsIndeterminate = true;
+        PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationLaunching);
+        PhaseText.Visibility = Visibility.Visible;
+    }
+
     private void SetPreparing(bool isVelopack)
     {
         DownloadProgressBar.IsIndeterminate = true;

@@ -360,6 +360,15 @@ internal static class ChangelogTranslationCatalog
             ["Исправлено сохранение выбранного монитора для уведомлений после перезапуска"] = "Fixed saving the selected monitor for notifications after restart",
             ["Исправлено расположение уведомлений на мониторах с разным масштабированием Windows"] = "Fixed notification placement on monitors with different Windows scaling",
             ["Убрано принудительное возвращение мини-плеера на старую позицию, вызывавшее рывки после смены DPI или полноэкранного режима"] = "Removed forced restoration of the mini-player's old position, which caused jumps after DPI changes or fullscreen mode",
+
+            // Release 1.16.0
+            ["Добавлена новая система компактных обновлений через MSI-установщик"] = "Added a new compact-update system through an MSI installer",
+            ["После установки MSI-версии плеер скачивает только изменённые части будущих обновлений"] = "After installing the MSI version, the player downloads only the changed parts of future updates",
+            ["Настройки, плейлист, избранное и статистика сохраняются при переходе на MSI-версию"] = "Settings, playlist, Favorites, and statistics are preserved when moving to the MSI version",
+            ["Добавлено уведомление о завершённом переходе на MSI-версию"] = "Added a notification confirming the completed move to the MSI version",
+            ["Окно обновления показывает ход скачивания и безопасно применяет полный или компактный пакет"] = "The update window shows download progress and safely applies a full or compact package",
+            ["Старый .exe-установщик сохранён для текущих установок и проверяет SHA-256 перед запуском"] = "The legacy .exe installer remains available for existing installations and verifies SHA-256 before it runs",
+            ["Добавлен управляемый переход со старой EXE-установки на MSI-версию в один клик"] = "Added a guided one-click move from the legacy EXE installation to the MSI version",
         };
 
     public static string Translate(string source, bool isEnglish)

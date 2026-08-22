@@ -42,6 +42,12 @@ public static class LocalizationKey
     public const string UpdateVelopackPreparing = "update.velopack.preparing";
     public const string UpdateVelopackApplying = "update.velopack.applying";
     public const string UpdateVelopackUnavailable = "update.velopack.unavailable";
+    public const string UpdateMsiMigrationHint = "update.msiMigration.hint";
+    public const string UpdateMsiMigrationButton = "update.msiMigration.button";
+    public const string UpdateMsiMigrationConfirmTitle = "update.msiMigration.confirmTitle";
+    public const string UpdateMsiMigrationConfirmMessage = "update.msiMigration.confirmMessage";
+    public const string UpdateMsiMigrationLaunching = "update.msiMigration.launching";
+    public const string UpdateMsiMigrationUnavailable = "update.msiMigration.unavailable";
 
     public const string ChangelogOpenReleaseOnGitHub = "changelog.openReleaseOnGitHub";
     public const string ChangelogNoDescription = "changelog.noDescription";
@@ -102,6 +108,12 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateVelopackPreparing] = "Проверка и подготовка обновления…",
         [LocalizationKey.UpdateVelopackApplying] = "Перезапуск для установки обновления…",
         [LocalizationKey.UpdateVelopackUnavailable] = "Компактное обновление недоступно для этой установки. Используйте полный установщик из GitHub Release.",
+        [LocalizationKey.UpdateMsiMigrationHint] = "Доступен переход на MSI-версию. После него будущие обновления будут скачиваться компактными пакетами.",
+        [LocalizationKey.UpdateMsiMigrationButton] = "Перейти на компактные обновления (MSI)",
+        [LocalizationKey.UpdateMsiMigrationConfirmTitle] = "Перейти на MSI-версию?",
+        [LocalizationKey.UpdateMsiMigrationConfirmMessage] = "Будет скачан проверенный MSI-установщик и запущена стандартная установка Windows. Система может запросить права администратора.\n\nСтарая EXE-копия Lumisense не будет удалена автоматически: сначала убедитесь, что новая копия запускается и работает корректно. Настройки, плейлист, избранное и статистика сохраняются. Продолжить?",
+        [LocalizationKey.UpdateMsiMigrationLaunching] = "Запуск MSI-установщика…",
+        [LocalizationKey.UpdateMsiMigrationUnavailable] = "В этом релизе нет проверенного MSI-пакета. Используйте обычный EXE-установщик или откройте релиз на GitHub.",
 
         [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Открыть релиз на GitHub",
         [LocalizationKey.ChangelogNoDescription] = "Нет описания",
@@ -161,6 +173,12 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateVelopackPreparing] = "Verifying and preparing update…",
         [LocalizationKey.UpdateVelopackApplying] = "Restarting to install update…",
         [LocalizationKey.UpdateVelopackUnavailable] = "A compact update is not available for this installation. Use the full installer from the GitHub Release.",
+        [LocalizationKey.UpdateMsiMigrationHint] = "An MSI version is available. After moving to it, future updates will download as compact packages.",
+        [LocalizationKey.UpdateMsiMigrationButton] = "Switch to compact updates (MSI)",
+        [LocalizationKey.UpdateMsiMigrationConfirmTitle] = "Switch to the MSI version?",
+        [LocalizationKey.UpdateMsiMigrationConfirmMessage] = "A verified MSI installer will be downloaded and Windows setup will start. Windows may ask for administrator permission.\n\nThe legacy EXE copy of Lumisense will not be removed automatically: first make sure the new copy starts and works correctly. Your settings, playlist, favorites, and statistics are preserved. Continue?",
+        [LocalizationKey.UpdateMsiMigrationLaunching] = "Launching the MSI installer…",
+        [LocalizationKey.UpdateMsiMigrationUnavailable] = "This release has no verified MSI package. Use the standard EXE installer or open the release on GitHub.",
 
         [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Open release on GitHub",
         [LocalizationKey.ChangelogNoDescription] = "No description",

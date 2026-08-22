@@ -37,6 +37,11 @@ public sealed class UpdateCheckResult
     // вычисленная при скачивании сумма не совпадёт с опубликованной.
     public string? InstallerSha256 { get; init; }
 
+    // Доступно только в migration-релизах: legacy EXE-копия может по явному согласию
+    // пользователя скачать этот MSI и перейти на Velopack. Никакой автозамены нет.
+    public string? MsiDownloadUrl { get; init; }
+    public string? MsiSha256 { get; init; }
+
     // Страница релиза на GitHub — на неё ведёт "Подробнее" в диалоге.
     public string? ReleaseNotesUrl { get; init; }
 
@@ -180,6 +185,7 @@ public static class UpdateChecker
             string latestVersion = tagName.TrimStart('v', 'V');
 
             var installer = FindInstallerAsset(root);
+            var msi = FindMsiAsset(root);
             string? downloadUrl = installer.DownloadUrl;
             string? installerSha256 = installer.Sha256;
 
@@ -206,6 +212,8 @@ public static class UpdateChecker
                 LatestVersion = string.IsNullOrEmpty(latestVersion) ? null : latestVersion,
                 DownloadUrl = downloadUrl,
                 InstallerSha256 = installerSha256,
+                MsiDownloadUrl = msi.DownloadUrl,
+                MsiSha256 = msi.Sha256,
                 ReleaseNotesUrl = htmlUrl,
                 ReleaseNotes = notes
             };
@@ -284,24 +292,31 @@ public static class UpdateChecker
         }
     }
 
-    private static (string? DownloadUrl, string? Sha256) FindInstallerAsset(JsonElement releaseRoot)
+    // В migration-релизе рядом с Inno EXE может лежать Velopack Setup.exe. Legacy путь
+    // намеренно принимает только привычный Lumisense_Setup.exe, а не первый попавшийся .exe.
+    private static (string? DownloadUrl, string? Sha256) FindInstallerAsset(JsonElement releaseRoot) =>
+        FindAssetByExactName(releaseRoot, "Lumisense_Setup.exe");
+
+    // Принимаем только ожидаемый MSI из release workflow, чтобы случайный или будущий
+    // дополнительный .msi asset не мог быть предложен legacy-копии как путь миграции.
+    private static (string? DownloadUrl, string? Sha256) FindMsiAsset(JsonElement releaseRoot) =>
+        FindAssetByExactName(releaseRoot, "Wasssly.Lumisense-win.msi");
+
+    private static (string? DownloadUrl, string? Sha256) FindAssetByExactName(JsonElement releaseRoot, string expectedName)
     {
         if (!releaseRoot.TryGetProperty("assets", out var assetsEl) || assetsEl.ValueKind != JsonValueKind.Array)
             return (null, null);
 
-        var matchingAssets = assetsEl.EnumerateArray()
-            .Where(a => a.TryGetProperty("name", out var n) &&
-                        (n.GetString() ?? "").EndsWith(".exe", System.StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (matchingAssets.Count == 0) return (null, null);
-
-        var best = matchingAssets.FirstOrDefault(a =>
+        var asset = assetsEl.EnumerateArray().FirstOrDefault(a =>
             a.TryGetProperty("name", out var n) &&
-            (n.GetString() ?? "").Contains("lumisense", System.StringComparison.OrdinalIgnoreCase));
-        if (best.ValueKind != JsonValueKind.Object) best = matchingAssets[0];
+            string.Equals(n.GetString(), expectedName, StringComparison.OrdinalIgnoreCase));
+        return asset.ValueKind == JsonValueKind.Object ? GetAssetDownload(asset) : (null, null);
+    }
 
-        string? downloadUrl = best.TryGetProperty("browser_download_url", out var urlEl) ? urlEl.GetString() : null;
-        return (downloadUrl, GetAssetSha256(best));
+    private static (string? DownloadUrl, string? Sha256) GetAssetDownload(JsonElement asset)
+    {
+        string? downloadUrl = asset.TryGetProperty("browser_download_url", out var urlEl) ? urlEl.GetString() : null;
+        return (downloadUrl, GetAssetSha256(asset));
     }
 
     private static string? GetAssetSha256(JsonElement asset)
@@ -377,9 +392,24 @@ public static class UpdateChecker
     };
 
     // Скачивает установщик во временную папку и сообщает размер, процент и скорость.
-    public static async Task<string> DownloadInstallerAsync(
+    public static Task<string> DownloadInstallerAsync(
         string downloadUrl,
         string expectedSha256,
+        System.IProgress<DownloadProgressInfo>? progress,
+        CancellationToken ct) =>
+        DownloadReleaseAssetAsync(downloadUrl, expectedSha256, ".exe", progress, ct);
+
+    public static Task<string> DownloadMsiAsync(
+        string downloadUrl,
+        string expectedSha256,
+        System.IProgress<DownloadProgressInfo>? progress,
+        CancellationToken ct) =>
+        DownloadReleaseAssetAsync(downloadUrl, expectedSha256, ".msi", progress, ct);
+
+    private static async Task<string> DownloadReleaseAssetAsync(
+        string downloadUrl,
+        string expectedSha256,
+        string extension,
         System.IProgress<DownloadProgressInfo>? progress,
         CancellationToken ct)
     {
@@ -388,7 +418,7 @@ public static class UpdateChecker
         if (!TryParseSha256(expectedSha256, out var expectedHash))
             throw new InvalidDataException("Контрольная сумма SHA-256 установщика отсутствует или имеет недопустимый формат.");
 
-        string tempPath = Path.Combine(Path.GetTempPath(), $"Lumisense_Setup_{Guid.NewGuid():N}.part");
+        string tempPath = Path.Combine(Path.GetTempPath(), $"Lumisense_Update_{Guid.NewGuid():N}.part");
         bool completed = false;
         try
         {
@@ -448,7 +478,7 @@ public static class UpdateChecker
             if (!CryptographicOperations.FixedTimeEquals(sha256.GetHashAndReset(), expectedHash))
                 throw new InvalidDataException("Контрольная сумма скачанного установщика не совпадает с опубликованной в GitHub Release.");
 
-            string finalPath = Path.ChangeExtension(tempPath, ".exe");
+            string finalPath = Path.ChangeExtension(tempPath, extension);
             File.Move(tempPath, finalPath);
             completed = true;
             return finalPath;
@@ -510,21 +540,37 @@ public static class UpdateChecker
     // Перед запуском файл проверяется повторно: путь мог быть изменён между скачиванием и стартом.
     public static void LaunchInstallerAndExit(string installerPath, string expectedSha256)
     {
-        if (!File.Exists(installerPath) || !TryParseSha256(expectedSha256, out var expectedHash))
-            throw new InvalidDataException("Загруженный установщик не прошёл проверку SHA-256.");
-
-        using (var stream = File.OpenRead(installerPath))
-        {
-            byte[] actualHash = SHA256.HashData(stream);
-            if (!CryptographicOperations.FixedTimeEquals(actualHash, expectedHash))
-                throw new InvalidDataException("Загруженный установщик не прошёл проверку SHA-256.");
-        }
-
+        VerifyDownloadedAssetHash(installerPath, expectedSha256);
         System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(installerPath)
         {
             UseShellExecute = true
         });
 
         System.Windows.Application.Current.Shutdown();
+    }
+
+    // MSI PerMachine всегда требует явного подтверждения Windows/UAC. Запускаем его только
+    // после нажатия пользователя в диалоге migration и повторной SHA-256-проверки файла.
+    public static void LaunchMsiAndExit(string msiPath, string expectedSha256)
+    {
+        VerifyDownloadedAssetHash(msiPath, expectedSha256);
+        System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("msiexec.exe", $"/i \"{msiPath}\"")
+        {
+            UseShellExecute = true,
+            Verb = "runas"
+        });
+
+        System.Windows.Application.Current.Shutdown();
+    }
+
+    private static void VerifyDownloadedAssetHash(string assetPath, string expectedSha256)
+    {
+        if (!File.Exists(assetPath) || !TryParseSha256(expectedSha256, out var expectedHash))
+            throw new InvalidDataException("Загруженный установщик не прошёл проверку SHA-256.");
+
+        using var stream = File.OpenRead(assetPath);
+        byte[] actualHash = SHA256.HashData(stream);
+        if (!CryptographicOperations.FixedTimeEquals(actualHash, expectedHash))
+            throw new InvalidDataException("Загруженный установщик не прошёл проверку SHA-256.");
     }
 }
