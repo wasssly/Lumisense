@@ -23,15 +23,15 @@
 |---|---|
 | `Lumisense_Setup.exe` | Полный Inno Setup installer для всех старых установок и fallback. |
 | `releases.win.json` | Feed Velopack для Windows-канала `win`. |
-| `Wasssly.Lumisense-<version>-win-full.nupkg` | Полный Velopack package; нужен для первой Velopack-установки и fallback. |
-| `Wasssly.Lumisense-<version>-win-delta.nupkg` | Бинарная разница с прошлой Velopack-версией; появится начиная со второго такого release. |
+| `Wasssly.Lumisense-<version>-full.nupkg` | Полный Velopack package; нужен для первой Velopack-установки и fallback. |
+| `Wasssly.Lumisense-<version>-delta.nupkg` | Бинарная разница с прошлой Velopack-версией; появится начиная со второго такого release. |
 | `Wasssly.Lumisense-win.msi` | MSI PerMachine, требующий прав администратора; используется для ручного перехода. |
 
 Workflow сначала скачивает прежний feed `win`, затем упаковывает новый release, поэтому `vpk pack` может создать delta. Если прошлый Velopack feed ещё не существует, migration-релиз корректно создаёт только full package и MSI.
 
 ## Пользовательский переход
 
-1. В старой EXE-копии пользователь открывает окно обновления и нажимает **«Перейти на компактные обновления (MSI)»**.
+1. Пользователь устанавливает актуальную EXE-версию, затем вручную открывает **«Проверить обновления»**. Начиная с hotfix `1.16.1`, даже если EXE-копия уже совпадает с последним release, диалог честно предлагает отдельный добровольный переход **«Перейти на компактные обновления (MSI)»**.
 2. После понятного подтверждения Lumisense скачивает MSI только по доверенному HTTPS-адресу, сверяет SHA-256 с GitHub Release и запускает стандартный установщик Windows. Windows запрашивает права администратора.
 3. MSI ставит новую Velopack-копию отдельно; существующую Inno Setup-копию не перезаписывает.
 4. После первого успешного запуска Lumisense показывает сообщение, что включены компактные обновления. Настройки, плейлист, избранное и статистика остаются в `%AppData%\Lumisense`.
@@ -58,7 +58,7 @@ Workflow сначала скачивает прежний feed `win`, затем
 |---|---|
 | Сборка из исходников / `dotnet run` | Лог показывает legacy Inno Setup mode; проверки Velopack не запускаются. |
 | Legacy Inno Setup → новый обычный EXE update | Существующий путь SHA-256 и Inno Setup работает как раньше. |
-| Legacy Inno Setup → кнопка MSI-перехода | Нужны явное подтверждение, SHA-256 MSI и UAC; старая копия остаётся до ручного удаления. |
+| Актуальная legacy EXE `1.16.1` → ручная проверка → кнопка MSI-перехода | Диалог не заявляет о новой версии; он предлагает добровольный MSI-переход. Нужны явное подтверждение, SHA-256 MSI и UAC; старая копия остаётся до ручного удаления. |
 | Чистая Windows → Velopack MSI | MSI требует elevation, приложение стартует, появляется единоразовое сообщение о compact updates. |
 | Velopack MSI → следующая test release | Update dialog показывает release notes и процент; `UpdateManager` применяет delta либо fallback full и перезапускает приложение. |
 | Удаление старого Inno Setup | Новая MSI-копия запускается; `%AppData%\Lumisense` не удалён. |

@@ -14,7 +14,7 @@
     <!-- Velopack должен обработать hooks до WPF App; generated App.Main не используется. -->
     <StartupObject>AudioPlayer.Program</StartupObject>
     <!-- Базовая версия локальной сборки; release workflow передаёт -p:Version из vX.Y.Z тега. -->
-    <Version>1.16.0</Version>
+    <Version>1.16.1</Version>
     <InformationalVersion>$(Version)</InformationalVersion>
     <LangVersion>latest</LangVersion>
     <ImplicitUsings>enable</ImplicitUsings>

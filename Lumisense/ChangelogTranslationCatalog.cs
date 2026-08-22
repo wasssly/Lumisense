@@ -369,6 +369,9 @@ internal static class ChangelogTranslationCatalog
             ["Окно обновления показывает ход скачивания и безопасно применяет полный или компактный пакет"] = "The update window shows download progress and safely applies a full or compact package",
             ["Старый .exe-установщик сохранён для текущих установок и проверяет SHA-256 перед запуском"] = "The legacy .exe installer remains available for existing installations and verifies SHA-256 before it runs",
             ["Добавлен управляемый переход со старой EXE-установки на MSI-версию в один клик"] = "Added a guided one-click move from the legacy EXE installation to the MSI version",
+
+            // Release 1.16.1
+            ["Исправлено предложение перейти на MSI-версию: оно доступно из актуальной EXE-копии без ожидания следующего обновления"] = "Fixed the MSI migration offer: it is available from the current EXE copy without waiting for the next update",
         };
 
     public static string Translate(string source, bool isEnglish)

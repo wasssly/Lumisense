@@ -412,6 +412,12 @@ public partial class SettingsWindow : FluentWindow
                     new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
                     break;
 
+                case UpdateCheckStatus.MsiMigrationAvailable:
+                    CheckUpdatesButtonSubtitle.Text = LocalizationService.Get(
+                        LocalizationKey.UpdateMsiMigrationManualSubtitle);
+                    new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
+                    break;
+
                 case UpdateCheckStatus.UpToDate:
                     CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate($"У вас последняя версия ({result.CurrentVersion})");
                     break;

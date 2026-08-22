@@ -10,7 +10,7 @@ using Velopack;
 
 namespace AudioPlayer;
 
-public enum UpdateCheckStatus { UpdateAvailable, UpToDate, Error }
+public enum UpdateCheckStatus { UpdateAvailable, MsiMigrationAvailable, UpToDate, Error }
 
 // Способ установки выбран строго по фактической модели установки, а не по версии приложения.
 // Старый Inno Setup продолжает работать с полным EXE и SHA-256; только Velopack-managed
@@ -193,6 +193,10 @@ public static class UpdateChecker
             string? htmlUrl = root.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null;
 
             bool hasNewer = !string.IsNullOrEmpty(latestVersion) && IsNewer(latestVersion, currentVersion);
+            bool isCurrentRelease = string.Equals(latestVersion, currentVersion, StringComparison.OrdinalIgnoreCase);
+            bool hasVerifiedMsiMigration = isCurrentRelease &&
+                                           downloadUrl != null && installerSha256 != null &&
+                                           msi.DownloadUrl != null && msi.Sha256 != null;
 
             if (hasNewer && downloadUrl != null && installerSha256 == null)
             {
@@ -207,7 +211,11 @@ public static class UpdateChecker
 
             return new UpdateCheckResult
             {
-                Status = hasNewer && downloadUrl != null && installerSha256 != null ? UpdateCheckStatus.UpdateAvailable : UpdateCheckStatus.UpToDate,
+                Status = hasNewer && downloadUrl != null && installerSha256 != null
+                    ? UpdateCheckStatus.UpdateAvailable
+                    : hasVerifiedMsiMigration
+                        ? UpdateCheckStatus.MsiMigrationAvailable
+                        : UpdateCheckStatus.UpToDate,
                 CurrentVersion = currentVersion,
                 LatestVersion = string.IsNullOrEmpty(latestVersion) ? null : latestVersion,
                 DownloadUrl = downloadUrl,

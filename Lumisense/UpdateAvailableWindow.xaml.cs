@@ -16,6 +16,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     private readonly UpdateCheckResult _result;
     private readonly AppSettings? _settings;
     private CancellationTokenSource? _downloadCts;
+    private readonly bool _isMsiMigrationOnly;
 
     public UpdateAvailableWindow(UpdateCheckResult result, AppSettings? settings = null)
     {
@@ -23,8 +24,11 @@ public partial class UpdateAvailableWindow : FluentWindow
 
         _result = result;
         _settings = settings;
+        _isMsiMigrationOnly = result.Status == UpdateCheckStatus.MsiMigrationAvailable;
 
-        VersionsText.Text = LocalizationService.Translate($"Версия {result.LatestVersion} (у вас {result.CurrentVersion})");
+        ApplyMigrationPresentation();
+        LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
+        Closed += (_, _) => LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
 
         string releaseNotes = FormatReleaseNotes(result.ReleaseNotes);
         if (!string.IsNullOrWhiteSpace(releaseNotes))
@@ -37,10 +41,37 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
 
         MoreButton.Visibility = string.IsNullOrEmpty(result.ReleaseNotesUrl) ? Visibility.Collapsed : Visibility.Visible;
+    }
 
-        bool canOfferMsiMigration = result.DeliveryKind == UpdateDeliveryKind.LegacyInnoSetup &&
-                                    !string.IsNullOrWhiteSpace(result.MsiDownloadUrl) &&
-                                    !string.IsNullOrWhiteSpace(result.MsiSha256);
+    private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
+    {
+        ApplyMigrationPresentation();
+    }
+
+    // В migration-only режиме текущая EXE-копия уже совпадает с последним release. Поэтому
+    // не называем его «обновлением» и не предлагаем повторно скачать тот же EXE — оставляем
+    // только добровольный, явно обозначенный переход на проверенный MSI.
+    private void ApplyMigrationPresentation()
+    {
+        if (_isMsiMigrationOnly)
+        {
+            DialogTitleText.Text = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationAvailableTitle);
+            VersionsText.Text = LocalizationService.FormatKey(
+                LocalizationKey.UpdateMsiMigrationCurrentVersion, _result.CurrentVersion);
+            NotesText.Visibility = Visibility.Collapsed;
+            NotesScrollViewer.Visibility = Visibility.Collapsed;
+            InstallButton.Visibility = Visibility.Collapsed;
+            LaterButton.Content = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationClose);
+        }
+        else
+        {
+            VersionsText.Text = LocalizationService.Translate(
+                $"Версия {_result.LatestVersion} (у вас {_result.CurrentVersion})");
+        }
+
+        bool canOfferMsiMigration = _result.DeliveryKind == UpdateDeliveryKind.LegacyInnoSetup &&
+                                    !string.IsNullOrWhiteSpace(_result.MsiDownloadUrl) &&
+                                    !string.IsNullOrWhiteSpace(_result.MsiSha256);
         MsiMigrationPanel.Visibility = canOfferMsiMigration ? Visibility.Visible : Visibility.Collapsed;
         MigrateToMsiButton.Visibility = canOfferMsiMigration ? Visibility.Visible : Visibility.Collapsed;
         if (canOfferMsiMigration)
@@ -130,7 +161,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     {
         // Запоминаем именно эту версию, а не факт "обновление отклонили вообще" — как только
         // выйдет более новая, диалог на старте снова появится сам.
-        if (_settings != null && _result.LatestVersion != null)
+        if (!_isMsiMigrationOnly && _settings != null && _result.LatestVersion != null)
         {
             _settings.SkippedUpdateVersion = _result.LatestVersion;
             SettingsManager.Save(_settings);
