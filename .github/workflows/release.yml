@@ -71,6 +71,37 @@ jobs:
         with:
           dotnet-version: "8.0.x"
 
+      # Гейт перед публикацией: билд и тесты должны пройти зелёными, а известные уязвимые
+      # NuGet-зависимости — отсутствовать. Тег не должен приводить к публикации регрессии,
+      # даже если обычный CI на момент push тега ещё не завершился или оказался красным.
+      - name: Restore, build and test before packaging
+        shell: pwsh
+        run: |
+          dotnet restore Lumisense/Lumisense.csproj
+          if ($LASTEXITCODE -ne 0) { throw "Restore of Lumisense.csproj failed." }
+
+          dotnet build Lumisense/Lumisense.csproj --configuration Release --no-restore
+          if ($LASTEXITCODE -ne 0) { throw "Build of Lumisense.csproj failed." }
+
+          $projects = Get-ChildItem -Recurse -Filter '*Tests.csproj' | Select-Object -ExpandProperty FullName
+          foreach ($project in $projects) {
+            dotnet restore $project
+            if ($LASTEXITCODE -ne 0) { throw "Restore of $project failed." }
+            dotnet test $project --configuration Release --no-restore
+            if ($LASTEXITCODE -ne 0) { throw "Tests failed in $project." }
+          }
+
+      - name: Fail release on known vulnerable NuGet dependencies
+        shell: pwsh
+        run: |
+          $report = dotnet list Lumisense/Lumisense.csproj package --vulnerable --include-transitive --format json | Out-String
+          if ($LASTEXITCODE -ne 0) { throw "NuGet vulnerability audit could not complete." }
+          if ($report -match '"severity"\s*:') {
+            Write-Error $report
+            throw "Known vulnerable NuGet dependencies were reported; release blocked."
+          }
+          Write-Host "No vulnerable NuGet dependencies reported."
+
       - name: Publish Lumisense (self-contained win-x64)
         run: dotnet publish Lumisense/Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version=${{ steps.ver.outputs.version }}
 

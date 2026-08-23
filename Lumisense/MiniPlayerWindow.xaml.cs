@@ -1125,10 +1125,13 @@ public partial class MiniPlayerWindow : Window
 
         if (string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal))
         {
-            // Центр штриха удерживается внутри маски радиуса 21: при толщине 1.5
-            // внешний край остаётся ровным и не обрезается на границе круглой обложки.
+            // Центр штриха отступает от маски ровно на половину его толщины (0.75 при
+            // StrokeThickness=1.5): это единственное значение, при котором ВНЕШНИЙ край
+            // штриха совпадает с границей круглой маски (радиус 21, см. ApplyArtworkProgressClip)
+            // без зазора. Раньше отступ был больше нужного (радиус 19.75, отступ 1.25px) — это
+            // визуально оставляло тонкий видимый ободок самой обложки снаружи кольца прогресса.
             const double center = 21.0;
-            const double radius = 19.75;
+            const double radius = 20.25;
             if (ratio >= 0.9999)
             {
                 ArtProgressOutline.Data = new EllipseGeometry(new Point(center, center), radius, radius);
@@ -1144,10 +1147,16 @@ public partial class MiniPlayerWindow : Window
             return;
         }
 
-        // Обычная обложка имеет размер 42×42 и CornerRadius=8. Центр тонкого штриха
-        // сдвинут внутрь на 1.25px, поэтому его край не выходит за маску на прямых и углах.
-        const double inset = 1.25;
-        const double side = 39.5;
+        // Обложка занимает весь квадрат 42×42 и обрезана маской со скруглением 8
+        // (см. ApplyArtworkProgressClip/ApplyArtworkImageClip — обе используют один и тот же
+        // RectangleGeometry(0,0,42,42, 8,8)). Центр тонкого штриха отступает от маски ровно
+        // на половину толщины линии (0.75 при StrokeThickness=1.5) — единственное значение,
+        // при котором ВНЕШНИЙ край штриха совпадает с границей маски без зазора; отступ
+        // больше нужного (было 1.25px, сторона 39.5) визуально оставлял видимый ободок самой
+        // обложки снаружи кольца, особенно заметный на углах. Радиус скругления центральной
+        // линии (8 − 0.75 = 7.25) уже был математически верным и не меняется.
+        const double inset = 0.75;
+        const double side = 40.5;
         const double cornerRadius = 7.25;
         const double straightSide = side - 2 * cornerRadius;
         double perimeter = 4 * straightSide + 2 * Math.PI * cornerRadius;

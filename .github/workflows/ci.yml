@@ -47,6 +47,8 @@ jobs:
             exit 0
           }
           foreach ($project in $projects) {
+            dotnet restore $project
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             dotnet test $project --configuration Release --no-restore
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }

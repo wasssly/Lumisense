@@ -1671,7 +1671,7 @@ public partial class SettingsWindow : FluentWindow
     private void EqualizerSavePresetButton_Click(object sender, RoutedEventArgs e)
     {
         var selectedName = (EqualizerPresetComboBox.SelectedItem as EqualizerPreset)?.Name ?? "";
-        var dialog = new TextInputDialog("Сохранить пресет", "Название пресета:", selectedName) { Owner = this };
+        var dialog = new TextInputDialog("Сохранить пресет", "Название пресета:", selectedName, _settings) { Owner = this };
         if (dialog.ShowDialog() != true || dialog.ResultText.Length == 0) return;
 
         _owner.SaveEqualizerPreset(dialog.ResultText);

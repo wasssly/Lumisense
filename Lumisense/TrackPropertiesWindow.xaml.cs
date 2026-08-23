@@ -10,9 +10,10 @@ namespace AudioPlayer;
 // (имя, папка, размер, даты) плюс аудио-параметры и обложка, в стиле остальных окон плеера
 public partial class TrackPropertiesWindow : FluentWindow
 {
-    public TrackPropertiesWindow(string filePath)
+    public TrackPropertiesWindow(string filePath, AppSettings settings)
     {
         InitializeComponent();
+        AccessibilityPreferences.ApplyToWindow(this, settings);
         Load(filePath);
     }
 

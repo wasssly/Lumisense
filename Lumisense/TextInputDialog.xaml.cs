@@ -11,9 +11,11 @@ public partial class TextInputDialog : FluentWindow
     // заполнено только если ShowDialog() вернул true
     public string ResultText { get; private set; } = "";
 
-    public TextInputDialog(string title, string prompt, string defaultText = "")
+    public TextInputDialog(string title, string prompt, string defaultText = "", AppSettings? settings = null)
     {
         InitializeComponent();
+        if (settings != null)
+            AccessibilityPreferences.ApplyToWindow(this, settings);
 
         Title = title;
         PromptText.Text = prompt;

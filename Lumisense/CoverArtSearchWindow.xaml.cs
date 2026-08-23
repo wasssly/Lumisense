@@ -67,9 +67,11 @@ public partial class CoverArtSearchWindow : FluentWindow
     // никому не нужные запросы.
     private CancellationTokenSource? _searchCts;
 
-    public CoverArtSearchWindow(string? artist, string? title)
+    public CoverArtSearchWindow(string? artist, string? title, AppSettings? settings = null)
     {
         InitializeComponent();
+        if (settings != null)
+            AccessibilityPreferences.ApplyToWindow(this, settings);
 
         var query = string.Join(" ", new[] { artist, title }
             .Where(s => !string.IsNullOrWhiteSpace(s)));

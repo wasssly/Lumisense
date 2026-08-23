@@ -17,9 +17,11 @@ public partial class CoverArtPropertiesWindow : FluentWindow
         TagLib.PictureType? pictureType,
         string trackTitle,
         string trackArtist,
-        string? trackPath)
+        string? trackPath,
+        AppSettings settings)
     {
         InitializeComponent();
+        AccessibilityPreferences.ApplyToWindow(this, settings);
 
         ArtBorder.Background = new ImageBrush(art) { Stretch = Stretch.UniformToFill };
 

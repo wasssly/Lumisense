@@ -31,6 +31,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         _result = result;
         _settings = settings;
         _isMsiMigrationOnly = result.Status == UpdateCheckStatus.MsiMigrationAvailable;
+        if (_settings != null)
+            AccessibilityPreferences.ApplyToWindow(this, _settings);
 
         ApplyMigrationPresentation();
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;

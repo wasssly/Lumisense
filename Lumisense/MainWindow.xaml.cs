@@ -1556,7 +1556,7 @@ public partial class MainWindow : FluentWindow
     {
         if (_changelogWindow == null)
         {
-            _changelogWindow = new ChangelogWindow { Owner = this };
+            _changelogWindow = new ChangelogWindow(_settings) { Owner = this };
             _changelogWindow.Closed += (_, _) =>
             {
                 _changelogWindow = null;
@@ -1651,7 +1651,7 @@ public partial class MainWindow : FluentWindow
 
         if (_coverArtWindow == null)
         {
-            _coverArtWindow = new CoverArtWindow(_currentAlbumArt, TrackTitleText.Text)
+            _coverArtWindow = new CoverArtWindow(_currentAlbumArt, TrackTitleText.Text, _settings)
             {
                 Owner = this
             };
@@ -1769,7 +1769,7 @@ public partial class MainWindow : FluentWindow
 
         var propsWindow = new CoverArtPropertiesWindow(
             _currentAlbumArt, _currentAlbumArtBytes, _currentAlbumArtMimeType, _currentAlbumArtPictureType,
-            TrackTitleText.Text, TrackArtistText.Text, _currentTrackPath)
+            TrackTitleText.Text, TrackArtistText.Text, _currentTrackPath, _settings)
         {
             Owner = this
         };
@@ -2508,7 +2508,7 @@ public partial class MainWindow : FluentWindow
     // из файлов, разбросанных по разным местам, не трогая структуру папок на диске.
     private void CreateFolderMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new TextInputDialog("Новая папка", "Название папки:") { Owner = this };
+        var dialog = new TextInputDialog("Новая папка", "Название папки:", settings: _settings) { Owner = this };
         if (dialog.ShowDialog() != true) return;
 
         var folder = new PlaylistFolder
@@ -3705,7 +3705,7 @@ public partial class MainWindow : FluentWindow
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
         if (!File.Exists(row.FilePath)) return;
 
-        new TrackPropertiesWindow(row.FilePath) { Owner = this }.ShowDialog();
+        new TrackPropertiesWindow(row.FilePath, _settings) { Owner = this }.ShowDialog();
     }
 
     // Отдельное окно редактирования тегов (название/исполнитель/альбом/год/трек/жанр/
@@ -5879,11 +5879,13 @@ public partial class MainWindow : FluentWindow
         // прямо во время движения, и ползунок будет "дёргаться".
         if (_audioFile == null || _isUserInteractingWithProgress) return;
 
+        // SetProgressSliderValue меняет ProgressSlider.Value, что синхронно вызывает
+        // ProgressSlider_ValueChanged — там уже обновляются CurrentTimeText, waveform progress
+        // и синхронный текст (UpdateMainWindowSyncedLyrics) для той же позиции. Повторный вызов
+        // здесь ранее дублировал расчёт активной LRC-строки и scroll-логику до 4 раз в секунду.
         SetProgressSliderValue(_audioFile.CurrentTime.TotalSeconds);
 
-        CurrentTimeText.Text = _audioFile.CurrentTime.ToString(@"mm\:ss");
         RaiseProgressChanged(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
-        UpdateMainWindowSyncedLyrics(_audioFile.CurrentTime);
 
         // Статистика (см. StatisticsWindow) — суммарное время реального воспроизведения.
         // Таймер тикает только пока трек действительно играет (см. _progressTimer.Start/Stop

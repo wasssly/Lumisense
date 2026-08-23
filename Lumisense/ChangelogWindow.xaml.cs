@@ -32,11 +32,14 @@ public partial class ChangelogWindow : FluentWindow
     // InitializeComponent(), до того как _allEntries вообще загружен — этот флаг не даёт
     // обработчикам сортировки/фильтра дёрнуть RefreshVisible раньше времени.
     private readonly bool _isInitializing;
+    private readonly AppSettings _settings;
 
-    public ChangelogWindow()
+    public ChangelogWindow(AppSettings settings)
     {
         _isInitializing = true;
+        _settings = settings;
         InitializeComponent();
+        AccessibilityPreferences.ApplyToWindow(this, settings);
         _isInitializing = false;
 
         VersionsListBox.ItemsSource = _visibleEntries;
@@ -437,7 +440,7 @@ public partial class ChangelogWindow : FluentWindow
 
         if (_coverArtWindow == null)
         {
-            _coverArtWindow = new CoverArtWindow(bitmap, Title) { Owner = this };
+            _coverArtWindow = new CoverArtWindow(bitmap, Title, _settings) { Owner = this };
 
             // Та же причина, что и в MainWindow.AlbumArtBorder_MouseLeftButtonDown: явные
             // координаты под рабочую область монитора вместо WindowState.Maximized — у окон

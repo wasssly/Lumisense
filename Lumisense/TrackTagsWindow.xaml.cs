@@ -32,6 +32,8 @@ public partial class TrackTagsWindow : FluentWindow
 
         _filePath = filePath;
         _owner = owner;
+        if (_owner != null)
+            AccessibilityPreferences.ApplyToWindow(this, _owner.Settings);
         FileNameHeader.Text = Path.GetFileName(filePath);
 
         try
@@ -93,7 +95,7 @@ public partial class TrackTagsWindow : FluentWindow
     // запись в файл всё ещё происходит только по кнопке "Сохранить".
     private void FindCoverOnlineButton_Click(object sender, RoutedEventArgs e)
     {
-        var searchWindow = new CoverArtSearchWindow(ArtistBox.Text, TitleBox.Text) { Owner = this };
+        var searchWindow = new CoverArtSearchWindow(ArtistBox.Text, TitleBox.Text, _owner?.Settings) { Owner = this };
         if (searchWindow.ShowDialog() != true) return;
         if (searchWindow.SelectedImageBytes is not { } bytes) return;
 

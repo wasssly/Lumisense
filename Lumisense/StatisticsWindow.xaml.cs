@@ -21,6 +21,7 @@ public partial class StatisticsWindow : FluentWindow
     {
         InitializeComponent();
         _settings = settings;
+        AccessibilityPreferences.ApplyToWindow(this, _settings);
 
         ApplyWindowBackdrop();
 

@@ -39,9 +39,10 @@ public partial class CoverArtWindow : FluentWindow
     // MouseDown именно в этом окне.
     private bool _receivedMouseDownHere;
 
-    public CoverArtWindow(BitmapSource art, string trackTitle)
+    public CoverArtWindow(BitmapSource art, string trackTitle, AppSettings settings)
     {
         InitializeComponent();
+        AccessibilityPreferences.ApplyToWindow(this, settings);
 
         ArtImage.Source = art;
         _naturalWidth = art.PixelWidth;

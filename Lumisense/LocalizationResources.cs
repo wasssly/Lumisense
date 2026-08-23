@@ -43,6 +43,7 @@ public static class LocalizationKey
     public const string UpdateLegacyCleanupStartingTitle = "update.legacyCleanup.startingTitle";
     public const string UpdateLegacyCleanupStartingMessage = "update.legacyCleanup.startingMessage";
     public const string UpdateLegacyCleanupFailed = "update.legacyCleanup.failed";
+    public const string UpdateLegacyCleanupContextMenuLabel = "update.legacyCleanup.contextMenuLabel";
     public const string UpdateVelopackDownload = "update.velopack.download";
     public const string UpdateVelopackPreparing = "update.velopack.preparing";
     public const string UpdateVelopackApplying = "update.velopack.applying";
@@ -140,6 +141,7 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateLegacyCleanupStartingTitle] = "Удаление старой EXE-копии",
         [LocalizationKey.UpdateLegacyCleanupStartingMessage] = "Откроется стандартный мастер удаления старой EXE-копии Lumisense. В его вопросе об удалении настроек и пользовательских данных выберите «Нет», чтобы сохранить данные для MSI-версии.",
         [LocalizationKey.UpdateLegacyCleanupFailed] = "Не удалось открыть мастер удаления старой EXE-копии. Старая программа не удалена; при необходимости удалите её позже через «Установленные приложения» Windows.",
+        [LocalizationKey.UpdateLegacyCleanupContextMenuLabel] = "Открыть в Lumisense",
         [LocalizationKey.UpdateVelopackDownload] = "Скачивание компактного обновления…",
         [LocalizationKey.UpdateVelopackPreparing] = "Проверка и подготовка обновления…",
         [LocalizationKey.UpdateVelopackApplying] = "Перезапуск для установки обновления…",
@@ -236,6 +238,7 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateLegacyCleanupStartingTitle] = "Removing the old EXE copy",
         [LocalizationKey.UpdateLegacyCleanupStartingMessage] = "The standard uninstall wizard for the old EXE copy of Lumisense will open. In its question about settings and user data, choose “No” to keep them for the MSI version.",
         [LocalizationKey.UpdateLegacyCleanupFailed] = "The uninstall wizard for the old EXE copy could not be opened. The old program was not removed; if needed, remove it later from Windows Installed apps.",
+        [LocalizationKey.UpdateLegacyCleanupContextMenuLabel] = "Open in Lumisense",
         [LocalizationKey.UpdateVelopackDownload] = "Downloading compact update…",
         [LocalizationKey.UpdateVelopackPreparing] = "Verifying and preparing update…",
         [LocalizationKey.UpdateVelopackApplying] = "Restarting to install update…",

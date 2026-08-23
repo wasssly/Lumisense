@@ -23,6 +23,25 @@
 
             <local:IsOddIndexConverter x:Key="IsOddIndexConverter" />
 
+            <!-- Контрастный focus indicator для маленьких иконок-кнопок (например
+                 TrackFavoriteButton/TrackPinButton в MainWindow.xaml), у которых стандартный
+                 прямоугольный FocusVisualStyle раньше был отключён целиком (FocusVisualStyle="{x:Null}"),
+                 потому что штатная пунктирная рамка WPF рисуется поверх скруглённого выделения
+                 строки как острый прямоугольник — заметный визуальный баг. Этот стиль вместо
+                 полного отключения рисует свою скруглённую рамку в акцентном цвете, слегка
+                 расширенную наружу (Margin="-2"), чтобы не обрезаться по границе строки. -->
+            <Style x:Key="RoundedIconButtonFocusVisualStyle">
+                <Setter Property="Control.Template">
+                    <Setter.Value>
+                        <ControlTemplate>
+                            <Border BorderBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                    BorderThickness="2" CornerRadius="6" Margin="-2"
+                                    SnapsToDevicePixels="True" />
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
             <!-- Кастомный тонкий Fluent-ползунок: применяется ко ВСЕМ Slider в приложении -->
             <Style TargetType="Slider">
                 <Setter Property="Height" Value="24" />
