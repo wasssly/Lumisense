@@ -23,13 +23,9 @@
 
             <local:IsOddIndexConverter x:Key="IsOddIndexConverter" />
 
-            <!-- Контрастный focus indicator для маленьких иконок-кнопок (например
-                 TrackFavoriteButton/TrackPinButton в MainWindow.xaml), у которых стандартный
-                 прямоугольный FocusVisualStyle раньше был отключён целиком (FocusVisualStyle="{x:Null}"),
-                 потому что штатная пунктирная рамка WPF рисуется поверх скруглённого выделения
-                 строки как острый прямоугольник — заметный визуальный баг. Этот стиль вместо
-                 полного отключения рисует свою скруглённую рамку в акцентном цвете, слегка
-                 расширенную наружу (Margin="-2"), чтобы не обрезаться по границе строки. -->
+            <!-- Скруглённая focus-рамка для маленьких иконок-кнопок (TrackFavoriteButton/
+                 TrackPinButton) — штатная прямоугольная рамка смотрелась как визуальный баг
+                 поверх скруглённого выделения строки. -->
             <Style x:Key="RoundedIconButtonFocusVisualStyle">
                 <Setter Property="Control.Template">
                     <Setter.Value>

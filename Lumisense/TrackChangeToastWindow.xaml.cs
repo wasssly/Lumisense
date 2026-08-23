@@ -11,13 +11,8 @@ namespace AudioPlayer;
 // окна на каждый трек: так быстрое переключение (следующий/предыдущий несколько раз
 // подряд) не плодит окна и не мигает, а просто перезапускает анимацию и таймер.
 //
-// Осознанно НЕ подключено к AccessibilityPreferences.ApplyToWindow (масштаб интерфейса):
-// позиция карточки считается через ToastPlacementCalculator по точным физическим
-// координатам и DPI выбранного монитора (см. MainWindow.ResolveToastScreen/ShowTrackChangeToast)
-// уже ПОСЛЕ применения выбранного пресета размера (TrackChangeToastSize/Width). Наложение
-// LayoutTransform поверх уже вычисленной позиции сдвинуло бы или обрезало карточку
-// относительно рассчитанного угла экрана. Пользователь и так может увеличить сам toast
-// через настройки размера уведомления — общий масштаб 85–135% здесь не нужен.
+// Осознанно НЕ масштабируется через AccessibilityPreferences: позиция карточки уже
+// вычислена по физическим координатам монитора, и наложение масштаба сдвинуло бы её.
 public partial class TrackChangeToastWindow : Window
 {
     private static readonly TimeSpan VisibleDuration = TimeSpan.FromSeconds(3);

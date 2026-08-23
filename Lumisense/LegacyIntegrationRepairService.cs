@@ -5,35 +5,20 @@ using Microsoft.Win32;
 namespace AudioPlayer;
 
 /// <summary>
-/// Восстанавливает пользовательские Windows-интеграции (автозапуск и контекстное меню
-/// «Открыть в Lumisense») перед тем, как пользователь запустит legacy Inno Setup uninstaller
-/// и его папка установки будет удалена.
-///
-/// Проблема: legacy-установщик регистрирует автозапуск (через сам EXE, см.
-/// <see cref="StartupManager"/>) и правит HKCR-записи для контекстного меню «Открыть в
-/// Lumisense» (см. Installer/Lumisense.iss, ключ "*\shell\LumisenseOpen"). Обе записи
-/// либо указывают на legacy EXE, либо удаляются вместе с деинсталляцией — MSI-версия
-/// сама по себе их не переносит и не восстанавливает.
-///
-/// Этот сервис намеренно НЕ трогает дефолтную ассоциацию файлов Windows (то, какая
-/// программа открывает .mp3 по умолчанию) — это выбор пользователя, который нельзя менять
-/// без явного действия в интерфейсе ОС. Восстанавливается только пользовательский пункт
-/// правого клика, который явно возвращает интеграцию, потерянную из-за cleanup, а не
-/// захватывает что-то новое.
+/// Repairs autostart and the "Open in Lumisense" context menu before the legacy Inno Setup
+/// uninstaller removes the old EXE install and its registry entries.
+/// Does not touch the default file association — only the custom context menu command.
 /// </summary>
 internal static class LegacyIntegrationRepairService
 {
-    // То же имя ключа, что использовал legacy Inno Setup — так после cleanup остаётся
-    // ровно одна запись контекстного меню, а не задвоение старой и новой.
+    // Same key name the legacy Inno Setup installer used, to avoid a duplicate menu entry.
     private const string ContextMenuKeyName = "LumisenseOpen";
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "Lumisense";
 
     /// <summary>
-    /// Если автозапуск сейчас включён и указывает на исполняемый файл внутри старой
-    /// EXE-установки, перепривязывает его на текущую (MSI) копию. Если автозапуск выключен
-    /// или уже указывает на текущую копию — ничего не меняет, чтобы не трогать выбор
-    /// пользователя без необходимости.
+    /// Repoints autostart to the current MSI copy if it currently points inside the legacy
+    /// EXE install directory; otherwise does nothing.
     /// </summary>
     public static void RepairAutostartIfPointingToLegacyInstall(string legacyInstallDir)
     {
@@ -61,9 +46,8 @@ internal static class LegacyIntegrationRepairService
     }
 
     /// <summary>
-    /// Регистрирует пользовательский (HKCU, без прав администратора) пункт контекстного меню
-    /// «Открыть в Lumisense» для текущей MSI-копии. Идемпотентно — безопасно вызывать
-    /// повторно, в том числе если запись уже существует и указывает на актуальный путь.
+    /// Registers a per-user (no admin required) "Open in Lumisense" context menu command
+    /// for the current MSI copy. Safe to call repeatedly.
     /// </summary>
     public static void RegisterOpenInLumisenseContextMenu()
     {
@@ -101,8 +85,7 @@ internal static class LegacyIntegrationRepairService
             return closingQuote > 1 ? value[1..closingQuote] : null;
         }
 
-        // Значения без кавычек в принципе допустимы для путей без пробелов — если после
-        // пути есть аргументы, берём только первый "токен" до пробела.
+        // Unquoted values may have trailing arguments; keep only the path token.
         int firstSpace = value.IndexOf(' ');
         return firstSpace > 0 ? value[..firstSpace] : value;
     }

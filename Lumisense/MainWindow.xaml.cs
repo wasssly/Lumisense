@@ -5879,10 +5879,8 @@ public partial class MainWindow : FluentWindow
         // прямо во время движения, и ползунок будет "дёргаться".
         if (_audioFile == null || _isUserInteractingWithProgress) return;
 
-        // SetProgressSliderValue меняет ProgressSlider.Value, что синхронно вызывает
-        // ProgressSlider_ValueChanged — там уже обновляются CurrentTimeText, waveform progress
-        // и синхронный текст (UpdateMainWindowSyncedLyrics) для той же позиции. Повторный вызов
-        // здесь ранее дублировал расчёт активной LRC-строки и scroll-логику до 4 раз в секунду.
+        // SetProgressSliderValue вызывает ProgressSlider_ValueChanged, который уже обновляет
+        // синхронный текст для этой позиции — повторный вызов здесь дублировал эту работу.
         SetProgressSliderValue(_audioFile.CurrentTime.TotalSeconds);
 
         RaiseProgressChanged(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);

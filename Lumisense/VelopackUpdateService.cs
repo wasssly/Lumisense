@@ -203,10 +203,7 @@ internal static class UpdateMigrationGuard
                 return;
             }
 
-            // Repair до запуска uninstaller: после него папка legacy-установки и её HKCR-записи
-            // контекстного меню исчезают, а автозапуск, если он ссылался на legacy EXE, стал бы
-            // указывать на уже удалённый файл. Обе операции безопасны и идемпотентны — они не
-            // трогают дефолтную ассоциацию файлов Windows и не требуют прав администратора.
+            // Must run before the uninstaller removes the legacy install dir and its registry entries.
             string? legacyInstallDir = Path.GetDirectoryName(legacyInstall.UninstallerPath);
             if (!string.IsNullOrEmpty(legacyInstallDir))
                 LegacyIntegrationRepairService.RepairAutostartIfPointingToLegacyInstall(legacyInstallDir);
