@@ -1053,8 +1053,6 @@
                                 <TextBlock Text="Снимите галочки, чтобы скрыть ненужные действия при нажатии правой кнопкой по треку в плейлисте. «Воспроизвести» остаётся доступным всегда."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
                                 <UniformGrid Columns="1" Margin="0,2,0,0">
-                                    <CheckBox x:Name="TrackContextPlayNowCheckBox" Tag="PlayNow" Content="Играть сейчас"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextPlayNextCheckBox" Tag="PlayNext" Content="Играть следующим"
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextAddToQueueCheckBox" Tag="AddToQueue" Content="Добавить в очередь"

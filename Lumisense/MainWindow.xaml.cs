@@ -82,6 +82,9 @@ public partial class MainWindow : FluentWindow
     // эквалайзера), отдельный ISampleProvider не нужен.
     private double _replayGainFactor = 1.0;
     private Color? _coverAccentColor;
+    // Смена обложки может происходить, пока WPF ещё распространяет DynamicResource по Popup
+    // и анимируемому дереву. Объединяем обновления темы и выполняем их после текущего UI-прохода.
+    private bool _albumArtAppearanceRefreshPending;
 
     // ---------- Waveform-полоса воспроизведения (см. AppSettings.ProgressBarStyle) ----------
     // Кэш пиков по пути файла — трек может грузиться повторно, пересчитывать форму волны заново
@@ -1369,9 +1372,12 @@ public partial class MainWindow : FluentWindow
 
         if (_settings.AccentColorMode == "Cover" && _coverAccentColor is Color coverColor)
         {
+            // Не вызываем ApplicationAccentColorManager.Apply для каждого нового трека. Эта
+            // операция заменяет глобальные DynamicResource WPF-UI и могла попасть внутрь
+            // TreeWalkHelper во время анимации/перерисовки обложки, приводя к fatal CLR error.
+            // Явные ресурсы Lumisense ниже и зависимые иконки обновляются без глобальной
+            // замены словаря ресурсов.
             appliedAccent = coverColor;
-            ApplicationAccentColorManager.Apply(appliedAccent,
-                _settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         }
         else if (_settings.AccentColorMode == "Manual")
         {
@@ -1505,8 +1511,10 @@ public partial class MainWindow : FluentWindow
             _ => RepeatButton.Icon
         };
         SetAccentButtonActive(RepeatButton, _repeatMode != RepeatMode.Off);
-        SetAccentButtonActive(LyricsPanelButton, _isLyricsPanelActive);
-        IconResources.SetOnAccent(LyricsPanelButtonIcon, _isLyricsPanelActive);
+        // Кнопка текста находится в Popup «Ещё», поэтому не используем для неё
+        // SetAccentButtonActive: этот helper переводит WPF-UI Button в Secondary и делает
+        // одну строку меню визуально тяжёлой относительно другой.
+        LyricsPanelButton.Opacity = _isLyricsPanelActive ? 1.0 : 0.86;
 
         if (_isFavoritesView)
         {
@@ -1887,8 +1895,7 @@ public partial class MainWindow : FluentWindow
         AddButton.Visibility = showPlaylist ? Visibility.Visible : Visibility.Collapsed;
         ClearPlaylistButton.Visibility = showPlaylist ? Visibility.Visible : Visibility.Collapsed;
         SetAccentButtonActive(FavoritesButton, _isFavoritesView && !showLyrics);
-        SetAccentButtonActive(LyricsPanelButton, showLyrics);
-        IconResources.SetOnAccent(LyricsPanelButtonIcon, showLyrics);
+        LyricsPanelButton.Opacity = showLyrics ? 1.0 : 0.86;
     }
 
     private void LyricsPanelButton_Click(object sender, RoutedEventArgs e)
@@ -3712,12 +3719,6 @@ public partial class MainWindow : FluentWindow
         return selected.Contains(clickedRow) ? selected : new List<PlaylistTrackRow> { clickedRow };
     }
 
-    private void PlayNowMenuItem_Click(object sender, RoutedEventArgs e)
-    {
-        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
-        LoadAndPlay(row.FilePath, autoPlay: true);
-    }
-
     private void PlayNextMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -4316,8 +4317,7 @@ public partial class MainWindow : FluentWindow
             ResetAlbumArtPlaceholder(direction);
         }
 
-        if (_settings.AccentColorMode == "Cover" || _settings.CoverBaseFromCover)
-            ApplyAccentColor();
+        QueueAlbumArtAppearanceRefresh();
     }
 
     private void LoadAlbumArt(string filePath, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
@@ -4363,8 +4363,29 @@ public partial class MainWindow : FluentWindow
             ResetAlbumArtPlaceholder(direction);
         }
 
-        if (_settings.AccentColorMode == "Cover" || _settings.CoverBaseFromCover)
-            ApplyAccentColor();
+        QueueAlbumArtAppearanceRefresh();
+    }
+
+    private void QueueAlbumArtAppearanceRefresh()
+    {
+        if (_settings.AccentColorMode != "Cover" && !_settings.CoverBaseFromCover)
+            return;
+
+        if (_albumArtAppearanceRefreshPending || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+            return;
+
+        _albumArtAppearanceRefreshPending = true;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _albumArtAppearanceRefreshPending = false;
+            if (_isExiting || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                return;
+
+            if (_settings.AccentColorMode == "Cover")
+                ApplyAccentColor();
+            else
+                ApplyCoverBaseBackground();
+        }), DispatcherPriority.ContextIdle);
     }
 
     private void ApplyAlbumArtBrush(Brush brush, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
@@ -4388,8 +4409,7 @@ public partial class MainWindow : FluentWindow
         _currentAlbumArtMimeType = null;
         _currentAlbumArtPictureType = null;
 
-        if (_settings.AccentColorMode == "Cover" || _settings.CoverBaseFromCover)
-            ApplyAccentColor();
+        QueueAlbumArtAppearanceRefresh();
     }
 
     // Смена обложки в духе iTunes: снимок прежней обложки "улетает" в сторону с затуханием,
@@ -4842,8 +4862,14 @@ public partial class MainWindow : FluentWindow
     // иначе — обычная логика (шаффл/плейлист) через ComputeNextTrackPath. Использовать только
     // там, где путь ДЕЙСТВИТЕЛЬНО будет передан в LoadAndPlay — см. комментарий над
     // PlaybackQueue.PopNext о том, почему это не годится для CommitPendingHotkeyTrackStep.
-    private string? ResolveNextTrackPathRespectingQueue(string? currentPath) =>
-        _playbackQueue.PopNext() ?? ComputeNextTrackPath(currentPath);
+    private string? ResolveNextTrackPathRespectingQueue(string? currentPath)
+    {
+        // Файл могли удалить или переместить уже после постановки в очередь. Перед
+        // потреблением пропускаем такие записи, чтобы обычное переключение не превращалось
+        // в сообщение об ошибке открытия трека.
+        _playbackQueue.PruneMissing();
+        return _playbackQueue.PopNext() ?? ComputeNextTrackPath(currentPath);
+    }
 
     // Чистое вычисление пути к следующему/предыдущему треку — без загрузки и воспроизведения.
     // Вынесено из PlayNextTrack/PrevButton_Click, чтобы им же можно было "прокрутить" несколько
@@ -6280,9 +6306,19 @@ public partial class MainWindow : FluentWindow
 
     private void QueueButton_Click(object sender, RoutedEventArgs e)
     {
+        // Popup с StaysOpen=False закрывается в том же input-цикле, что и Click. Открываем
+        // вторую панель в следующем Dispatcher-проходе, иначе WPF мог сразу закрыть её вместе
+        // с меню «Ещё» или показать кнопку без содержимого.
         MoreActionsPopup.IsOpen = false;
-        QueuePopup.PlacementTarget = MoreActionsButton;
-        QueuePopup.IsOpen = !QueuePopup.IsOpen;
+        QueuePopup.IsOpen = false;
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_isExiting || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+                return;
+
+            QueuePopup.PlacementTarget = MoreActionsButton;
+            QueuePopup.IsOpen = true;
+        }), DispatcherPriority.Input);
         e.Handled = true;
     }
 

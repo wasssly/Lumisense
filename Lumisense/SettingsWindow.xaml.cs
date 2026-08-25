@@ -256,7 +256,6 @@ public partial class SettingsWindow : FluentWindow
     {
         var checkBoxes = new[]
         {
-            TrackContextPlayNowCheckBox,
             TrackContextPlayNextCheckBox,
             TrackContextAddToQueueCheckBox,
             TrackContextFavoriteCheckBox,

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Text.Json;
 using AudioPlayer;
 using Xunit;
 
@@ -120,10 +121,28 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     [InlineData(1.1, 1.1)]  // в допустимом диапазоне — не меняется
     public void TryLoad_InterfaceScale_IsClampedToAllowedRange(double input, double expected)
     {
-        bool result = TryLoad($"{{\"InterfaceScale\": {input}}}", out AppSettings? settings, out _);
+        // Проверяем нормализацию современной настройки. Без SettingsSchemaVersion файл
+        // трактуется как legacy schema 0, а её миграция намеренно задаёт нейтральный масштаб 1.0.
+        string json = JsonSerializer.Serialize(new
+        {
+            SettingsSchemaVersion = AppSettings.CurrentSettingsSchemaVersion,
+            InterfaceScale = input
+        });
+
+        bool result = TryLoad(json, out AppSettings? settings, out _);
 
         Assert.True(result);
         Assert.Equal(expected, settings!.InterfaceScale, precision: 5);
+    }
+
+    [Fact]
+    public void TryLoad_LegacySchemaWithoutVersion_UsesNeutralInterfaceScale()
+    {
+        bool result = TryLoad("{\"InterfaceScale\": 1.35}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(1.0, settings!.InterfaceScale, precision: 5);
+        Assert.Equal(AppSettings.CurrentSettingsSchemaVersion, settings.SettingsSchemaVersion);
     }
 
     [Fact]

@@ -20,7 +20,6 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
     public const string NormalizeFileName = "NormalizeFileName";
     public const string RemoveFromPlaylist = "RemoveFromPlaylist";
     public const string DeleteFromDisk = "DeleteFromDisk";
-    public const string PlayNow = "PlayNow";
     public const string PlayNext = "PlayNext";
     public const string AddToQueue = "AddToQueue";
 
@@ -38,7 +37,6 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
         [NormalizeFileName] = NormalizeFileName,
         [RemoveFromPlaylist] = RemoveFromPlaylist,
         [DeleteFromDisk] = DeleteFromDisk,
-        [PlayNow] = PlayNow,
         [PlayNext] = PlayNext,
         [AddToQueue] = AddToQueue
     };
