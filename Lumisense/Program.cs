@@ -17,6 +17,9 @@ internal static class Program
         try
         {
             VelopackApp.Build()
+                // Штатный лог Velopack остаётся включённым; это добавляет безопасную копию
+                // диагностических сообщений в журнал Lumisense для разбора update fallback.
+                .SetLogger(new LumisenseVelopackLogger())
                 // Обновление применяется только после явного действия пользователя в диалоге.
                 // Это не допускает незаметной замены версии во время запуска.
                 .SetAutoApplyOnStartup(false)

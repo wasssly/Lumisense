@@ -160,6 +160,14 @@ public sealed class UpdateSourceProbeResult
     public string? ErrorDetail { get; init; }
 }
 
+// Диагностика не должна незаметно подменять неизвестный текущий asset старым MSI или EXE.
+// SettingsWindow переводит это исключение в понятный статус без технического текста GitHub.
+internal sealed class UpdateSourceProbeAssetResolutionException : Exception
+{
+    public UpdateSourceProbeAssetResolutionException(string message, Exception? innerException = null)
+        : base(message, innerException) { }
+}
+
 // Одна запись из полного списка релизов для страницы «Все версии».
 // В EXE-only схеме хранится только ссылка на Inno Setup установщик.
 public sealed class ReleaseListItem
@@ -190,7 +198,12 @@ public static class UpdateChecker
     private const long MaxInstallerBytes = 250L * 1024 * 1024;
     private const int SourceProbeBytes = 256 * 1024;
     // Fallback, если ещё нет результата настоящей проверки обновления в этой сессии.
-    private const string FallbackSourceProbeAssetUrl = "https://github.com/wasssly/Lumisense/releases/download/v1.16.1/Wasssly.Lumisense-win.msi";
+    // GitHub поддерживает стабильный /releases/latest/download/{asset} для asset последнего
+    // релиза. Это лучше закреплённого номера версии: ссылка не устаревает и проверяет тот же
+    // путь release-asset/redirect/CDN, который пользователь получит при реальном обновлении.
+    // Raw-файл из репозитория здесь намеренно не используется: он не измеряет доставку
+    // установщика и может иначе обрабатываться GitHub-прокси.
+    private const string FallbackSourceProbeAssetUrl = "https://github.com/wasssly/Lumisense/releases/latest/download/Lumisense_Setup.exe";
     private const int DownloadAttemptCount = 3;
     // Медленное зеркало допустимо, пока оно продолжает передавать данные. Ограничиваем не общую
     // длительность скачивания, а только период полного отсутствия байтов, чтобы не обрывать
@@ -403,6 +416,19 @@ public static class UpdateChecker
     private static (string? DownloadUrl, string? Sha256) FindMsiAsset(JsonElement releaseRoot) =>
         FindAssetByExactName(releaseRoot, "Wasssly.Lumisense-win.msi");
 
+    private static (string? DownloadUrl, string? Sha256) FindVelopackFullPackageAsset(JsonElement releaseRoot)
+    {
+        if (!releaseRoot.TryGetProperty("assets", out var assetsEl) || assetsEl.ValueKind != JsonValueKind.Array)
+            return (null, null);
+
+        var asset = assetsEl.EnumerateArray().FirstOrDefault(candidate =>
+            candidate.TryGetProperty("name", out var nameEl) &&
+            nameEl.GetString() is string name &&
+            name.StartsWith(VelopackUpdateService.PackId + "-", StringComparison.OrdinalIgnoreCase) &&
+            name.EndsWith("-full.nupkg", StringComparison.OrdinalIgnoreCase));
+        return asset.ValueKind == JsonValueKind.Object ? GetAssetDownload(asset) : (null, null);
+    }
+
     private static (string? DownloadUrl, string? Sha256) FindAssetByExactName(JsonElement releaseRoot, string expectedName)
     {
         if (!releaseRoot.TryGetProperty("assets", out var assetsEl) || assetsEl.ValueKind != JsonValueKind.Array)
@@ -497,16 +523,55 @@ public static class UpdateChecker
     };
 
     // Диагностика не загружает и не запускает установщик: у каждого source запрашиваются
-    // только первые 256 KiB публичного MSI. Ответ принимается лишь при HTTP 206 и бинарном
-    // Content-Type; HTML/error-page не может ошибочно стать «работающим зеркалом».
+    // только первые 256 KiB публичного release-asset. Ответ принимается лишь при HTTP 206 и
+    // бинарном Content-Type; HTML/error-page не может ошибочно стать «работающим зеркалом».
     public static async Task<IReadOnlyList<UpdateSourceProbeResult>> ProbeDownloadSourcesAsync(
-        string? actualAssetUrl = null, CancellationToken ct = default)
+        string? legacyInstallerAssetUrl = null, CancellationToken ct = default)
     {
-        string probeAssetUrl = string.IsNullOrWhiteSpace(actualAssetUrl) ? FallbackSourceProbeAssetUrl : actualAssetUrl;
+        string probeAssetUrl = await ResolveProbeAssetUrlAsync(legacyInstallerAssetUrl, ct).ConfigureAwait(false);
         Task<UpdateSourceProbeResult>[] probes = DownloadSources
             .Select(source => ProbeDownloadSourceAsync(source.Key, source.DisplayName, probeAssetUrl, ct))
             .ToArray();
         return await Task.WhenAll(probes);
+    }
+
+    private static async Task<string> ResolveProbeAssetUrlAsync(string? legacyInstallerAssetUrl, CancellationToken ct)
+    {
+        // Legacy Inno Setup скачивает полный EXE. Если ручная проверка уже получила
+        // browser_download_url актуального EXE, используем его; иначе стабильный latest URL.
+        if (!UpdateMigrationGuard.IsVelopackManagedInstall())
+            return string.IsNullOrWhiteSpace(legacyInstallerAssetUrl)
+                ? FallbackSourceProbeAssetUrl
+                : legacyInstallerAssetUrl;
+
+        // Velopack после первоначальной MSI-установки получает обновления через feed и .nupkg,
+        // а не через следующий MSI. Берём full package последнего release через GitHub API,
+        // потому что его имя содержит версию и не имеет постоянного latest-download URL.
+        try
+        {
+            string latestReleaseUrl = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest";
+            using var response = await Http.GetAsync(latestReleaseUrl, ct).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                throw new UpdateSourceProbeAssetResolutionException($"GitHub API вернул HTTP {(int)response.StatusCode}.");
+
+            await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            using var document = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
+            string? fullPackageUrl = FindVelopackFullPackageAsset(document.RootElement).DownloadUrl;
+            if (string.IsNullOrWhiteSpace(fullPackageUrl))
+                throw new UpdateSourceProbeAssetResolutionException(
+                    "В последнем GitHub Release отсутствует Velopack full package.");
+
+            return fullPackageUrl;
+        }
+        catch (UpdateSourceProbeAssetResolutionException)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            throw new UpdateSourceProbeAssetResolutionException(
+                "Не удалось определить Velopack package из последнего GitHub Release.", ex);
+        }
     }
 
     private static async Task<UpdateSourceProbeResult> ProbeDownloadSourceAsync(
@@ -515,7 +580,7 @@ public static class UpdateChecker
         string probeAssetUrl,
         CancellationToken ct)
     {
-        var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+        var totalStopwatch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
             string probeUrl = ApplyDownloadSource(probeAssetUrl, sourceKey);
@@ -527,6 +592,9 @@ public static class UpdateChecker
             using var request = new HttpRequestMessage(HttpMethod.Get, uri);
             request.Headers.Range = new RangeHeaderValue(0, SourceProbeBytes - 1);
             using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            // «Пинг» в интерфейсе — время до получения HTTP-ответа (TTFB), а не время
+            // скачивания всего тестового диапазона. Скорость измеряется отдельно ниже.
+            long responseMilliseconds = Math.Max(1, totalStopwatch.ElapsedMilliseconds);
 
             if (response.StatusCode != System.Net.HttpStatusCode.PartialContent)
                 throw new HttpRequestException($"HTTP {(int)response.StatusCode}");
@@ -534,6 +602,7 @@ public static class UpdateChecker
                 throw new InvalidDataException("Получена HTML-страница вместо release-файла.");
 
             await using var stream = await response.Content.ReadAsStreamAsync(timeout.Token);
+            var transferStopwatch = System.Diagnostics.Stopwatch.StartNew();
             byte[] buffer = new byte[81920];
             int total = 0;
             while (total < SourceProbeBytes)
@@ -546,26 +615,27 @@ public static class UpdateChecker
             if (total != SourceProbeBytes)
                 throw new IOException($"Получено только {total} из {SourceProbeBytes} байт тестового диапазона.");
 
-            stopwatch.Stop();
+            transferStopwatch.Stop();
+            totalStopwatch.Stop();
             return new UpdateSourceProbeResult
             {
                 Key = sourceKey,
                 DisplayName = displayName,
                 IsAvailable = true,
-                ResponseMilliseconds = Math.Max(1, stopwatch.ElapsedMilliseconds),
-                BytesPerSecond = total / Math.Max(0.001, stopwatch.Elapsed.TotalSeconds),
+                ResponseMilliseconds = responseMilliseconds,
+                BytesPerSecond = total / Math.Max(0.001, transferStopwatch.Elapsed.TotalSeconds),
                 BytesReceived = total
             };
         }
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            stopwatch.Stop();
+            totalStopwatch.Stop();
             return new UpdateSourceProbeResult
             {
                 Key = sourceKey,
                 DisplayName = displayName,
                 IsAvailable = false,
-                ResponseMilliseconds = Math.Max(1, stopwatch.ElapsedMilliseconds),
+                ResponseMilliseconds = Math.Max(1, totalStopwatch.ElapsedMilliseconds),
                 ErrorDetail = ex.Message
             };
         }

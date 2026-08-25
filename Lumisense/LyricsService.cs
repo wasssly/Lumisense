@@ -65,8 +65,18 @@ public static class LyricsService
     private const long MaxTotalCachedLyricsBytes = 32L * 1024 * 1024;
     private static readonly TimeSpan CachedLyricsRetention = TimeSpan.FromDays(180);
     private static readonly object CacheMaintenanceGate = new();
-    private static readonly string PastedLyricsCacheDirectory = Path.Combine(
+    // Все тексты, которые создаёт Lumisense, живут отдельно от музыкальной библиотеки.
+    // Подпапки сохраняют тип содержимого понятным: lrc — синхронный текст, txt — обычный.
+    private static readonly string ManagedLyricsDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumisense", "lyrics");
+    private static readonly string PastedLyricsCacheDirectory = Path.Combine(ManagedLyricsDirectory, "txt");
+    // Путь прежних вставленных текстов до введения общей папки lyrics. Он читается только
+    // как fallback, чтобы обновление не скрывало уже сохранённые данные пользователя.
+    private static readonly string LegacyPastedLyricsCacheDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumisense", "lyrics-cache");
+    // Синхронные тексты, полученные Lumisense, не смешиваются с музыкальной библиотекой.
+    // Имя — SHA-256 от канонического пути аудиофайла, поэтому путь пользователя в кэше не хранится.
+    private static readonly string ManagedLrcDirectory = Path.Combine(ManagedLyricsDirectory, "lrc");
     private static readonly HttpClient Http = CreateHttpClient();
     private static readonly SemaphoreSlim SearchGate = new(1, 1);
 
@@ -85,48 +95,26 @@ public static class LyricsService
         // После проверки выше сохраняем non-null путь в отдельную локальную переменную: она
         // безопасно захватывается фоновой задачей чтения тегов без nullable-предупреждения.
         string confirmedAudioPath = audioPath;
-        string lrcPath = Path.ChangeExtension(confirmedAudioPath, ".lrc");
-        if (File.Exists(lrcPath))
-        {
-            try
-            {
-                string lrc = await File.ReadAllTextAsync(lrcPath, cancellationToken).ConfigureAwait(false);
-                var lines = ParseLrc(lrc);
-                if (lines.Count > 0)
-                    return new LyricsDocument(LyricsKind.Synced, lines, string.Empty, "Синхронный LRC");
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch
-            {
-                // Повреждённый LRC не должен мешать fallback к обычному тексту.
-            }
-        }
 
-        string textPath = Path.ChangeExtension(confirmedAudioPath, ".txt");
-        if (File.Exists(textPath))
-        {
-            try
-            {
-                string plain = await File.ReadAllTextAsync(textPath, cancellationToken).ConfigureAwait(false);
-                if (!string.IsNullOrWhiteSpace(plain))
-                    return new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), plain.Trim(), "Текстовый файл");
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch
-            {
-                // Переходим к комментарию тега ниже.
-            }
-        }
+        // Сначала используем LRC, который Lumisense сохранил в собственной папке. Так
+        // автоматический онлайн-поиск не создаёт .lrc рядом с аудиофайлом. Затем сохраняем
+        // совместимость с LRC, который пользователь положил рядом с треком вручную.
+        LyricsDocument managedLrc = await LoadSyncedLrcAsync(GetManagedLrcPath(confirmedAudioPath), cancellationToken)
+            .ConfigureAwait(false);
+        if (managedLrc.Kind == LyricsKind.Synced) return managedLrc;
 
-        LyricsDocument cachedDocument = await LoadPastedLyricsCacheAsync(confirmedAudioPath, cancellationToken).ConfigureAwait(false);
-        if (cachedDocument.Kind != LyricsKind.None)
-            return cachedDocument;
+        LyricsDocument sidecarLrc = await LoadSyncedLrcAsync(
+            Path.ChangeExtension(confirmedAudioPath, ".lrc"), cancellationToken).ConfigureAwait(false);
+        if (sidecarLrc.Kind == LyricsKind.Synced) return sidecarLrc;
+
+        // Все обычные тексты, добавленные или найденные Lumisense, хранятся в txt-папке
+        // приложения. TXT рядом с треком остаётся только пользовательским fallback.
+        LyricsDocument managedText = await LoadPastedLyricsCacheAsync(confirmedAudioPath, cancellationToken).ConfigureAwait(false);
+        if (managedText.Kind != LyricsKind.None) return managedText;
+
+        LyricsDocument sidecarText = await LoadPlainTextAsync(
+            Path.ChangeExtension(confirmedAudioPath, ".txt"), cancellationToken).ConfigureAwait(false);
+        if (sidecarText.Kind == LyricsKind.Plain) return sidecarText;
 
         string? tagText = await Task.Run(() => ReadTagComment(confirmedAudioPath), cancellationToken).ConfigureAwait(false);
         return string.IsNullOrWhiteSpace(tagText)
@@ -195,12 +183,84 @@ public static class LyricsService
         }
     }
 
+    private static async Task<LyricsDocument> LoadPlainTextAsync(string textPath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!File.Exists(textPath)) return LyricsDocument.Empty;
+
+            string plain = await File.ReadAllTextAsync(textPath, cancellationToken).ConfigureAwait(false);
+            return string.IsNullOrWhiteSpace(plain)
+                ? LyricsDocument.Empty
+                : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), plain.Trim(), "Текстовый файл");
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Повреждённый пользовательский TXT не мешает fallback к тегу.
+            return LyricsDocument.Empty;
+        }
+    }
+
+    private static async Task<LyricsDocument> LoadSyncedLrcAsync(string lrcPath, CancellationToken cancellationToken)
+    {
+        try
+        {
+            if (!File.Exists(lrcPath)) return LyricsDocument.Empty;
+
+            string lrc = await File.ReadAllTextAsync(lrcPath, cancellationToken).ConfigureAwait(false);
+            List<LyricLine> lines = ParseLrc(lrc);
+            return lines.Count > 0
+                ? new LyricsDocument(LyricsKind.Synced, lines, string.Empty, "Синхронный LRC")
+                : LyricsDocument.Empty;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch
+        {
+            // Повреждённый LRC не должен мешать fallback к соседнему LRC, тексту или тегу.
+            return LyricsDocument.Empty;
+        }
+    }
+
+    private static async Task WriteTextAtomicallyAsync(string destination, string content, CancellationToken cancellationToken)
+    {
+        string temporaryPath = destination + ".tmp-" + Guid.NewGuid().ToString("N");
+        try
+        {
+            await File.WriteAllTextAsync(temporaryPath, content, Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+            File.Move(temporaryPath, destination, overwrite: true);
+        }
+        finally
+        {
+            try
+            {
+                if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            }
+            catch
+            {
+                // Временный файл будет убран при следующем обслуживании папки или вручную.
+            }
+        }
+    }
+
     private static async Task<LyricsDocument> LoadPastedLyricsCacheAsync(string audioPath, CancellationToken cancellationToken)
     {
         string cachePath = GetPastedLyricsCachePath(audioPath);
+        if (!File.Exists(cachePath))
+        {
+            string legacyPath = GetLegacyPastedLyricsCachePath(audioPath);
+            if (!File.Exists(legacyPath)) return LyricsDocument.Empty;
+            cachePath = legacyPath;
+        }
+
         try
         {
-            if (!File.Exists(cachePath)) return LyricsDocument.Empty;
 
             var info = new FileInfo(cachePath);
             if (info.Length <= 0 || info.Length > MaxCachedLyricsBytes ||
@@ -315,11 +375,21 @@ public static class LyricsService
         }
     }
 
-    private static string GetPastedLyricsCachePath(string audioPath)
+    private static string GetPastedLyricsCachePath(string audioPath) => GetManagedTextPath(audioPath);
+
+    internal static string GetManagedTextPath(string audioPath) =>
+        Path.Combine(PastedLyricsCacheDirectory, GetAudioPathCacheKey(audioPath) + ".txt");
+
+    private static string GetLegacyPastedLyricsCachePath(string audioPath) =>
+        Path.Combine(LegacyPastedLyricsCacheDirectory, GetAudioPathCacheKey(audioPath) + ".txt");
+
+    internal static string GetManagedLrcPath(string audioPath) =>
+        Path.Combine(ManagedLrcDirectory, GetAudioPathCacheKey(audioPath) + ".lrc");
+
+    private static string GetAudioPathCacheKey(string audioPath)
     {
         string canonicalPath = Path.GetFullPath(audioPath).Trim().ToUpperInvariant();
-        string key = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonicalPath))).ToLowerInvariant();
-        return Path.Combine(PastedLyricsCacheDirectory, key + ".txt");
+        return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonicalPath))).ToLowerInvariant();
     }
 
     // Встроенный поиск по LRCLIB. Никакой ключ не нужен, но сервис просит корректный User-Agent
@@ -421,11 +491,17 @@ public static class LyricsService
         LyricsDocument document = CreateDocumentFromOnlineResult(result);
         if (document.Kind == LyricsKind.None) return;
 
-        string destination = Path.ChangeExtension(audioPath, document.Kind == LyricsKind.Synced ? ".lrc" : ".txt");
-        string content = document.Kind == LyricsKind.Synced
-            ? result.SyncedLyrics!.Trim() + Environment.NewLine
-            : document.PlainText + Environment.NewLine;
-        await File.WriteAllTextAsync(destination, content, cancellationToken).ConfigureAwait(false);
+        if (document.Kind == LyricsKind.Synced)
+        {
+            Directory.CreateDirectory(ManagedLrcDirectory);
+            string destination = GetManagedLrcPath(audioPath);
+            await WriteTextAtomicallyAsync(destination, result.SyncedLyrics!.Trim() + Environment.NewLine, cancellationToken)
+                .ConfigureAwait(false);
+            return;
+        }
+
+        // Обычный текст сохраняем в управляемой txt-папке, а не рядом с аудиофайлом.
+        await SavePastedLyricsAsync(audioPath, document.PlainText, cancellationToken).ConfigureAwait(false);
     }
 
     public static int FindActiveLineIndex(IReadOnlyList<LyricLine> lines, TimeSpan position)

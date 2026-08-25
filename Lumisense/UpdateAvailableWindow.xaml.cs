@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     // его .part удаляется сетевым слоем, а новый полный запрос начинается только после этого.
     private bool _restartLegacyDownloadFromNewSource;
     private readonly bool _isMsiMigrationOnly;
+    private readonly VelopackUpdateDiagnostics? _velopackDiagnostics;
 
     public UpdateAvailableWindow(UpdateCheckResult result, AppSettings? settings = null)
     {
@@ -31,17 +33,26 @@ public partial class UpdateAvailableWindow : FluentWindow
         _result = result;
         _settings = settings;
         _isMsiMigrationOnly = result.Status == UpdateCheckStatus.MsiMigrationAvailable;
+        _velopackDiagnostics = result.DeliveryKind == UpdateDeliveryKind.Velopack && result.VelopackUpdate is not null
+            ? new VelopackUpdateDiagnostics(result.CurrentVersion, result.VelopackUpdate)
+            : null;
+        _velopackDiagnostics?.RecordPlan();
         if (_settings != null)
             AccessibilityPreferences.ApplyToWindow(this, _settings);
 
         ApplyMigrationPresentation();
+        ApplyVelopackDiagnosticsPresentation();
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
         Closing += (_, _) =>
         {
             _restartLegacyDownloadFromNewSource = false;
             _downloadCts?.Cancel();
         };
-        Closed += (_, _) => LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
+        Closed += (_, _) =>
+        {
+            LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
+            _velopackDiagnostics?.Dispose();
+        };
 
         string releaseNotes = FormatReleaseNotes(result.ReleaseNotes);
         if (!string.IsNullOrWhiteSpace(releaseNotes))
@@ -59,6 +70,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
     {
         ApplyMigrationPresentation();
+        ApplyVelopackDiagnosticsPresentation();
         RefreshDownloadControlLabels();
     }
 
@@ -94,6 +106,64 @@ public partial class UpdateAvailableWindow : FluentWindow
             MigrateToMsiButton.Content = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationButton);
         }
     }
+
+    private void ApplyVelopackDiagnosticsPresentation()
+    {
+        bool isVelopack = !_isMsiMigrationOnly && _velopackDiagnostics is not null;
+        VelopackDiagnosticsPanel.Visibility = isVelopack ? Visibility.Visible : Visibility.Collapsed;
+        if (!isVelopack || _velopackDiagnostics is null) return;
+
+        VelopackUpdatePlan plan = _velopackDiagnostics.Plan;
+        VelopackDiagnosticsTitleText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackDiagnosticsTitle);
+        CopyVelopackDiagnosticsButton.Content = LocalizationService.Get(LocalizationKey.UpdateVelopackCopyDiagnostics);
+        OpenVelopackLogsButton.Content = LocalizationService.Get(LocalizationKey.UpdateVelopackOpenLogs);
+
+        var lines = new List<string>
+        {
+            LocalizationService.FormatKey(
+                LocalizationKey.UpdateVelopackPlanFullPackage,
+                plan.FullPackage.FileName,
+                VelopackUpdateDiagnostics.FormatBytes(plan.FullPackage.Size))
+        };
+
+        if (plan.HasDeltaPlan)
+        {
+            lines.Add(LocalizationService.FormatKey(
+                LocalizationKey.UpdateVelopackPlanDeltas,
+                plan.DeltaPackages.Count,
+                VelopackUpdateDiagnostics.FormatBytes(plan.DeltaBytes)));
+            lines.Add(LocalizationService.FormatKey(
+                LocalizationKey.UpdateVelopackPlanDeltaFiles,
+                string.Join(", ", plan.DeltaPackages.Select(asset => asset.FileName))));
+            VelopackFallbackText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackPlanFallback);
+        }
+        else
+        {
+            lines.Add(LocalizationService.Get(LocalizationKey.UpdateVelopackPlanFullOnly));
+            VelopackFallbackText.Text = string.Empty;
+        }
+
+        VelopackPlanText.Text = string.Join(Environment.NewLine, lines);
+    }
+
+    private void CopyVelopackDiagnosticsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_velopackDiagnostics is null) return;
+
+        try
+        {
+            Clipboard.SetText(_velopackDiagnostics.CreateReport());
+            PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackDiagnosticsCopied);
+            PhaseText.Visibility = Visibility.Visible;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось скопировать диагностику Velopack: {ex.Message}");
+        }
+    }
+
+    private void OpenVelopackLogsButton_Click(object sender, RoutedEventArgs e) =>
+        VelopackUpdateDiagnostics.OpenVelopackLogsFolder();
 
     // GitHub Release body приходит в Markdown, но TextBlock не умеет его рендерить и показывал
     // пользователю служебные символы (#, **, [ссылка](url)). Для компактного диалога обновления
@@ -229,6 +299,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             // Velopack 1.2.0 предоставляет отмену, но не API настоящей паузы потока. Остановка
             // безопасна: при продолжении UpdateManager повторно проверяет пакеты и их checksums.
             _isVelopackPaused = true;
+            _velopackDiagnostics?.Pause();
             PauseDownloadButton.IsEnabled = false;
             PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackDownloadPaused);
             PhaseText.Visibility = Visibility.Visible;
@@ -258,6 +329,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         if (_isVelopackPaused)
         {
             _isVelopackPaused = false;
+            _velopackDiagnostics?.Cancelled();
             SetDownloading(false);
             return;
         }
@@ -373,6 +445,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             Logger.Info("Пользователь продолжил остановленную загрузку Velopack-обновления.");
 
         _isVelopackDownload = true;
+        _velopackDiagnostics?.Start(isResuming);
         SetDownloading(true);
         _downloadCts = new CancellationTokenSource();
         var progress = new Progress<int>(UpdateVelopackProgressUi);
@@ -382,6 +455,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             var service = new VelopackUpdateService();
             await service.DownloadAsync(_result.VelopackUpdate, progress, _downloadCts.Token);
 
+            _velopackDiagnostics?.Prepared();
             SetPreparing(isVelopack: true);
             // При успехе Update.exe завершит этот процесс, применит уже проверенный package
             // и запустит Lumisense заново. Если метод бросит исключение, UI останется живым.
@@ -392,10 +466,14 @@ public partial class UpdateAvailableWindow : FluentWindow
             if (_isVelopackPaused)
                 SetVelopackPausedUi();
             else
+            {
+                _velopackDiagnostics?.Cancelled();
                 SetDownloading(false);
+            }
         }
         catch (Exception ex)
         {
+            _velopackDiagnostics?.Failed(ex);
             SetDownloading(false);
             ShowError($"{LocalizationService.Get(LocalizationKey.UpdateVelopackUnavailable)}\n{ex.Message}");
         }
@@ -529,7 +607,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         DownloadProgressBar.Value = 0;
         PhaseText.Text = isDownloading
             ? (_result.DeliveryKind == UpdateDeliveryKind.Velopack
-                ? LocalizationService.Get(LocalizationKey.UpdateVelopackDownload)
+                ? LocalizationService.Get(LocalizationKey.UpdateVelopackDownloadNeutral)
                 : LocalizationService.Translate("Скачивание…"))
             : "";
         PhaseText.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
@@ -582,7 +660,11 @@ public partial class UpdateAvailableWindow : FluentWindow
         int normalized = Math.Clamp(percentage, 0, 100);
         DownloadProgressBar.IsIndeterminate = false;
         DownloadProgressBar.Value = normalized / 100d;
-        PhaseText.Text = $"{LocalizationService.Get(LocalizationKey.UpdateVelopackDownload)} {normalized}%";
+        _velopackDiagnostics?.Progress(normalized);
+        PhaseText.Text = LocalizationService.FormatKey(
+            LocalizationKey.UpdateVelopackDownloadProgress,
+            normalized,
+            _velopackDiagnostics?.ElapsedText ?? "0:00");
         PhaseText.Visibility = Visibility.Visible;
     }
 

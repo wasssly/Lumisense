@@ -5,17 +5,17 @@
         xmlns:local="clr-namespace:AudioPlayer"
         Title="Lumisense"
         Icon="/Icons/app/lumisense.ico"
-        Height="360" Width="600"
-        MinHeight="360" MinWidth="560"
+        Height="500" Width="600"
+        MinHeight="420" MinWidth="560"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
         WindowStartupLocation="CenterOwner"
         ResizeMode="NoResize"
         ShowInTaskbar="False">
 
-    <!-- Диалог «доступно обновление» — показывает обычный Inno Setup установщик
-         Lumisense_Setup.exe. Окно используется при старте, из настроек и при выборе версии
-         для отката; во всех случаях скачивается только EXE-asset релиза. -->
+    <!-- Диалог «доступно обновление» обслуживает два безопасных пути: legacy Inno Setup
+         скачивает проверенный EXE/MSI, а Velopack-managed установка применяет full/delta
+         packages и показывает расчётный план до начала загрузки. -->
 
     <Grid>
         <Grid.RowDefinitions>
@@ -30,6 +30,7 @@
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -77,26 +78,36 @@
                 </StackPanel>
             </Border>
 
-            <!-- Раньше DownloadProgressBar/PhaseText/StatusText делили одну и ту же строку Grid
-                 (Grid.Row="4") без какого-либо разделения — при обычной, короткой фазе
-                 "Подготовка…" это почти не было заметно, но с подробным текстом хода
-                 скачивания (см. UpdateDownloadProgressUi в коде), который теперь виден все
-                 скачивание целиком, а не долю секунды, текст и полоса прогресса всё это время
-                 отрисовывались друг поверх друга. Теперь у каждого своя строка. -->
-            <ProgressBar x:Name="DownloadProgressBar" Grid.Row="4" Height="4" Margin="0,10,0,0"
+            <Border x:Name="VelopackDiagnosticsPanel" Grid.Row="4" Margin="0,12,0,0" Padding="12,10"
+                    Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}"
+                    CornerRadius="8" Visibility="Collapsed">
+                <StackPanel>
+                    <TextBlock x:Name="VelopackDiagnosticsTitleText" FontSize="12" FontWeight="SemiBold" />
+                    <TextBlock x:Name="VelopackPlanText" Margin="0,6,0,0" FontSize="12" TextWrapping="Wrap" Opacity="0.82" />
+                    <TextBlock x:Name="VelopackFallbackText" Margin="0,6,0,0" FontSize="11" TextWrapping="Wrap" Opacity="0.66" />
+                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <ui:Button x:Name="CopyVelopackDiagnosticsButton" Appearance="Secondary" Margin="0,0,8,0"
+                                   Click="CopyVelopackDiagnosticsButton_Click" />
+                        <ui:Button x:Name="OpenVelopackLogsButton" Appearance="Secondary"
+                                   Click="OpenVelopackLogsButton_Click" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <ProgressBar x:Name="DownloadProgressBar" Grid.Row="5" Height="4" Margin="0,10,0,0"
                          Minimum="0" Maximum="1" Visibility="Collapsed" />
 
-            <TextBlock x:Name="PhaseText" Grid.Row="5" Margin="0,6,0,0" FontSize="12" Opacity="0.6"
+            <TextBlock x:Name="PhaseText" Grid.Row="6" Margin="0,6,0,0" FontSize="12" Opacity="0.6"
                        Visibility="Collapsed" />
 
-            <TextBlock x:Name="StatusText" Grid.Row="6" Margin="0,10,0,0" FontSize="12"
+            <TextBlock x:Name="StatusText" Grid.Row="7" Margin="0,10,0,0" FontSize="12"
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        TextWrapping="Wrap" Visibility="Collapsed" />
 
             <!-- Смена mirror всегда перезапускает EXE/MSI с нуля: partial-файл от прошлого
                  URL не используется. Кнопка отдельной строкой, чтобы две главные кнопки
                  Pause/Cancel оставались широкими и не теснились. -->
-            <ui:Button x:Name="ChangeDownloadSourceButton" Grid.Row="6" Margin="0,10,0,0"
+            <ui:Button x:Name="ChangeDownloadSourceButton" Grid.Row="7" Margin="0,10,0,0"
                        Appearance="Secondary" HorizontalAlignment="Left" Visibility="Collapsed"
                        Click="ChangeDownloadSourceButton_Click" />
 
@@ -104,7 +115,7 @@
                  показывается только для legacy-копии с опубликованным проверенным MSI.
                  При загрузке InstallButton скрывается, а CancelDownloadButton занимает его
                  место: отмена видна явно и не требует повторного клика по другой кнопке. -->
-            <Grid Grid.Row="7" Margin="0,16,0,0">
+            <Grid Grid.Row="8" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />

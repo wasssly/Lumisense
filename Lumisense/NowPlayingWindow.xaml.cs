@@ -877,8 +877,7 @@ public partial class NowPlayingWindow : Window
 
         try
         {
-            string destination = Path.ChangeExtension(trackPath, ".txt");
-            await File.WriteAllTextAsync(destination, text + Environment.NewLine);
+            // Вставленный текст хранится в %LocalAppData%\\Lumisense\\lyrics\\txt, а не рядом с музыкой.
             await LyricsService.SavePastedLyricsAsync(trackPath, text);
             if (!string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
                 return;

@@ -418,7 +418,13 @@ public partial class SettingsWindow : FluentWindow
         {
             var result = await UpdateChecker.CheckAsync();
             if (result.Status != UpdateCheckStatus.Error)
-                _lastCheckedReleaseAssetUrl = result.MsiDownloadUrl ?? result.DownloadUrl;
+            {
+                // Только legacy Inno Setup проверяет EXE-asset. Velopack сам определяет
+                // latest full package через release API в момент диагностики.
+                _lastCheckedReleaseAssetUrl = result.DeliveryKind == UpdateDeliveryKind.Velopack
+                    ? null
+                    : result.DownloadUrl;
+            }
 
             switch (result.Status)
             {
@@ -481,6 +487,13 @@ public partial class SettingsWindow : FluentWindow
         catch (OperationCanceledException)
         {
             // Закрытие окна или новая проверка отменили предыдущий ограниченный test-запрос.
+        }
+        catch (UpdateSourceProbeAssetResolutionException ex)
+        {
+            Logger.Warn($"Не удалось определить актуальный release asset для диагностики: {ex.Message}");
+            UpdateSourceProbeStatusText.Text = LocalizationService.Get(
+                LocalizationKey.UpdateSourceProbeAssetUnavailable);
+            UpdateSourceProbeStatusText.Visibility = Visibility.Visible;
         }
         catch (Exception ex)
         {

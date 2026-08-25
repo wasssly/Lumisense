@@ -3969,7 +3969,7 @@ public partial class MainWindow : FluentWindow
 
     private async void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
         AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next,
-        TrackChangeOrigin changeOrigin = TrackChangeOrigin.User)
+        TrackChangeOrigin changeOrigin = TrackChangeOrigin.User, bool preserveShuffleSession = false)
     {
         var previousLoad = Interlocked.Exchange(ref _trackLoadCts, null);
         previousLoad?.Cancel();
@@ -4020,6 +4020,13 @@ public partial class MainWindow : FluentWindow
             TotalTimeText.Text = _audioFile.TotalTime.ToString(@"mm\:ss");
             ProgressSlider.Maximum = Math.Max(_audioFile.TotalTime.TotalSeconds, 0.01);
             _currentTrackPath = filePath;
+            // Ручной выбор строки плейлиста — это новая отправная точка обычного шаффла.
+            // Иначе «Следующий» мог продолжить старую историю до выбранного вручную трека и
+            // неожиданно вернуть уже ранее пройденную последовательность. Кнопки навигации,
+            // hotkey и автопереход явно передают preserveShuffleSession=true.
+            if (!preserveShuffleSession && changeOrigin == TrackChangeOrigin.User)
+                StartStandardShuffleSession(filePath);
+
             _halfPlayCounted = false;
             ApplyPreparedAlbumArt(loaded, albumArtDirection);
             performance.MarkStage("apply-track-ui");
@@ -4847,7 +4854,8 @@ public partial class MainWindow : FluentWindow
     private void PrevButton_Click(object sender, RoutedEventArgs e)
     {
         if (ComputePreviousTrackPath(GetCurrentTrackPath()) is { } prevPath)
-            LoadAndPlay(prevPath, autoPlay: _isPlaying, albumArtDirection: AlbumArtTransitionDirection.Previous);
+            LoadAndPlay(prevPath, autoPlay: _isPlaying, albumArtDirection: AlbumArtTransitionDirection.Previous,
+                preserveShuffleSession: true);
     }
 
     private void NextButton_Click(object sender, RoutedEventArgs e) => PlayNextTrack();
@@ -4855,7 +4863,7 @@ public partial class MainWindow : FluentWindow
     private void PlayNextTrack(TrackChangeOrigin changeOrigin = TrackChangeOrigin.User)
     {
         if (ResolveNextTrackPathRespectingQueue(GetCurrentTrackPath()) is { } nextPath)
-            LoadAndPlay(nextPath, autoPlay: _isPlaying, changeOrigin: changeOrigin);
+            LoadAndPlay(nextPath, autoPlay: _isPlaying, changeOrigin: changeOrigin, preserveShuffleSession: true);
     }
 
     // Сначала отдаёт и убирает первый элемент очереди "Играть следующим", если она не пуста;
@@ -5034,21 +5042,32 @@ public partial class MainWindow : FluentWindow
 
         if (targetPath == null) return;
         _hotkeyTrackNavigationCursor = targetPath;
-        LoadAndPlay(targetPath, autoPlay: _isPlaying, albumArtDirection: direction);
+        LoadAndPlay(targetPath, autoPlay: _isPlaying, albumArtDirection: direction, preserveShuffleSession: true);
     }
 
     private string GetRandomTrack(List<string> activeTracks, string? excludePath)
     {
         if (activeTracks.Count <= 1) return activeTracks[0];
 
-        // Не даём случайно выпасть тому же треку два раза подряд
-        string candidate;
-        do
-        {
-            candidate = activeTracks[_random.Next(activeTracks.Count)];
-        } while (candidate == excludePath);
+        // У плейлиста могут быть несколько ссылок на один и тот же файл. Старый do/while в
+        // таком случае мог бесконечно искать отличный от текущего путь. Сначала строим
+        // допустимый набор и только затем выбираем из него, сохраняя именно обычный
+        // случайный режим (это не «шаффл без повторов» и не использует _shuffleBag).
+        var candidates = activeTracks
+            .Where(path => !string.Equals(path, excludePath, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+        if (candidates.Count == 0) return activeTracks[0];
 
-        return candidate;
+        return candidates[_random.Next(candidates.Count)];
+    }
+
+    private void StartStandardShuffleSession(string currentPath)
+    {
+        if (!_isShuffleEnabled || _settings.UseImprovedShuffle) return;
+
+        _shuffleHistory.Clear();
+        _shuffleHistory.Add(currentPath);
+        _shuffleHistoryIndex = 0;
     }
 
     // ---------- Шаффл без повторов (Settings.UseImprovedShuffle) ----------
