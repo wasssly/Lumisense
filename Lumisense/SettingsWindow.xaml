@@ -2016,6 +2016,26 @@
                             </Grid>
                         </ui:Button>
 
+                        <Expander x:Name="VelopackBasePackageExpander" Style="{StaticResource FluentExpanderStyle}"
+                                  HorizontalAlignment="Stretch" Margin="0,14,0,0" Visibility="Collapsed">
+                            <Expander.Header>
+                                <TextBlock x:Name="VelopackBasePackageTitleText" Text="Подготовить компактные обновления"
+                                           Style="{StaticResource SettingsSectionTitleStyle}" Margin="0" />
+                            </Expander.Header>
+                            <StackPanel>
+                                <TextBlock x:Name="VelopackBasePackageDescriptionText"
+                                           Text="Добровольно скачайте полный пакет текущей MSI-версии один раз. Он станет локальной базой, и следующие совместимые обновления смогут использовать значительно меньшие delta-пакеты. Плеер не будет обновлён или перезапущен."
+                                           TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
+                                <ui:Button x:Name="PrepareVelopackBasePackageButton" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Padding="12,8"
+                                           Click="PrepareVelopackBasePackageButton_Click">
+                                    <TextBlock x:Name="PrepareVelopackBasePackageButtonText" Text="Скачать базовый пакет" />
+                                </ui:Button>
+                                <TextBlock x:Name="VelopackBasePackageStatusText" Margin="0,10,0,0"
+                                           FontSize="12" Opacity="0.78" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Expander>
+
                         <!-- "Источник загрузки обновлений" — аккордеон, свёрнут по умолчанию
                              (IsExpanded не задан → false): выбор зеркала — не то, что нужно
                              видеть/трогать большинству, кому GitHub и так доступен напрямую. -->

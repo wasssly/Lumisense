@@ -25,6 +25,10 @@ public partial class SettingsWindow : FluentWindow
     private bool _isRefreshingOutputDevices;
     private CancellationTokenSource? _sourceProbeCts;
     private IReadOnlyList<UpdateSourceProbeResult>? _sourceProbeResults;
+    private CancellationTokenSource? _basePackageCts;
+    private VelopackBasePackagePlan? _basePackagePlan;
+    private bool _isVelopackManagedInstall;
+    private string? _basePackageError;
     private string? _lastCheckedReleaseAssetUrl;
 
     // См. LoadDeveloperAvatar — держит BitmapImage живым на время асинхронной загрузки, чтобы
@@ -241,12 +245,15 @@ public partial class SettingsWindow : FluentWindow
         RefreshLyricsCacheInfo();
         RefreshResetRecoveryButton();
         RefreshUpdateSourceProbePresentation();
+        RefreshVelopackBasePackagePresentation();
 
         _isInitializing = false;
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
+        Loaded += async (_, _) => await RefreshVelopackBasePackagePlanAsync();
         Closed += (_, _) =>
         {
             _sourceProbeCts?.Cancel();
+            _basePackageCts?.Cancel();
             LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         };
         LocalizationService.Apply(this);
@@ -401,6 +408,146 @@ public partial class SettingsWindow : FluentWindow
     {
         AppVersionText.Text = LocalizationService.FormatKey(
             LocalizationKey.ApplicationVersion, UpdateChecker.GetCurrentVersion());
+    }
+
+    private async Task RefreshVelopackBasePackagePlanAsync()
+    {
+        _basePackageCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _basePackageCts = cts;
+        _basePackageError = null;
+
+        try
+        {
+            var service = new VelopackUpdateService();
+            _isVelopackManagedInstall = service.IsManagedInstall;
+            if (!_isVelopackManagedInstall)
+            {
+                _basePackagePlan = VelopackBasePackagePlan.Unavailable(VelopackBasePackageStatus.NotManagedInstall);
+                RefreshVelopackBasePackagePresentation();
+                return;
+            }
+
+            _basePackagePlan = await service.GetBasePackagePlanAsync(cts.Token);
+            RefreshVelopackBasePackagePresentation();
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            // Окно закрыто, пользователь начал загрузку или запрос был заменён более свежим.
+        }
+        catch (Exception ex)
+        {
+            _basePackageError = LocalizationService.Get(LocalizationKey.UpdateFailureNetwork);
+            RefreshVelopackBasePackagePresentation();
+            Logger.Warn($"Не удалось проверить доступность Velopack base package: {ex.Message}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_basePackageCts, cts))
+                _basePackageCts = null;
+            cts.Dispose();
+        }
+    }
+
+    private void RefreshVelopackBasePackagePresentation()
+    {
+        VelopackBasePackageTitleText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageTitle);
+        VelopackBasePackageDescriptionText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageDescription);
+        PrepareVelopackBasePackageButtonText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageDownload);
+
+        if (!_isVelopackManagedInstall || _basePackagePlan?.Status == VelopackBasePackageStatus.NotManagedInstall)
+        {
+            VelopackBasePackageExpander.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        VelopackBasePackageExpander.Visibility = Visibility.Visible;
+        if (_basePackagePlan is null)
+        {
+            PrepareVelopackBasePackageButton.IsEnabled = false;
+            VelopackBasePackageStatusText.Text = string.IsNullOrWhiteSpace(_basePackageError)
+                ? LocalizationService.Get(LocalizationKey.UpdateVelopackPreparing)
+                : LocalizationService.FormatKey(LocalizationKey.UpdateVelopackBasePackageDownloadFailed, _basePackageError);
+            return;
+        }
+
+        VelopackBasePackagePlan plan = _basePackagePlan;
+        string version = plan.CurrentVersion?.ToString() ?? "—";
+        switch (plan.Status)
+        {
+            case VelopackBasePackageStatus.Available when plan.FullPackage is not null:
+                PrepareVelopackBasePackageButton.IsEnabled = true;
+                VelopackBasePackageStatusText.Text = LocalizationService.FormatKey(
+                    LocalizationKey.UpdateVelopackBasePackageAvailable,
+                    version,
+                    VelopackUpdateDiagnostics.FormatBytes(plan.FullPackage.Size),
+                    VelopackUpdateDiagnostics.FormatBytes(plan.RequiredFreeBytes));
+                break;
+
+            case VelopackBasePackageStatus.Prepared:
+                PrepareVelopackBasePackageButton.IsEnabled = false;
+                VelopackBasePackageStatusText.Text = LocalizationService.FormatKey(
+                    LocalizationKey.UpdateVelopackBasePackagePrepared, version);
+                break;
+
+            case VelopackBasePackageStatus.CurrentPackageUnavailable:
+                PrepareVelopackBasePackageButton.IsEnabled = false;
+                VelopackBasePackageStatusText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageUnavailable);
+                break;
+
+            case VelopackBasePackageStatus.InsufficientDiskSpace:
+                PrepareVelopackBasePackageButton.IsEnabled = false;
+                VelopackBasePackageStatusText.Text = LocalizationService.FormatKey(
+                    LocalizationKey.UpdateVelopackBasePackageInsufficientSpace,
+                    VelopackUpdateDiagnostics.FormatBytes(plan.RequiredFreeBytes));
+                break;
+
+            default:
+                PrepareVelopackBasePackageButton.IsEnabled = false;
+                VelopackBasePackageStatusText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageNotManaged);
+                break;
+        }
+    }
+
+    private async void PrepareVelopackBasePackageButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_basePackagePlan?.Status != VelopackBasePackageStatus.Available)
+            return;
+
+        _basePackageCts?.Cancel();
+        var cts = new CancellationTokenSource();
+        _basePackageCts = cts;
+        PrepareVelopackBasePackageButton.IsEnabled = false;
+        var progress = new Progress<int>(value =>
+        {
+            VelopackBasePackageStatusText.Text = LocalizationService.FormatKey(
+                LocalizationKey.UpdateVelopackBasePackageDownloading, value);
+        });
+
+        try
+        {
+            var service = new VelopackUpdateService();
+            await service.PrepareBasePackageAsync(_basePackagePlan, progress, cts.Token);
+            _basePackagePlan = null;
+            await RefreshVelopackBasePackagePlanAsync();
+        }
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
+        {
+            _basePackagePlan = null;
+            await RefreshVelopackBasePackagePlanAsync();
+        }
+        catch (Exception ex)
+        {
+            _basePackageError = LocalizationService.Get(LocalizationKey.UpdateFailureNetwork);
+            RefreshVelopackBasePackagePresentation();
+            Logger.Warn($"Не удалось подготовить Velopack base package: {ex.Message}");
+        }
+        finally
+        {
+            if (ReferenceEquals(_basePackageCts, cts))
+                _basePackageCts = null;
+            cts.Dispose();
+        }
     }
 
     // Ручная проверка обновлений (кнопка на странице "О плеере"). В отличие от тихой
@@ -1147,6 +1294,7 @@ public partial class SettingsWindow : FluentWindow
 
         RefreshLyricsCacheInfo();
         RefreshUpdateSourceProbePresentation();
+        RefreshVelopackBasePackagePresentation();
         if (_sourceProbeResults is not null)
             RenderUpdateSourceProbeResults(_sourceProbeResults);
     }
@@ -2088,6 +2236,8 @@ public partial class SettingsWindow : FluentWindow
         PageProfile.Visibility = key == "Profile" ? Visibility.Visible : Visibility.Collapsed;
         PageUpdates.Visibility = key == "Updates" ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = key == "About" ? Visibility.Visible : Visibility.Collapsed;
+        if (key == "Updates" && IsLoaded && _basePackagePlan is null)
+            _ = RefreshVelopackBasePackagePlanAsync();
 
         // Один и тот же ScrollViewer используется для всех страниц (см. комментарий в
         // SettingsWindow.xaml) — без явного сброса он "помнил" бы прокрутку с предыдущей
