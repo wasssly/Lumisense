@@ -844,6 +844,13 @@ public static class LocalizationService
             settings.Language = installerLanguage;
             SettingsManager.Save(settings);
         }
+        else if (isFirstLaunch && IsWindowsUiCultureEnglish())
+        {
+            // Только legacy Inno Setup создавал installer-language.txt; чистая MSI-установка
+            // без этой проверки всегда стартовала бы на русском.
+            settings.Language = English;
+            SettingsManager.Save(settings);
+        }
 
         CurrentLanguage = NormalizeLanguage(settings.Language);
         settings.Language = CurrentLanguage;
@@ -1081,6 +1088,9 @@ public static class LocalizationService
 
     private static string NormalizeLanguage(string? language) =>
         string.Equals(language, English, StringComparison.OrdinalIgnoreCase) ? English : Russian;
+
+    private static bool IsWindowsUiCultureEnglish() =>
+        string.Equals(CultureInfo.CurrentUICulture.TwoLetterISOLanguageName, "en", StringComparison.OrdinalIgnoreCase);
 
     private static bool TryReadInstallerLanguage(out string language)
     {
