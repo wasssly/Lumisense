@@ -2576,6 +2576,7 @@ public partial class MainWindow : FluentWindow
                 };
                 watcher.Created += FolderWatcher_FileChanged;
                 watcher.Renamed += FolderWatcher_FileChanged;
+                watcher.Deleted += FolderWatcher_FileChanged;
                 watcher.Error += FolderWatcher_Error;
                 watcher.EnableRaisingEvents = true;
                 _folderWatchers.Add(watcher);
@@ -2598,6 +2599,7 @@ public partial class MainWindow : FluentWindow
             watcher.EnableRaisingEvents = false;
             watcher.Created -= FolderWatcher_FileChanged;
             watcher.Renamed -= FolderWatcher_FileChanged;
+            watcher.Deleted -= FolderWatcher_FileChanged;
             watcher.Error -= FolderWatcher_Error;
             watcher.Dispose();
         }
@@ -2609,6 +2611,8 @@ public partial class MainWindow : FluentWindow
         // Во время копирования большого файла событие может приходить несколько раз, а при
         // переносе целого каталога — только для него. В обоих случаях повторный скан корневой
         // папки после debounce найдёт все действительно готовые поддерживаемые файлы.
+        // Тот же обработчик и для Deleted; удаление целой подпапки при этом не триггерит
+        // refresh — только удаление отдельного поддерживаемого файла.
         bool isDirectory = Directory.Exists(e.FullPath);
         bool isSupportedAudio = SupportedExtensions.Contains(Path.GetExtension(e.FullPath), StringComparer.OrdinalIgnoreCase);
         if (!isDirectory && !isSupportedAudio) return;
@@ -2774,9 +2778,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Добавляет папку как отдельную группу плейлиста. Если такая папка (по пути) уже есть
-    // в плейлисте — просто добавляет в неё новые файлы, которых там ещё не было, вместо
-    // создания дубликата группы.
+    // Добавляет папку как отдельную группу плейлиста, без дубликата группы, если такая папка
+    // (по пути) уже есть: добавляет новые файлы и убирает те, что реально пропали с диска.
     private void AddFolderGroup(string folderPath, List<string> filesInFolder)
     {
         bool wasEmptyBeforeAdd = FlattenAll().Count == 0;
@@ -2790,9 +2793,20 @@ public partial class MainWindow : FluentWindow
         if (existingFolder != null)
         {
             var newOnes = filesInFolder.Where(f => !existingFolder.Tracks.Contains(f)).ToList();
-            if (newOnes.Count == 0) return;
 
-            firstNewTrack = newOnes[0];
+            // File.Exists подтверждает реальное отсутствие файла — скан мог не найти его
+            // из-за временной недоступности сети (EnumerationOptions.IgnoreInaccessible),
+            // а не потому, что он был удалён.
+            var goneTracks = existingFolder.Tracks
+                .Where(t => !filesInFolder.Contains(t) && !File.Exists(t))
+                .ToList();
+
+            if (newOnes.Count == 0 && goneTracks.Count == 0) return;
+
+            foreach (string gone in goneTracks)
+                existingFolder.Tracks.Remove(gone);
+
+            firstNewTrack = newOnes.Count > 0 ? newOnes[0] : null;
             existingFolder.Tracks.AddRange(newOnes);
         }
         else
