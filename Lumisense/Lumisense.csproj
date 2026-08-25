@@ -8,6 +8,9 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- WFAC010 предлагает убрать DPI из app.manifest, но у WPF нет замены (ApplicationHighDpiMode
+         только для WinForms) — это сломало бы PerMonitorV2. См. dotnet/wpf#6811. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
     <ApplicationIcon>Icons\app\lumisense.ico</ApplicationIcon>
     <RootNamespace>AudioPlayer</RootNamespace>
     <AssemblyName>Lumisense</AssemblyName>
