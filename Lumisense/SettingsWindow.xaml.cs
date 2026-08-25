@@ -25,6 +25,7 @@ public partial class SettingsWindow : FluentWindow
     private bool _isRefreshingOutputDevices;
     private CancellationTokenSource? _sourceProbeCts;
     private IReadOnlyList<UpdateSourceProbeResult>? _sourceProbeResults;
+    private string? _lastCheckedReleaseAssetUrl;
 
     // См. LoadDeveloperAvatar — держит BitmapImage живым на время асинхронной загрузки, чтобы
     // его не собрал GC до того, как скачивание завершится.
@@ -413,6 +414,8 @@ public partial class SettingsWindow : FluentWindow
         try
         {
             var result = await UpdateChecker.CheckAsync();
+            if (result.Status != UpdateCheckStatus.Error)
+                _lastCheckedReleaseAssetUrl = result.MsiDownloadUrl ?? result.DownloadUrl;
 
             switch (result.Status)
             {
@@ -468,7 +471,8 @@ public partial class SettingsWindow : FluentWindow
 
         try
         {
-            _sourceProbeResults = await UpdateChecker.ProbeDownloadSourcesAsync(_sourceProbeCts.Token);
+            _sourceProbeResults = await UpdateChecker.ProbeDownloadSourcesAsync(
+                _lastCheckedReleaseAssetUrl, _sourceProbeCts.Token);
             RenderUpdateSourceProbeResults(_sourceProbeResults);
         }
         catch (OperationCanceledException)

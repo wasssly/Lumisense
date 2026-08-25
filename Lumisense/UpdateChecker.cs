@@ -189,7 +189,8 @@ public static class UpdateChecker
 
     private const long MaxInstallerBytes = 250L * 1024 * 1024;
     private const int SourceProbeBytes = 256 * 1024;
-    private const string SourceProbeAssetUrl = "https://github.com/wasssly/Lumisense/releases/download/v1.16.1/Wasssly.Lumisense-win.msi";
+    // Fallback, если ещё нет результата настоящей проверки обновления в этой сессии.
+    private const string FallbackSourceProbeAssetUrl = "https://github.com/wasssly/Lumisense/releases/download/v1.16.1/Wasssly.Lumisense-win.msi";
     private const int DownloadAttemptCount = 3;
     // Медленное зеркало допустимо, пока оно продолжает передавать данные. Ограничиваем не общую
     // длительность скачивания, а только период полного отсутствия байтов, чтобы не обрывать
@@ -498,10 +499,12 @@ public static class UpdateChecker
     // Диагностика не загружает и не запускает установщик: у каждого source запрашиваются
     // только первые 256 KiB публичного MSI. Ответ принимается лишь при HTTP 206 и бинарном
     // Content-Type; HTML/error-page не может ошибочно стать «работающим зеркалом».
-    public static async Task<IReadOnlyList<UpdateSourceProbeResult>> ProbeDownloadSourcesAsync(CancellationToken ct = default)
+    public static async Task<IReadOnlyList<UpdateSourceProbeResult>> ProbeDownloadSourcesAsync(
+        string? actualAssetUrl = null, CancellationToken ct = default)
     {
+        string probeAssetUrl = string.IsNullOrWhiteSpace(actualAssetUrl) ? FallbackSourceProbeAssetUrl : actualAssetUrl;
         Task<UpdateSourceProbeResult>[] probes = DownloadSources
-            .Select(source => ProbeDownloadSourceAsync(source.Key, source.DisplayName, ct))
+            .Select(source => ProbeDownloadSourceAsync(source.Key, source.DisplayName, probeAssetUrl, ct))
             .ToArray();
         return await Task.WhenAll(probes);
     }
@@ -509,12 +512,13 @@ public static class UpdateChecker
     private static async Task<UpdateSourceProbeResult> ProbeDownloadSourceAsync(
         string sourceKey,
         string displayName,
+        string probeAssetUrl,
         CancellationToken ct)
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         try
         {
-            string probeUrl = ApplyDownloadSource(SourceProbeAssetUrl, sourceKey);
+            string probeUrl = ApplyDownloadSource(probeAssetUrl, sourceKey);
             if (!TryValidateDownloadUrl(probeUrl, out var uri))
                 throw new InvalidOperationException("Недоверенный адрес источника.");
 
