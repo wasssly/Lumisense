@@ -44,6 +44,14 @@ public static class LocalizationKey
     public const string UpdateLegacyCleanupStartingMessage = "update.legacyCleanup.startingMessage";
     public const string UpdateLegacyCleanupFailed = "update.legacyCleanup.failed";
     public const string UpdateLegacyCleanupContextMenuLabel = "update.legacyCleanup.contextMenuLabel";
+    public const string UpdateLegacyCleanupSettingsHint = "update.legacyCleanup.settingsHint";
+    public const string UpdateLegacyCleanupCardTitle = "update.legacyCleanup.cardTitle";
+    public const string UpdateLegacyCleanupCardDescription = "update.legacyCleanup.cardDescription";
+    public const string UpdateLegacyCleanupCardButton = "update.legacyCleanup.cardButton";
+    public const string UpdateLegacyCleanupCardAvailable = "update.legacyCleanup.cardAvailable";
+    public const string UpdateLegacyCleanupCardRunning = "update.legacyCleanup.cardRunning";
+    public const string UpdateLegacyCleanupCardStillInstalled = "update.legacyCleanup.cardStillInstalled";
+    public const string UpdateLegacyCleanupCardCompleted = "update.legacyCleanup.cardCompleted";
     public const string UpdateVelopackDownload = "update.velopack.download";
     public const string UpdateVelopackPreparing = "update.velopack.preparing";
     public const string UpdateVelopackApplying = "update.velopack.applying";
@@ -102,6 +110,8 @@ public static class LocalizationKey
     public const string UpdateMsiMigrationCurrentVersion = "update.msiMigration.currentVersion";
     public const string UpdateMsiMigrationManualSubtitle = "update.msiMigration.manualSubtitle";
     public const string UpdateMsiMigrationClose = "update.msiMigration.close";
+    public const string MiniArtworkProgressThicknessLabel = "miniPlayer.artworkProgress.thicknessLabel";
+    public const string MiniArtworkProgressThicknessDescription = "miniPlayer.artworkProgress.thicknessDescription";
 
     public const string ChangelogOpenReleaseOnGitHub = "changelog.openReleaseOnGitHub";
     public const string ChangelogNoDescription = "changelog.noDescription";
@@ -159,11 +169,19 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateVelopackFirstRunTitle] = "Компактные обновления включены",
         [LocalizationKey.UpdateVelopackFirstRunMessage] = "Эта копия Lumisense использует MSI и новый механизм обновлений. При первом обновлении после перехода может один раз потребоваться полный пакет, чтобы создать локальную базу. После этого совместимые версии обычно загружаются как значительно меньшие delta-пакеты. Ничего скачивать заранее не обязательно: при желании это можно сделать в разделе «Обновления». Ваши настройки, плейлист, избранное и статистика хранятся отдельно от программы.",
         [LocalizationKey.UpdateLegacyCleanupTitle] = "Удалить старую EXE-копию?",
-        [LocalizationKey.UpdateLegacyCleanupMessage] = "MSI-версия Lumisense успешно запущена. На компьютере также найдена старая EXE-установка Lumisense.\n\nУдалить старую EXE-копию сейчас?\n\nОткроется стандартный мастер удаления Windows с запросом прав администратора. Когда он спросит, удалить ли настройки и пользовательские данные Lumisense, выберите «Нет»: так сохранятся ваши настройки, плейлист, избранное и статистика.\n\nВы сможете удалить старую копию позже через «Установленные приложения» Windows.",
+        [LocalizationKey.UpdateLegacyCleanupMessage] = "Текущая MSI-версия Lumisense запущена, а на компьютере также найдена старая EXE-установка.\n\nУдалить старую EXE-копию сейчас?\n\nОткроется стандартный мастер удаления Windows с запросом прав администратора. Когда он спросит, удалить ли настройки и пользовательские данные Lumisense, выберите «Нет»: так сохранятся ваши настройки, плейлист, избранное и статистика.\n\nЕсли пока не готовы, вернитесь к этой кнопке позже в разделе «Настройки → Обновления».",
         [LocalizationKey.UpdateLegacyCleanupStartingTitle] = "Удаление старой EXE-копии",
         [LocalizationKey.UpdateLegacyCleanupStartingMessage] = "Откроется стандартный мастер удаления старой EXE-копии Lumisense. В его вопросе об удалении настроек и пользовательских данных выберите «Нет», чтобы сохранить данные для MSI-версии.",
         [LocalizationKey.UpdateLegacyCleanupFailed] = "Не удалось открыть мастер удаления старой EXE-копии. Старая программа не удалена; при необходимости удалите её позже через «Установленные приложения» Windows.",
         [LocalizationKey.UpdateLegacyCleanupContextMenuLabel] = "Открыть в Lumisense",
+        [LocalizationKey.UpdateLegacyCleanupSettingsHint] = "Старая EXE-копия найдена. Когда убедитесь, что новая MSI-копия работает корректно, её можно удалить в разделе «Настройки → Обновления».",
+        [LocalizationKey.UpdateLegacyCleanupCardTitle] = "Удалить старую EXE-копию",
+        [LocalizationKey.UpdateLegacyCleanupCardDescription] = "Удалите прежнюю Inno Setup-установку после перехода на MSI. Будет открыт стандартный мастер Windows; в его вопросе об удалении данных выберите «Нет», чтобы сохранить настройки, плейлист, избранное и статистику.",
+        [LocalizationKey.UpdateLegacyCleanupCardButton] = "Открыть мастер удаления",
+        [LocalizationKey.UpdateLegacyCleanupCardAvailable] = "Найдена старая EXE-копия Lumisense. Она не удаляется автоматически и может быть удалена в любой удобный момент.",
+        [LocalizationKey.UpdateLegacyCleanupCardRunning] = "Мастер удаления старой EXE-копии открыт. Завершите его, выбрав «Нет» при вопросе об удалении пользовательских данных.",
+        [LocalizationKey.UpdateLegacyCleanupCardStillInstalled] = "Старая EXE-копия всё ещё установлена. Возможно, мастер был отменён или удаление завершилось с ошибкой; кнопку можно использовать повторно.",
+        [LocalizationKey.UpdateLegacyCleanupCardCompleted] = "Старая EXE-копия удалена. Ярлыки, автозапуск и пункт контекстного меню перепроверены для текущей MSI-копии.",
         [LocalizationKey.UpdateVelopackDownload] = "Скачивание компактного обновления…",
         [LocalizationKey.UpdateVelopackPreparing] = "Проверка и подготовка обновления…",
         [LocalizationKey.UpdateVelopackApplying] = "Перезапуск для установки обновления…",
@@ -222,6 +240,8 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateMsiMigrationCurrentVersion] = "Текущая EXE-версия: {0}",
         [LocalizationKey.UpdateMsiMigrationManualSubtitle] = "Доступен добровольный переход на MSI с компактными обновлениями",
         [LocalizationKey.UpdateMsiMigrationClose] = "Закрыть",
+        [LocalizationKey.MiniArtworkProgressThicknessLabel] = "Толщина контура",
+        [LocalizationKey.MiniArtworkProgressThicknessDescription] = "Меняет толщину фоновой и акцентной линий вокруг обложки. Значение применяется сразу к открытому мини-плееру.",
 
         [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Открыть релиз на GitHub",
         [LocalizationKey.ChangelogNoDescription] = "Нет описания",
@@ -278,11 +298,19 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateVelopackFirstRunTitle] = "Compact updates are enabled",
         [LocalizationKey.UpdateVelopackFirstRunMessage] = "This copy of Lumisense uses MSI and the new update system. The first update after moving may require a one-time full package download to create a local base. After that, compatible versions usually download as much smaller delta packages. Nothing has to be downloaded in advance: you can choose to do so from Updates. Your settings, playlist, favorites, and statistics are stored separately from the program.",
         [LocalizationKey.UpdateLegacyCleanupTitle] = "Remove the old EXE copy?",
-        [LocalizationKey.UpdateLegacyCleanupMessage] = "The MSI version of Lumisense started successfully. An older EXE installation of Lumisense was also found on this computer.\n\nRemove the old EXE copy now?\n\nThe standard Windows uninstall wizard will open and request administrator permission. When it asks whether to remove Lumisense settings and user data, choose “No” to keep your settings, playlist, favorites, and statistics.\n\nYou can remove the old copy later from Windows Installed apps.",
+        [LocalizationKey.UpdateLegacyCleanupMessage] = "The current MSI version of Lumisense is running, and an older EXE installation was also found on this computer.\n\nRemove the old EXE copy now?\n\nThe standard Windows uninstall wizard will open and request administrator permission. When it asks whether to remove Lumisense settings and user data, choose “No” to keep your settings, playlist, favorites, and statistics.\n\nIf you are not ready yet, return to this button later in Settings → Updates.",
         [LocalizationKey.UpdateLegacyCleanupStartingTitle] = "Removing the old EXE copy",
         [LocalizationKey.UpdateLegacyCleanupStartingMessage] = "The standard uninstall wizard for the old EXE copy of Lumisense will open. In its question about settings and user data, choose “No” to keep them for the MSI version.",
         [LocalizationKey.UpdateLegacyCleanupFailed] = "The uninstall wizard for the old EXE copy could not be opened. The old program was not removed; if needed, remove it later from Windows Installed apps.",
         [LocalizationKey.UpdateLegacyCleanupContextMenuLabel] = "Open in Lumisense",
+        [LocalizationKey.UpdateLegacyCleanupSettingsHint] = "A legacy EXE copy was found. Once you have confirmed that the new MSI copy works correctly, you can remove it from Settings → Updates.",
+        [LocalizationKey.UpdateLegacyCleanupCardTitle] = "Remove the old EXE copy",
+        [LocalizationKey.UpdateLegacyCleanupCardDescription] = "Remove the previous Inno Setup installation after moving to MSI. Windows will open its standard uninstall wizard; choose No when it asks about user data to keep settings, playlists, favorites, and listening statistics.",
+        [LocalizationKey.UpdateLegacyCleanupCardButton] = "Open uninstall wizard",
+        [LocalizationKey.UpdateLegacyCleanupCardAvailable] = "A legacy EXE copy of Lumisense was found. It is not removed automatically and can be removed whenever you are ready.",
+        [LocalizationKey.UpdateLegacyCleanupCardRunning] = "The old EXE uninstall wizard is open. Complete it and choose No when it asks about deleting user data.",
+        [LocalizationKey.UpdateLegacyCleanupCardStillInstalled] = "The old EXE copy is still installed. The wizard may have been cancelled or the removal failed; you can use the button again.",
+        [LocalizationKey.UpdateLegacyCleanupCardCompleted] = "The old EXE copy was removed. Shortcuts, autostart, and the context-menu command were checked for the current MSI copy.",
         [LocalizationKey.UpdateVelopackDownload] = "Downloading compact update…",
         [LocalizationKey.UpdateVelopackPreparing] = "Verifying and preparing update…",
         [LocalizationKey.UpdateVelopackApplying] = "Restarting to install update…",
@@ -341,6 +369,8 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateMsiMigrationCurrentVersion] = "Current EXE version: {0}",
         [LocalizationKey.UpdateMsiMigrationManualSubtitle] = "A voluntary move to MSI with compact updates is available",
         [LocalizationKey.UpdateMsiMigrationClose] = "Close",
+        [LocalizationKey.MiniArtworkProgressThicknessLabel] = "Outline thickness",
+        [LocalizationKey.MiniArtworkProgressThicknessDescription] = "Changes the thickness of the background and accent lines around the artwork. The value applies immediately to an open mini player.",
 
         [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Open release on GitHub",
         [LocalizationKey.ChangelogNoDescription] = "No description",

@@ -56,8 +56,12 @@ internal static class LegacyInnoCleanupService
     /// /SILENT или /SUPPRESSMSGBOXES: пользователь должен увидеть штатный вопрос Inno Setup и
     /// сохранить общую папку %AppData%\Lumisense, выбрав «Нет».
     /// </summary>
-    public static bool TryStartInteractiveUninstall(LegacyInnoInstall legacyInstall, out string? technicalError)
+    public static bool TryStartInteractiveUninstall(
+        LegacyInnoInstall legacyInstall,
+        out Process? uninstallerProcess,
+        out string? technicalError)
     {
+        uninstallerProcess = null;
         technicalError = null;
         try
         {
@@ -67,11 +71,17 @@ internal static class LegacyInnoCleanupService
                 return false;
             }
 
-            Process.Start(new ProcessStartInfo(legacyInstall.UninstallerPath)
+            uninstallerProcess = Process.Start(new ProcessStartInfo(legacyInstall.UninstallerPath)
             {
                 UseShellExecute = true,
                 Verb = "runas"
             });
+            if (uninstallerProcess is null)
+            {
+                technicalError = "Windows не вернула процесс деинсталлятора.";
+                return false;
+            }
+
             Logger.Info("Запущен интерактивный legacy Inno Setup-деинсталлятор после MSI-миграции.");
             return true;
         }
@@ -83,7 +93,7 @@ internal static class LegacyInnoCleanupService
         }
     }
 
-    private static string? GetVerifiedUninstallerPath(string? uninstallString)
+    internal static string? GetVerifiedUninstallerPath(string? uninstallString)
     {
         if (string.IsNullOrWhiteSpace(uninstallString)) return null;
 

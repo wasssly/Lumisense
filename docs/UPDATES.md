@@ -35,7 +35,7 @@ MSI не является обязательным обновлением EXE-у
 
 После установки из MSI приложение получает последующие обновления через Velopack. Updater сам выбирает подходящий delta package или full package по фактическому состоянию локальной установки и опубликованному feed. Delta используется не всегда: если нужной базы нет, пакет не подходит или полный вариант надёжнее, будет скачан full package. В окне обновления Lumisense отображает доступную диагностику фактического плана.
 
-MSI-установка может существовать рядом со старой EXE-копией. После проверки новой копии старую EXE-установку можно удалить через **Windows → Installed apps**. Не удаляйте `%AppData%\Lumisense`, если хотите сохранить настройки, плейлисты, избранное и статистику.
+MSI-установка может существовать рядом со старой EXE-копией. После проверки новой копии откройте **Настройки → Обновления → «Удалить старую EXE-копию»**: карточка доступна в любой момент, пока legacy-установка найдена, запускает только её штатный мастер удаления и скрывается после успешного удаления. Если мастер отменён, кнопка остаётся доступной для повторной попытки. В мастере выберите «Нет» при вопросе об удалении данных; не удаляйте `%AppData%\Lumisense`, если хотите сохранить настройки, плейлисты, избранное и статистику. **Windows → Installed apps** остаётся альтернативным ручным способом.
 
 ### Безопасность и помощь
 
@@ -73,7 +73,7 @@ The MSI is not a required update for an EXE installation. In an up-to-date EXE c
 
 After an MSI installation, the application receives later updates through Velopack. The updater selects a suitable delta package or full package based on the actual local installation state and the published feed. Delta is not guaranteed: if the required base is unavailable, the package is unsuitable, or full is safer, the full package is downloaded. Lumisense exposes available diagnostics for the actual plan in its update window.
 
-An MSI installation can exist alongside the older EXE copy. After verifying the new copy, you can remove the old EXE installation through **Windows → Installed apps**. Do not delete `%AppData%\Lumisense` if you want to keep settings, playlists, favorites, and listening statistics.
+An MSI installation can exist alongside the older EXE copy. After verifying the new copy, open **Settings → Updates → “Remove the old EXE copy”**: the card remains available whenever the legacy installation is found, launches only its standard uninstall wizard, and disappears after successful removal. If the wizard is cancelled, the button remains available for another attempt. Choose No when the wizard asks about user data; do not delete `%AppData%\Lumisense` if you want to keep settings, playlists, favorites, and listening statistics. **Windows → Installed apps** remains an alternative manual route.
 
 ### Security and support
 

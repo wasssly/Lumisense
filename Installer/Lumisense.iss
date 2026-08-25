@@ -202,7 +202,9 @@ end;
 function InitializeUninstall(): Boolean;
 begin
   Result := True;
-  ShouldDeleteSettings := (MsgBox(DeleteUserDataPrompt(), mbConfirmation, MB_YESNO) = IDYES);
+  // «Нет» (сохранить общие данные MSI/EXE) — безопасный выбор по умолчанию. Пользователь
+  // всё ещё может осознанно выбрать «Да» при окончательном удалении Lumisense.
+  ShouldDeleteSettings := (MsgBox(DeleteUserDataPrompt(), mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES);
 end;
 
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);

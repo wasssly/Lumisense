@@ -5,6 +5,8 @@ using System.IO;
 using System.Text.Json;
 using System.Threading;
 using System.Windows;
+using System.Windows.Controls.Primitives;
+using WpfSlider = System.Windows.Controls.Slider;
 using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -92,6 +94,11 @@ public partial class MainWindow : FluentWindow
     private readonly Dictionary<string, float[]> _waveformCache = new();
     private readonly Queue<string> _waveformCacheOrder = new();
     private const int WaveformCacheLimit = 40;
+
+    // Главная обложка занимает 150 DIP, а мини-плеер/уведомления — ещё меньше. Ограничиваем
+    // декодирование UI-копии: HighQuality остаётся резким, но огромные embedded 4K-обложки
+    // не занимают лишнюю память и не требуют дорогого масштабирования при анимации.
+    private const int ArtworkDisplayDecodePixelWidth = 512;
 
     // Отменяет расчёт формы волны для ПРЕДЫДУЩЕГО трека при переключении на следующий раньше,
     // чем расчёт закончился — иначе устаревший результат может перезаписать уже показанную
@@ -419,7 +426,10 @@ public partial class MainWindow : FluentWindow
 
     public string CurrentTitle => TrackTitleText.Text;
     public string CurrentArtist => TrackArtistText.Text;
-    public Brush? CurrentArtBrush => AlbumArtIcon.Visibility == Visibility.Visible ? null : AlbumArtBorder.Background;
+    // Внешние потребители (мини-плеер и уведомление) по-прежнему получают ImageBrush, хотя
+    // главное окно рисует artwork отдельным Image ради качественного масштабирования. Кисть
+    // создаётся один раз при смене трека, а не при каждом запросе текущего состояния.
+    public Brush? CurrentArtBrush => _currentArtBrush;
 
     // Сырые байты текущей обложки (JPEG/PNG прямо из тега) — специально байты, а не сам
     // Brush/BitmapImage: TrayIconManager живёт в WinForms-стеке (NotifyIcon), и из сырых байт
@@ -446,10 +456,12 @@ public partial class MainWindow : FluentWindow
     // запуск без сохранённого последнего трека).
     public string? CurrentTrackPath => _currentTrackPath;
 
-    // Полноразмерная обложка текущего трека (или null, если у трека нет обложки/тегов).
-    // Хранится отдельно от ImageBrush, которым залит AlbumArtBorder, потому что окну
-    // просмотра обложки (CoverArtWindow) нужен именно исходный BitmapImage, а не Brush.
+    // Optimized UI-копия текущей обложки (или null). Она ограничена по ширине во время
+    // декодирования, поэтому HighQuality-отрисовка основной обложки и её анимация остаются
+    // плавными даже для многомегапиксельных embedded covers. Полный размер лениво читается
+    // из _currentAlbumArtBytes только для просмотра, копирования и свойств.
     private BitmapImage? _currentAlbumArt;
+    private ImageBrush? _currentArtBrush;
 
     // Исходные байты обложки и её MIME-тип из тега — нужны отдельно от BitmapImage для
     // контекстного меню по обложке: "Скачать изображение" пишет на диск именно эти байты
@@ -1682,11 +1694,12 @@ public partial class MainWindow : FluentWindow
     private void OpenAlbumArtPreview()
     {
         // У трека может не быть обложки (показан плейсхолдер-иконка) — тогда открывать нечего
-        if (_currentAlbumArt is null) return;
+        BitmapImage? previewArt = DecodeOriginalAlbumArt() ?? _currentAlbumArt;
+        if (previewArt is null) return;
 
         if (_coverArtWindow == null)
         {
-            _coverArtWindow = new CoverArtWindow(_currentAlbumArt, TrackTitleText.Text, _settings)
+            _coverArtWindow = new CoverArtWindow(previewArt, TrackTitleText.Text, _settings)
             {
                 Owner = this
             };
@@ -1724,6 +1737,30 @@ public partial class MainWindow : FluentWindow
     private void AlbumArtBorder_ContextMenuOpening(object sender, System.Windows.Controls.ContextMenuEventArgs e)
     {
         if (_currentAlbumArt is null) e.Handled = true;
+    }
+
+    // Полный размер нужен редко — только по явной команде пользователя. Декодируем его из
+    // исходных bytes с OnLoad, чтобы поток безопасно закрыть до показа отдельного окна.
+    private BitmapImage? DecodeOriginalAlbumArt()
+    {
+        if (_currentAlbumArtBytes is null) return null;
+
+        try
+        {
+            using var stream = new MemoryStream(_currentAlbumArtBytes, writable: false);
+            var bitmap = new BitmapImage();
+            bitmap.BeginInit();
+            bitmap.CacheOption = BitmapCacheOption.OnLoad;
+            bitmap.StreamSource = stream;
+            bitmap.EndInit();
+            bitmap.Freeze();
+            return bitmap;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось декодировать полноразмерную обложку: {ex.Message}");
+            return null;
+        }
     }
 
     private static string MimeTypeToExtension(string? mimeType) => mimeType?.ToLowerInvariant() switch
@@ -1785,11 +1822,12 @@ public partial class MainWindow : FluentWindow
 
     private void CopyAlbumArtMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentAlbumArt is null) return;
+        BitmapImage? copyArt = DecodeOriginalAlbumArt() ?? _currentAlbumArt;
+        if (copyArt is null) return;
 
         try
         {
-            System.Windows.Clipboard.SetImage(_currentAlbumArt);
+            System.Windows.Clipboard.SetImage(copyArt);
         }
         catch (Exception ex)
         {
@@ -1800,10 +1838,12 @@ public partial class MainWindow : FluentWindow
 
     private void AlbumArtPropertiesMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentAlbumArt is null || _currentAlbumArtBytes is null) return;
+        if (_currentAlbumArtBytes is null) return;
+        BitmapImage? propertiesArt = DecodeOriginalAlbumArt() ?? _currentAlbumArt;
+        if (propertiesArt is null) return;
 
         var propsWindow = new CoverArtPropertiesWindow(
-            _currentAlbumArt, _currentAlbumArtBytes, _currentAlbumArtMimeType, _currentAlbumArtPictureType,
+            propertiesArt, _currentAlbumArtBytes, _currentAlbumArtMimeType, _currentAlbumArtPictureType,
             TrackTitleText.Text, TrackArtistText.Text, _currentTrackPath, _settings)
         {
             Owner = this
@@ -4148,6 +4188,7 @@ public partial class MainWindow : FluentWindow
                     var bitmap = new BitmapImage();
                     bitmap.BeginInit();
                     bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.DecodePixelWidth = ArtworkDisplayDecodePixelWidth;
                     bitmap.StreamSource = stream;
                     bitmap.EndInit();
                     bitmap.Freeze();
@@ -4313,7 +4354,7 @@ public partial class MainWindow : FluentWindow
     {
         if (loaded.AlbumArt is not null)
         {
-            ApplyAlbumArtBrush(new ImageBrush(loaded.AlbumArt) { Stretch = Stretch.UniformToFill }, direction);
+            ApplyAlbumArtImage(loaded.AlbumArt, direction);
             _currentAlbumArt = loaded.AlbumArt;
             _currentAlbumArtBytes = loaded.AlbumArtBytes;
             _currentAlbumArtMimeType = loaded.AlbumArtMimeType;
@@ -4341,11 +4382,12 @@ public partial class MainWindow : FluentWindow
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.DecodePixelWidth = ArtworkDisplayDecodePixelWidth;
                 bitmap.StreamSource = ms;
                 bitmap.EndInit();
                 bitmap.Freeze();
 
-                ApplyAlbumArtBrush(new ImageBrush(bitmap) { Stretch = Stretch.UniformToFill }, direction);
+                ApplyAlbumArtImage(bitmap, direction);
                 _currentAlbumArt = bitmap;
                 _currentAlbumArtBytes = bytes;
                 _currentAlbumArtMimeType = string.IsNullOrWhiteSpace(pictures[0].MimeType) ? "image/jpeg" : pictures[0].MimeType;
@@ -4395,12 +4437,18 @@ public partial class MainWindow : FluentWindow
         }), DispatcherPriority.ContextIdle);
     }
 
-    private void ApplyAlbumArtBrush(Brush brush, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
+    private void ApplyAlbumArtImage(ImageSource imageSource, AlbumArtTransitionDirection direction = AlbumArtTransitionDirection.None)
     {
         AnimateAlbumArtTransition(direction, () =>
         {
-            AlbumArtBorder.Background = brush;
+            AlbumArtImage.Source = imageSource;
+            AlbumArtImage.Visibility = Visibility.Visible;
+            AlbumArtBorder.Background = Brushes.Transparent;
             AlbumArtIcon.Visibility = Visibility.Collapsed;
+
+            var sharedBrush = new ImageBrush(imageSource) { Stretch = Stretch.UniformToFill };
+            if (sharedBrush.CanFreeze) sharedBrush.Freeze();
+            _currentArtBrush = sharedBrush;
         });
     }
 
@@ -4408,6 +4456,9 @@ public partial class MainWindow : FluentWindow
     {
         AnimateAlbumArtTransition(direction, () =>
         {
+            AlbumArtImage.Source = null;
+            AlbumArtImage.Visibility = Visibility.Collapsed;
+            _currentArtBrush = null;
             AlbumArtBorder.Background = (Brush)FindResource("ControlFillColorSecondaryBrush");
             AlbumArtIcon.Visibility = Visibility.Visible;
         });
@@ -4453,7 +4504,11 @@ public partial class MainWindow : FluentWindow
         AlbumArtGhostBorder.Width = AlbumArtBorder.Width;
         AlbumArtGhostBorder.Height = AlbumArtBorder.Height;
         AlbumArtGhostBorder.CornerRadius = AlbumArtBorder.CornerRadius;
-        AlbumArtGhostBorder.Background = AlbumArtIcon.Visibility == Visibility.Visible ? null : AlbumArtBorder.Background;
+        AlbumArtGhostImage.Source = AlbumArtImage.Source;
+        AlbumArtGhostImage.Visibility = AlbumArtImage.Visibility;
+        AlbumArtGhostBorder.Background = AlbumArtImage.Visibility == Visibility.Visible
+            ? Brushes.Transparent
+            : AlbumArtBorder.Background;
         AlbumArtGhostIcon.Visibility = AlbumArtIcon.Visibility;
         AlbumArtGhostTransform.X = 0;
         AlbumArtGhostScale.ScaleX = 1;
@@ -5541,6 +5596,12 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.ApplyArtworkProgressVisibility();
     }
 
+    // Применяет толщину трека и линии progress вокруг обложки немедленно, без закрытия мини-плеера.
+    public void ApplyMiniPlayerArtworkProgressThicknessLive()
+    {
+        _miniPlayerWindow?.ApplyArtworkProgressThickness();
+    }
+
     // Применяет выбранный вид обложки (обычный / винил) немедленно, без закрытия мини-плеера.
     public void ApplyMiniPlayerArtworkStyleLive()
     {
@@ -6419,6 +6480,7 @@ public partial class MainWindow : FluentWindow
         ApplyAccentColor();
         ApplyWindowBackdrop();
         _miniPlayerWindow?.ApplyArtworkProgressVisibility();
+        _miniPlayerWindow?.ApplyArtworkProgressThickness();
         _miniPlayerWindow?.ApplyArtworkProgressColor();
         _miniPlayerWindow?.ApplyArtworkStyle();
         ApplyDiscordRichPresenceSettingsLive();
@@ -6533,5 +6595,124 @@ public partial class MainWindow : FluentWindow
         _lifetimeCts.Dispose();
 
         base.OnClosed(e);
+    }
+}
+
+
+/// <summary>
+/// Рисует фоновую и акцентную части дорожки главного окна одним DrawingContext.
+/// Это исключает светлые швы, возникающие при наложении двух независимых Border
+/// с полукруглыми углами на дробном DPI.
+/// </summary>
+public sealed class MainWindowSliderTrackRenderer : FrameworkElement
+{
+    public static readonly DependencyProperty BackgroundBrushProperty =
+        DependencyProperty.Register(
+            nameof(BackgroundBrush),
+            typeof(Brush),
+            typeof(MainWindowSliderTrackRenderer),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty FillBrushProperty =
+        DependencyProperty.Register(
+            nameof(FillBrush),
+            typeof(Brush),
+            typeof(MainWindowSliderTrackRenderer),
+            new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    private WpfSlider? _slider;
+
+    public Brush? BackgroundBrush
+    {
+        get => (Brush?)GetValue(BackgroundBrushProperty);
+        set => SetValue(BackgroundBrushProperty, value);
+    }
+
+    public Brush? FillBrush
+    {
+        get => (Brush?)GetValue(FillBrushProperty);
+        set => SetValue(FillBrushProperty, value);
+    }
+
+    public MainWindowSliderTrackRenderer()
+    {
+        Loaded += MainWindowSliderTrackRenderer_Loaded;
+        Unloaded += MainWindowSliderTrackRenderer_Unloaded;
+    }
+
+    private void MainWindowSliderTrackRenderer_Loaded(object sender, RoutedEventArgs e)
+    {
+        AttachToSlider();
+        Dispatcher.BeginInvoke(InvalidateVisual, DispatcherPriority.Loaded);
+    }
+
+    private void MainWindowSliderTrackRenderer_Unloaded(object sender, RoutedEventArgs e) => DetachFromSlider();
+
+    private void AttachToSlider()
+    {
+        DetachFromSlider();
+        _slider = TemplatedParent as WpfSlider;
+        if (_slider is null) return;
+
+        _slider.ValueChanged += Slider_VisualStateChanged;
+        _slider.SizeChanged += Slider_SizeChanged;
+    }
+
+    private void DetachFromSlider()
+    {
+        if (_slider is null) return;
+
+        _slider.ValueChanged -= Slider_VisualStateChanged;
+        _slider.SizeChanged -= Slider_SizeChanged;
+        _slider = null;
+    }
+
+    private void Slider_VisualStateChanged(object sender, RoutedPropertyChangedEventArgs<double> e) => InvalidateVisual();
+
+    private void Slider_SizeChanged(object sender, SizeChangedEventArgs e) => InvalidateVisual();
+
+    protected override void OnRender(DrawingContext drawingContext)
+    {
+        base.OnRender(drawingContext);
+
+        if (_slider is null ||
+            _slider.Template?.FindName("PART_Track", _slider) is not Track track ||
+            track.Thumb is not Thumb thumb ||
+            track.ActualWidth <= 0 ||
+            track.ActualHeight <= 0 ||
+            thumb.ActualWidth <= 0 ||
+            _slider.Maximum <= _slider.Minimum)
+        {
+            return;
+        }
+
+        Point trackOrigin;
+        try
+        {
+            trackOrigin = track.TransformToVisual(this).Transform(new Point(0, 0));
+        }
+        catch (InvalidOperationException)
+        {
+            return;
+        }
+
+        const double trackHeight = 5.0;
+        double top = trackOrigin.Y + (track.ActualHeight - trackHeight) / 2.0;
+        double width = track.ActualWidth;
+        if (width <= 0) return;
+
+        var fullTrack = new Rect(trackOrigin.X, top, width, trackHeight);
+        drawingContext.DrawRoundedRectangle(BackgroundBrush, null, fullTrack, trackHeight / 2.0, trackHeight / 2.0);
+
+        double availableLength = Math.Max(0, width - thumb.ActualWidth);
+        double progress = Math.Clamp((_slider.Value - _slider.Minimum) / (_slider.Maximum - _slider.Minimum), 0.0, 1.0);
+        double fillWidth = Math.Min(width, thumb.ActualWidth / 2.0 + availableLength * progress);
+        if (fillWidth <= 0 || FillBrush is null) return;
+
+        var fillTrack = _slider.IsDirectionReversed
+            ? new Rect(trackOrigin.X + width - fillWidth, top, fillWidth, trackHeight)
+            : new Rect(trackOrigin.X, top, fillWidth, trackHeight);
+
+        drawingContext.DrawRoundedRectangle(FillBrush, null, fillTrack, trackHeight / 2.0, trackHeight / 2.0);
     }
 }

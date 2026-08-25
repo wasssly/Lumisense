@@ -146,7 +146,8 @@ internal sealed class VelopackUpdateService
         if (plan.Status != VelopackBasePackageStatus.Available || plan.FullPackage is null)
             throw new InvalidOperationException("Текущий full package недоступен для подготовки локальной базы.");
         Velopack.SemanticVersion? currentVersion = _manager.CurrentVersion;
-        if (!IsManagedInstall || currentVersion is null || !plan.CurrentVersion.Equals(currentVersion))
+        if (!IsManagedInstall || currentVersion is null || plan.CurrentVersion is null ||
+            !plan.CurrentVersion.Equals(currentVersion))
             throw new InvalidOperationException("Состояние установки изменилось; обновите информацию о подготовке базы.");
 
         Logger.Info($"Пользователь начал добровольную подготовку full package {plan.FullPackage.Version} для будущих delta-обновлений.");
@@ -291,10 +292,10 @@ internal static class UpdateMigrationGuard
     }
 
     /// <summary>
-    /// Вызывается только после успешного создания главного окна при первом запуске MSI/Velopack.
-    /// Сначала проверяется точный AppId legacy Inno Setup, затем пользователь сам решает, открыть
-    /// ли штатный деинсталлятор старой EXE-копии. Данные %AppData%\Lumisense не удаляются кодом
-    /// приложения и в мастере удаления пользователь получает явную инструкцию сохранить их.
+    /// Вызывается после успешного создания главного окна ровно один раз при первом запуске
+    /// MSI/Velopack. Удаление legacy EXE не запускается отсюда: пользователь может вернуться
+    /// к постоянной карточке Settings → Updates в любой момент, когда новая установка уже
+    /// проверена. Это исключает потерю одного единственного шанса на cleanup.
     /// </summary>
     public static void TryShowFirstRunNotice()
     {
@@ -303,56 +304,20 @@ internal static class UpdateMigrationGuard
 
         try
         {
-            if (!LegacyInnoCleanupService.TryFind(out LegacyInnoCleanupService.LegacyInnoInstall? legacyInstall) ||
-                legacyInstall is null)
-            {
-                LocalizedMessageBox.Show(
-                    LocalizationService.Get(LocalizationKey.UpdateVelopackFirstRunMessage),
-                    LocalizationService.Get(LocalizationKey.UpdateVelopackFirstRunTitle),
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Information);
-                return;
-            }
-
-            var answer = LocalizedMessageBox.Show(
-                LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupMessage),
-                LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupTitle),
-                System.Windows.MessageBoxButton.YesNo,
-                System.Windows.MessageBoxImage.Information,
-                System.Windows.MessageBoxResult.No);
-            if (answer != System.Windows.MessageBoxResult.Yes)
-            {
-                Logger.Info("Пользователь оставил legacy EXE-копию Lumisense после первого запуска MSI.");
-                return;
-            }
-
-            // Must run before the uninstaller removes the legacy install dir and its registry entries.
-            string? legacyInstallDir = Path.GetDirectoryName(legacyInstall.UninstallerPath);
-            if (!string.IsNullOrEmpty(legacyInstallDir))
-                LegacyIntegrationRepairService.RepairAutostartIfPointingToLegacyInstall(legacyInstallDir);
-            LegacyIntegrationRepairService.RegisterOpenInLumisenseContextMenu();
-
-            if (!LegacyInnoCleanupService.TryStartInteractiveUninstall(legacyInstall, out string? technicalError))
-            {
-                LocalizedMessageBox.Show(
-                    LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupFailed),
-                    LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupTitle),
-                    System.Windows.MessageBoxButton.OK,
-                    System.Windows.MessageBoxImage.Warning);
-                if (!string.IsNullOrWhiteSpace(technicalError))
-                    Logger.Warn($"Legacy cleanup не был запущен: {technicalError}");
-                return;
-            }
+            string message = LocalizationService.Get(LocalizationKey.UpdateVelopackFirstRunMessage);
+            if (LegacyInnoCleanupService.TryFind(out _))
+                message += Environment.NewLine + Environment.NewLine +
+                           LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupSettingsHint);
 
             LocalizedMessageBox.Show(
-                LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupStartingMessage),
-                LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupStartingTitle),
+                message,
+                LocalizationService.Get(LocalizationKey.UpdateVelopackFirstRunTitle),
                 System.Windows.MessageBoxButton.OK,
                 System.Windows.MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            Logger.Warn($"Не удалось показать cleanup-flow первого запуска Velopack: {ex.Message}");
+            Logger.Warn($"Не удалось показать уведомление первого запуска Velopack: {ex.Message}");
         }
     }
 }

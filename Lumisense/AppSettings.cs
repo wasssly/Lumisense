@@ -334,6 +334,10 @@ public class AppSettings
     public string MiniPlayerArtworkProgressColorMode { get; set; } = "Accent";
     public string MiniPlayerArtworkProgressColorHex { get; set; } = "#0078D4";
 
+    // Толщина трека и акцентного контура progress вокруг обложки мини-плеера. Значение
+    // хранится в DIP и ограничивается SettingsIntegrityService; 1.5 повторяет прежний вид.
+    public double MiniPlayerArtworkProgressThickness { get; set; } = 1.5;
+
     // Место на экране, куда пользователь перетащил мини-плеер в последний раз.
     // null означает "ещё ни разу не задавалось" — тогда используется положение по умолчанию.
     public double? MiniPlayerLeft { get; set; }

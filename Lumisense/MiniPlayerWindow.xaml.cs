@@ -93,6 +93,7 @@ public partial class MiniPlayerWindow : Window
         ApplyButtonsLayoutMode();
         ApplyProgressBarVisibility();
         ApplyArtworkProgressVisibility();
+        ApplyArtworkProgressThickness();
         ApplyArtworkProgressColor();
         ApplyArtworkStyle();
 
@@ -1082,6 +1083,17 @@ public partial class MiniPlayerWindow : Window
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
     }
 
+    // Применяет толщину одновременно к фоновому треку и акцентному штриху. Геометрия
+    // пересчитывается после смены, чтобы наружная граница линии оставалась ровно на форме
+    // обложки без цветных фрагментов в углах.
+    public void ApplyArtworkProgressThickness()
+    {
+        double thickness = Math.Clamp(_mainWindow.Settings.MiniPlayerArtworkProgressThickness, 1.0, 4.0);
+        ArtProgressTrack.BorderThickness = new Thickness(thickness);
+        ArtProgressOutline.StrokeThickness = thickness;
+        UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
+    }
+
     // Применяет либо отдельный фиксированный цвет, либо фактически используемый сейчас
     // акцент оформления. Цвет задаётся явной замороженной кистью, а не только DynamicResource:
     // это надёжно обновляет уже созданный обычный WPF Window при смене акцента Wpf.Ui.
@@ -1125,10 +1137,11 @@ public partial class MiniPlayerWindow : Window
 
         if (string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal))
         {
-            // Отступ = половина толщины линии (0.75), чтобы внешний край штриха совпадал
-            // с границей маски (радиус 21) без видимого ободка обложки снаружи.
+            // Отступ равен половине текущей толщины: внешний край штриха совпадает с
+            // границей маски и не создаёт цветной ободок снаружи Vinyl-обложки.
             const double center = 21.0;
-            const double radius = 20.25;
+            double vinylInset = ArtProgressOutline.StrokeThickness / 2.0;
+            double radius = Math.Max(0.0, center - vinylInset);
             if (ratio >= 0.9999)
             {
                 ArtProgressOutline.Data = new EllipseGeometry(new Point(center, center), radius, radius);
@@ -1144,12 +1157,12 @@ public partial class MiniPlayerWindow : Window
             return;
         }
 
-        // Отступ = половина толщины линии (0.75), чтобы внешний край штриха совпадал
-        // с границей маски (радиус 8) без видимого ободка обложки снаружи.
-        const double inset = 0.75;
-        const double side = 40.5;
-        const double cornerRadius = 7.25;
-        const double straightSide = side - 2 * cornerRadius;
+        // Отступ равен половине выбранной толщины. Поэтому внешняя граница штриха
+        // совпадает с границей скруглённой маски без видимого ободка в углах.
+        double inset = ArtProgressOutline.StrokeThickness / 2.0;
+        double side = 42.0 - 2.0 * inset;
+        double cornerRadius = Math.Max(0.0, 8.0 - inset);
+        double straightSide = side - 2 * cornerRadius;
         double perimeter = 4 * straightSide + 2 * Math.PI * cornerRadius;
         ratio = Math.Clamp(ratio, 0.0, 1.0);
 

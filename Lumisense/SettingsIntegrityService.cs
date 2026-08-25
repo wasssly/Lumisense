@@ -236,6 +236,8 @@ internal static class SettingsIntegrityService
         settings.PlaybackPitchSemitones = ClampFinite(settings.PlaybackPitchSemitones, -12, 12, defaults.PlaybackPitchSemitones);
         settings.MiniPlayerOpacity = ClampFinite(settings.MiniPlayerOpacity, 0.2, 1.0, defaults.MiniPlayerOpacity);
         settings.TrackChangeToastWidth = ClampFinite(settings.TrackChangeToastWidth, 220, 560, defaults.TrackChangeToastWidth);
+        settings.MiniPlayerArtworkProgressThickness = ClampFinite(
+            settings.MiniPlayerArtworkProgressThickness, 1.0, 4.0, defaults.MiniPlayerArtworkProgressThickness);
         settings.TotalListenSeconds = Math.Max(0, double.IsFinite(settings.TotalListenSeconds) ? settings.TotalListenSeconds : 0);
         settings.LastPositionSeconds = Math.Max(0, double.IsFinite(settings.LastPositionSeconds) ? settings.LastPositionSeconds : 0);
 

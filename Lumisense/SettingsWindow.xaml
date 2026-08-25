@@ -224,8 +224,11 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RepeatButton">
-                        <Border Height="4" CornerRadius="2" Background="{DynamicResource AccentFillColorDefaultBrush}"
-                                VerticalAlignment="Center" />
+                        <!-- Старт заполнения — та же полукапсула радиуса 2,5 DIP, что и
+                             внешний конец фоновой дорожки. У Thumb край остаётся прямым. -->
+                        <Border Height="5" CornerRadius="2.5,0,0,2.5" Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                HorizontalAlignment="Stretch" VerticalAlignment="Center"
+                                SnapsToDevicePixels="True" UseLayoutRounding="True" />
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -237,15 +240,17 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
                         <Grid Margin="0,5" SnapsToDevicePixels="True">
-                            <Border Height="4" CornerRadius="2" Background="{DynamicResource ControlFillColorTertiaryBrush}"
-                                    VerticalAlignment="Center" IsHitTestVisible="False" />
-                            <Track x:Name="PART_Track" VerticalAlignment="Center" Orientation="{TemplateBinding Orientation}">
+                            <Border Height="5" CornerRadius="2.5" Background="{DynamicResource ControlFillColorTertiaryBrush}"
+                                    HorizontalAlignment="Stretch" VerticalAlignment="Center" IsHitTestVisible="False"
+                                    SnapsToDevicePixels="True" UseLayoutRounding="True" />
+                                <Track x:Name="PART_Track" VerticalAlignment="Center" Orientation="{TemplateBinding Orientation}"
+                                       SnapsToDevicePixels="True" UseLayoutRounding="True">
                                 <Track.DecreaseRepeatButton>
                                     <RepeatButton Style="{StaticResource AccentSliderDecreaseRepeatButtonStyle}"
                                                   Command="Slider.DecreaseLarge" />
                                 </Track.DecreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb Width="14" Height="14">
+                                    <Thumb Width="14" Height="14" SnapsToDevicePixels="True" UseLayoutRounding="True">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
                                                 <Ellipse Fill="{DynamicResource AccentFillColorDefaultBrush}"
@@ -257,6 +262,71 @@
                                 <Track.IncreaseRepeatButton>
                                     <RepeatButton Style="{StaticResource TransparentSliderRepeatButtonStyle}"
                                                   Command="Slider.IncreaseLarge" />
+                                </Track.IncreaseRepeatButton>
+                            </Track>
+                            <!-- Overlay расположен после Track, поэтому точки видны и поверх
+                                 акцентной части дорожки, но активный шаг остаётся за Thumb. -->
+                            <local:SliderMilestoneOverlay x:Name="PART_MilestoneOverlay"
+                                                          MarkerBrush="{DynamicResource TextFillColorSecondaryBrush}"
+                                                          Opacity="0.88" IsHitTestVisible="False"
+                                                          SnapsToDevicePixels="True" />
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Вертикальный вариант эталонного слайдера: та же 5 DIP дорожка, 14 DIP Thumb
+             и спокойная палитра, но с заполнением от нижней (минимальной) точки к Thumb. -->
+        <Style x:Key="SettingsEqualizerSliderStyle" TargetType="Slider">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Slider">
+                        <Grid Margin="5,0" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                            <Border Width="5" CornerRadius="2.5"
+                                    Background="{DynamicResource ControlFillColorTertiaryBrush}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                                    IsHitTestVisible="False" SnapsToDevicePixels="True"
+                                    UseLayoutRounding="True" />
+                            <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}"
+                                   IsDirectionReversed="{TemplateBinding IsDirectionReversed}"
+                                   HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                                   SnapsToDevicePixels="True" UseLayoutRounding="True">
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <!-- Внешнее (нижнее) начало заполнения округлено;
+                                                     граница у Thumb прямая и визуально чистая. -->
+                                                <Border Width="5" CornerRadius="0,0,2.5,2.5"
+                                                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                                                        SnapsToDevicePixels="True" UseLayoutRounding="True" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
+                                </Track.DecreaseRepeatButton>
+                                <Track.Thumb>
+                                    <Thumb Width="14" Height="14" Cursor="Hand"
+                                           SnapsToDevicePixels="True" UseLayoutRounding="True">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Ellipse Fill="{DynamicResource AccentFillColorDefaultBrush}"
+                                                         Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                         StrokeThickness="1" SnapsToDevicePixels="True" />
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Command="Slider.IncreaseLarge" Background="Transparent" BorderThickness="0">
+                                        <RepeatButton.Template>
+                                            <ControlTemplate TargetType="RepeatButton">
+                                                <Border Background="Transparent" />
+                                            </ControlTemplate>
+                                        </RepeatButton.Template>
+                                    </RepeatButton>
                                 </Track.IncreaseRepeatButton>
                             </Track>
                         </Grid>
@@ -709,9 +779,12 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider x:Name="InterfaceScaleSlider" Grid.Column="0" Minimum="85" Maximum="135"
-                                            TickFrequency="5" IsSnapToTickEnabled="True"
-                                            ValueChanged="InterfaceScaleSlider_ValueChanged" />
+                                    <Grid Grid.Column="0" Height="28">
+                                        <Slider x:Name="InterfaceScaleSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="85" Maximum="135"
+                                                TickFrequency="5" local:SliderMilestoneMarkers.IsEnabled="True"
+                                                IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                ValueChanged="InterfaceScaleSlider_ValueChanged" />
+                                    </Grid>
                                     <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
                                             Background="{DynamicResource ControlFillColorTertiaryBrush}">
                                         <TextBlock x:Name="InterfaceScaleValueText" HorizontalAlignment="Center"
@@ -738,9 +811,13 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider x:Name="SyncedLyricsFontSizeSlider" Grid.Column="0"
-                                            Minimum="12" Maximum="20" TickFrequency="1" IsSnapToTickEnabled="True"
-                                            ValueChanged="SyncedLyricsFontSizeSlider_ValueChanged" />
+                                    <Grid Grid.Column="0" Height="28">
+                                        <Slider x:Name="SyncedLyricsFontSizeSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                Minimum="12" Maximum="20" TickFrequency="1"
+                                                local:SliderMilestoneMarkers.IsEnabled="True"
+                                                IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                ValueChanged="SyncedLyricsFontSizeSlider_ValueChanged" />
+                                    </Grid>
                                     <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
                                             Background="{DynamicResource ControlFillColorTertiaryBrush}">
                                         <TextBlock x:Name="SyncedLyricsFontSizeValueText"
@@ -1255,7 +1332,9 @@
                                 </Grid>
                                 <Slider x:Name="ToastWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="220" Maximum="420" Value="300"
-                                        TickFrequency="10" IsSnapToTickEnabled="True"
+                                        TickFrequency="10" local:SliderMilestoneMarkers.IsEnabled="True"
+                                        local:SliderMilestoneMarkers.MarkerFrequency="50"
+                                        IsSnapToTickEnabled="True"
                                         ValueChanged="ToastWidthSlider_ValueChanged" Margin="0,0,0,16" />
 
                                 <TextBlock Text="Монитор" Style="{StaticResource SettingsFieldLabelStyle}" />
@@ -1317,7 +1396,7 @@
                                          StackPanel постоянной, и дёргание пропадает. -->
                                     <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand0ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand0Slider" Tag="0" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand0Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="0" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1325,7 +1404,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand1ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand1Slider" Tag="1" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand1Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="1" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1333,7 +1412,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand2ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand2Slider" Tag="2" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand2Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="2" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1341,7 +1420,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="3" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand3ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand3Slider" Tag="3" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand3Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="3" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1349,7 +1428,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="4" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand4ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand4Slider" Tag="4" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand4Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="4" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1357,7 +1436,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="5" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand5ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand5Slider" Tag="5" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand5Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="5" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1365,7 +1444,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="6" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand6ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand6Slider" Tag="6" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand6Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="6" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1373,7 +1452,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="7" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand7ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand7Slider" Tag="7" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand7Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="7" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1381,7 +1460,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="8" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand8ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand8Slider" Tag="8" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand8Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="8" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1389,7 +1468,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="9" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand9ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand9Slider" Tag="9" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand9Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="9" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -1548,6 +1627,28 @@
                                           Margin="0,14,0,0" />
                                 <TextBlock Text="Тонкий акцентный контур повторяет скруглённую форму обложки и показывает прогресс текущего трека. Его можно включить отдельно от обычной полосы прогресса."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+
+                                <Grid Margin="0,14,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="MiniArtworkProgressThicknessLabelText" Grid.Column="0"
+                                               Style="{StaticResource SettingsFieldLabelStyle}" />
+                                    <TextBlock x:Name="MiniArtworkProgressThicknessValueText" Grid.Column="1"
+                                               VerticalAlignment="Center" FontSize="12" Opacity="0.7" />
+                                </Grid>
+                                <!-- Точечный overlay читает фактический Track и Thumb этого Slider,
+                                     поэтому отметки совпадают с достижимыми позициями по всему диапазону. -->
+                                <Grid Height="28" Margin="0,0,0,0">
+                                    <Slider x:Name="MiniArtworkProgressThicknessSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                            Minimum="1" Maximum="4" TickFrequency="0.5" SmallChange="0.5" LargeChange="0.5"
+                                            local:SliderMilestoneMarkers.IsEnabled="True"
+                                            IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="MiniArtworkProgressThicknessSlider_ValueChanged" />
+                                </Grid>
+                                <TextBlock x:Name="MiniArtworkProgressThicknessDescriptionText"
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,2,0,0" />
 
                                 <TextBlock Text="Цвет контура" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <RadioButton x:Name="MiniArtworkProgressAccentRadio"
@@ -2032,6 +2133,26 @@
                                     <TextBlock x:Name="PrepareVelopackBasePackageButtonText" Text="Скачать базовый пакет" />
                                 </ui:Button>
                                 <TextBlock x:Name="VelopackBasePackageStatusText" Margin="0,10,0,0"
+                                           FontSize="12" Opacity="0.78" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Expander>
+
+                        <Expander x:Name="LegacyInnoCleanupExpander" Style="{StaticResource FluentExpanderStyle}"
+                                  HorizontalAlignment="Stretch" Margin="0,14,0,0" Visibility="Collapsed">
+                            <Expander.Header>
+                                <TextBlock x:Name="LegacyInnoCleanupTitleText" Text="Удалить старую EXE-копию"
+                                           Style="{StaticResource SettingsSectionTitleStyle}" Margin="0" />
+                            </Expander.Header>
+                            <StackPanel>
+                                <TextBlock x:Name="LegacyInnoCleanupDescriptionText"
+                                           Text="Удалите прежнюю Inno Setup-установку после перехода на MSI. В мастере удаления выберите «Нет» при вопросе об удалении пользовательских данных."
+                                           TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
+                                <ui:Button x:Name="RemoveLegacyInnoButton" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Padding="12,8"
+                                           Click="RemoveLegacyInnoButton_Click">
+                                    <TextBlock x:Name="RemoveLegacyInnoButtonText" Text="Открыть мастер удаления" />
+                                </ui:Button>
+                                <TextBlock x:Name="LegacyInnoCleanupStatusText" Margin="0,10,0,0"
                                            FontSize="12" Opacity="0.78" TextWrapping="Wrap" />
                             </StackPanel>
                         </Expander>

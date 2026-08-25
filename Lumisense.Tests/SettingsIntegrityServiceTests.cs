@@ -135,6 +135,24 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
         Assert.Equal(expected, settings!.InterfaceScale, precision: 5);
     }
 
+    [Theory]
+    [InlineData(0.25, 1.0)]
+    [InlineData(5.0, 4.0)]
+    [InlineData(2.5, 2.5)]
+    public void TryLoad_MiniArtworkProgressThickness_IsClampedToSafeRange(double input, double expected)
+    {
+        string json = JsonSerializer.Serialize(new
+        {
+            SettingsSchemaVersion = AppSettings.CurrentSettingsSchemaVersion,
+            MiniPlayerArtworkProgressThickness = input
+        });
+
+        bool result = TryLoad(json, out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(expected, settings!.MiniPlayerArtworkProgressThickness, precision: 5);
+    }
+
     [Fact]
     public void TryLoad_LegacySchemaWithoutVersion_UsesNeutralInterfaceScale()
     {

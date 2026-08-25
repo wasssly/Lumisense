@@ -426,10 +426,15 @@
                     <ControlTemplate TargetType="Slider">
                         <Grid Margin="0,5" Background="Transparent"
                               SnapsToDevicePixels="True" UseLayoutRounding="True">
-                            <Border Height="4" CornerRadius="2"
-                                    Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
-                                    HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                                    SnapsToDevicePixels="True" />
+                            <!-- Один renderer рисует обе части полосы в одном DrawingContext.
+                                 Поэтому сглаженные границы не перекрывают друг друга и не дают швов. -->
+                            <!-- Цвет и выравнивание совпадают с одобренным SettingsAccentSliderStyle. -->
+                            <local:MainWindowSliderTrackRenderer x:Name="PART_TrackRenderer"
+                                                                 IsHitTestVisible="False"
+                                                                 SnapsToDevicePixels="True"
+                                                                 UseLayoutRounding="True"
+                                                                 BackgroundBrush="{DynamicResource ControlFillColorTertiaryBrush}"
+                                                                 FillBrush="{DynamicResource AccentFillColorDefaultBrush}" />
 
                             <Track x:Name="PART_Track" Orientation="{TemplateBinding Orientation}"
                                    IsDirectionReversed="{TemplateBinding IsDirectionReversed}"
@@ -440,10 +445,9 @@
                                                   Background="Transparent" BorderThickness="0">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
-                                                <Border Height="4" CornerRadius="2"
-                                                        Background="{DynamicResource AccentFillColorDefaultBrush}"
-                                                        HorizontalAlignment="Stretch" VerticalAlignment="Center"
-                                                        SnapsToDevicePixels="True" />
+                                                <!-- Геометрию дорожки рисует PART_TrackRenderer; кнопка остаётся
+                                                     прозрачной зоной Track для штатной логики Slider. -->
+                                                <Border Background="Transparent" />
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
@@ -668,10 +672,24 @@
                             <TranslateTransform x:Name="AlbumArtGhostTransform" X="0" />
                         </TransformGroup>
                     </Border.RenderTransform>
-                    <local:SvgPathIcon x:Name="AlbumArtGhostIcon" Icon="IconMusicNote" Size="36"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}"
-                                   Visibility="Collapsed" />
+                    <!-- Отдельный Image, а не ImageBrush фона: тот же высококачественный
+                         слой, что уже исправил отрисовку мини-плеера и уведомления. -->
+                    <Grid ClipToBounds="True" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                        <Image x:Name="AlbumArtGhostImage" Stretch="UniformToFill" Visibility="Collapsed"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               RenderOptions.EdgeMode="Unspecified"
+                               SnapsToDevicePixels="True" UseLayoutRounding="True">
+                            <!-- Border.CornerRadius не обрезает дочерний Image: задаём маску
+                                 самому пиксельному слою, чтобы ghost сохранял прежние углы. -->
+                            <Image.Clip>
+                                <RectangleGeometry Rect="0,0,150,150" RadiusX="16" RadiusY="16" />
+                            </Image.Clip>
+                        </Image>
+                        <local:SvgPathIcon x:Name="AlbumArtGhostIcon" Icon="IconMusicNote" Size="36"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                           Visibility="Collapsed" />
+                    </Grid>
                 </Border>
 
                 <Border x:Name="AlbumArtBorder" Width="150" Height="150" CornerRadius="16"
@@ -713,9 +731,23 @@
                             </MenuItem>
                         </ContextMenu>
                     </Border.ContextMenu>
-                    <local:SvgPathIcon x:Name="AlbumArtIcon" Icon="IconMusicNote" Size="36"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center"
-                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <!-- Image-слой повторяет проверенный mini-player/toast-паттерн. Он даёт
+                         предсказуемое HighQuality масштабирование вместо артефактов ImageBrush. -->
+                    <Grid ClipToBounds="True" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                        <Image x:Name="AlbumArtImage" Stretch="UniformToFill" Visibility="Collapsed"
+                               RenderOptions.BitmapScalingMode="HighQuality"
+                               RenderOptions.EdgeMode="Unspecified"
+                               SnapsToDevicePixels="True" UseLayoutRounding="True">
+                            <!-- Скругление применяется к пикселям изображения, а не только к
+                                 рамке: это повторяет прежний вид главной обложки. -->
+                            <Image.Clip>
+                                <RectangleGeometry Rect="0,0,150,150" RadiusX="16" RadiusY="16" />
+                            </Image.Clip>
+                        </Image>
+                        <local:SvgPathIcon x:Name="AlbumArtIcon" Icon="IconMusicNote" Size="36"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center"
+                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </Grid>
                 </Border>
             </Grid>
 

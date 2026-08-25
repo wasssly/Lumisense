@@ -30,6 +30,8 @@ public partial class SettingsWindow : FluentWindow
     private bool _isVelopackManagedInstall;
     private string? _basePackageError;
     private string? _lastCheckedReleaseAssetUrl;
+    private bool _isLegacyInnoCleanupRunning;
+    private string? _legacyInnoCleanupStatusKey;
 
     // См. LoadDeveloperAvatar — держит BitmapImage живым на время асинхронной загрузки, чтобы
     // его не собрал GC до того, как скачивание завершится.
@@ -173,6 +175,8 @@ public partial class SettingsWindow : FluentWindow
         MiniArtworkDefaultRadio.IsChecked = !MiniArtworkVinylRadio.IsChecked.GetValueOrDefault();
         MiniShowProgressCheckBox.IsChecked = _settings.MiniPlayerShowProgress;
         MiniShowArtworkProgressCheckBox.IsChecked = _settings.MiniPlayerShowArtworkProgress;
+        MiniArtworkProgressThicknessSlider.Value = _settings.MiniPlayerArtworkProgressThickness;
+        RefreshMiniArtworkProgressThicknessPresentation();
         MiniArtworkProgressFixedRadio.IsChecked = _settings.MiniPlayerArtworkProgressColorMode == "Fixed";
         MiniArtworkProgressAccentRadio.IsChecked = !MiniArtworkProgressFixedRadio.IsChecked.GetValueOrDefault();
         MiniArtworkProgressColorSwatchesPanel.Visibility = MiniArtworkProgressFixedRadio.IsChecked == true
@@ -246,10 +250,15 @@ public partial class SettingsWindow : FluentWindow
         RefreshResetRecoveryButton();
         RefreshUpdateSourceProbePresentation();
         RefreshVelopackBasePackagePresentation();
+        RefreshLegacyInnoCleanupPresentation();
 
         _isInitializing = false;
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
-        Loaded += async (_, _) => await RefreshVelopackBasePackagePlanAsync();
+        Loaded += async (_, _) =>
+        {
+            await RefreshVelopackBasePackagePlanAsync();
+            RefreshLegacyInnoCleanupPresentation();
+        };
         Closed += (_, _) =>
         {
             _sourceProbeCts?.Cancel();
@@ -506,6 +515,114 @@ public partial class SettingsWindow : FluentWindow
                 PrepareVelopackBasePackageButton.IsEnabled = false;
                 VelopackBasePackageStatusText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageNotManaged);
                 break;
+        }
+    }
+
+    private void RefreshLegacyInnoCleanupPresentation()
+    {
+        LegacyInnoCleanupTitleText.Text = LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupCardTitle);
+        LegacyInnoCleanupDescriptionText.Text = LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupCardDescription);
+        RemoveLegacyInnoButtonText.Text = LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupCardButton);
+
+        bool hasLegacyInstall = _isVelopackManagedInstall &&
+                                LegacyInnoCleanupService.TryFind(out LegacyInnoCleanupService.LegacyInnoInstall? legacyInstall) &&
+                                legacyInstall is not null;
+        if (!hasLegacyInstall)
+        {
+            LegacyInnoCleanupExpander.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        LegacyInnoCleanupExpander.Visibility = Visibility.Visible;
+        RemoveLegacyInnoButton.IsEnabled = !_isLegacyInnoCleanupRunning;
+        string statusKey = _isLegacyInnoCleanupRunning
+            ? LocalizationKey.UpdateLegacyCleanupCardRunning
+            : _legacyInnoCleanupStatusKey ?? LocalizationKey.UpdateLegacyCleanupCardAvailable;
+        LegacyInnoCleanupStatusText.Text = LocalizationService.Get(statusKey);
+    }
+
+    private async void RemoveLegacyInnoButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_isVelopackManagedInstall || _isLegacyInnoCleanupRunning ||
+            !LegacyInnoCleanupService.TryFind(out LegacyInnoCleanupService.LegacyInnoInstall? legacyInstall) ||
+            legacyInstall is null)
+        {
+            RefreshLegacyInnoCleanupPresentation();
+            return;
+        }
+
+        var answer = LocalizedMessageBox.Show(
+            this,
+            LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupMessage),
+            LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupTitle),
+            System.Windows.MessageBoxButton.YesNo,
+            System.Windows.MessageBoxImage.Warning,
+            System.Windows.MessageBoxResult.No);
+        if (answer != System.Windows.MessageBoxResult.Yes)
+            return;
+
+        if (!LegacyInnoCleanupService.TryStartInteractiveUninstall(
+                legacyInstall,
+                out System.Diagnostics.Process? uninstallerProcess,
+                out string? technicalError) ||
+            uninstallerProcess is null)
+        {
+            _legacyInnoCleanupStatusKey = LocalizationKey.UpdateLegacyCleanupFailed;
+            RefreshLegacyInnoCleanupPresentation();
+            LocalizedMessageBox.Show(
+                this,
+                LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupFailed),
+                LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupTitle),
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+            if (!string.IsNullOrWhiteSpace(technicalError))
+                Logger.Warn($"Legacy cleanup не был запущен из Settings: {technicalError}");
+            return;
+        }
+
+        _isLegacyInnoCleanupRunning = true;
+        _legacyInnoCleanupStatusKey = LocalizationKey.UpdateLegacyCleanupCardRunning;
+        RefreshLegacyInnoCleanupPresentation();
+
+        try
+        {
+            await uninstallerProcess.WaitForExitAsync();
+            bool stillInstalled = LegacyInnoCleanupService.TryFind(out _);
+            if (stillInstalled)
+            {
+                _legacyInnoCleanupStatusKey = LocalizationKey.UpdateLegacyCleanupCardStillInstalled;
+                Logger.Info("Legacy EXE-копия Lumisense осталась после закрытия мастера удаления.");
+                RefreshLegacyInnoCleanupPresentation();
+                return;
+            }
+
+            string? legacyInstallDir = Path.GetDirectoryName(legacyInstall.UninstallerPath);
+            if (!string.IsNullOrWhiteSpace(legacyInstallDir))
+                LegacyIntegrationRepairService.RepairAfterLegacyCleanup(legacyInstallDir);
+
+            _legacyInnoCleanupStatusKey = LocalizationKey.UpdateLegacyCleanupCardCompleted;
+            RefreshLegacyInnoCleanupPresentation();
+            if (IsLoaded)
+            {
+                LocalizedMessageBox.Show(
+                    this,
+                    LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupCardCompleted),
+                    LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupTitle),
+                    System.Windows.MessageBoxButton.OK,
+                    System.Windows.MessageBoxImage.Information);
+            }
+        }
+        catch (Exception ex)
+        {
+            _legacyInnoCleanupStatusKey = LocalizationKey.UpdateLegacyCleanupCardStillInstalled;
+            Logger.Warn($"Не удалось дождаться завершения legacy cleanup: {ex.Message}");
+            RefreshLegacyInnoCleanupPresentation();
+        }
+        finally
+        {
+            _isLegacyInnoCleanupRunning = false;
+            RefreshLegacyInnoCleanupPresentation();
+            uninstallerProcess.Dispose();
         }
     }
 
@@ -880,6 +997,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Отображение обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkVinylRadio, "обложка винил пластинка вращение круглая artwork vinyl rotate мини плеер");
         Add("Показывать полосу прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowProgressCheckBox, "полоса прогресс progress bar скрыть мини плеер");
         Add("Прогресс вокруг обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowArtworkProgressCheckBox, "контур скруглённый квадрат прогресс обложка арт мини плеер artwork outline");
+        Add("Толщина контура вокруг обложки", "Мини-плеер", "MiniPlayer", MiniArtworkProgressThicknessSlider, "толщина линия контур прогресс обложка мини плеер artwork outline thickness");
         Add("Цвет контура прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkProgressAccentRadio, "акцент фиксированный цвет палитра контур прогресс обложка мини плеер artwork outline color");
         Add("Пуск / пауза", "Горячие клавиши", "Hotkeys", HotkeyPlayPauseButton, "play pause горячая клавиша");
         Add("Следующий трек", "Горячие клавиши", "Hotkeys", HotkeyNextButton, "next горячая клавиша");
@@ -909,6 +1027,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Источник загрузки обновлений", "Обновления", "Updates", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Все версии", "Обновления", "Updates", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
         Add("Проверить обновления", "Обновления", "Updates", CheckUpdatesButton, "обновление update github версия проверить");
+        Add("Удалить старую EXE-копию", "Обновления", "Updates", RemoveLegacyInnoButton, "удалить uninstall деинсталлятор старая exe msi migration cleanup compact updates");
         Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
         Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты аватар");
         Add("Открыть папку с логами", "О плеере", "About", OpenLogsButton, "логи log ошибка краш crash диагностика");
@@ -1295,6 +1414,8 @@ public partial class SettingsWindow : FluentWindow
         RefreshLyricsCacheInfo();
         RefreshUpdateSourceProbePresentation();
         RefreshVelopackBasePackagePresentation();
+        RefreshLegacyInnoCleanupPresentation();
+        RefreshMiniArtworkProgressThicknessPresentation();
         if (_sourceProbeResults is not null)
             RenderUpdateSourceProbeResults(_sourceProbeResults);
     }
@@ -1664,6 +1785,32 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.MiniPlayerShowArtworkProgress = MiniShowArtworkProgressCheckBox.IsChecked == true;
         _owner.ApplyMiniPlayerArtworkProgressVisibilityLive();
+    }
+
+    private void MiniArtworkProgressThicknessSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        // ValueChanged может сработать прямо при чтении XAML (ещё до присваивания _settings).
+        // До завершения конструктора не меняем модель и не обновляем визуальные подписи.
+        if (_isInitializing) return;
+
+        double thickness = Math.Round(MiniArtworkProgressThicknessSlider.Value * 2, MidpointRounding.AwayFromZero) / 2;
+        if (Math.Abs(MiniArtworkProgressThicknessSlider.Value - thickness) > 0.001)
+        {
+            MiniArtworkProgressThicknessSlider.Value = thickness;
+            return;
+        }
+
+        _settings.MiniPlayerArtworkProgressThickness = thickness;
+        RefreshMiniArtworkProgressThicknessPresentation();
+        _owner.ApplyMiniPlayerArtworkProgressThicknessLive();
+    }
+
+    private void RefreshMiniArtworkProgressThicknessPresentation()
+    {
+        MiniArtworkProgressThicknessLabelText.Text = LocalizationService.Get(LocalizationKey.MiniArtworkProgressThicknessLabel);
+        MiniArtworkProgressThicknessDescriptionText.Text = LocalizationService.Get(LocalizationKey.MiniArtworkProgressThicknessDescription);
+        MiniArtworkProgressThicknessValueText.Text = string.Format(
+            CultureInfo.CurrentCulture, "{0:0.0} DIP", _settings.MiniPlayerArtworkProgressThickness);
     }
 
     private void MiniArtworkProgressColorModeRadio_Changed(object sender, RoutedEventArgs e)

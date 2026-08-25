@@ -45,6 +45,9 @@
                 <!-- Ключевая настройка: клик по треку сразу переносит ползунок в точку клика,
                      а не сдвигает его пошагово на LargeChange -->
                 <Setter Property="IsMoveToPointEnabled" Value="True" />
+                <!-- Настоящие деления используются только там, где Slider явно задаёт
+                     TickPlacement. TickBar резервирует половину Thumb с обоих краёв, поэтому
+                     его крайние точки совпадают с достижимыми позициями бегунка. -->
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
@@ -70,16 +73,16 @@
                                 <!-- Фоновая полоса (весь трек) — тонкая поперёк оси движения,
                                      на всю длину вдоль неё. Какая ось "поперёк", а какая
                                      "вдоль" — зависит от Slider.Orientation, отсюда триггер. -->
-                                <Border CornerRadius="2" Background="{DynamicResource ControlStrongFillColorDefaultBrush}">
+                                <Border CornerRadius="2.5" Background="{DynamicResource ControlStrongFillColorDefaultBrush}">
                                     <Border.Style>
                                         <Style TargetType="Border">
-                                            <Setter Property="Height" Value="4" />
+                                            <Setter Property="Height" Value="5" />
                                             <Setter Property="HorizontalAlignment" Value="Stretch" />
                                             <Setter Property="VerticalAlignment" Value="Center" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Slider}, Path=Orientation}" Value="Vertical">
                                                     <Setter Property="Height" Value="Auto" />
-                                                    <Setter Property="Width" Value="4" />
+                                                    <Setter Property="Width" Value="5" />
                                                     <Setter Property="HorizontalAlignment" Value="Center" />
                                                     <Setter Property="VerticalAlignment" Value="Stretch" />
                                                 </DataTrigger>
@@ -106,17 +109,20 @@
                                                          акцентом часть трека "от начала до текущего значения"
                                                          должна быть тонкой поперёк оси движения и растянутой
                                                          вдоль неё. -->
-                                                    <Border CornerRadius="2"
-                                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                                    <!-- Скругляется только внешний старт заполнения; край у Thumb
+                                                         остаётся прямым, чтобы не образовывать вторую капсулу. -->
+                                                    <Border Background="{DynamicResource AccentFillColorDefaultBrush}">
                                                         <Border.Style>
                                                             <Style TargetType="Border">
-                                                                <Setter Property="Height" Value="4" />
+                                                                <Setter Property="CornerRadius" Value="2.5,0,0,2.5" />
+                                                                <Setter Property="Height" Value="5" />
                                                                 <Setter Property="HorizontalAlignment" Value="Stretch" />
                                                                 <Setter Property="VerticalAlignment" Value="Center" />
                                                                 <Style.Triggers>
                                                                     <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=Slider}, Path=Orientation}" Value="Vertical">
+                                                                        <Setter Property="CornerRadius" Value="0,0,2.5,2.5" />
                                                                         <Setter Property="Height" Value="Auto" />
-                                                                        <Setter Property="Width" Value="4" />
+                                                                        <Setter Property="Width" Value="5" />
                                                                         <Setter Property="HorizontalAlignment" Value="Center" />
                                                                         <Setter Property="VerticalAlignment" Value="Stretch" />
                                                                     </DataTrigger>
@@ -157,6 +163,13 @@
                                         </Thumb>
                                     </Track.Thumb>
                                 </Track>
+                                <!-- Точки рисуются только у Slider с local:SliderMilestoneMarkers.IsEnabled.
+                                     Overlay расположен после Track, поэтому одинаково виден на
+                                     заполненной и незаполненной частях дорожки. -->
+                                <local:SliderMilestoneOverlay x:Name="PART_MilestoneOverlay"
+                                                              MarkerBrush="{DynamicResource TextFillColorSecondaryBrush}"
+                                                              Opacity="0.88" IsHitTestVisible="False"
+                                                              SnapsToDevicePixels="True" />
                             </Grid>
                         </ControlTemplate>
                     </Setter.Value>
