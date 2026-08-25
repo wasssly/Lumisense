@@ -376,6 +376,31 @@ internal static class ChangelogTranslationCatalog
             // Release 1.16.2
             ["Повышена надёжность скачивания EXE- и MSI-установщиков: при временном обрыве сети выполняются безопасные полные повторы, а неполные файлы удаляются"] = "Improved EXE and MSI installer download reliability: temporary network interruptions now trigger safe full retries and incomplete files are removed",
             ["Исправлено ложное сообщение об отсутствии MSI при сетевой ошибке; медленное, но активное скачивание больше не ограничивается общим лимитом времени"] = "Fixed the false missing-MSI message on a network error; slow but active downloads are no longer limited by a total time cap",
+
+            // Release 1.17.0
+            ["Добавлены пауза, продолжение и отмена загрузки обновления"] = "Added pause, resume, and cancellation controls for update downloads",
+            ["Для EXE- и MSI-загрузок добавлена смена источника с предупреждением и безопасным началом загрузки заново"] = "Added source switching for EXE and MSI downloads with a warning and safe restart of the download",
+            ["Добавлены дополнительные источники загрузки обновлений: gh-proxy.com и ghfast.top"] = "Added additional update download sources: gh-proxy.com and ghfast.top",
+            ["Добавлена диагностика доступности и скорости источников обновления. Выбранный источник сохраняется сразу"] = "Added availability and speed diagnostics for update sources. The selected source is saved immediately",
+            ["После успешного перехода на MSI можно добровольно удалить старую EXE-копию"] = "After a successful move to MSI, you can voluntarily remove the old EXE copy",
+            ["Масштабирование интерфейса применяется ко всем основным и вспомогательным окнам"] = "UI scaling now applies to all main and auxiliary windows",
+            ["LRC- и TXT-тексты, добавленные или загруженные плеером, теперь хранятся в управляемой папке %LocalAppData%\\Lumisense\\lyrics, а не рядом с аудиофайлами"] = "LRC and TXT lyrics added or downloaded by the player are now stored in the managed %LocalAppData%\\Lumisense\\lyrics folder instead of next to audio files",
+            ["Добавлена диагностика Velopack-обновлений: перед загрузкой показывается расчётный план full/delta-пакетов, во время — процент и прошедшее время; из окна доступны копирование отчёта и открытие журналов"] = "Added Velopack update diagnostics: a calculated full/delta package plan before download, progress and elapsed time during download, and options to copy a report or open logs",
+            ["Диагностика источников обновления учитывает тип установки: для legacy-версии проверяется EXE, для Velopack-версии — актуальный full package"] = "Update-source diagnostics now account for installation type: legacy installations test the EXE, while Velopack installations test the latest full package",
+            ["Автоматическое и ручное обновление отслеживаемых папок теперь убирает из плейлиста треки, удалённые с диска"] = "Automatic and manual refresh of watched folders now removes tracks deleted from disk from the playlist",
+            ["Улучшены проверка, нормализация и восстановление настроек при повреждении или частичной записи файла"] = "Improved validation, normalization, and recovery of settings after corruption or partial file writes",
+            ["Исправлено низкое качество отображения значка Lumisense"] = "Fixed low-quality rendering of the Lumisense icon",
+            ["Исправлено отображение акцентного цвета в контекстном меню мини-плеера"] = "Fixed accent-color rendering in the mini-player context menu",
+            ["Исправлено сохранение выбранного действия для второй кнопки мини-плеера"] = "Fixed saving the selected action for the mini-player's second button",
+            ["После удаления старой EXE-копии исправлены автозапуск и пункт «Открыть в Lumisense», которые могли ссылаться на удалённую установку"] = "After removing the old EXE copy, fixed startup and the \"Open in Lumisense\" context-menu item, which could still point to the removed installation",
+            ["Исправлена клавиатурная навигация клавишей Tab до кнопок «Избранное» и «Закрепить»"] = "Fixed Tab keyboard navigation to the Favorites and Pin buttons",
+            ["Исправлено отображение линии прогресса трека при включённой соответствующей настройке"] = "Fixed track-progress line rendering when the related setting is enabled",
+            ["При чистой MSI-установке язык интерфейса теперь определяется по языку Windows, а не всегда выбирается русский"] = "On a clean MSI installation, the interface language is now determined by the Windows language instead of always selecting Russian",
+            ["Исправлено сохранение выбора между устройствами вывода с одинаковыми именами"] = "Fixed saving the selection between output devices with identical names",
+            ["Устранён сценарий, который мог приводить к Fatal CLR error при обработке обложек"] = "Eliminated a scenario that could cause a Fatal CLR error while processing artwork",
+            ["Исправлена навигация и выбор следующего трека при обычном перемешивании"] = "Fixed navigation and selection of the next track in normal shuffle mode",
+            ["Устранены зацикливание и возможные зависания при обычном перемешивании треков"] = "Eliminated looping and possible hangs in normal shuffle mode",
+            ["Удалены позднее добавленные таймеры управления позицией"] = "Removed recently added timers that controlled window position",
         };
 
     public static string Translate(string source, bool isEnglish)
