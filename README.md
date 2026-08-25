@@ -2,7 +2,7 @@
 
 # Lumisense
 
-[![Release](https://img.shields.io/github/v/release/wasssly/Lumisense?display_name=tag&sort=semver&label=release)](https://github.com/wasssly/Lumisense/releases) [![CI](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml) [![Release workflow](https://github.com/wasssly/Lumisense/actions/workflows/release.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/release.yml) [![Platform](https://img.shields.io/badge/platform-Windows%2011-0078D4?logo=windows11&logoColor=white)](https://github.com/wasssly/Lumisense)
+[![Release](https://img.shields.io/github/v/release/wasssly/Lumisense?display_name=tag&sort=semver&label=release)](https://github.com/wasssly/Lumisense/releases) [![CI](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml) [![Release workflow](https://github.com/wasssly/Lumisense/actions/workflows/release.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/release.yml) [![Platform](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white)](https://github.com/wasssly/Lumisense)
 
 <p align="center">
   <a href="#russian" title="Русский">🇷🇺</a>&nbsp;&nbsp;&nbsp;<a href="#english" title="English">🇬🇧</a>
@@ -97,9 +97,11 @@
 
 ### Готовые сборки и обновления
 
-Готовые установщики `Lumisense_Setup.exe` публикуются на странице [Releases](https://github.com/wasssly/Lumisense/releases) при создании тегов формата `v*.*.*`. Установщик предлагает выбрать русский или английский язык. Сборка выполняется автоматически через [GitHub Actions](https://github.com/wasssly/Lumisense/actions) с использованием self-contained `dotnet publish` и Inno Setup из `Installer/Lumisense.iss`.
+Готовые сборки публикуются на странице [Releases](https://github.com/wasssly/Lumisense/releases) при создании тегов формата `v*.*.*`. Начиная с release с versioned public assets, для обычной установки используется `Lumisense-<version>-Setup.exe`; установщик предлагает выбрать русский или английский язык. Сборка выполняется автоматически через [GitHub Actions](https://github.com/wasssly/Lumisense/actions) с self-contained `dotnet publish`, Inno Setup из `Installer/Lumisense.iss` и Velopack packages для MSI-копий.
 
-Сам плеер умеет проверять наличие новых версий через GitHub Releases и подсказывать пользователю об обновлении. Исходный код приложения и установщик распространяются отдельно: перед использованием конкретной сборки ознакомьтесь с описанием соответствующего релиза.
+Для обычной установки и обновления выбирайте EXE. `Lumisense-<version>-win-x64.msi` предназначен только для добровольного перехода на компактные Velopack-обновления; файлы `.nupkg`, `RELEASES` и `releases.win.json` запускать вручную не нужно. Точные назначения всех assets, сценарии EXE/MSI и особенности исторических release описаны в [документации об установке и обновлениях](docs/UPDATES.md#русский).
+
+Сам плеер умеет проверять новые версии через GitHub Releases, проверяет скачиваемые установщики по SHA-256 и подсказывает пользователю дальнейшее действие. Перед использованием конкретной сборки ознакомьтесь с описанием соответствующего release.
 
 ### Технологический стек
 
@@ -120,6 +122,7 @@ Lumisense/
 ├── .github/workflows/ci.yml            — проверка сборки, unit-тестов и зависимостей
 ├── .github/workflows/release.yml       — сборка и публикация релизов по тегу
 ├── Installer/Lumisense.iss             — сценарий установщика Inno Setup
+├── docs/UPDATES.md                     — установка, обновления и назначение release assets
 ├── Lumisense.Tests/                    — unit-тесты
 └── Lumisense/                          — исходный код плеера
     ├── Lumisense.csproj
@@ -241,9 +244,11 @@ You can also open `Lumisense.csproj` in Visual Studio and start the application 
 
 ### Ready-made builds and updates
 
-Ready-to-use `Lumisense_Setup.exe` installers are published on the [Releases](https://github.com/wasssly/Lumisense/releases) page when tags in the `v*.*.*` format are created. The installer offers a choice between Russian and English. Builds are produced automatically through [GitHub Actions](https://github.com/wasssly/Lumisense/actions), using self-contained `dotnet publish` and Inno Setup from `Installer/Lumisense.iss`.
+Ready-to-use builds are published on the [Releases](https://github.com/wasssly/Lumisense/releases) page when tags in the `v*.*.*` format are created. Starting with the release that introduces versioned public assets, use `Lumisense-<version>-Setup.exe` for a normal installation; the installer offers a choice between Russian and English. Builds are produced automatically through [GitHub Actions](https://github.com/wasssly/Lumisense/actions), using self-contained `dotnet publish`, Inno Setup from `Installer/Lumisense.iss`, and Velopack packages for MSI installations.
 
-The player can check GitHub Releases for new versions and notify the user about an update. The application source code and installer are distributed separately; before using a specific build, read the description of its corresponding release.
+Choose the EXE for normal installation and updating. `Lumisense-<version>-win-x64.msi` is only for an optional move to compact Velopack updates; do not run `.nupkg`, `RELEASES`, or `releases.win.json` manually. See the [installation and update guide](docs/UPDATES.md#english) for the purpose of every asset, EXE/MSI scenarios, and details for historical releases.
+
+The player can check GitHub Releases for new versions, verifies downloaded installers with SHA-256, and guides the user through the next action. Before using a specific build, read the description of its corresponding release.
 
 ### Technology stack
 
@@ -264,6 +269,7 @@ Lumisense/
 ├── .github/workflows/ci.yml            — build, unit-test, and dependency checks
 ├── .github/workflows/release.yml       — builds and publishes releases from tags
 ├── Installer/Lumisense.iss             — Inno Setup installer script
+├── docs/UPDATES.md                     — installation, updates, and release asset guide
 ├── Lumisense.Tests/                    — unit tests
 └── Lumisense/                          — player source code
     ├── Lumisense.csproj

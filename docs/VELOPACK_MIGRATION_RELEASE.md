@@ -2,7 +2,7 @@
 
 ## Цель и границы
 
-Этот migration-релиз добавляет Velopack как **второй** способ доставки обновлений, не ломая уже установленный Lumisense. Старые Inno Setup-копии продолжают использовать существующий `Lumisense_Setup.exe` с проверкой SHA-256. Только копия, установленная из Velopack MSI, получает full/delta-пакеты через `UpdateManager`.
+Этот migration-механизм добавляет Velopack как **второй** способ доставки обновлений, не ломая уже установленный Lumisense. Новые release публикуют versioned Inno Setup EXE с проверкой SHA-256; исторические release с `Lumisense_Setup.exe` остаются совместимы через точный fallback. Только копия, установленная из Velopack MSI, получает full/delta-пакеты через `UpdateManager`.
 
 > Переход запускается только по явному действию пользователя: в окне обновления старой EXE-копии есть отдельная кнопка «Перейти на компактные обновления (MSI)». Приложение проверяет SHA-256 MSI, передаёт его стандартному установщику Windows и не удаляет старую Inno Setup-копию автоматически. `%AppData%\Lumisense` не затрагивается.
 
@@ -10,28 +10,28 @@
 
 | Установка | Каталог программы | Механизм обновления | Совместимость с delta |
 |---|---|---|---|
-| Текущая Inno Setup | `Program Files\Lumisense` | Скачивает `Lumisense_Setup.exe`, проверяет SHA-256 и запускает Inno Setup | Нет: package store Velopack отсутствует |
-| Новая Velopack MSI PerMachine | `Program Files\wasssly\Lumisense` по умолчанию | `UpdateManager` читает `releases.win.json` и скачивает delta либо full package | Да |
+| Inno Setup EXE | `Program Files\Lumisense` | Скачивает versioned `Lumisense-<version>-Setup.exe`, проверяет SHA-256 и запускает Inno Setup | Нет: package store Velopack отсутствует |
+| Velopack MSI PerMachine | `Program Files\wasssly\Lumisense` по умолчанию | `UpdateManager` читает `releases.win.json` и скачивает delta либо full package | Да |
 
 У уже установленной Inno Setup-версии нет `Update.exe`, package store и metadata Velopack. Поэтому нельзя подменить EXE-инсталлятор delta-пакетом: это привело бы к неустанавливаемому обновлению. Вместо этого migration-релиз публикует оба типа assets в одном GitHub Release.
 
 ## Что публикует workflow
 
-Для каждого обычного release workflow сохраняет legacy asset и добавляет Velopack assets:
+Для каждого обычного release workflow публикует Inno Setup asset и добавляет Velopack assets:
 
 | Asset | Назначение |
 |---|---|
-| `Lumisense_Setup.exe` | Полный Inno Setup installer для всех старых установок и fallback. |
-| `releases.win.json` | Feed Velopack для Windows-канала `win`. |
-| `Wasssly.Lumisense-<version>-full.nupkg` | Полный Velopack package; нужен для первой Velopack-установки и fallback. |
-| `Wasssly.Lumisense-<version>-delta.nupkg` | Бинарная разница с прошлой Velopack-версией; появится начиная со второго такого release. |
-| `Wasssly.Lumisense-win.msi` | MSI PerMachine, требующий прав администратора; используется для ручного перехода. |
+| `Lumisense-<version>-Setup.exe` | Полный Inno Setup installer для обычной установки и обновления EXE-копий. В исторических release встречается `Lumisense_Setup.exe`. |
+| `releases.win.json` | Feed Velopack для Windows-канала `win`; внутренний `PackageId` остаётся `Wasssly.Lumisense`. |
+| `Lumisense-<version>-full.nupkg` | Полный публичный Velopack package; нужен для fallback. Внутри сохраняется прежний package identity. |
+| `Lumisense-<version>-delta.nupkg` | Бинарная разница с прошлой Velopack-версией, если она создана и применима. |
+| `Lumisense-<version>-win-x64.msi` | MSI PerMachine x64, требующий прав администратора; используется для добровольного перехода. Историческое имя: `Wasssly.Lumisense-win.msi`. |
 
 Workflow сначала скачивает прежний feed `win`, затем упаковывает новый release, поэтому `vpk pack` может создать delta. Если прошлый Velopack feed ещё не существует, migration-релиз корректно создаёт только full package и MSI.
 
 ## Пользовательский переход
 
-1. Пользователь устанавливает актуальную EXE-версию, затем вручную открывает **«Проверить обновления»**. Начиная с hotfix `1.16.1`, даже если EXE-копия уже совпадает с последним release, диалог честно предлагает отдельный добровольный переход **«Перейти на компактные обновления (MSI)»**.
+1. Пользователь устанавливает актуальную EXE-версию из `Lumisense-<version>-Setup.exe`, затем вручную открывает **«Проверить обновления»**. Начиная с hotfix `1.16.1`, даже если EXE-копия уже совпадает с последним release, диалог честно предлагает отдельный добровольный переход **«Перейти на компактные обновления (MSI)».**
 2. После понятного подтверждения Lumisense скачивает MSI только по доверенному HTTPS-адресу, сверяет SHA-256 с GitHub Release и запускает стандартный установщик Windows. Windows запрашивает права администратора.
 3. MSI ставит новую Velopack-копию отдельно; существующую Inno Setup-копию не перезаписывает.
 4. После первого успешного запуска Lumisense показывает сообщение, что включены компактные обновления. Настройки, плейлист, избранное и статистика остаются в `%AppData%\Lumisense`.

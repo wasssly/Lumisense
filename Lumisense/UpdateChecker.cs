@@ -29,7 +29,7 @@ public sealed class UpdateCheckResult
     public string CurrentVersion { get; init; } = "";
     public string? LatestVersion { get; init; }
 
-    // Прямая ссылка на .exe-ассет релиза (сам установщик Lumisense_Setup.exe — см.
+    // Прямая ссылка на versioned .exe-asset release (Inno Setup installer — см.
     // Installer/Lumisense.iss) — то, что реально скачивается и запускается.
     public string? DownloadUrl { get; init; }
 
@@ -185,8 +185,9 @@ public sealed class ReleaseListItem
 // мало для лимита 60/час на IP. Используется и при тихой проверке на старте, и по кнопке
 // в настройках.
 //
-// Ожидает, что релиз содержит один .exe-ассет — установщик Lumisense_Setup.exe (Installer/
-// Lumisense.iss). Inno Setup сам обнаружит уже установленную копию и обновит её на месте,
+// Ожидает, что release содержит один versioned .exe-asset Lumisense-<version>-Setup.exe.
+// Для исторических release допускается только явный fallback Lumisense_Setup.exe. Inno Setup
+// сам обнаружит уже установленную копию и обновит её на месте,
 // отдельный "автообновляльщик" не нужен.
 //
 // ВАЖНО: RepoOwner/RepoName должны указывать на реальный репозиторий с релизами.
@@ -197,13 +198,11 @@ public static class UpdateChecker
 
     private const long MaxInstallerBytes = 250L * 1024 * 1024;
     private const int SourceProbeBytes = 256 * 1024;
-    // Fallback, если ещё нет результата настоящей проверки обновления в этой сессии.
-    // GitHub поддерживает стабильный /releases/latest/download/{asset} для asset последнего
-    // релиза. Это лучше закреплённого номера версии: ссылка не устаревает и проверяет тот же
-    // путь release-asset/redirect/CDN, который пользователь получит при реальном обновлении.
-    // Raw-файл из репозитория здесь намеренно не используется: он не измеряет доставку
-    // установщика и может иначе обрабатываться GitHub-прокси.
-    private const string FallbackSourceProbeAssetUrl = "https://github.com/wasssly/Lumisense/releases/latest/download/Lumisense_Setup.exe";
+    // Если в текущей сессии ещё не было проверки обновления, URL для замера source нельзя
+    // собрать как /releases/latest/download/{asset}: имя EXE теперь содержит версию. В этом
+    // случае ResolveProbeAssetUrlAsync сначала получает latest release через API и выбирает
+    // только ожидаемый versioned asset. Raw-файл из репозитория здесь намеренно не используется:
+    // он не измеряет реальный путь release-asset/redirect/CDN.
     private const int DownloadAttemptCount = 3;
     // Медленное зеркало допустимо, пока оно продолжает передавать данные. Ограничиваем не общую
     // длительность скачивания, а только период полного отсутствия байтов, чтобы не обрывать
@@ -290,8 +289,8 @@ public static class UpdateChecker
             string tagName = root.TryGetProperty("tag_name", out var tagEl) ? tagEl.GetString() ?? "" : "";
             string latestVersion = tagName.TrimStart('v', 'V');
 
-            var installer = FindInstallerAsset(root);
-            var msi = FindMsiAsset(root);
+            var installer = FindInstallerAsset(root, latestVersion);
+            var msi = FindMsiAsset(root, latestVersion);
             string? downloadUrl = installer.DownloadUrl;
             string? installerSha256 = installer.Sha256;
 
@@ -380,7 +379,7 @@ public static class UpdateChecker
                     && System.DateTimeOffset.TryParse(pubEl.GetString(), out var parsedDate))
                     publishedAt = parsedDate;
 
-                var installer = FindInstallerAsset(releaseEl);
+                var installer = FindInstallerAsset(releaseEl, version);
                 releases.Add(new ReleaseListItem
                 {
                     Version = version,
@@ -406,38 +405,50 @@ public static class UpdateChecker
         }
     }
 
-    // В migration-релизе рядом с Inno EXE может лежать Velopack Setup.exe. Legacy путь
-    // намеренно принимает только привычный Lumisense_Setup.exe, а не первый попавшийся .exe.
-    private static (string? DownloadUrl, string? Sha256) FindInstallerAsset(JsonElement releaseRoot) =>
-        FindAssetByExactName(releaseRoot, "Lumisense_Setup.exe");
+    // Выбор всегда привязан к версии именно того release, который вернул GitHub API. Это
+    // исключает выбор произвольного EXE/MSI и одновременно позволяет переименовать публичные
+    // файлы без изменения Inno AppId или внутреннего Velopack package identity.
+    internal static (string? DownloadUrl, string? Sha256) FindInstallerAsset(JsonElement releaseRoot, string releaseVersion) =>
+        FindAssetByPreferredExactNames(
+            releaseRoot,
+            $"Lumisense-{releaseVersion}-Setup.exe",
+            "Lumisense_Setup.exe");
 
-    // Принимаем только ожидаемый MSI из release workflow, чтобы случайный или будущий
-    // дополнительный .msi asset не мог быть предложен legacy-копии как путь миграции.
-    private static (string? DownloadUrl, string? Sha256) FindMsiAsset(JsonElement releaseRoot) =>
-        FindAssetByExactName(releaseRoot, "Wasssly.Lumisense-win.msi");
+    // Versioned MSI — публичное имя нового workflow. Internal Wasssly-имя остаётся только
+    // fallback для уже опубликованных migration-релизов и не расширяет выбор до любого .msi.
+    internal static (string? DownloadUrl, string? Sha256) FindMsiAsset(JsonElement releaseRoot, string releaseVersion) =>
+        FindAssetByPreferredExactNames(
+            releaseRoot,
+            $"Lumisense-{releaseVersion}-win-x64.msi",
+            "Wasssly.Lumisense-win.msi");
 
-    private static (string? DownloadUrl, string? Sha256) FindVelopackFullPackageAsset(JsonElement releaseRoot)
+    internal static (string? DownloadUrl, string? Sha256) FindVelopackFullPackageAsset(
+        JsonElement releaseRoot,
+        string releaseVersion)
     {
-        if (!releaseRoot.TryGetProperty("assets", out var assetsEl) || assetsEl.ValueKind != JsonValueKind.Array)
-            return (null, null);
-
-        var asset = assetsEl.EnumerateArray().FirstOrDefault(candidate =>
-            candidate.TryGetProperty("name", out var nameEl) &&
-            nameEl.GetString() is string name &&
-            name.StartsWith(VelopackUpdateService.PackId + "-", StringComparison.OrdinalIgnoreCase) &&
-            name.EndsWith("-full.nupkg", StringComparison.OrdinalIgnoreCase));
-        return asset.ValueKind == JsonValueKind.Object ? GetAssetDownload(asset) : (null, null);
+        return FindAssetByPreferredExactNames(
+            releaseRoot,
+            $"Lumisense-{releaseVersion}-full.nupkg",
+            $"{VelopackUpdateService.PackId}-{releaseVersion}-full.nupkg");
     }
 
-    private static (string? DownloadUrl, string? Sha256) FindAssetByExactName(JsonElement releaseRoot, string expectedName)
+    private static (string? DownloadUrl, string? Sha256) FindAssetByPreferredExactNames(
+        JsonElement releaseRoot,
+        params string[] expectedNames)
     {
         if (!releaseRoot.TryGetProperty("assets", out var assetsEl) || assetsEl.ValueKind != JsonValueKind.Array)
             return (null, null);
 
-        var asset = assetsEl.EnumerateArray().FirstOrDefault(a =>
-            a.TryGetProperty("name", out var n) &&
-            string.Equals(n.GetString(), expectedName, StringComparison.OrdinalIgnoreCase));
-        return asset.ValueKind == JsonValueKind.Object ? GetAssetDownload(asset) : (null, null);
+        foreach (string expectedName in expectedNames)
+        {
+            JsonElement asset = assetsEl.EnumerateArray().FirstOrDefault(candidate =>
+                candidate.TryGetProperty("name", out var nameEl) &&
+                string.Equals(nameEl.GetString(), expectedName, StringComparison.OrdinalIgnoreCase));
+            if (asset.ValueKind == JsonValueKind.Object)
+                return GetAssetDownload(asset);
+        }
+
+        return (null, null);
     }
 
     private static (string? DownloadUrl, string? Sha256) GetAssetDownload(JsonElement asset)
@@ -538,15 +549,33 @@ public static class UpdateChecker
     private static async Task<string> ResolveProbeAssetUrlAsync(string? legacyInstallerAssetUrl, CancellationToken ct)
     {
         // Legacy Inno Setup скачивает полный EXE. Если ручная проверка уже получила
-        // browser_download_url актуального EXE, используем его; иначе стабильный latest URL.
+        // browser_download_url актуального EXE, используем его. Иначе versioned имя нельзя
+        // вычислить без API, поэтому выбираем точный asset из latest release.
         if (!UpdateMigrationGuard.IsVelopackManagedInstall())
-            return string.IsNullOrWhiteSpace(legacyInstallerAssetUrl)
-                ? FallbackSourceProbeAssetUrl
-                : legacyInstallerAssetUrl;
+        {
+            if (!string.IsNullOrWhiteSpace(legacyInstallerAssetUrl))
+                return legacyInstallerAssetUrl;
+
+            return await ResolveLatestReleaseAssetUrlAsync(
+                "Inno Setup installer",
+                FindInstallerAsset,
+                ct).ConfigureAwait(false);
+        }
 
         // Velopack после первоначальной MSI-установки получает обновления через feed и .nupkg,
         // а не через следующий MSI. Берём full package последнего release через GitHub API,
         // потому что его имя содержит версию и не имеет постоянного latest-download URL.
+        return await ResolveLatestReleaseAssetUrlAsync(
+            "Velopack full package",
+            FindVelopackFullPackageAsset,
+            ct).ConfigureAwait(false);
+    }
+
+    private static async Task<string> ResolveLatestReleaseAssetUrlAsync(
+        string assetDescription,
+        Func<JsonElement, string, (string? DownloadUrl, string? Sha256)> findAsset,
+        CancellationToken ct)
+    {
         try
         {
             string latestReleaseUrl = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest";
@@ -556,12 +585,16 @@ public static class UpdateChecker
 
             await using var stream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             using var document = await JsonDocument.ParseAsync(stream, cancellationToken: ct).ConfigureAwait(false);
-            string? fullPackageUrl = FindVelopackFullPackageAsset(document.RootElement).DownloadUrl;
-            if (string.IsNullOrWhiteSpace(fullPackageUrl))
+            string tagName = document.RootElement.TryGetProperty("tag_name", out var tagElement)
+                ? tagElement.GetString() ?? string.Empty
+                : string.Empty;
+            string releaseVersion = tagName.TrimStart('v', 'V');
+            string? assetUrl = findAsset(document.RootElement, releaseVersion).DownloadUrl;
+            if (string.IsNullOrWhiteSpace(assetUrl))
                 throw new UpdateSourceProbeAssetResolutionException(
-                    "В последнем GitHub Release отсутствует Velopack full package.");
+                    $"В последнем GitHub Release отсутствует ожидаемый {assetDescription}.");
 
-            return fullPackageUrl;
+            return assetUrl;
         }
         catch (UpdateSourceProbeAssetResolutionException)
         {
@@ -570,7 +603,7 @@ public static class UpdateChecker
         catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             throw new UpdateSourceProbeAssetResolutionException(
-                "Не удалось определить Velopack package из последнего GitHub Release.", ex);
+                $"Не удалось определить {assetDescription} из последнего GitHub Release.", ex);
         }
     }
 

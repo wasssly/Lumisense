@@ -13,8 +13,8 @@
 #      «Добавлено», «Изменено», «Исправлено» и «Удалено».
 #   4. Собирает Velopack full/delta packages и MSI PerMachine для установок, которые уже
 #      прошли осознанный переход на новый updater. Legacy-копии остаются на Inno Setup.
-#   5. Публикует релиз на GitHub с Lumisense_Setup.exe и Velopack assets: legacy UpdateChecker
-#      находит только Inno EXE, а Velopack-managed копия читает releases.win.json.
+#   5. Публикует релиз на GitHub с versioned Inno EXE и Velopack assets: legacy UpdateChecker
+#      выбирает Inno EXE по номеру release, а Velopack-managed копия читает releases.win.json.
 #
 # ВАЖНО перед тем как поставить тег: добавьте в Changelog/changelog.json новую запись со
 # списком изменений. Дату указывать больше не обязательно: новые записи привязаны к версии,
@@ -158,10 +158,16 @@ jobs:
       - name: Install Inno Setup
         run: choco install innosetup --no-progress -y
 
-      - name: Build installer
+      - name: Build versioned Inno Setup installer
         shell: pwsh
         run: |
           & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "/DMyAppVersion=${{ steps.ver.outputs.version }}" "Installer\Lumisense.iss"
+          if ($LASTEXITCODE -ne 0) { throw "Inno Setup build failed." }
+          $source = "Lumisense_Setup.exe"
+          $target = "Lumisense-${{ steps.ver.outputs.version }}-Setup.exe"
+          if (-not (Test-Path $source)) { throw "Inno Setup output '$source' was not found." }
+          Move-Item -Path $source -Destination $target -Force
+          Write-Host "Prepared versioned Inno Setup asset: $target"
 
       - name: Create GitHub Release
         id: release
@@ -170,7 +176,7 @@ jobs:
         with:
           name: "Lumisense ${{ steps.ver.outputs.version }}"
           body_path: release_notes.md
-          files: Lumisense_Setup.exe
+          files: Lumisense-${{ steps.ver.outputs.version }}-Setup.exe
 
       # merge добавляет `releases.win.json`, full/delta nupkg и MSI в уже созданный GitHub
       # Release. Он не нужен для legacy Inno Setup, но без него Velopack не сможет найти feed.
@@ -209,15 +215,95 @@ jobs:
           }
           $releaseUri = "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$env:RELEASE_VERSION"
           $release = Invoke-RestMethod -Headers $headers -Uri $releaseUri
-          $bootstrapperAssets = @($release.assets | Where-Object { $_.name -like "*-Setup.exe" })
+          $bootstrapperAssets = @($release.assets | Where-Object { $_.name -eq "Wasssly.Lumisense-win-Setup.exe" })
           foreach ($asset in $bootstrapperAssets) {
             Write-Host "Removing non-public Velopack bootstrapper from GitHub Release: $($asset.name)"
             Invoke-RestMethod -Headers $headers -Method Delete -Uri "https://api.github.com/repos/${{ github.repository }}/releases/assets/$($asset.id)"
           }
           $remainingAssets = @((Invoke-RestMethod -Headers $headers -Uri $releaseUri).assets |
-            Where-Object { $_.name -like "*-Setup.exe" })
+            Where-Object { $_.name -eq "Wasssly.Lumisense-win-Setup.exe" })
           if ($remainingAssets.Count -ne 0) {
             throw "Velopack Setup bootstrapper must not remain in published release assets."
+          }
+
+      # Internal Velopack package IDs remain Wasssly.Lumisense to preserve the update identity
+      # of existing MSI installs. Only the names exposed on the GitHub Release are made product-facing.
+      # Original packages remain published until their renamed copies and the replacement feed succeed.
+      # GitHub cannot atomically replace an asset with the same name, so clients can briefly see either
+      # the old feed/assets or no feed, but never a feed that names deleted package files.
+      - name: Rename public Velopack assets and rewrite Windows feed
+        if: github.event_name != 'workflow_dispatch'
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $headers = @{
+            Accept = "application/vnd.github+json"
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            "X-GitHub-Api-Version" = "2022-11-28"
+          }
+          $releaseUri = "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$env:RELEASE_VERSION"
+          $release = Invoke-RestMethod -Headers $headers -Uri $releaseUri
+          $oldFull = "Wasssly.Lumisense-$env:RELEASE_VERSION-full.nupkg"
+          $oldDelta = "Wasssly.Lumisense-$env:RELEASE_VERSION-delta.nupkg"
+          $oldMsi = "Wasssly.Lumisense-win.msi"
+          $renameMap = [ordered]@{
+            $oldFull = "Lumisense-$env:RELEASE_VERSION-full.nupkg"
+            $oldDelta = "Lumisense-$env:RELEASE_VERSION-delta.nupkg"
+            $oldMsi = "Lumisense-$env:RELEASE_VERSION-win-x64.msi"
+          }
+
+          $assetsByName = @{}
+          foreach ($asset in $release.assets) { $assetsByName[$asset.name] = $asset }
+          foreach ($oldName in $renameMap.Keys) {
+            if (-not $assetsByName.ContainsKey($oldName)) {
+              if ($oldName -eq $oldDelta) {
+                Write-Warning "No delta package was created for this release; no delta rename is needed."
+                continue
+              }
+              throw "Expected internal Velopack asset '$oldName' was not published."
+            }
+          }
+          if (-not $assetsByName.ContainsKey("releases.win.json")) {
+            throw "The published releases.win.json asset is missing."
+          }
+
+          $feedAsset = $assetsByName["releases.win.json"]
+          $feedPath = Join-Path $env:RUNNER_TEMP "releases.win.json"
+          Invoke-WebRequest -Uri $feedAsset.browser_download_url -OutFile $feedPath
+          $feed = Get-Content -Raw -Path $feedPath | ConvertFrom-Json
+          foreach ($entry in $feed.Assets) {
+            if ($renameMap.Contains($entry.FileName) -and $assetsByName.ContainsKey($entry.FileName)) {
+              $entry.FileName = $renameMap[$entry.FileName]
+            }
+          }
+          $feed | ConvertTo-Json -Depth 8 -Compress | Set-Content -Path $feedPath -Encoding utf8NoBOM
+
+          foreach ($oldName in $renameMap.Keys) {
+            if (-not $assetsByName.ContainsKey($oldName)) { continue }
+            $newName = $renameMap[$oldName]
+            if ($assetsByName.ContainsKey($newName)) {
+              Write-Host "Public asset '$newName' already exists; keeping it."
+              continue
+            }
+            $sourcePath = Join-Path $env:RUNNER_TEMP $oldName
+            Invoke-WebRequest -Uri $assetsByName[$oldName].browser_download_url -OutFile $sourcePath
+            $uploadUri = "https://uploads.github.com/repos/${{ github.repository }}/releases/$($release.id)/assets?name=$([uri]::EscapeDataString($newName))"
+            Invoke-WebRequest -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = "application/vnd.github+json"; "Content-Type" = "application/octet-stream"; "X-GitHub-Api-Version" = "2022-11-28" } -Method Post -Uri $uploadUri -InFile $sourcePath | Out-Null
+          }
+
+          # GitHub rejects a second asset with the same name, so remove the old feed only after every
+          # renamed package upload has succeeded. The original packages are still present at this point.
+          Invoke-RestMethod -Headers $headers -Method Delete -Uri "https://api.github.com/repos/${{ github.repository }}/releases/assets/$($feedAsset.id)"
+          $feedUploadUri = "https://uploads.github.com/repos/${{ github.repository }}/releases/$($release.id)/assets?name=releases.win.json"
+          Invoke-WebRequest -Headers @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = "application/vnd.github+json"; "Content-Type" = "application/octet-stream"; "X-GitHub-Api-Version" = "2022-11-28" } -Method Post -Uri $feedUploadUri -InFile $feedPath | Out-Null
+
+          foreach ($oldName in $renameMap.Keys) {
+            if ($assetsByName.ContainsKey($oldName)) {
+              Invoke-RestMethod -Headers $headers -Method Delete -Uri "https://api.github.com/repos/${{ github.repository }}/releases/assets/$($assetsByName[$oldName].id)"
+            }
           }
 
       - name: Verify published release assets
@@ -233,29 +319,43 @@ jobs:
             "X-GitHub-Api-Version" = "2022-11-28"
           }
           $release = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$env:RELEASE_VERSION"
-          $legacyAssets = @($release.assets | Where-Object { $_.name -eq "Lumisense_Setup.exe" })
-          if ($legacyAssets.Count -ne 1) { throw "Expected exactly one Lumisense_Setup.exe asset, found $($legacyAssets.Count)." }
+          $legacyInstallerName = "Lumisense-$env:RELEASE_VERSION-Setup.exe"
+          $legacyAssets = @($release.assets | Where-Object { $_.name -eq $legacyInstallerName })
+          if ($legacyAssets.Count -ne 1) { throw "Expected exactly one $legacyInstallerName asset, found $($legacyAssets.Count)." }
           $legacyAsset = $legacyAssets[0]
           if ($legacyAsset.size -le 0 -or [string]$legacyAsset.digest -notmatch '^sha256:[0-9a-fA-F]{64}$') {
             throw "Published legacy installer is missing or has no valid SHA-256 digest."
           }
 
           $velFeed = @($release.assets | Where-Object { $_.name -eq "releases.win.json" })
-          $velFull = @($release.assets | Where-Object { $_.name -eq "Wasssly.Lumisense-$env:RELEASE_VERSION-full.nupkg" })
-          $velMsi = @($release.assets | Where-Object { $_.name -eq "Wasssly.Lumisense-win.msi" })
-          $velBootstrapper = @($release.assets | Where-Object { $_.name -like "*-Setup.exe" })
+          $velFull = @($release.assets | Where-Object { $_.name -eq "Lumisense-$env:RELEASE_VERSION-full.nupkg" })
+          $velDelta = @($release.assets | Where-Object { $_.name -eq "Lumisense-$env:RELEASE_VERSION-delta.nupkg" })
+          $velMsi = @($release.assets | Where-Object { $_.name -eq "Lumisense-$env:RELEASE_VERSION-win-x64.msi" })
+          $oldVelopackNames = @($release.assets | Where-Object { $_.name -like "Wasssly.Lumisense-*" })
+          $velBootstrapper = @($release.assets | Where-Object { $_.name -eq "Wasssly.Lumisense-win-Setup.exe" })
           if ($velBootstrapper.Count -ne 0) {
-            throw "Velopack Setup bootstrapper must not be published; use Lumisense_Setup.exe or the MSI migration asset."
+            throw "Velopack Setup bootstrapper must not be published; use the versioned Lumisense Setup.exe or the MSI migration asset."
+          }
+          if ($oldVelopackNames.Count -ne 0) {
+            throw "Internal Wasssly.Lumisense asset names must not remain on the public release."
           }
           if ($velFeed.Count -ne 1 -or $velFull.Count -ne 1 -or $velMsi.Count -ne 1) {
-            throw "Expected Velopack win feed, current full package and MSI migration asset on the release."
+            throw "Expected renamed Velopack win feed, current full package and versioned MSI migration asset on the release."
           }
-          foreach ($asset in @($legacyAsset, $velFeed[0], $velFull[0], $velMsi[0])) {
+          foreach ($asset in @($legacyAsset, $velFeed[0], $velFull[0], $velMsi[0]) + $velDelta) {
             if ($asset.size -le 0 -or [string]$asset.digest -notmatch '^sha256:[0-9a-fA-F]{64}$') {
               throw "Published asset '$($asset.name)' is empty or has no valid SHA-256 digest."
             }
           }
-          Write-Host "Verified legacy installer plus Velopack win feed/full package/MSI assets; no Velopack bootstrapper was published."
+          $feedUri = $velFeed[0].browser_download_url
+          $publishedFeed = (Invoke-WebRequest -Uri $feedUri).Content | ConvertFrom-Json
+          $currentFeedEntries = @($publishedFeed.Assets | Where-Object { $_.Version -eq $env:RELEASE_VERSION })
+          foreach ($entry in $currentFeedEntries) {
+            if ($entry.FileName -like "Wasssly.Lumisense-*" -or -not @($release.assets.name).Contains($entry.FileName)) {
+              throw "Published releases.win.json references a missing or internal-named asset '$($entry.FileName)'."
+            }
+          }
+          Write-Host "Verified legacy installer plus renamed public Velopack assets and a coherent Windows release feed; no bootstrapper was published."
 
       - name: Upload build artifact (manual test run)
         if: github.event_name == 'workflow_dispatch'
@@ -263,5 +363,5 @@ jobs:
         with:
           name: Lumisense_migration_build
           path: |
-            Lumisense_Setup.exe
+            Lumisense-${{ steps.ver.outputs.version }}-Setup.exe
             VelopackReleases
