@@ -56,6 +56,7 @@ public static class LumiProfileIO
         clone.ShuffleHistory = new List<string>();
         clone.ShuffleHistoryIndex = -1;
         clone.ShuffleBag = new List<string>();
+        clone.SavedQueue = new List<string>();
         clone.PlayCounts = new Dictionary<string, int>();
 
         return clone;

@@ -201,6 +201,12 @@ public class AppSettings
     // пути к файлам.
     public List<string> PinnedFavoriteTracks { get; set; } = new();
 
+    // Очередь "Играть следующим" по умолчанию не переживает перезапуск (список выключен).
+    // Если включён — SavedQueue хранит актуальное содержимое очереди (см.
+    // MainWindow._playbackQueue, событие Changed).
+    public bool SaveQueueBetweenRestarts { get; set; } = false;
+    public List<string> SavedQueue { get; set; } = new();
+
     public string? LastTrackPath { get; set; }              // Путь последнего проигранного трека
     public double LastPositionSeconds { get; set; }          // Позиция в треке на момент закрытия
 

@@ -1053,6 +1053,12 @@
                                 <TextBlock Text="Снимите галочки, чтобы скрыть ненужные действия при нажатии правой кнопкой по треку в плейлисте. «Воспроизвести» остаётся доступным всегда."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
                                 <UniformGrid Columns="1" Margin="0,2,0,0">
+                                    <CheckBox x:Name="TrackContextPlayNowCheckBox" Tag="PlayNow" Content="Играть сейчас"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextPlayNextCheckBox" Tag="PlayNext" Content="Играть следующим"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextAddToQueueCheckBox" Tag="AddToQueue" Content="Добавить в очередь"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextFavoriteCheckBox" Tag="Favorite" Content="Избранное"
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextShowInExplorerCheckBox" Tag="ShowInExplorer" Content="Показать в проводнике"
@@ -1086,6 +1092,15 @@
                                 <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
                                           Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
                                 <TextBlock Text="Вместо чисто случайного выбора трека на каждом шаге сначала тасуется весь плейлист целиком, а треки проигрываются по порядку из этой тасовки — так один и тот же трек не может повториться, пока не сыграют все остальные."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="SaveQueueBetweenRestartsCheckBox" Content="Сохранять очередь «Играть следующим» между запусками"
+                                          Checked="SaveQueueBetweenRestartsCheckBox_Changed" Unchecked="SaveQueueBetweenRestartsCheckBox_Changed" />
+                                <TextBlock Text="По умолчанию очередь не переживает перезапуск приложения. Если включить — она сохранится и восстановится при следующем запуске (пропавшие с диска файлы будут тихо убраны)."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>

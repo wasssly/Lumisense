@@ -273,6 +273,9 @@ internal static class SettingsIntegrityService
             .ToList();
         settings.ShuffleHistory = NormalizePaths(settings.ShuffleHistory);
         settings.ShuffleBag = NormalizePaths(settings.ShuffleBag);
+        settings.SavedQueue = settings.SaveQueueBetweenRestarts
+            ? NormalizePaths(settings.SavedQueue)
+            : new List<string>();
         settings.PlayCounts ??= new Dictionary<string, int>();
         settings.PlayCounts = settings.PlayCounts
             .Where(pair => !string.IsNullOrWhiteSpace(pair.Key) && pair.Value >= 0)

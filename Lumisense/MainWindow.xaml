@@ -61,6 +61,24 @@
                                 <local:SvgPathIcon Icon="IconPlay" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
+                        <MenuItem Header="Играть сейчас" Click="PlayNowMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=PlayNow}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconPlay" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Играть следующим" Click="PlayNextMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=PlayNext}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconNext" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Добавить в очередь" Click="AddToQueueMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=AddToQueue}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconAdd" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=Favorite}">
                             <MenuItem.Icon>
@@ -924,6 +942,47 @@
             </Border>
         </Popup>
 
+        <Popup x:Name="QueuePopup"
+               Placement="Top" StaysOpen="False" AllowsTransparency="True"
+               VerticalOffset="-8" PopupAnimation="Fade">
+            <Border Background="#FF242424" BorderBrush="#FF707070" BorderThickness="1" CornerRadius="8" Padding="12,10">
+                <StackPanel Width="260">
+                    <Grid Margin="0,0,0,8">
+                        <TextBlock Text="Очередь «Играть следующим»" Foreground="#D8D8D8" FontSize="12"
+                                   FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"
+                                   Margin="0,0,60,0" />
+                        <Button x:Name="ClearQueueButton" Content="Очистить" HorizontalAlignment="Right"
+                                VerticalAlignment="Top" Padding="6,2" FontSize="11" Visibility="Collapsed"
+                                Click="ClearQueueButton_Click" />
+                    </Grid>
+                    <TextBlock x:Name="QueueEmptyText"
+                               Text="Пусто. Правый клик по треку → «Играть следующим» или «Добавить в очередь»."
+                               Foreground="#A0A0A0" FontSize="11" TextWrapping="Wrap" />
+                    <ListBox x:Name="QueueItemsList" MaxHeight="240" Background="Transparent"
+                             BorderThickness="0" Visibility="Collapsed">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding DisplayName}" Foreground="White"
+                                               FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
+                                    <ui:Button Grid.Column="1" Appearance="Transparent" Width="20" Height="20" Padding="0"
+                                               Tag="{Binding}" Click="RemoveFromQueueButton_Click">
+                                        <ui:Button.Icon>
+                                            <local:SvgPathIcon Icon="IconDismiss" Size="11" />
+                                        </ui:Button.Icon>
+                                    </ui:Button>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </StackPanel>
+            </Border>
+        </Popup>
+
 
         <!-- Панель плейлиста: заголовок + переключатель видимости + кнопки добавления -->
         <Grid x:Name="PlaylistHeaderRow" Grid.Row="5" Margin="16,4,16,6">
@@ -1020,17 +1079,39 @@
                 </ui:Button.Icon>
             </ui:Button>
 
-            <!-- Переключает содержимое той же панели: вместо плейлиста показывает текст
-                 текущей композиции. Настройки расположены последними в ряду, поэтому кнопка
-                 текста остаётся непосредственно перед ними. -->
-            <ui:Button Grid.Column="6" x:Name="LyricsPanelButton" Appearance="Secondary"
+            <!-- Раскрывает мини-меню с двумя редко используемыми действиями (очередь и текст
+                 песни) вместо двух отдельных кнопок в общем ряду — см. MoreActionsPopup ниже. -->
+            <ui:Button Grid.Column="6" x:Name="MoreActionsButton" Appearance="Secondary"
                        Width="32" Height="32" Padding="0" Margin="4,0,0,0"
-                       Click="LyricsPanelButton_Click" ToolTip="Текст песни">
+                       Click="MoreActionsButton_Click" ToolTip="Ещё">
                 <ui:Button.Icon>
-                    <local:SvgPathIcon x:Name="LyricsPanelButtonIcon" Icon="IconChangelog" Size="15" />
+                    <local:SvgPathIcon Icon="IconMoreHorizontal" Size="15" />
                 </ui:Button.Icon>
             </ui:Button>
         </Grid>
+
+        <Popup x:Name="MoreActionsPopup" PlacementTarget="{Binding ElementName=MoreActionsButton}"
+               Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
+               VerticalOffset="4" PopupAnimation="Fade">
+            <Border Background="#FF242424" BorderBrush="#FF707070" BorderThickness="1" CornerRadius="8" Padding="6">
+                <StackPanel Width="200">
+                    <ui:Button x:Name="QueueButton" Appearance="Transparent" HorizontalContentAlignment="Left"
+                               Padding="8,6" Content="Очередь «Играть следующим»"
+                               Click="QueueButton_Click">
+                        <ui:Button.Icon>
+                            <local:SvgPathIcon Icon="IconMusicNote" Size="15" />
+                        </ui:Button.Icon>
+                    </ui:Button>
+                    <ui:Button x:Name="LyricsPanelButton" Appearance="Transparent"
+                               HorizontalContentAlignment="Left" Padding="8,6" Content="Текст песни"
+                               Click="LyricsPanelButton_Click">
+                        <ui:Button.Icon>
+                            <local:SvgPathIcon x:Name="LyricsPanelButtonIcon" Icon="IconChangelog" Size="15" />
+                        </ui:Button.Icon>
+                    </ui:Button>
+                </StackPanel>
+            </Border>
+        </Popup>
 
         <!-- Плейлист: список групп (папок/отдельных файлов). Каждую группу можно включить
              или выключить чекбоксом — выключенные пропускаются при воспроизведении,

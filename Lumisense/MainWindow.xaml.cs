@@ -19,6 +19,10 @@ using Wpf.Ui.Controls;
 
 namespace AudioPlayer;
 
+// Элемент для отображения в QueueItemsList (см. RefreshQueueUi) — DisplayName только для
+// показа, реальные операции (удаление и т.д.) всегда идут по FilePath.
+public sealed record QueueDisplayItem(string FilePath, string DisplayName);
+
 public partial class MainWindow : FluentWindow
 {
     private enum RepeatMode { Off, All, One }
@@ -266,6 +270,15 @@ public partial class MainWindow : FluentWindow
     private int _shuffleHistoryIndex = -1;
     private const int MaxPersistedShuffleHistory = 512;
 
+    // Очередь "Играть следующим" (см. PlaybackQueue) — временная вставка перед обычным
+    // продолжением плейлиста/шаффла, см. ResolveNextTrackPathRespectingQueue.
+    private readonly PlaybackQueue _playbackQueue = new();
+
+    // Popup для очереди не привязан биндингом к MainWindow — Popup рендерится в отдельном
+    // визуальном дереве, и RelativeSource/DataContext-биндинги через его границу ненадёжны в
+    // WPF (тот же приём уже используется для PlaybackControlPopup: код-behind, а не биндинг).
+    private readonly ObservableCollection<QueueDisplayItem> _queueDisplayItems = new();
+
     // "Колода" для шаффла без повторов (см. GetNextShuffleTrack) — активна только когда
     // включена настройка Settings.UseImprovedShuffle.
     private List<string> _shuffleBag = new();
@@ -489,6 +502,20 @@ public partial class MainWindow : FluentWindow
         FavoritesManager.Initialize(_settings.FavoriteTracks, _settings.PinnedFavoriteTracks);
         PlayCountManager.Initialize(_settings.PlayCounts);
         TrackContextMenuActions.Instance.Initialize(_settings.DisabledTrackContextMenuActions);
+
+        if (_settings.SaveQueueBetweenRestarts)
+        {
+            _playbackQueue.LoadFrom(_settings.SavedQueue);
+            _playbackQueue.PruneMissing();
+        }
+        QueueItemsList.ItemsSource = _queueDisplayItems;
+        RefreshQueueUi();
+        _playbackQueue.Changed += () =>
+        {
+            if (_settings.SaveQueueBetweenRestarts)
+                _settings.SavedQueue = _playbackQueue.Items.ToList();
+            RefreshQueueUi();
+        };
 
         _progressTimer.Tick += ProgressTimer_Tick;
         _playlistSearchDebounceTimer.Tick += PlaylistSearchDebounceTimer_Tick;
@@ -3673,6 +3700,36 @@ public partial class MainWindow : FluentWindow
         LoadAndPlay(row.FilePath);
     }
 
+    // Общий помощник для пунктов меню, которые должны применяться сразу ко всем выделенным
+    // строкам (Ctrl/Shift-клик), а не только к той, на которой был правый клик — см.
+    // PlaylistTrackList_PreviewKeyDown/DeleteTracksFromPlaylist, тот же принцип. Если правый
+    // клик пришёлся на строку ВНЕ текущего выделения, действие применяется только к ней одной
+    // (совпадает с тем, что WPF и так обычно делает с самим выделением при таком клике).
+    private List<PlaylistTrackRow> GetSelectedRowsForBulkAction(PlaylistTrackRow clickedRow)
+    {
+        var listView = clickedRow.Folder.IsFavoritesGroup ? FavoritesTrackListView : PlaylistFoldersControl;
+        var selected = listView.SelectedItems.OfType<PlaylistTrackRow>().ToList();
+        return selected.Contains(clickedRow) ? selected : new List<PlaylistTrackRow> { clickedRow };
+    }
+
+    private void PlayNowMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        LoadAndPlay(row.FilePath, autoPlay: true);
+    }
+
+    private void PlayNextMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        _playbackQueue.PlayNext(GetSelectedRowsForBulkAction(row).Select(r => r.FilePath));
+    }
+
+    private void AddToQueueMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        _playbackQueue.AddToEnd(GetSelectedRowsForBulkAction(row).Select(r => r.FilePath));
+    }
+
     private void ShowInExplorerMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -3854,7 +3911,7 @@ public partial class MainWindow : FluentWindow
             // же места начал бы играть что-то не то (или сначала списка). Если следующий
             // трек — это тот же самый файл (он был единственным в очереди), играть больше
             // нечего.
-            nextPath = ComputeNextTrackPath(_currentTrackPath);
+            nextPath = ResolveNextTrackPathRespectingQueue(_currentTrackPath);
             if (nextPath == filePath) nextPath = null;
 
             // Файл у играющего трека открыт NAudio-потоком, поэтому удаление ниже упадёт с
@@ -4457,6 +4514,15 @@ public partial class MainWindow : FluentWindow
         string? currentPath = GetCurrentTrackPath();
         if (currentPath == null) return;
 
+        // Очередь важнее RepeatMode.One — иначе явно поставленный в очередь трек никогда бы
+        // не сыграл, пока включён повтор одного трека (та ветка ниже не проходит через
+        // PlayNextTrack/очередь вообще, она просто перезапускает текущий трек).
+        if (_playbackQueue.Count > 0)
+        {
+            PlayNextTrack(TrackChangeOrigin.Automatic);
+            return;
+        }
+
         switch (_repeatMode)
         {
             case RepeatMode.One:
@@ -4768,9 +4834,16 @@ public partial class MainWindow : FluentWindow
 
     private void PlayNextTrack(TrackChangeOrigin changeOrigin = TrackChangeOrigin.User)
     {
-        if (ComputeNextTrackPath(GetCurrentTrackPath()) is { } nextPath)
+        if (ResolveNextTrackPathRespectingQueue(GetCurrentTrackPath()) is { } nextPath)
             LoadAndPlay(nextPath, autoPlay: _isPlaying, changeOrigin: changeOrigin);
     }
+
+    // Сначала отдаёт и убирает первый элемент очереди "Играть следующим", если она не пуста;
+    // иначе — обычная логика (шаффл/плейлист) через ComputeNextTrackPath. Использовать только
+    // там, где путь ДЕЙСТВИТЕЛЬНО будет передан в LoadAndPlay — см. комментарий над
+    // PlaybackQueue.PopNext о том, почему это не годится для CommitPendingHotkeyTrackStep.
+    private string? ResolveNextTrackPathRespectingQueue(string? currentPath) =>
+        _playbackQueue.PopNext() ?? ComputeNextTrackPath(currentPath);
 
     // Чистое вычисление пути к следующему/предыдущему треку — без загрузки и воспроизведения.
     // Вынесено из PlayNextTrack/PrevButton_Click, чтобы им же можно было "прокрутить" несколько
@@ -5167,6 +5240,15 @@ public partial class MainWindow : FluentWindow
         _shuffleHistory.Clear();
         _shuffleHistoryIndex = -1;
         _shuffleBag.Clear();
+    }
+
+    // Включение сразу снимает снимок текущей очереди (иначе до первого изменения очереди
+    // settings.json ещё хранил бы старое значение); выключение чистит сохранённую копию,
+    // чтобы она не всплыла молча, если настройку включат снова позже.
+    public void SetSaveQueueBetweenRestarts(bool enabled)
+    {
+        _settings.SaveQueueBetweenRestarts = enabled;
+        _settings.SavedQueue = enabled ? _playbackQueue.Items.ToList() : new List<string>();
     }
 
     // Вызывается только после восстановления SavedPlaylistFolders. Повреждённые, удалённые
@@ -6188,6 +6270,43 @@ public partial class MainWindow : FluentWindow
         else
             OpenPlaybackControlPopup();
         e.Handled = true;
+    }
+
+    private void MoreActionsButton_Click(object sender, RoutedEventArgs e)
+    {
+        MoreActionsPopup.IsOpen = !MoreActionsPopup.IsOpen;
+        e.Handled = true;
+    }
+
+    private void QueueButton_Click(object sender, RoutedEventArgs e)
+    {
+        MoreActionsPopup.IsOpen = false;
+        QueuePopup.PlacementTarget = MoreActionsButton;
+        QueuePopup.IsOpen = !QueuePopup.IsOpen;
+        e.Handled = true;
+    }
+
+    private void ClearQueueButton_Click(object sender, RoutedEventArgs e) => _playbackQueue.Clear();
+
+    private void RemoveFromQueueButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: QueueDisplayItem item }) return;
+        _playbackQueue.Remove(item.FilePath);
+    }
+
+    // См. комментарий у _queueDisplayItems — Popup-контент не биндится к MainWindow напрямую,
+    // поэтому список и видимость пустого состояния обновляются здесь руками при каждом
+    // изменении PlaybackQueue.
+    private void RefreshQueueUi()
+    {
+        _queueDisplayItems.Clear();
+        foreach (string path in _playbackQueue.Items)
+            _queueDisplayItems.Add(new QueueDisplayItem(path, Path.GetFileNameWithoutExtension(path)));
+
+        bool hasItems = _queueDisplayItems.Count > 0;
+        QueueItemsList.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        QueueEmptyText.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
+        ClearQueueButton.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void PlaybackControlButton_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)

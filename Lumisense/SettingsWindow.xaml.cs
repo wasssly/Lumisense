@@ -185,6 +185,7 @@ public partial class SettingsWindow : FluentWindow
         FileNameNormalizationResultText.Visibility = Visibility.Collapsed;
         InitializeTrackContextMenuActionCheckBoxes();
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
+        SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
         ProgressBarSliderRadio.IsChecked = !ProgressBarWaveformRadio.IsChecked.GetValueOrDefault();
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
@@ -255,6 +256,9 @@ public partial class SettingsWindow : FluentWindow
     {
         var checkBoxes = new[]
         {
+            TrackContextPlayNowCheckBox,
+            TrackContextPlayNextCheckBox,
+            TrackContextAddToQueueCheckBox,
             TrackContextFavoriteCheckBox,
             TrackContextShowInExplorerCheckBox,
             TrackContextCopyNameCheckBox,
@@ -1863,6 +1867,12 @@ public partial class SettingsWindow : FluentWindow
         // Колода/история от предыдущего режима шаффла не имеет смысла в новом —
         // начинаем с чистого листа, а не пытаемся домешать её в новую логику.
         _owner.ResetShuffleState();
+    }
+
+    private void SaveQueueBetweenRestartsCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _owner.SetSaveQueueBetweenRestarts(SaveQueueBetweenRestartsCheckBox.IsChecked == true);
     }
 
     // См. AppSettings.ProgressBarStyle / WaveformView. MainWindow.ApplyProgressBarStyle сама

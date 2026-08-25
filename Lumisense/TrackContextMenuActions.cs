@@ -20,6 +20,9 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
     public const string NormalizeFileName = "NormalizeFileName";
     public const string RemoveFromPlaylist = "RemoveFromPlaylist";
     public const string DeleteFromDisk = "DeleteFromDisk";
+    public const string PlayNow = "PlayNow";
+    public const string PlayNext = "PlayNext";
+    public const string AddToQueue = "AddToQueue";
 
     public static readonly TrackContextMenuActions Instance = new();
 
@@ -34,7 +37,10 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
         [EditTags] = EditTags,
         [NormalizeFileName] = NormalizeFileName,
         [RemoveFromPlaylist] = RemoveFromPlaylist,
-        [DeleteFromDisk] = DeleteFromDisk
+        [DeleteFromDisk] = DeleteFromDisk,
+        [PlayNow] = PlayNow,
+        [PlayNext] = PlayNext,
+        [AddToQueue] = AddToQueue
     };
 
     private readonly HashSet<string> _disabled = new(StringComparer.Ordinal);
