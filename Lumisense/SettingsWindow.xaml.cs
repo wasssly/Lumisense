@@ -1204,7 +1204,7 @@ public partial class SettingsWindow : FluentWindow
                 OutputDeviceCombo.Items.Add(new System.Windows.Controls.ComboBoxItem
                 {
                     Content = device.DisplayName,
-                    Tag = device.DeviceName
+                    Tag = AudioOutputDeviceService.ComposePersistedKey(device)
                 });
             }
 

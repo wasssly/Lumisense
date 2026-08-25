@@ -19,7 +19,14 @@ internal static class AudioOutputDeviceService
 
     // DeviceName хранит legacy ProductName для обратной совместимости с WaveOutEvent, а
     // DisplayName — полный FriendlyName Core Audio, используемый только в интерфейсе.
-    internal sealed record Option(int DeviceNumber, string DeviceName, string DisplayName);
+    // OccurrenceIndex — позиция среди устройств с совпадающим DeviceName (0 для первого) —
+    // без неё выбор между двумя одинаково названными устройствами было бы невозможно сохранить,
+    // так как DeviceName у них буквально совпадает (см. ComposePersistedKey/ResolveDeviceNumber).
+    internal sealed record Option(int DeviceNumber, string DeviceName, string DisplayName, int OccurrenceIndex);
+
+    // Разделитель имени и OccurrenceIndex в сохранённом значении — символ из Private Use Area,
+    // который не встречается в реальных строках драйверов Windows.
+    private const char PersistKeySeparator = '\uE000';
 
     // NAudio 1.9 exposes WaveOutEvent but not the legacy WaveOut enumerator in the target used
     // by Lumisense. WinMM is the same Windows API behind WaveOutEvent, so we enumerate its
@@ -36,7 +43,8 @@ internal static class AudioOutputDeviceService
         {
             IReadOnlyList<string> fullEndpointNames = GetActiveRenderEndpointFriendlyNames();
             var devices = new List<Option>();
-            var duplicateCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var displayNameCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            var legacyNameCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
             uint deviceCount = waveOutGetNumDevs();
             for (int deviceNumber = 0; deviceNumber < deviceCount; deviceNumber++)
             {
@@ -48,10 +56,14 @@ internal static class AudioOutputDeviceService
                     : capabilities.ProductName.Trim();
                 string fullName = ResolveFullDisplayName(legacyName, fullEndpointNames);
 
-                duplicateCounts.TryGetValue(fullName, out int duplicateIndex);
-                duplicateCounts[fullName] = duplicateIndex + 1;
-                string displayName = duplicateIndex == 0 ? fullName : $"{fullName} ({duplicateIndex + 1})";
-                devices.Add(new Option(deviceNumber, legacyName, displayName));
+                displayNameCounts.TryGetValue(fullName, out int displayDuplicateIndex);
+                displayNameCounts[fullName] = displayDuplicateIndex + 1;
+                string displayName = displayDuplicateIndex == 0 ? fullName : $"{fullName} ({displayDuplicateIndex + 1})";
+
+                legacyNameCounts.TryGetValue(legacyName, out int occurrenceIndex);
+                legacyNameCounts[legacyName] = occurrenceIndex + 1;
+
+                devices.Add(new Option(deviceNumber, legacyName, displayName, occurrenceIndex));
             }
 
             return devices;
@@ -95,6 +107,24 @@ internal static class AudioOutputDeviceService
         }
     }
 
+    // Ключ для persistence: только имя для первого устройства с таким именем (обычный случай,
+    // без дублей — формат не меняется относительно того, что было раньше), и "имя+индекс" для
+    // второго и далее — иначе выбор между ними в настройках было бы неразличим.
+    public static string ComposePersistedKey(Option option) =>
+        option.OccurrenceIndex == 0
+            ? option.DeviceName
+            : $"{option.DeviceName}{PersistKeySeparator}{option.OccurrenceIndex}";
+
+    internal static (string Name, int? OccurrenceIndex) ParsePersistedKey(string persisted)
+    {
+        int separatorIndex = persisted.IndexOf(PersistKeySeparator);
+        if (separatorIndex < 0) return (persisted, null);
+
+        string name = persisted[..separatorIndex];
+        string suffix = persisted[(separatorIndex + 1)..];
+        return int.TryParse(suffix, out int occurrenceIndex) ? (name, occurrenceIndex) : (persisted, null);
+    }
+
     private static string ResolveFullDisplayName(string legacyName, IReadOnlyList<string> endpointNames)
     {
         string normalizedLegacyName = NormalizeForMatch(legacyName);
@@ -134,8 +164,18 @@ internal static class AudioOutputDeviceService
             return SystemDefaultDeviceNumber;
         }
 
-        Option? matched = GetAvailableDevices().FirstOrDefault(device =>
-            string.Equals(device.DeviceName, preferredDeviceName, StringComparison.OrdinalIgnoreCase));
+        (string name, int? occurrenceIndex) = ParsePersistedKey(preferredDeviceName);
+        List<Option> sameNameDevices = GetAvailableDevices()
+            .Where(device => string.Equals(device.DeviceName, name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        // Точное совпадение по имени и позиции среди одноимённых устройств — то, что было
+        // реально выбрано. Если этой конкретной позиции больше нет (устройство отключили),
+        // откатываемся на первое совпадение по имени — как и раньше, до появления OccurrenceIndex.
+        Option? matched = (occurrenceIndex is int index
+            ? sameNameDevices.FirstOrDefault(device => device.OccurrenceIndex == index)
+            : null) ?? sameNameDevices.FirstOrDefault();
+
         if (matched is not null)
         {
             usedFallback = false;
@@ -146,7 +186,10 @@ internal static class AudioOutputDeviceService
         return SystemDefaultDeviceNumber;
     }
 
-    public static bool IsAvailable(string? preferredDeviceName) =>
-        string.IsNullOrWhiteSpace(preferredDeviceName) ||
-        GetAvailableDevices().Any(device => string.Equals(device.DeviceName, preferredDeviceName, StringComparison.OrdinalIgnoreCase));
+    public static bool IsAvailable(string? preferredDeviceName)
+    {
+        if (string.IsNullOrWhiteSpace(preferredDeviceName)) return true;
+        string name = ParsePersistedKey(preferredDeviceName).Name;
+        return GetAvailableDevices().Any(device => string.Equals(device.DeviceName, name, StringComparison.OrdinalIgnoreCase));
+    }
 }
