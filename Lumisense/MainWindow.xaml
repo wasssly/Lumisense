@@ -73,6 +73,11 @@
                                 <local:SvgPathIcon Icon="IconAdd" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
+                        <MenuItem Header="Найти файл…" Click="RelinkTrackMenuItem_Click">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconAddFile" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                         <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=Favorite}">
                             <MenuItem.Icon>
@@ -137,10 +142,18 @@
                                        Visibility="Collapsed" />
                 </Grid>
 
-                <TextBlock Grid.Column="1"
-                           Text="{Binding FilePath, Converter={StaticResource FileNameConverter}}"
-                           VerticalAlignment="Center"
-                           TextTrimming="CharacterEllipsis" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding FilePath, Converter={StaticResource FileNameConverter}}"
+                               TextTrimming="CharacterEllipsis" />
+                    <StackPanel x:Name="MissingFileStatusPanel" Orientation="Horizontal" Margin="0,1,0,0"
+                                Visibility="Collapsed">
+                        <TextBlock Text="{Binding MissingStatus}" Foreground="#E5A04B" FontSize="10"
+                                   VerticalAlignment="Center" />
+                        <ui:Button Appearance="Secondary" MinWidth="66" Height="22" Padding="7,0" Margin="7,0,0,0"
+                                   Content="Найти…" FontSize="10" VerticalAlignment="Center"
+                                   ToolTip="Заменить путь к файлу" Click="RelinkTrackMenuItem_Click" />
+                    </StackPanel>
+                </StackPanel>
 
                 <!-- Счётчик прослушиваний — MultiBinding по тому же принципу, что и сердечко
                      ниже (см. IsFavoriteMultiConverter): путь к файлу сам по себе не меняется,
@@ -215,6 +228,9 @@
                 </ui:Button>
             </Grid>
             <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding IsFileAvailable}" Value="False">
+                    <Setter TargetName="MissingFileStatusPanel" Property="Visibility" Value="Visible" />
+                </DataTrigger>
                 <DataTrigger Binding="{Binding RelativeSource={RelativeSource AncestorType=ListViewItem}, Path=IsMouseOver}" Value="True">
                     <Setter TargetName="TrackIndexText" Property="Visibility" Value="Collapsed" />
                     <Setter TargetName="TrackPlayIcon" Property="Visibility" Value="Visible" />
@@ -971,37 +987,166 @@
         <Popup x:Name="QueuePopup"
                Placement="Top" StaysOpen="False" AllowsTransparency="True"
                VerticalOffset="-8" PopupAnimation="Fade">
-            <Border Background="#FF242424" BorderBrush="#FF707070" BorderThickness="1" CornerRadius="8" Padding="12,10">
-                <StackPanel Width="260">
-                    <Grid Margin="0,0,0,8">
-                        <TextBlock Text="Очередь «Играть следующим»" Foreground="#D8D8D8" FontSize="12"
-                                   FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"
-                                   Margin="0,0,60,0" />
-                        <Button x:Name="ClearQueueButton" Content="Очистить" HorizontalAlignment="Right"
-                                VerticalAlignment="Top" Padding="6,2" FontSize="11" Visibility="Collapsed"
-                                Click="ClearQueueButton_Click" />
+            <!-- Popup живёт в отдельном WPF-окне. Используем явные непрозрачные цвета, а не
+                 Mica/Acrylic theme brushes, иначе нижний плейлист просвечивает через карточки. -->
+            <!-- Ширина выбирается по содержимому в пределах 500–640 DIP: Popup не остаётся
+                 искусственно узким, но и не разрастается из-за очень длинного пути трека. -->
+            <Border MinWidth="500" MaxWidth="640" Background="#FF242424" BorderBrush="#FF5A5A5A"
+                    BorderThickness="1" CornerRadius="12" Padding="14">
+                <StackPanel x:Name="QueuePopupContent" MinWidth="472" MaxWidth="612">
+                    <Grid Margin="0,0,0,2">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="Очередь «Играть следующим»" FontSize="14" FontWeight="SemiBold" />
+                            <TextBlock x:Name="QueueCountText" Text="В очереди: 0" FontSize="11" Opacity="0.62" Margin="0,2,0,0" />
+                        </StackPanel>
+                        <ui:Button x:Name="ClearQueueButton" Grid.Column="1" Appearance="Secondary"
+                                   Height="28" Padding="9,0" VerticalAlignment="Top" Visibility="Collapsed"
+                                   ToolTip="Очистить" Click="ClearQueueButton_Click">
+                            <ui:Button.Icon>
+                                <local:SvgPathIcon Icon="IconDelete" Size="13" />
+                            </ui:Button.Icon>
+                        </ui:Button>
                     </Grid>
+                    <TextBlock x:Name="QueueHintText" Text="Треки будут воспроизведены сверху вниз."
+                               FontSize="11" Opacity="0.62" TextWrapping="Wrap" Margin="0,6,0,12" />
+                    <!-- Вертикальная компоновка даёт обоим контролам всю ширину Popup.
+                         Высота 40 DIP и явные внутренние отступы сохраняют глифы текста целиком
+                         при любом масштабе интерфейса/DPI. -->
+                    <StackPanel x:Name="QueueToolsPanel" Margin="0,0,0,12">
+                        <TextBlock Text="Поиск" FontSize="11" Opacity="0.68" Margin="0,0,0,4" />
+                        <ui:TextBox x:Name="QueueSearchBox" Height="40" Padding="10,5"
+                                    VerticalContentAlignment="Center" HorizontalContentAlignment="Stretch"
+                                    PlaceholderText="Поиск по названию" ClearButtonEnabled="True"
+                                    ToolTip="Поиск в очереди" TextChanged="QueueSearchBox_TextChanged" Margin="0,0,0,10">
+                            <ui:TextBox.Icon>
+                                <local:SvgPathIcon Icon="IconSearch" Size="14" />
+                            </ui:TextBox.Icon>
+                        </ui:TextBox>
+                        <TextBlock Text="Порядок очереди" FontSize="11" Opacity="0.68" Margin="0,0,0,4" />
+                        <ComboBox x:Name="QueueSortCombo" Height="40" Padding="10,5,36,5"
+                                  VerticalContentAlignment="Center" HorizontalContentAlignment="Stretch"
+                                  SelectedIndex="0" SelectionChanged="QueueSortCombo_SelectionChanged">
+                            <ComboBoxItem Content="Порядок добавления" />
+                            <ComboBoxItem Content="По названию: А–Я" />
+                            <ComboBoxItem Content="По названию: Я–А" />
+                        </ComboBox>
+                    </StackPanel>
                     <TextBlock x:Name="QueueEmptyText"
                                Text="Пусто. Правый клик по треку → «Играть следующим» или «Добавить в очередь»."
-                               Foreground="#A0A0A0" FontSize="11" TextWrapping="Wrap" />
-                    <ListBox x:Name="QueueItemsList" MaxHeight="240" Background="Transparent"
-                             BorderThickness="0" Visibility="Collapsed">
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap"
+                               Margin="2,4,2,6" />
+                    <!-- Длинный путь не должен расширять Item за пределы Popup: он обрезается
+                         в центральной колонке, а кнопка удаления всегда остаётся справа. У ListBox
+                         используется собственный ScrollViewer: его scrollbar находится в отдельной
+                         правой колонке 16 DIP, а не рисуется overlay-полосой поверх карточек. -->
+                    <ListBox x:Name="QueueItemsList" MaxHeight="280" Background="Transparent"
+                             BorderThickness="0" HorizontalContentAlignment="Stretch" Visibility="Collapsed">
+                        <ListBox.Template>
+                            <ControlTemplate TargetType="{x:Type ListBox}">
+                                <Border Background="{TemplateBinding Background}"
+                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                        BorderThickness="{TemplateBinding BorderThickness}">
+                                    <ScrollViewer x:Name="PART_ScrollViewer"
+                                                  CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                                                  HorizontalScrollBarVisibility="Disabled"
+                                                  VerticalScrollBarVisibility="Auto"
+                                                  Focusable="False">
+                                        <ScrollViewer.Template>
+                                            <ControlTemplate TargetType="{x:Type ScrollViewer}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="16" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <ScrollContentPresenter x:Name="PART_ScrollContentPresenter"
+                                                                            Grid.Column="0"
+                                                                            CanContentScroll="{TemplateBinding CanContentScroll}"
+                                                                            Content="{TemplateBinding Content}"
+                                                                            ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                                            ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                                                            ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                                                            SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                                    <!-- Полоса начинается через 2 DIP после карточек. Визуальный
+                                                         track текущей темы имеет дополнительный внутренний верхний
+                                                         отступ, поэтому поднимаем весь ScrollBar на 8 DIP. -->
+                                                    <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1"
+                                                               Width="5" Margin="2,-8,0,0" HorizontalAlignment="Left"
+                                                               Orientation="Vertical"
+                                                               Maximum="{TemplateBinding ScrollableHeight}"
+                                                               ViewportSize="{TemplateBinding ViewportHeight}"
+                                                               Value="{TemplateBinding VerticalOffset}"
+                                                               Visibility="{TemplateBinding ComputedVerticalScrollBarVisibility}"
+                                                               Focusable="False" />
+                                                </Grid>
+                                            </ControlTemplate>
+                                        </ScrollViewer.Template>
+                                        <ItemsPresenter />
+                                    </ScrollViewer>
+                                </Border>
+                            </ControlTemplate>
+                        </ListBox.Template>
+                        <!-- У карточек нет самостоятельного действия по клику: стандартные
+                             Selected/Focus-эффекты ListBox только отвлекают от кнопки удаления. -->
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="{x:Type ListBoxItem}">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="VerticalContentAlignment" Value="Stretch" />
+                                <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="{x:Type ListBoxItem}">
+                                            <ContentPresenter Content="{TemplateBinding Content}"
+                                                              ContentTemplate="{TemplateBinding ContentTemplate}"
+                                                              ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
+                                                              ContentStringFormat="{TemplateBinding ContentStringFormat}"
+                                                              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="0,3">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Grid.Column="0" Text="{Binding DisplayName}" Foreground="White"
-                                               FontSize="12" TextTrimming="CharacterEllipsis" VerticalAlignment="Center" />
-                                    <ui:Button Grid.Column="1" Appearance="Transparent" Width="24" Height="24" Padding="0"
-                                               ToolTip="Убрать из очереди" Tag="{Binding}" Click="RemoveFromQueueButton_Click">
-                                        <ui:Button.Icon>
-                                            <local:SvgPathIcon Icon="IconDismiss" Size="11" />
-                                        </ui:Button.Icon>
-                                    </ui:Button>
-                                </Grid>
+                                <Border Background="#FF303030" CornerRadius="7"
+                                        Padding="8,5" Margin="0,0,0,3">
+                                    <Grid ClipToBounds="True">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="26" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Grid.Column="0" Width="20" Height="20" CornerRadius="10"
+                                                Background="#FF414141"
+                                                VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Position}" FontSize="10" HorizontalAlignment="Center"
+                                                       VerticalAlignment="Center" Opacity="0.74" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="6,0,8,0" MinWidth="0"
+                                                    HorizontalAlignment="Stretch" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding DisplayName}" FontSize="12" FontWeight="SemiBold"
+                                                       HorizontalAlignment="Stretch" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Text="{Binding FilePath}" FontSize="10" Opacity="0.55"
+                                                       HorizontalAlignment="Stretch" TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <ui:Button Grid.Column="2" Appearance="Transparent" Width="26" Height="26" Padding="0"
+                                                   HorizontalAlignment="Right" VerticalAlignment="Center"
+                                                   ToolTip="Убрать из очереди" Tag="{Binding}" Click="RemoveFromQueueButton_Click">
+                                            <ui:Button.Icon>
+                                                <local:SvgPathIcon Icon="IconDismiss" Size="12" />
+                                            </ui:Button.Icon>
+                                        </ui:Button>
+                                    </Grid>
+                                </Border>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
                     </ListBox>
@@ -1077,6 +1222,12 @@
                                 <local:SvgPathIcon Icon="IconAdd" Size="14" />
                             </MenuItem.Icon>
                         </MenuItem>
+                        <Separator />
+                        <MenuItem Header="Проверить недоступные файлы" Click="CheckUnavailableFilesMenuItem_Click">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconSearch" Size="14" />
+                            </MenuItem.Icon>
+                        </MenuItem>
                     </ContextMenu>
                 </ui:Button.ContextMenu>
             </ui:Button>
@@ -1146,6 +1297,7 @@
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
@@ -1166,6 +1318,78 @@
                         <local:SvgPathIcon Icon="IconSearch" />
                     </ui:TextBox.Icon>
                 </ui:TextBox>
+
+                <Border x:Name="UnavailableFilesBanner" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2"
+                        Background="#FF3B3126" BorderBrush="#B6E5A04B" BorderThickness="1" CornerRadius="8"
+                        Padding="5" Margin="8,2,8,4" Visibility="Collapsed">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <ui:Button x:Name="UnavailableFilesDetailsButton" Grid.Column="0" Appearance="Transparent"
+                                   Padding="7,4" HorizontalContentAlignment="Left" ToolTip="Нажмите, чтобы показать файлы"
+                                   Click="UnavailableFilesDetailsButton_Click">
+                            <StackPanel>
+                                <TextBlock x:Name="UnavailableFilesCountText" Text="Недоступные: 0"
+                                           Foreground="#E5A04B" FontSize="12" FontWeight="SemiBold" />
+                                <TextBlock Text="Нажмите, чтобы показать файлы" FontSize="11" Opacity="0.72"
+                                           TextWrapping="Wrap" Margin="0,2,0,0" />
+                            </StackPanel>
+                        </ui:Button>
+                        <ui:Button Grid.Column="1" Appearance="Secondary" Height="30" Margin="8,0,0,0"
+                                   Padding="10,0" Content="Проверить файлы" ToolTip="Проверить недоступные файлы"
+                                   Click="CheckUnavailableFilesMenuItem_Click" />
+                    </Grid>
+                </Border>
+
+                <Popup x:Name="UnavailableFilesPopup" PlacementTarget="{Binding ElementName=UnavailableFilesDetailsButton}"
+                       Placement="Bottom" StaysOpen="False" AllowsTransparency="True" VerticalOffset="4"
+                       PopupAnimation="Fade">
+                    <!-- Ширина растёт по самому длинному имени, но не бывает слишком узкой или шире окна плеера. -->
+                    <Border MinWidth="280" MaxWidth="470" Background="#FF242424" BorderBrush="#FF5A5A5A" BorderThickness="1"
+                            CornerRadius="10" Padding="12">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Недоступные файлы" FontSize="13" FontWeight="SemiBold" />
+                                <ui:Button Grid.Column="1" Appearance="Transparent" Width="26" Height="26" Padding="0"
+                                           ToolTip="Закрыть список" Click="CloseUnavailableFilesPopupButton_Click">
+                                    <ui:Button.Icon>
+                                        <local:SvgPathIcon Icon="IconDismiss" Size="12" />
+                                    </ui:Button.Icon>
+                                </ui:Button>
+                            </Grid>
+                            <ListBox x:Name="UnavailableFilesList" MaxHeight="220" Background="Transparent" BorderThickness="0"
+                                     HorizontalContentAlignment="Stretch" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Background="#FF303030" CornerRadius="6" Padding="8,6" Margin="0,0,0,5">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" Margin="0,0,8,0" MinWidth="0">
+                                                    <TextBlock Text="{Binding FilePath, Converter={StaticResource FileNameConverter}}"
+                                                               FontSize="12" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                    <TextBlock Text="{Binding FilePath}" FontSize="10" Opacity="0.58"
+                                                               TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                                <ui:Button Grid.Column="1" Appearance="Secondary" MinWidth="72" Height="28" Padding="8,0"
+                                                           Content="Перейти" ToolTip="Перейти к треку" Tag="{Binding}"
+                                                           Click="GoToUnavailableTrackButton_Click" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+                    </Border>
+                </Popup>
 
                 <!-- ЕДИНЫЙ виртуализированный список на весь плейлист — заголовки папок и строки
                      треков вперемешку в одном плоском ItemsSource (List<object> из PlaylistFolder
@@ -1214,7 +1438,7 @@
                      памяти/GC-нагрузки, но не воспроизводимо ломает выбор шаблона. FavoritesTrackListView
                      ниже (без селектора, только один тип элемента — PlaylistTrackRow) от этой
                      проблемы не страдает, там Recycling оставлен как есть. -->
-                <ListView x:Name="PlaylistFoldersControl" Grid.Row="1" Grid.Column="0" Margin="4"
+                <ListView x:Name="PlaylistFoldersControl" Grid.Row="2" Grid.Column="0" Margin="4"
                           Background="Transparent" BorderThickness="0"
                           AlternationCount="100000"
                           SelectionMode="Extended"
@@ -1242,7 +1466,7 @@
                      отключённого скролла, ни обёртки внешним ScrollViewer, так что этот список
                      виртуализировался и раньше) — VirtualizingPanel.* ниже просто делают это
                      явным, а не полагаются на дефолт. -->
-                <ListView x:Name="FavoritesTrackListView" Grid.Row="1" Grid.Column="0" Margin="4"
+                <ListView x:Name="FavoritesTrackListView" Grid.Row="2" Grid.Column="0" Margin="4"
                           Background="Transparent" BorderThickness="0"
                           AlternationCount="100000"
                           Visibility="Collapsed"
@@ -1275,7 +1499,7 @@
                      ClipToBounds="True" — подстраховка на случай любых будущих округлений:
                      ползунок физически не может отрисоваться выше/ниже границ дорожки, даже
                      если Margin/Height на долю пикселя выйдут за расчётный диапазон. -->
-                <Grid x:Name="PlaylistScrollTrack" Grid.Row="1" Grid.Column="1" Background="Transparent"
+                <Grid x:Name="PlaylistScrollTrack" Grid.Row="2" Grid.Column="1" Background="Transparent"
                       Margin="0,4,0,4" ClipToBounds="True"
                       SizeChanged="PlaylistScrollTrack_SizeChanged"
                       MouseLeftButtonDown="PlaylistScrollTrack_MouseLeftButtonDown">
@@ -1290,7 +1514,7 @@
 
                 <!-- Панель лежит поверх области плейлиста и включается кнопкой «Текст песни».
                      Благодаря этому размер и расположение основного окна остаются прежними. -->
-                <Grid x:Name="LyricsPanel" Grid.Row="0" Grid.RowSpan="2" Grid.Column="0" Grid.ColumnSpan="2"
+                <Grid x:Name="LyricsPanel" Grid.Row="0" Grid.RowSpan="3" Grid.Column="0" Grid.ColumnSpan="2"
                       Margin="12,10" Visibility="Collapsed">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />

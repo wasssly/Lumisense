@@ -192,4 +192,18 @@ internal static class AudioOutputDeviceService
         string name = ParsePersistedKey(preferredDeviceName).Name;
         return GetAvailableDevices().Any(device => string.Equals(device.DeviceName, name, StringComparison.OrdinalIgnoreCase));
     }
+
+    // Имя для статуса runtime: используем полный FriendlyName, когда устройство по-прежнему
+    // доступно, и аккуратный сохранённый fallback, если драйвер уже исчез из списка.
+    public static string GetDisplayName(string? persistedDeviceName)
+    {
+        if (string.IsNullOrWhiteSpace(persistedDeviceName))
+            return LocalizationService.Translate("Системное устройство по умолчанию");
+
+        (string name, int? occurrenceIndex) = ParsePersistedKey(persistedDeviceName);
+        Option? device = GetAvailableDevices()
+            .FirstOrDefault(option => string.Equals(option.DeviceName, name, StringComparison.OrdinalIgnoreCase) &&
+                                      (occurrenceIndex is null || option.OccurrenceIndex == occurrenceIndex));
+        return device?.DisplayName ?? name;
+    }
 }

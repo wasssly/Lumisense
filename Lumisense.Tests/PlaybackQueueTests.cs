@@ -176,6 +176,29 @@ public sealed class PlaybackQueueTests
     }
 
     [Fact]
+    public void SortByDisplayName_ReordersFuturePlaybackAlphabetically()
+    {
+        var queue = new PlaybackQueue();
+        queue.AddToEnd(new[] { "C.mp3", "a.mp3", "B.mp3" });
+
+        queue.SortByDisplayName(descending: false);
+
+        Assert.Equal(new[] { "a.mp3", "B.mp3", "C.mp3" }, queue.Items);
+    }
+
+    [Fact]
+    public void RestoreInsertionOrder_ReturnsOrderBeforeSorting()
+    {
+        var queue = new PlaybackQueue();
+        queue.AddToEnd(new[] { "C.mp3", "a.mp3", "B.mp3" });
+        queue.SortByDisplayName(descending: false);
+
+        queue.RestoreInsertionOrder();
+
+        Assert.Equal(new[] { "C.mp3", "a.mp3", "B.mp3" }, queue.Items);
+    }
+
+    [Fact]
     public void LoadFrom_ReplacesQueueContents()
     {
         var queue = new PlaybackQueue();

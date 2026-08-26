@@ -1516,11 +1516,24 @@ public partial class SettingsWindow : FluentWindow
 
     private void RefreshOutputDeviceStatus(bool fellBackToSystemDefault = false)
     {
-        OutputDeviceStatusText.Text = fellBackToSystemDefault
-            ? LocalizationService.Translate("Выбранное устройство недоступно. Будет использовано системное устройство Windows.")
-            : string.IsNullOrWhiteSpace(_settings.OutputDeviceName)
-                ? LocalizationService.Translate("Используется системное устройство Windows.")
-                : LocalizationService.Translate("Устройство применяется сразу; текущий трек продолжится с сохранённой позиции.");
+        var runtime = _owner.GetOutputDeviceRuntimeStatus();
+        OutputDeviceRuntimeTitleText.Text = LocalizationService.Translate("Фактическое устройство");
+        OutputDeviceRuntimeValueText.Text = string.Format(
+            LocalizationService.Translate("Активно: {0}"),
+            runtime.ActiveDeviceName);
+
+        OutputDeviceStatusText.Text = runtime.FallbackFrom is { Length: > 0 }
+            ? string.Format(
+                LocalizationService.Translate("Выбранное устройство «{0}» недоступно. Lumisense использует: {1}."),
+                runtime.FallbackFrom,
+                runtime.ActiveDeviceName)
+            : fellBackToSystemDefault
+                ? LocalizationService.Translate("Выбранное устройство недоступно. Будет использовано системное устройство Windows.")
+                : !runtime.IsInitialized
+                    ? string.Format(
+                        LocalizationService.Translate("Устройство будет применено при следующем запуске воспроизведения: {0}."),
+                        runtime.ActiveDeviceName)
+                    : LocalizationService.Translate("Выбранное устройство применяется сразу; текущий трек продолжится с сохранённой позиции.");
     }
 
     private void OutputDeviceCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

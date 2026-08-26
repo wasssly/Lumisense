@@ -12,6 +12,7 @@ namespace AudioPlayer;
 public sealed class PlaybackQueue
 {
     private readonly List<string> _items = new();
+    private List<string>? _orderBeforeSort;
 
     public IReadOnlyList<string> Items => _items;
     public int Count => _items.Count;
@@ -80,6 +81,48 @@ public sealed class PlaybackQueue
         if (_items.Count == 0) return;
 
         _items.Clear();
+        _orderBeforeSort = null;
+        Changed?.Invoke();
+    }
+
+    // Сортировка намеренно меняет сам FIFO-порядок, а не только внешний список: пользователь
+    // видит ровно ту последовательность, в которой треки будут сыграны после текущего.
+    public void SortByDisplayName(bool descending)
+    {
+        if (_items.Count < 2) return;
+
+        _orderBeforeSort ??= _items.ToList();
+        IEnumerable<string> ordered = descending
+            ? _items.OrderByDescending(Path.GetFileNameWithoutExtension, StringComparer.OrdinalIgnoreCase)
+            : _items.OrderBy(Path.GetFileNameWithoutExtension, StringComparer.OrdinalIgnoreCase);
+        List<string> sorted = ordered.ToList();
+        if (_items.SequenceEqual(sorted, StringComparer.OrdinalIgnoreCase)) return;
+
+        _items.Clear();
+        _items.AddRange(sorted);
+        Changed?.Invoke();
+    }
+
+    public void RestoreInsertionOrder()
+    {
+        if (_orderBeforeSort is null) return;
+
+        // Учитываем удалённые во время сортировки элементы и не теряем новые добавления.
+        var remaining = new List<string>(_items);
+        var restored = new List<string>();
+        foreach (string path in _orderBeforeSort)
+        {
+            int index = remaining.FindIndex(item => string.Equals(item, path, StringComparison.OrdinalIgnoreCase));
+            if (index < 0) continue;
+            restored.Add(remaining[index]);
+            remaining.RemoveAt(index);
+        }
+        restored.AddRange(remaining);
+        _orderBeforeSort = null;
+
+        if (_items.SequenceEqual(restored, StringComparer.OrdinalIgnoreCase)) return;
+        _items.Clear();
+        _items.AddRange(restored);
         Changed?.Invoke();
     }
 
@@ -96,6 +139,7 @@ public sealed class PlaybackQueue
     public void LoadFrom(IEnumerable<string> paths)
     {
         _items.Clear();
+        _orderBeforeSort = null;
         _items.AddRange(paths);
         Changed?.Invoke();
     }

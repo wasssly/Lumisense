@@ -1067,6 +1067,14 @@
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,2,0,8" />
                                 <TextBlock Text="Системное устройство по умолчанию следует настройкам Windows. Если выбранные наушники или колонки отключены, Lumisense переключится на него автоматически."
                                            Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" />
+                                <Border Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="6" Padding="10,8" Margin="0,10,0,0">
+                                    <StackPanel>
+                                        <TextBlock x:Name="OutputDeviceRuntimeTitleText" Text="Фактическое устройство"
+                                                   FontSize="11" FontWeight="SemiBold" Opacity="0.7" />
+                                        <TextBlock x:Name="OutputDeviceRuntimeValueText" FontSize="12" FontWeight="SemiBold"
+                                                   TextWrapping="Wrap" Margin="0,3,0,0" />
+                                    </StackPanel>
+                                </Border>
                                 <TextBlock x:Name="OutputDeviceStatusText" FontSize="12" Opacity="0.62" TextWrapping="Wrap"
                                            Margin="0,8,0,0" />
                             </StackPanel>

@@ -23,7 +23,7 @@ namespace AudioPlayer;
 
 // Элемент для отображения в QueueItemsList (см. RefreshQueueUi) — DisplayName только для
 // показа, реальные операции (удаление и т.д.) всегда идут по FilePath.
-public sealed record QueueDisplayItem(string FilePath, string DisplayName);
+public sealed record QueueDisplayItem(string FilePath, string DisplayName, int Position);
 
 public partial class MainWindow : FluentWindow
 {
@@ -54,6 +54,12 @@ public partial class MainWindow : FluentWindow
     // который маскирует fade-in в LoadAndPlay.
     private WaveOutEvent? _outputDevice;
     private bool _isOutputRecoveryInProgress;
+
+    // Отдельно от выбранного в settings.json значения храним то, что реально открыл WaveOut.
+    // Это позволяет Settings объяснить fallback после отключения USB/Bluetooth-устройства, не
+    // заставляя пользователя гадать, куда сейчас направлен звук.
+    private string _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
+    private string? _outputDeviceFallbackFrom;
 
     // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
     // громкость (AudioFileReader.Volume) применяется ДО эквалайзера, он только красит частоты.
@@ -288,6 +294,7 @@ public partial class MainWindow : FluentWindow
     // визуальном дереве, и RelativeSource/DataContext-биндинги через его границу ненадёжны в
     // WPF (тот же приём уже используется для PlaybackControlPopup: код-behind, а не биндинг).
     private readonly ObservableCollection<QueueDisplayItem> _queueDisplayItems = new();
+    private readonly ObservableCollection<PlaylistTrackRow> _unavailableFileRows = new();
 
     // "Колода" для шаффла без повторов (см. GetNextShuffleTrack) — активна только когда
     // включена настройка Settings.UseImprovedShuffle.
@@ -524,6 +531,7 @@ public partial class MainWindow : FluentWindow
             _playbackQueue.PruneMissing();
         }
         QueueItemsList.ItemsSource = _queueDisplayItems;
+        UnavailableFilesList.ItemsSource = _unavailableFileRows;
         RefreshQueueUi();
         _playbackQueue.Changed += () =>
         {
@@ -631,6 +639,7 @@ public partial class MainWindow : FluentWindow
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (_isFullscreenLayout || _viewMode == PlayerViewMode.Square) UpdateContentMaxWidth();
+        if (QueuePopup?.IsOpen == true) UpdateQueuePopupWidth();
     }
 
     private void ApplyFullscreenLayout(bool fullscreen)
@@ -2853,7 +2862,8 @@ public partial class MainWindow : FluentWindow
     }
 
     // Добавляет папку как отдельную группу плейлиста, без дубликата группы, если такая папка
-    // (по пути) уже есть: добавляет новые файлы и убирает те, что реально пропали с диска.
+    // уже есть. Новые файлы добавляются автоматически, но исчезнувшие записи остаются видимыми
+    // как «Файл недоступен»: только пользователь решает, заменить путь или убрать запись.
     private void AddFolderGroup(string folderPath, List<string> filesInFolder)
     {
         bool wasEmptyBeforeAdd = FlattenAll().Count == 0;
@@ -2868,18 +2878,8 @@ public partial class MainWindow : FluentWindow
         {
             var newOnes = filesInFolder.Where(f => !existingFolder.Tracks.Contains(f)).ToList();
 
-            // File.Exists подтверждает реальное отсутствие файла — скан мог не найти его
-            // из-за временной недоступности сети (EnumerationOptions.IgnoreInaccessible),
-            // а не потому, что он был удалён.
-            var goneTracks = existingFolder.Tracks
-                .Where(t => !filesInFolder.Contains(t) && !File.Exists(t))
-                .ToList();
-
-            if (newOnes.Count == 0 && goneTracks.Count == 0) return;
-
-            foreach (string gone in goneTracks)
-                existingFolder.Tracks.Remove(gone);
-
+            // Пересобираем UI даже без новых треков: так после удаления/перемещения появляется
+            // карточка недоступного файла, а после возврата файла по прежнему пути она исчезает.
             firstNewTrack = newOnes.Count > 0 ? newOnes[0] : null;
             existingFolder.Tracks.AddRange(newOnes);
         }
@@ -3203,6 +3203,7 @@ public partial class MainWindow : FluentWindow
         }
 
         _playlistDisplayItems = items;
+        RefreshUnavailableFilesBanner();
         QueuePlaylistSearch();
     }
 
@@ -3771,6 +3772,164 @@ public partial class MainWindow : FluentWindow
         _playbackQueue.AddToEnd(GetSelectedRowsForBulkAction(row).Select(r => r.FilePath));
     }
 
+    private void CheckUnavailableFilesMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        List<string> unavailablePaths = GetUnavailablePlaylistPaths();
+
+        if (unavailablePaths.Count == 0)
+        {
+            LocalizedMessageBox.Show(
+                this,
+                LocalizationService.Translate("Все файлы плейлиста доступны."),
+                LocalizationService.Translate("Недоступные файлы"),
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Information);
+            return;
+        }
+
+        string message = string.Format(
+            LocalizationService.Translate("Недоступных файлов: {0}\n\nУбрать все такие записи из плейлиста и избранного?"),
+            unavailablePaths.Count);
+        if (LocalizedMessageBox.Show(
+                this,
+                message,
+                LocalizationService.Translate("Недоступные файлы"),
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning,
+                System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        foreach (PlaylistFolder folder in _folders)
+            folder.Tracks.RemoveAll(path => !File.Exists(path));
+
+        foreach (string missingFavorite in FavoritesManager.GetAll().Where(path => !File.Exists(path)).ToList())
+            FavoritesManager.SetFavorite(missingFavorite, false);
+
+        _playbackQueue.PruneMissing();
+        RefreshPlaylistView();
+        if (_isFavoritesView) RefreshFavoritesTrackList();
+    }
+
+    private List<string> GetUnavailablePlaylistPaths() => _folders
+        .SelectMany(folder => folder.Tracks)
+        .Concat(FavoritesManager.GetAll())
+        .Where(path => !File.Exists(path))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToList();
+
+    private void RefreshUnavailableFilesBanner()
+    {
+        if (UnavailableFilesBanner is null || UnavailableFilesCountText is null) return;
+
+        var regularRows = _folders
+            .SelectMany(folder => folder.Tracks.Select((path, index) => new PlaylistTrackRow
+            {
+                Folder = folder,
+                FilePath = path,
+                IndexInFolder = index + 1
+            }));
+        var favoriteRows = FavoritesManager.GetAll().Select((path, index) => new PlaylistTrackRow
+        {
+            Folder = _favoritesFolder,
+            FilePath = path,
+            IndexInFolder = index + 1
+        });
+        var rows = regularRows
+            .Concat(favoriteRows)
+            .Where(row => !row.IsFileAvailable)
+            .GroupBy(row => row.FilePath, StringComparer.OrdinalIgnoreCase)
+            .Select(group => group.First())
+            .ToList();
+
+        _unavailableFileRows.Clear();
+        foreach (PlaylistTrackRow row in rows)
+            _unavailableFileRows.Add(row);
+
+        int unavailableCount = _unavailableFileRows.Count;
+        UnavailableFilesBanner.Visibility = unavailableCount > 0 ? Visibility.Visible : Visibility.Collapsed;
+        UnavailableFilesCountText.Text = string.Format(
+            LocalizationService.Translate("Недоступные: {0}"),
+            unavailableCount);
+        if (unavailableCount == 0)
+            UnavailableFilesPopup.IsOpen = false;
+    }
+
+    private void UnavailableFilesDetailsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_unavailableFileRows.Count == 0) return;
+        UnavailableFilesPopup.IsOpen = !UnavailableFilesPopup.IsOpen;
+    }
+
+    private void CloseUnavailableFilesPopupButton_Click(object sender, RoutedEventArgs e) => UnavailableFilesPopup.IsOpen = false;
+
+    private void GoToUnavailableTrackButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: PlaylistTrackRow row }) return;
+
+        UnavailableFilesPopup.IsOpen = false;
+        if (row.Folder.IsFavoritesGroup)
+            SetFavoritesViewActive(true);
+        else if (_isFavoritesView)
+            SetFavoritesViewActive(false);
+
+        if (!row.Folder.IsExpanded)
+            row.Folder.IsExpanded = true;
+        RefreshPlaylistView();
+        Dispatcher.BeginInvoke(new Action(() => HighlightAndScrollToTrack(row.Folder, row.FilePath)),
+            DispatcherPriority.Loaded);
+    }
+
+    private void RelinkTrackMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PlaylistTrackRow row }) return;
+
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = LocalizationService.Translate("Выберите замену для недоступного трека"),
+            Filter = $"{LocalizationService.Translate("Файлы аудио")}|*.mp3;*.wav;*.flac;*.m4a;*.aac;*.ogg;*.wma|{LocalizationService.Translate("Все файлы")}|*.*",
+            CheckFileExists = true,
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(this) != true) return;
+
+        string oldPath = row.FilePath;
+        string replacementPath = dialog.FileName;
+        if (string.Equals(oldPath, replacementPath, StringComparison.OrdinalIgnoreCase)) return;
+
+        bool wasFavorite = FavoritesManager.IsFavorite(oldPath);
+        bool wasPinned = FavoritesManager.IsPinned(oldPath);
+        if (row.Folder.IsFavoritesGroup)
+        {
+            FavoritesManager.SetFavorite(oldPath, false);
+            FavoritesManager.SetFavorite(replacementPath, true);
+            if (wasPinned) FavoritesManager.TogglePin(replacementPath);
+        }
+        else
+        {
+            int index = row.Folder.Tracks.IndexOf(oldPath);
+            if (index < 0) return;
+
+            // Автoобновление могло уже добавить найденный файл как новую запись. В таком
+            // случае не создаём дубликат: убираем только старый недоступный путь.
+            if (row.Folder.Tracks.Any(path => string.Equals(path, replacementPath, StringComparison.OrdinalIgnoreCase)))
+                row.Folder.Tracks.RemoveAt(index);
+            else
+                row.Folder.Tracks[index] = replacementPath;
+            if (wasFavorite)
+            {
+                FavoritesManager.SetFavorite(oldPath, false);
+                FavoritesManager.SetFavorite(replacementPath, true);
+                if (wasPinned) FavoritesManager.TogglePin(replacementPath);
+            }
+        }
+
+        _playbackQueue.Remove(oldPath);
+        RefreshPlaylistView();
+        if (_isFavoritesView) RefreshFavoritesTrackList();
+    }
+
     private void ShowInExplorerMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -4011,6 +4170,19 @@ public partial class MainWindow : FluentWindow
         AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next,
         TrackChangeOrigin changeOrigin = TrackChangeOrigin.User, bool preserveShuffleSession = false)
     {
+        if (!File.Exists(filePath))
+        {
+            LocalizedMessageBox.Show(
+                this,
+                LocalizationService.Translate("Не удалось открыть трек: файл недоступен."),
+                LocalizationService.Translate("Недоступные файлы"),
+                System.Windows.MessageBoxButton.OK,
+                System.Windows.MessageBoxImage.Warning);
+            RefreshPlaylistView();
+            if (_isFavoritesView) RefreshFavoritesTrackList();
+            return;
+        }
+
         var previousLoad = Interlocked.Exchange(ref _trackLoadCts, null);
         previousLoad?.Cancel();
         var previousGain = Interlocked.Exchange(ref _replayGainCts, null);
@@ -4735,7 +4907,10 @@ public partial class MainWindow : FluentWindow
             // отказаться открываться (например, Bluetooth гарнитура отключилась между
             // перечислением и Init). Однократно пробуем системный audio mapper.
             Logger.Error("Не удалось инициализировать выбранное устройство вывода; используется системное устройство", ex);
+            string failedDeviceKey = _settings.OutputDeviceName;
             DisposeOutputDeviceSafely();
+            _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
+            _outputDeviceFallbackFrom = failedDeviceKey;
             _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
             _ = SettingsManager.SaveAsync(_settings);
             _settingsWindow?.RefreshOutputDeviceSelection();
@@ -4748,7 +4923,15 @@ public partial class MainWindow : FluentWindow
     {
         if (_outputDevice is not null) return;
 
-        int deviceNumber = AudioOutputDeviceService.ResolveDeviceNumber(_settings.OutputDeviceName, out bool usedFallback);
+        string requestedDeviceKey = _settings.OutputDeviceName;
+        int deviceNumber = AudioOutputDeviceService.ResolveDeviceNumber(requestedDeviceKey, out bool usedFallback);
+        _activeOutputDeviceKey = usedFallback ? AudioOutputDeviceService.SystemDefaultDeviceName : requestedDeviceKey;
+        // После controlled fallback повторная инициализация уже идёт с пустым ключом системного
+        // устройства. Не теряем исходную причину до явного нового выбора пользователя.
+        if (usedFallback)
+            _outputDeviceFallbackFrom = requestedDeviceKey;
+        else if (!string.IsNullOrWhiteSpace(requestedDeviceKey))
+            _outputDeviceFallbackFrom = null;
         if (usedFallback)
         {
             Logger.Warn($"Выбранное устройство вывода недоступно: {_settings.OutputDeviceName}. Используется системное устройство Windows.");
@@ -4762,10 +4945,19 @@ public partial class MainWindow : FluentWindow
 
     // Вызывается из SettingsWindow сразу после выбора устройства. Если трек уже загружен,
     // сохраняем позицию/состояние, создаём новый вывод и возвращаемся к тому же месту.
+    public (string ActiveDeviceName, string? FallbackFrom, bool IsInitialized) GetOutputDeviceRuntimeStatus()
+    {
+        string activeKey = _outputDevice is null ? _settings.OutputDeviceName : _activeOutputDeviceKey;
+        return (AudioOutputDeviceService.GetDisplayName(activeKey),
+            string.IsNullOrWhiteSpace(_outputDeviceFallbackFrom) ? null : AudioOutputDeviceService.GetDisplayName(_outputDeviceFallbackFrom),
+            _outputDevice is not null);
+    }
+
     public void ApplyOutputDeviceSelection()
     {
         if (_isExiting) return;
 
+        _outputDeviceFallbackFrom = null;
         string? currentPath = _currentTrackPath;
         TimeSpan position = _audioFile?.CurrentTime ?? TimeSpan.Zero;
         bool wasPlaying = _isPlaying;
@@ -4801,7 +4993,10 @@ public partial class MainWindow : FluentWindow
         try
         {
             StopPlayback(disposeOnly: true);
+            string failedDeviceKey = _settings.OutputDeviceName;
             DisposeOutputDeviceSafely();
+            _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
+            _outputDeviceFallbackFrom = failedDeviceKey;
             _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
             _ = SettingsManager.SaveAsync(_settings);
             _settingsWindow?.RefreshOutputDeviceSelection();
@@ -4943,7 +5138,10 @@ public partial class MainWindow : FluentWindow
     // звать её хоть на каждое сообщение WM_HOTKEY при зажатой клавише).
     private string? ComputeNextTrackPath(string? currentPath)
     {
-        var active = FlattenActive();
+        // Файлы могли исчезнуть после построения плейлиста. Пропускаем их именно при
+        // навигации, не удаляя запись автоматически: пользователь сам решает, заменить её
+        // или убрать через проверку недоступных файлов.
+        var active = FlattenActive().Where(File.Exists).ToList();
         if (active.Count == 0) return null;
 
         if (_isShuffleEnabled)
@@ -4963,7 +5161,10 @@ public partial class MainWindow : FluentWindow
 
     private string? ComputePreviousTrackPath(string? currentPath)
     {
-        var active = FlattenActive();
+        // Файлы могли исчезнуть после построения плейлиста. Пропускаем их именно при
+        // навигации, не удаляя запись автоматически: пользователь сам решает, заменить её
+        // или убрать через проверку недоступных файлов.
+        var active = FlattenActive().Where(File.Exists).ToList();
         if (active.Count == 0) return null;
 
         if (_isShuffleEnabled)
@@ -6384,6 +6585,14 @@ public partial class MainWindow : FluentWindow
         e.Handled = true;
     }
 
+    // Очередь остаётся читаемой в обычном и расширенном представлении окна: при ширине
+    // владельца 524–664 DIP содержимое Popup растёт вместе с окном, за пределами диапазона
+    // удерживается разумный минимум/максимум. Ширина внешней рамки на 28 DIP больше за счёт Padding.
+    private void UpdateQueuePopupWidth()
+    {
+        QueuePopupContent.Width = Math.Clamp(ActualWidth - 52, 472, 612);
+    }
+
     private void QueueButton_Click(object sender, RoutedEventArgs e)
     {
         // Popup с StaysOpen=False закрывается в том же input-цикле, что и Click. Открываем
@@ -6397,9 +6606,34 @@ public partial class MainWindow : FluentWindow
                 return;
 
             QueuePopup.PlacementTarget = MoreActionsButton;
+            UpdateQueuePopupWidth();
             QueuePopup.IsOpen = true;
         }), DispatcherPriority.Input);
         e.Handled = true;
+    }
+
+    private void QueueSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+        RefreshQueueUi();
+    }
+
+    private void QueueSortCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (!IsLoaded) return;
+
+        switch (QueueSortCombo.SelectedIndex)
+        {
+            case 0:
+                _playbackQueue.RestoreInsertionOrder();
+                break;
+            case 1:
+                _playbackQueue.SortByDisplayName(descending: false);
+                break;
+            case 2:
+                _playbackQueue.SortByDisplayName(descending: true);
+                break;
+        }
     }
 
     private void ClearQueueButton_Click(object sender, RoutedEventArgs e) => _playbackQueue.Clear();
@@ -6416,13 +6650,30 @@ public partial class MainWindow : FluentWindow
     private void RefreshQueueUi()
     {
         _queueDisplayItems.Clear();
-        foreach (string path in _playbackQueue.Items)
-            _queueDisplayItems.Add(new QueueDisplayItem(path, Path.GetFileNameWithoutExtension(path)));
+        string query = QueueSearchBox?.Text?.Trim() ?? string.Empty;
+        var visibleEntries = _playbackQueue.Items
+            .Select((path, index) => new { Path = path, Position = index + 1 });
+        if (!string.IsNullOrWhiteSpace(query))
+        {
+            visibleEntries = visibleEntries.Where(entry => Path.GetFileNameWithoutExtension(entry.Path)
+                .Contains(query, StringComparison.OrdinalIgnoreCase));
+        }
 
-        bool hasItems = _queueDisplayItems.Count > 0;
-        QueueItemsList.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
-        QueueEmptyText.Visibility = hasItems ? Visibility.Collapsed : Visibility.Visible;
-        ClearQueueButton.Visibility = hasItems ? Visibility.Visible : Visibility.Collapsed;
+        // Номер берётся из фактической очереди, а не только из фильтрованного списка, чтобы
+        // поиск не создавал впечатление, будто совпадение стало следующим треком.
+        foreach (var entry in visibleEntries)
+            _queueDisplayItems.Add(new QueueDisplayItem(entry.Path, Path.GetFileNameWithoutExtension(entry.Path), entry.Position));
+
+        bool hasQueueItems = _playbackQueue.Count > 0;
+        bool hasVisibleItems = _queueDisplayItems.Count > 0;
+        QueueItemsList.Visibility = hasVisibleItems ? Visibility.Visible : Visibility.Collapsed;
+        QueueToolsPanel.Visibility = hasQueueItems ? Visibility.Visible : Visibility.Collapsed;
+        QueueCountText.Text = string.Format(LocalizationService.Translate("В очереди: {0}"), _playbackQueue.Count);
+        QueueEmptyText.Visibility = hasVisibleItems ? Visibility.Collapsed : Visibility.Visible;
+        QueueEmptyText.Text = hasQueueItems
+            ? LocalizationService.Translate("В очереди нет совпадений.")
+            : LocalizationService.Translate("Пусто. Правый клик по треку → «Играть следующим» или «Добавить в очередь».");
+        ClearQueueButton.Visibility = hasQueueItems ? Visibility.Visible : Visibility.Collapsed;
     }
 
     private void PlaybackControlButton_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
