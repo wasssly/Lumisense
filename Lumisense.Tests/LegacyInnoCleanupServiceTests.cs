@@ -26,6 +26,19 @@ public sealed class LegacyInnoCleanupServiceTests
         }
     }
 
+    [Fact]
+    public void GetVerifiedUninstallerPath_RejectsQuotedUninstallerThatDoesNotExist()
+    {
+        string nonExistentUninstaller = Path.Combine(
+            Path.GetTempPath(),
+            "Lumisense.Tests",
+            Guid.NewGuid().ToString("N"),
+            "unins000.exe");
+
+        Assert.False(File.Exists(nonExistentUninstaller));
+        Assert.Null(LegacyInnoCleanupService.GetVerifiedUninstallerPath($"\"{nonExistentUninstaller}\""));
+    }
+
     [Theory]
     [InlineData("\"C:\\Program Files\\Lumisense\\unins000.exe\" /SILENT")]
     [InlineData("C:\\Program Files\\Lumisense\\unins000.exe")]
