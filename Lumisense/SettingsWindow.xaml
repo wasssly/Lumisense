@@ -240,7 +240,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
                         <Grid Margin="0,5" SnapsToDevicePixels="True">
-                            <Border Height="5" CornerRadius="2.5" Background="{DynamicResource ControlFillColorTertiaryBrush}"
+                            <Border x:Name="PART_MilestoneRail" Height="5" CornerRadius="2.5" Background="{DynamicResource ControlFillColorTertiaryBrush}"
                                     HorizontalAlignment="Stretch" VerticalAlignment="Center" IsHitTestVisible="False"
                                     SnapsToDevicePixels="True" UseLayoutRounding="True" />
                                 <Track x:Name="PART_Track" VerticalAlignment="Center" Orientation="{TemplateBinding Orientation}"
@@ -1073,6 +1073,8 @@
                                                    FontSize="11" FontWeight="SemiBold" Opacity="0.7" />
                                         <TextBlock x:Name="OutputDeviceRuntimeValueText" FontSize="12" FontWeight="SemiBold"
                                                    TextWrapping="Wrap" Margin="0,3,0,0" />
+                                        <TextBlock x:Name="OutputDeviceRuntimeModeText" FontSize="11" Opacity="0.72"
+                                                   TextWrapping="Wrap" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </Border>
                                 <TextBlock x:Name="OutputDeviceStatusText" FontSize="12" Opacity="0.62" TextWrapping="Wrap"
@@ -1141,6 +1143,8 @@
                                     <CheckBox x:Name="TrackContextPlayNextCheckBox" Tag="PlayNext" Content="Играть следующим"
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextAddToQueueCheckBox" Tag="AddToQueue" Content="Добавить в очередь"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextFindFileCheckBox" Tag="FindFile" Content="Найти файл"
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextFavoriteCheckBox" Tag="Favorite" Content="Избранное"
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
@@ -1877,7 +1881,7 @@
                                            </ui:Button>
                                 </Grid>
 
-                                <Grid Margin="0,0,0,4">
+                                <Grid Margin="0,0,0,10">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
@@ -1888,6 +1892,57 @@
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyRepeatButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
                                                Click="HotkeyRepeatClearButton_Click" ToolTip="Очистить">
+                                               <ui:Button.Icon>
+                                                   <local:SvgPathIcon Icon="IconDismiss" />
+                                               </ui:Button.Icon>
+                                           </ui:Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Избранное: текущий трек" VerticalAlignment="Center" />
+                                    <ui:Button Grid.Column="1" x:Name="HotkeyToggleFavoriteButton" Appearance="Secondary"
+                                               MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleFavoriteButton_Click" />
+                                    <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                               Click="HotkeyToggleFavoriteClearButton_Click" ToolTip="Очистить">
+                                               <ui:Button.Icon>
+                                                   <local:SvgPathIcon Icon="IconDismiss" />
+                                               </ui:Button.Icon>
+                                           </ui:Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Показать / скрыть текст" VerticalAlignment="Center" />
+                                    <ui:Button Grid.Column="1" x:Name="HotkeyToggleLyricsButton" Appearance="Secondary"
+                                               MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleLyricsButton_Click" />
+                                    <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                               Click="HotkeyToggleLyricsClearButton_Click" ToolTip="Очистить">
+                                               <ui:Button.Icon>
+                                                   <local:SvgPathIcon Icon="IconDismiss" />
+                                               </ui:Button.Icon>
+                                           </ui:Button>
+                                </Grid>
+
+                                <Grid Margin="0,0,0,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="Переключить мини-плеер" VerticalAlignment="Center" />
+                                    <ui:Button Grid.Column="1" x:Name="HotkeyToggleMiniPlayerButton" Appearance="Secondary"
+                                               MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleMiniPlayerButton_Click" />
+                                    <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                               Click="HotkeyToggleMiniPlayerClearButton_Click" ToolTip="Очистить">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>

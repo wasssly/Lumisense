@@ -73,7 +73,8 @@
                                 <local:SvgPathIcon Icon="IconAdd" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Найти файл…" Click="RelinkTrackMenuItem_Click">
+                        <MenuItem Header="Найти файл…" Click="RelinkTrackMenuItem_Click"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=FindFile}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconAddFile" Size="13" />
                             </MenuItem.Icon>

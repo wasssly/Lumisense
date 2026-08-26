@@ -54,7 +54,7 @@ public class AppSettings
 {
     // Увеличивается только при изменении формата или семантики settings.json. Старые файлы
     // без поля считаются схемой 0 и мигрируются в SettingsIntegrityService.
-    public const int CurrentSettingsSchemaVersion = 7;
+    public const int CurrentSettingsSchemaVersion = 8;
     public int SettingsSchemaVersion { get; set; } = CurrentSettingsSchemaVersion;
 
     // "Dark" / "Light" — выбирается в настройках (страница "Оформление").
@@ -270,10 +270,12 @@ public class AppSettings
     // прогресс-баром (см. MiniPlayerWindow.OnProgressChanged/UpdateSecondaryLine).
     public string MiniPlayerInfoMode { get; set; } = "TitleArtist";
 
-    // Имя явно выбранного WaveOut-устройства. Пустое значение означает системный audio mapper
-    // Windows: при отключении USB/Bluetooth-наушников он может направить звук на новое устройство
-    // по умолчанию. Индекс устройства намеренно не сохраняем, потому что он меняется между сессиями.
+    // Устойчивый WASAPI endpoint-ID явно выбранного устройства (`wasapi:{...}`). Пустое значение
+    // означает системный render endpoint Windows: после отключения USB/Bluetooth-наушников он
+    // может направить звук на новое устройство по умолчанию. Старые WaveOut-имена распознаются
+    // при первой инициализации и мягко мигрируют к endpoint-ID.
     public string OutputDeviceName { get; set; } = "";
+
     public string LyricsSearchPolicy { get; set; } = "AutoExact";
 
     // Всплывающее уведомление в углу экрана при смене трека (обложка + название, исчезает
@@ -363,6 +365,9 @@ public class AppSettings
     public HotkeyBinding HotkeyMute { get; set; } = new() { Ctrl = true, Alt = true, Key = "M" };
     public HotkeyBinding HotkeyShuffle { get; set; } = new() { Ctrl = true, Alt = true, Key = "U" };
     public HotkeyBinding HotkeyRepeat { get; set; } = new() { Ctrl = true, Alt = true, Key = "R" };
+    public HotkeyBinding HotkeyToggleFavorite { get; set; } = new() { Ctrl = true, Alt = true, Key = "F" };
+    public HotkeyBinding HotkeyToggleLyrics { get; set; } = new() { Ctrl = true, Alt = true, Key = "L" };
+    public HotkeyBinding HotkeyToggleMiniPlayer { get; set; } = new() { Ctrl = true, Alt = true, Key = "N" };
 
     // Перемотка на несколько секунд вперёд/назад — тот же шаг (5 секунд), что и колесо мыши
     // над прогресс-баром (см. MainWindow.SeekBy). По умолчанию — та же схема Ctrl+Alt, что и

@@ -50,6 +50,26 @@ public sealed class AudioOutputDeviceServiceTests
     }
 
     [Fact]
+    public void ComposePersistedKey_WasapiEndpoint_UsesStableEndpointId()
+    {
+        var option = new AudioOutputDeviceService.Option(-1, "USB Audio DAC", "USB Audio DAC", 0,
+            EndpointId: "{0.0.0.00000000}.{test-endpoint}");
+
+        string key = AudioOutputDeviceService.ComposePersistedKey(option);
+
+        Assert.Equal("wasapi:{0.0.0.00000000}.{test-endpoint}", key);
+        Assert.True(AudioOutputDeviceService.IsEndpointPersistedKey(key));
+        Assert.Equal("{0.0.0.00000000}.{test-endpoint}", AudioOutputDeviceService.GetEndpointId(key));
+    }
+
+    [Fact]
+    public void EndpointPersistedKey_WithoutId_IsNotTreatedAsValidEndpoint()
+    {
+        Assert.False(AudioOutputDeviceService.IsEndpointPersistedKey("wasapi:"));
+        Assert.Null(AudioOutputDeviceService.GetEndpointId("wasapi:"));
+    }
+
+    [Fact]
     public void ParsePersistedKey_MalformedSuffix_FallsBackToWholeStringAsName()
     {
         (string name, int? occurrenceIndex) = AudioOutputDeviceService.ParsePersistedKey("Weird\uE000Name");

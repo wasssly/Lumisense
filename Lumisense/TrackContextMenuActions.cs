@@ -22,6 +22,7 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
     public const string DeleteFromDisk = "DeleteFromDisk";
     public const string PlayNext = "PlayNext";
     public const string AddToQueue = "AddToQueue";
+    public const string FindFile = "FindFile";
 
     public static readonly TrackContextMenuActions Instance = new();
 
@@ -38,7 +39,8 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
         [RemoveFromPlaylist] = RemoveFromPlaylist,
         [DeleteFromDisk] = DeleteFromDisk,
         [PlayNext] = PlayNext,
-        [AddToQueue] = AddToQueue
+        [AddToQueue] = AddToQueue,
+        [FindFile] = FindFile
     };
 
     private readonly HashSet<string> _disabled = new(StringComparer.Ordinal);

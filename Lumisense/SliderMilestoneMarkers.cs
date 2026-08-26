@@ -143,10 +143,26 @@ public sealed class SliderMilestoneOverlay : FrameworkElement
         double availableTrackLength = track.ActualWidth - thumb.ActualWidth;
         if (availableTrackLength < 0) return;
 
+        // Track включает область Thumb и может быть выше самой дорожки. Для SettingsAccentSliderStyle
+        // берём центр именованной 5-DIP дорожки: точки лежат непосредственно на полосе при любом
+        // DPI и UI-масштабе. Старые/другие шаблоны сохраняют безопасный fallback на центр Track.
+        double centerY = trackOrigin.Y + track.ActualHeight / 2.0;
+        if (slider.Template?.FindName("PART_MilestoneRail", slider) is FrameworkElement rail && rail.ActualHeight > 0)
+        {
+            try
+            {
+                Point railOrigin = rail.TransformToVisual(this).Transform(new Point(0, 0));
+                centerY = railOrigin.Y + rail.ActualHeight / 2.0;
+            }
+            catch (InvalidOperationException)
+            {
+                // Шаблон может перестраиваться при смене темы; fallback на центр Track остаётся корректным.
+            }
+        }
+
         // Заметная контрольная точка: после увеличения скорректирована на 0,5 DIP.
         const double radius = 3.0;
         Brush markerBrush = MarkerBrush ?? Brushes.White;
-        double centerY = trackOrigin.Y + track.ActualHeight / 2.0;
         double epsilon = markerFrequency * 0.0001;
 
         for (double value = slider.Minimum; value <= slider.Maximum + epsilon; value += markerFrequency)

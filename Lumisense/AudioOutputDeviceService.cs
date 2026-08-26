@@ -1,94 +1,49 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using System.Text;
 using NAudio.CoreAudioApi;
-using NAudio.Wave;
 
 namespace AudioPlayer;
 
-// Lumisense воспроизводит через WaveOutEvent, поэтому WaveOut-номер остаётся техническим
-// идентификатором вывода. Однако WinMM ограничивает ProductName 32 символами; для интерфейса
-// сопоставляем его с современными активными Windows render endpoints и показываем FriendlyName.
+/// <summary>
+/// Перечисляет Windows Core Audio render endpoints для WASAPI и хранит их устойчивые endpoint-ID.
+/// Старые ключи WaveOut (ProductName + occurrence index) по-прежнему распознаются, поэтому выбор
+/// устройства из существующего settings.json мягко мигрирует при первом новом выборе пользователя.
+/// </summary>
 internal static class AudioOutputDeviceService
 {
-    // Пустая строка означает системный audio mapper Windows (WaveOut DeviceNumber = -1).
     public const string SystemDefaultDeviceName = "";
-    public const int SystemDefaultDeviceNumber = -1;
 
-    // DeviceName хранит legacy ProductName для обратной совместимости с WaveOutEvent, а
-    // DisplayName — полный FriendlyName Core Audio, используемый только в интерфейсе.
-    // OccurrenceIndex — позиция среди устройств с совпадающим DeviceName (0 для первого) —
-    // без неё выбор между двумя одинаково названными устройствами было бы невозможно сохранить,
-    // так как DeviceName у них буквально совпадает (см. ComposePersistedKey/ResolveDeviceNumber).
-    internal sealed record Option(int DeviceNumber, string DeviceName, string DisplayName, int OccurrenceIndex);
-
-    // Разделитель имени и OccurrenceIndex в сохранённом значении — символ из Private Use Area,
-    // который не встречается в реальных строках драйверов Windows.
+    private const string EndpointKeyPrefix = "wasapi:";
     private const char PersistKeySeparator = '\uE000';
 
-    // NAudio 1.9 exposes WaveOutEvent but not the legacy WaveOut enumerator in the target used
-    // by Lumisense. WinMM is the same Windows API behind WaveOutEvent, so we enumerate its
-    // output devices directly while retaining NAudio's WaveOutCapabilities structure.
-    [DllImport("winmm.dll", ExactSpelling = true)]
-    private static extern uint waveOutGetNumDevs();
+    // DeviceNumber оставлен для совместимости с прежними settings/test-контрактами. WASAPI больше
+    // не использует его для открытия устройства: устойчивым идентификатором служит EndpointId.
+    internal sealed record Option(int DeviceNumber, string DeviceName, string DisplayName, int OccurrenceIndex,
+        string? EndpointId = null);
 
-    [DllImport("winmm.dll", CharSet = CharSet.Auto, ExactSpelling = false)]
-    private static extern int waveOutGetDevCaps(IntPtr deviceId, out WaveOutCapabilities capabilities, int capabilitiesSize);
+    internal sealed record ResolvedEndpoint(MMDevice Device, string ActiveDeviceKey, bool UsedFallback);
 
     public static IReadOnlyList<Option> GetAvailableDevices()
     {
         try
         {
-            IReadOnlyList<string> fullEndpointNames = GetActiveRenderEndpointFriendlyNames();
-            var devices = new List<Option>();
-            var displayNameCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            var legacyNameCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
-            uint deviceCount = waveOutGetNumDevs();
-            for (int deviceNumber = 0; deviceNumber < deviceCount; deviceNumber++)
-            {
-                if (waveOutGetDevCaps((IntPtr)deviceNumber, out WaveOutCapabilities capabilities, Marshal.SizeOf<WaveOutCapabilities>()) != 0)
-                    continue;
-
-                string legacyName = string.IsNullOrWhiteSpace(capabilities.ProductName)
-                    ? $"WaveOut #{deviceNumber + 1}"
-                    : capabilities.ProductName.Trim();
-                string fullName = ResolveFullDisplayName(legacyName, fullEndpointNames);
-
-                displayNameCounts.TryGetValue(fullName, out int displayDuplicateIndex);
-                displayNameCounts[fullName] = displayDuplicateIndex + 1;
-                string displayName = displayDuplicateIndex == 0 ? fullName : $"{fullName} ({displayDuplicateIndex + 1})";
-
-                legacyNameCounts.TryGetValue(legacyName, out int occurrenceIndex);
-                legacyNameCounts[legacyName] = occurrenceIndex + 1;
-
-                devices.Add(new Option(deviceNumber, legacyName, displayName, occurrenceIndex));
-            }
-
-            return devices;
-        }
-        catch (Exception ex)
-        {
-            // Перечисление legacy WaveOut не должно мешать запуску плеера: audio mapper всё
-            // ещё может работать, даже если драйвер одной из карт отдаёт ошибку capabilities.
-            Logger.Warn($"Не удалось перечислить устройства вывода WaveOut: {ex.Message}");
-            return Array.Empty<Option>();
-        }
-    }
-
-    private static IReadOnlyList<string> GetActiveRenderEndpointFriendlyNames()
-    {
-        try
-        {
             using var enumerator = new MMDeviceEnumerator();
-            var names = new List<string>();
+            var devices = new List<Option>();
+            var nameOccurrences = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+
             foreach (MMDevice endpoint in enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
             {
                 try
                 {
-                    if (!string.IsNullOrWhiteSpace(endpoint.FriendlyName))
-                        names.Add(endpoint.FriendlyName.Trim());
+                    string friendlyName = string.IsNullOrWhiteSpace(endpoint.FriendlyName)
+                        ? "WASAPI output"
+                        : endpoint.FriendlyName.Trim();
+                    nameOccurrences.TryGetValue(friendlyName, out int occurrenceIndex);
+                    nameOccurrences[friendlyName] = occurrenceIndex + 1;
+                    string displayName = occurrenceIndex == 0 ? friendlyName : $"{friendlyName} ({occurrenceIndex + 1})";
+                    devices.Add(new Option(-1, friendlyName, displayName, occurrenceIndex, endpoint.ID));
                 }
                 finally
                 {
@@ -96,24 +51,32 @@ internal static class AudioOutputDeviceService
                 }
             }
 
-            return names;
+            return devices;
         }
         catch (Exception ex)
         {
-            // Core Audio используется только для полного отображаемого названия. Если он
-            // недоступен, корректный, но короткий WinMM ProductName остаётся безопасным fallback.
-            Logger.Warn($"Не удалось получить полные имена устройств Windows: {ex.Message}");
-            return Array.Empty<string>();
+            Logger.Warn($"Не удалось перечислить WASAPI-устройства вывода: {ex.Message}");
+            return Array.Empty<Option>();
         }
     }
 
-    // Ключ для persistence: только имя для первого устройства с таким именем (обычный случай,
-    // без дублей — формат не меняется относительно того, что было раньше), и "имя+индекс" для
-    // второго и далее — иначе выбор между ними в настройках было бы неразличим.
-    public static string ComposePersistedKey(Option option) =>
-        option.OccurrenceIndex == 0
+    public static string ComposePersistedKey(Option option)
+    {
+        if (!string.IsNullOrWhiteSpace(option.EndpointId))
+            return $"{EndpointKeyPrefix}{option.EndpointId}";
+
+        // Legacy fallback для старых тестов и повреждённых данных без endpoint-ID.
+        return option.OccurrenceIndex == 0
             ? option.DeviceName
             : $"{option.DeviceName}{PersistKeySeparator}{option.OccurrenceIndex}";
+    }
+
+    internal static bool IsEndpointPersistedKey(string? persisted) =>
+        !string.IsNullOrWhiteSpace(persisted) && persisted.StartsWith(EndpointKeyPrefix, StringComparison.Ordinal) &&
+        persisted.Length > EndpointKeyPrefix.Length;
+
+    internal static string? GetEndpointId(string? persisted) =>
+        IsEndpointPersistedKey(persisted) ? persisted![EndpointKeyPrefix.Length..] : null;
 
     internal static (string Name, int? OccurrenceIndex) ParsePersistedKey(string persisted)
     {
@@ -125,20 +88,137 @@ internal static class AudioOutputDeviceService
         return int.TryParse(suffix, out int occurrenceIndex) ? (name, occurrenceIndex) : (persisted, null);
     }
 
-    private static string ResolveFullDisplayName(string legacyName, IReadOnlyList<string> endpointNames)
+    /// <summary>
+    /// Возвращает открытый Core Audio endpoint. Владение MMDevice передаётся вызывающему коду:
+    /// он обязан Dispose endpoint после Dispose WasapiOut.
+    /// </summary>
+    public static ResolvedEndpoint ResolveEndpoint(string? preferredDeviceKey)
     {
-        string normalizedLegacyName = NormalizeForMatch(legacyName);
-        if (normalizedLegacyName.Length == 0) return legacyName;
+        using var enumerator = new MMDeviceEnumerator();
 
-        string? match = endpointNames
-            .Select(name => new { Name = name, Normalized = NormalizeForMatch(name) })
-            .Where(candidate => candidate.Normalized.StartsWith(normalizedLegacyName, StringComparison.Ordinal) ||
-                                normalizedLegacyName.StartsWith(candidate.Normalized, StringComparison.Ordinal))
-            .OrderBy(candidate => Math.Abs(candidate.Normalized.Length - normalizedLegacyName.Length))
-            .Select(candidate => candidate.Name)
-            .FirstOrDefault();
+        if (string.IsNullOrWhiteSpace(preferredDeviceKey))
+            return new ResolvedEndpoint(
+                enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia),
+                SystemDefaultDeviceName,
+                UsedFallback: false);
 
-        return match ?? legacyName;
+        string? endpointId = GetEndpointId(preferredDeviceKey);
+        if (!string.IsNullOrWhiteSpace(endpointId))
+        {
+            MMDevice? endpoint = TryGetActiveEndpointById(enumerator, endpointId);
+            if (endpoint is not null)
+                return new ResolvedEndpoint(endpoint, preferredDeviceKey, UsedFallback: false);
+        }
+        else
+        {
+            // Миграция ключей, сохранённых WaveOutEvent: сопоставляем старое ProductName (в том
+            // числе усечённое WinMM до 32 символов) с современным FriendlyName endpoint.
+            (string name, int? occurrenceIndex) = ParsePersistedKey(preferredDeviceKey);
+            MMDevice? endpoint = TryGetActiveEndpointByLegacyName(enumerator, name, occurrenceIndex);
+            if (endpoint is not null)
+                return new ResolvedEndpoint(endpoint, ComposePersistedKey(new Option(-1,
+                    endpoint.FriendlyName.Trim(), endpoint.FriendlyName.Trim(), 0, endpoint.ID)), UsedFallback: false);
+        }
+
+        return new ResolvedEndpoint(
+            enumerator.GetDefaultAudioEndpoint(DataFlow.Render, Role.Multimedia),
+            SystemDefaultDeviceName,
+            UsedFallback: true);
+    }
+
+    /// <summary>
+    /// Возвращает ключ текущего endpoint из списка доступных устройств, соответствующий
+    /// сохранённому ключу. Нужен SettingsWindow, чтобы старый WaveOut-ключ не был ошибочно
+    /// заменён системным устройством ещё до первой попытки воспроизведения.
+    /// </summary>
+    public static string? FindAvailablePersistedKey(string? preferredDeviceKey)
+    {
+        if (string.IsNullOrWhiteSpace(preferredDeviceKey))
+            return SystemDefaultDeviceName;
+
+        IReadOnlyList<Option> devices = GetAvailableDevices();
+        string? endpointId = GetEndpointId(preferredDeviceKey);
+        Option? match;
+        if (!string.IsNullOrWhiteSpace(endpointId))
+        {
+            match = devices.FirstOrDefault(device => string.Equals(device.EndpointId, endpointId, StringComparison.Ordinal));
+        }
+        else
+        {
+            (string name, int? occurrenceIndex) = ParsePersistedKey(preferredDeviceKey);
+            match = devices.FirstOrDefault(device => LegacyNameMatches(name, device.DeviceName) &&
+                (occurrenceIndex is null || occurrenceIndex == device.OccurrenceIndex));
+        }
+
+        return match is null ? null : ComposePersistedKey(match);
+    }
+
+    public static bool IsAvailable(string? preferredDeviceKey) =>
+        FindAvailablePersistedKey(preferredDeviceKey) is not null;
+
+    public static string GetDisplayName(string? persistedDeviceKey)
+    {
+        if (string.IsNullOrWhiteSpace(persistedDeviceKey))
+            return LocalizationService.Translate("Системное устройство по умолчанию");
+
+        string? endpointId = GetEndpointId(persistedDeviceKey);
+        Option? device = !string.IsNullOrWhiteSpace(endpointId)
+            ? GetAvailableDevices().FirstOrDefault(option => string.Equals(option.EndpointId, endpointId, StringComparison.Ordinal))
+            : FindLegacyDisplayOption(persistedDeviceKey);
+        return device?.DisplayName ?? (!string.IsNullOrWhiteSpace(endpointId)
+            ? LocalizationService.Translate("Недоступное WASAPI-устройство")
+            : ParsePersistedKey(persistedDeviceKey).Name);
+    }
+
+    private static Option? FindLegacyDisplayOption(string persistedDeviceKey)
+    {
+        (string name, int? occurrenceIndex) = ParsePersistedKey(persistedDeviceKey);
+        return GetAvailableDevices().FirstOrDefault(device => LegacyNameMatches(name, device.DeviceName) &&
+            (occurrenceIndex is null || occurrenceIndex == device.OccurrenceIndex));
+    }
+
+    private static MMDevice? TryGetActiveEndpointById(MMDeviceEnumerator enumerator, string endpointId)
+    {
+        foreach (MMDevice endpoint in enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
+        {
+            if (string.Equals(endpoint.ID, endpointId, StringComparison.Ordinal))
+                return endpoint;
+            endpoint.Dispose();
+        }
+
+        return null;
+    }
+
+    private static MMDevice? TryGetActiveEndpointByLegacyName(MMDeviceEnumerator enumerator, string legacyName,
+        int? occurrenceIndex)
+    {
+        int matchingOccurrence = 0;
+        foreach (MMDevice endpoint in enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active))
+        {
+            string friendlyName = endpoint.FriendlyName?.Trim() ?? string.Empty;
+            if (!LegacyNameMatches(legacyName, friendlyName))
+            {
+                endpoint.Dispose();
+                continue;
+            }
+
+            if (occurrenceIndex is null || matchingOccurrence == occurrenceIndex)
+                return endpoint;
+
+            matchingOccurrence++;
+            endpoint.Dispose();
+        }
+
+        return null;
+    }
+
+    private static bool LegacyNameMatches(string legacyName, string friendlyName)
+    {
+        string normalizedLegacy = NormalizeForMatch(legacyName);
+        string normalizedFriendly = NormalizeForMatch(friendlyName);
+        return normalizedLegacy.Length > 0 && normalizedFriendly.Length > 0 &&
+               (normalizedFriendly.StartsWith(normalizedLegacy, StringComparison.Ordinal) ||
+                normalizedLegacy.StartsWith(normalizedFriendly, StringComparison.Ordinal));
     }
 
     private static string NormalizeForMatch(string value)
@@ -151,59 +231,5 @@ internal static class AudioOutputDeviceService
         }
 
         return result.ToString();
-    }
-
-    // Возвращает DeviceNumber, пригодный для WaveOutEvent. Если сохранённое устройство исчезло,
-    // используем mapper Windows: он выберет текущее системное устройство и даёт лучший шанс
-    // продолжить воспроизведение после отключения USB/Bluetooth-оборудования.
-    public static int ResolveDeviceNumber(string? preferredDeviceName, out bool usedFallback)
-    {
-        if (string.IsNullOrWhiteSpace(preferredDeviceName))
-        {
-            usedFallback = false;
-            return SystemDefaultDeviceNumber;
-        }
-
-        (string name, int? occurrenceIndex) = ParsePersistedKey(preferredDeviceName);
-        List<Option> sameNameDevices = GetAvailableDevices()
-            .Where(device => string.Equals(device.DeviceName, name, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        // Точное совпадение по имени и позиции среди одноимённых устройств — то, что было
-        // реально выбрано. Если этой конкретной позиции больше нет (устройство отключили),
-        // откатываемся на первое совпадение по имени — как и раньше, до появления OccurrenceIndex.
-        Option? matched = (occurrenceIndex is int index
-            ? sameNameDevices.FirstOrDefault(device => device.OccurrenceIndex == index)
-            : null) ?? sameNameDevices.FirstOrDefault();
-
-        if (matched is not null)
-        {
-            usedFallback = false;
-            return matched.DeviceNumber;
-        }
-
-        usedFallback = true;
-        return SystemDefaultDeviceNumber;
-    }
-
-    public static bool IsAvailable(string? preferredDeviceName)
-    {
-        if (string.IsNullOrWhiteSpace(preferredDeviceName)) return true;
-        string name = ParsePersistedKey(preferredDeviceName).Name;
-        return GetAvailableDevices().Any(device => string.Equals(device.DeviceName, name, StringComparison.OrdinalIgnoreCase));
-    }
-
-    // Имя для статуса runtime: используем полный FriendlyName, когда устройство по-прежнему
-    // доступно, и аккуратный сохранённый fallback, если драйвер уже исчез из списка.
-    public static string GetDisplayName(string? persistedDeviceName)
-    {
-        if (string.IsNullOrWhiteSpace(persistedDeviceName))
-            return LocalizationService.Translate("Системное устройство по умолчанию");
-
-        (string name, int? occurrenceIndex) = ParsePersistedKey(persistedDeviceName);
-        Option? device = GetAvailableDevices()
-            .FirstOrDefault(option => string.Equals(option.DeviceName, name, StringComparison.OrdinalIgnoreCase) &&
-                                      (occurrenceIndex is null || option.OccurrenceIndex == occurrenceIndex));
-        return device?.DisplayName ?? name;
     }
 }

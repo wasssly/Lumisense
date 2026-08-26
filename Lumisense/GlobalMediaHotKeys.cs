@@ -42,6 +42,9 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private const int IdCustomDeleteTrack = 0xA01A;
     private const int IdCustomSeekForward = 0xA01B;
     private const int IdCustomSeekBackward = 0xA01C;
+    private const int IdCustomToggleFavorite = 0xA01D;
+    private const int IdCustomToggleLyrics = 0xA01E;
+    private const int IdCustomToggleMiniPlayer = 0xA01F;
 
     private readonly IntPtr _handle;
     private readonly HwndSource _source;
@@ -59,6 +62,9 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private bool _customDeleteTrackRegistered;
     private bool _customSeekForwardRegistered;
     private bool _customSeekBackwardRegistered;
+    private bool _customToggleFavoriteRegistered;
+    private bool _customToggleLyricsRegistered;
+    private bool _customToggleMiniPlayerRegistered;
 
     // Next/Previous передают виртуальный код фактически нажатой клавиши. Это позволяет
     // MainWindow самостоятельно определить, удерживается ли именно этот хоткей, и не
@@ -75,6 +81,9 @@ public sealed class GlobalMediaHotKeys : IDisposable
     public event Action? DeleteTrackPressed;
     public event Action? SeekForwardPressed;
     public event Action? SeekBackwardPressed;
+    public event Action? ToggleFavoritePressed;
+    public event Action? ToggleLyricsPressed;
+    public event Action? ToggleMiniPlayerPressed;
 
     public GlobalMediaHotKeys(Window window)
     {
@@ -115,6 +124,9 @@ public sealed class GlobalMediaHotKeys : IDisposable
         if (_customDeleteTrackRegistered) UnregisterHotKey(_handle, IdCustomDeleteTrack);
         if (_customSeekForwardRegistered) UnregisterHotKey(_handle, IdCustomSeekForward);
         if (_customSeekBackwardRegistered) UnregisterHotKey(_handle, IdCustomSeekBackward);
+        if (_customToggleFavoriteRegistered) UnregisterHotKey(_handle, IdCustomToggleFavorite);
+        if (_customToggleLyricsRegistered) UnregisterHotKey(_handle, IdCustomToggleLyrics);
+        if (_customToggleMiniPlayerRegistered) UnregisterHotKey(_handle, IdCustomToggleMiniPlayer);
 
         _customPlayPauseRegistered = TryRegister(IdCustomPlayPause, settings.HotkeyPlayPause);
         _customNextRegistered = TryRegister(IdCustomNext, settings.HotkeyNext, allowRepeat: true);
@@ -132,6 +144,9 @@ public sealed class GlobalMediaHotKeys : IDisposable
         // мотать дальше, а не один раз дёрнуть на фиксированный шаг.
         _customSeekForwardRegistered = TryRegister(IdCustomSeekForward, settings.HotkeySeekForward, allowRepeat: true);
         _customSeekBackwardRegistered = TryRegister(IdCustomSeekBackward, settings.HotkeySeekBackward, allowRepeat: true);
+        _customToggleFavoriteRegistered = TryRegister(IdCustomToggleFavorite, settings.HotkeyToggleFavorite);
+        _customToggleLyricsRegistered = TryRegister(IdCustomToggleLyrics, settings.HotkeyToggleLyrics);
+        _customToggleMiniPlayerRegistered = TryRegister(IdCustomToggleMiniPlayer, settings.HotkeyToggleMiniPlayer);
     }
 
     // allowRepeat=true снимает флаг MOD_NOREPEAT: Windows будет сама слать повторные
@@ -211,6 +226,18 @@ public sealed class GlobalMediaHotKeys : IDisposable
                     SeekBackwardPressed?.Invoke();
                     handled = true;
                     break;
+                case IdCustomToggleFavorite:
+                    ToggleFavoritePressed?.Invoke();
+                    handled = true;
+                    break;
+                case IdCustomToggleLyrics:
+                    ToggleLyricsPressed?.Invoke();
+                    handled = true;
+                    break;
+                case IdCustomToggleMiniPlayer:
+                    ToggleMiniPlayerPressed?.Invoke();
+                    handled = true;
+                    break;
             }
         }
 
@@ -245,6 +272,9 @@ public sealed class GlobalMediaHotKeys : IDisposable
         if (_customDeleteTrackRegistered) UnregisterHotKey(_handle, IdCustomDeleteTrack);
         if (_customSeekForwardRegistered) UnregisterHotKey(_handle, IdCustomSeekForward);
         if (_customSeekBackwardRegistered) UnregisterHotKey(_handle, IdCustomSeekBackward);
+        if (_customToggleFavoriteRegistered) UnregisterHotKey(_handle, IdCustomToggleFavorite);
+        if (_customToggleLyricsRegistered) UnregisterHotKey(_handle, IdCustomToggleLyrics);
+        if (_customToggleMiniPlayerRegistered) UnregisterHotKey(_handle, IdCustomToggleMiniPlayer);
 
         _source.RemoveHook(WndProc);
     }

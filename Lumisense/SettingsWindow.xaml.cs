@@ -17,7 +17,7 @@ namespace AudioPlayer;
 
 public partial class SettingsWindow : FluentWindow
 {
-    private enum HotkeyTarget { None, PlayPause, Next, Previous, Stop, VolumeUp, VolumeDown, Mute, Shuffle, Repeat, DeleteTrack, SeekForward, SeekBackward }
+    private enum HotkeyTarget { None, PlayPause, Next, Previous, Stop, VolumeUp, VolumeDown, Mute, Shuffle, Repeat, ToggleFavorite, ToggleLyrics, ToggleMiniPlayer, DeleteTrack, SeekForward, SeekBackward }
 
     private readonly AppSettings _settings;
     private readonly MainWindow _owner;
@@ -112,6 +112,7 @@ public partial class SettingsWindow : FluentWindow
         // ниже — своя иконка на панели задач вместо ShowInTaskbar = false, что раньше стояло
         // здесь.
         ShowInTaskbar = true;
+        TaskbarWindowIdentity.AssignWhenSourceReady(this, TaskbarWindowIdentity.Settings);
         RestoreOrCenterPosition(owner);
 
         LanguageEnglishRadio.IsChecked = string.Equals(_settings.Language, LocalizationService.English, StringComparison.OrdinalIgnoreCase);
@@ -237,6 +238,9 @@ public partial class SettingsWindow : FluentWindow
         RefreshHotkeyButtonText(HotkeyTarget.Mute);
         RefreshHotkeyButtonText(HotkeyTarget.Shuffle);
         RefreshHotkeyButtonText(HotkeyTarget.Repeat);
+        RefreshHotkeyButtonText(HotkeyTarget.ToggleFavorite);
+        RefreshHotkeyButtonText(HotkeyTarget.ToggleLyrics);
+        RefreshHotkeyButtonText(HotkeyTarget.ToggleMiniPlayer);
         RefreshHotkeyButtonText(HotkeyTarget.DeleteTrack);
         RefreshHotkeyButtonText(HotkeyTarget.SeekForward);
         RefreshHotkeyButtonText(HotkeyTarget.SeekBackward);
@@ -274,6 +278,7 @@ public partial class SettingsWindow : FluentWindow
         {
             TrackContextPlayNextCheckBox,
             TrackContextAddToQueueCheckBox,
+            TrackContextFindFileCheckBox,
             TrackContextFavoriteCheckBox,
             TrackContextShowInExplorerCheckBox,
             TrackContextCopyNameCheckBox,
@@ -458,6 +463,12 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
+    private void SetPrepareVelopackBasePackageButtonAvailability(bool isEnabled)
+    {
+        PrepareVelopackBasePackageButton.IsEnabled = isEnabled;
+        PrepareVelopackBasePackageButton.Opacity = isEnabled ? 1.0 : 0.48;
+    }
+
     private void RefreshVelopackBasePackagePresentation()
     {
         VelopackBasePackageTitleText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageTitle);
@@ -473,7 +484,7 @@ public partial class SettingsWindow : FluentWindow
         VelopackBasePackageExpander.Visibility = Visibility.Visible;
         if (_basePackagePlan is null)
         {
-            PrepareVelopackBasePackageButton.IsEnabled = false;
+            SetPrepareVelopackBasePackageButtonAvailability(false);
             VelopackBasePackageStatusText.Text = string.IsNullOrWhiteSpace(_basePackageError)
                 ? LocalizationService.Get(LocalizationKey.UpdateVelopackPreparing)
                 : LocalizationService.FormatKey(LocalizationKey.UpdateVelopackBasePackageDownloadFailed, _basePackageError);
@@ -485,7 +496,7 @@ public partial class SettingsWindow : FluentWindow
         switch (plan.Status)
         {
             case VelopackBasePackageStatus.Available when plan.FullPackage is not null:
-                PrepareVelopackBasePackageButton.IsEnabled = true;
+                SetPrepareVelopackBasePackageButtonAvailability(true);
                 VelopackBasePackageStatusText.Text = LocalizationService.FormatKey(
                     LocalizationKey.UpdateVelopackBasePackageAvailable,
                     version,
@@ -494,25 +505,26 @@ public partial class SettingsWindow : FluentWindow
                 break;
 
             case VelopackBasePackageStatus.Prepared:
-                PrepareVelopackBasePackageButton.IsEnabled = false;
+                SetPrepareVelopackBasePackageButtonAvailability(false);
+                PrepareVelopackBasePackageButtonText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageReady);
                 VelopackBasePackageStatusText.Text = LocalizationService.FormatKey(
                     LocalizationKey.UpdateVelopackBasePackagePrepared, version);
                 break;
 
             case VelopackBasePackageStatus.CurrentPackageUnavailable:
-                PrepareVelopackBasePackageButton.IsEnabled = false;
+                SetPrepareVelopackBasePackageButtonAvailability(false);
                 VelopackBasePackageStatusText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageUnavailable);
                 break;
 
             case VelopackBasePackageStatus.InsufficientDiskSpace:
-                PrepareVelopackBasePackageButton.IsEnabled = false;
+                SetPrepareVelopackBasePackageButtonAvailability(false);
                 VelopackBasePackageStatusText.Text = LocalizationService.FormatKey(
                     LocalizationKey.UpdateVelopackBasePackageInsufficientSpace,
                     VelopackUpdateDiagnostics.FormatBytes(plan.RequiredFreeBytes));
                 break;
 
             default:
-                PrepareVelopackBasePackageButton.IsEnabled = false;
+                SetPrepareVelopackBasePackageButtonAvailability(false);
                 VelopackBasePackageStatusText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackBasePackageNotManaged);
                 break;
         }
@@ -634,7 +646,7 @@ public partial class SettingsWindow : FluentWindow
         _basePackageCts?.Cancel();
         var cts = new CancellationTokenSource();
         _basePackageCts = cts;
-        PrepareVelopackBasePackageButton.IsEnabled = false;
+        SetPrepareVelopackBasePackageButtonAvailability(false);
         var progress = new Progress<int>(value =>
         {
             VelopackBasePackageStatusText.Text = LocalizationService.FormatKey(
@@ -981,7 +993,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Не запускать трек при старте", "Воспроизведение", "Playback", NeverAutoPlayLastTrackOnStartupCheckBox, "старт запуск продолжить воспроизведение последний трек пауза resume autoplay");
         Add("Очистить кэш интернет-обложек", "Воспроизведение", "Playback", ClearArtworkCacheButton, "кэш обложка интернет очистить удалить cover cache artwork image");
         Add("Нормализация имён файлов", "Воспроизведение", "Playback", NormalizePlaylistFileNamesButton, "нормализация имя файл шаблон переименование artist title album track extension rename");
-        Add("Действия контекстного меню трека", "Воспроизведение", "Playback", TrackContextFavoriteCheckBox, "контекстное меню правый клик пкм трек плейлист скрыть отключить действия проводник копировать теги свойства удалить");
+        Add("Действия контекстного меню трека", "Воспроизведение", "Playback", TrackContextFavoriteCheckBox, "контекстное меню правый клик пкм трек плейлист скрыть отключить действия проводник копировать теги свойства удалить найти файл замена недоступный locate relink missing");
+        Add("Найти файл", "Воспроизведение", "Playback", TrackContextFindFileCheckBox, "контекстное меню заменить недоступный файл путь locate relink missing file");
         Add("Discord Rich Presence", "Интеграции", "Integrations", DiscordRichPresenceEnabledCheckBox, "discord статус rich presence rpc активность" );
         Add("Подключить Discord", "Интеграции", "Integrations", ConnectDiscordButton, "discord подключить connection rich presence статус" );
         Add("Открыть журнал Discord", "Интеграции", "Integrations", OpenDiscordDiagnosticsLogButton, "discord журнал лог диагностика ошибка rich presence" );
@@ -1008,9 +1021,12 @@ public partial class SettingsWindow : FluentWindow
         Add("Без звука", "Горячие клавиши", "Hotkeys", HotkeyMuteButton, "mute без звука горячая клавиша");
         Add("Перемешать", "Горячие клавиши", "Hotkeys", HotkeyShuffleButton, "shuffle перемешать горячая клавиша");
         Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
+        Add("Избранное: текущий трек", "Горячие клавиши", "Hotkeys", HotkeyToggleFavoriteButton, "избранное favorite текущий трек переключить горячая клавиша");
+        Add("Показать / скрыть текст", "Горячие клавиши", "Hotkeys", HotkeyToggleLyricsButton, "текст lyrics панель показать скрыть переключить горячая клавиша");
+        Add("Переключить мини-плеер", "Горячие клавиши", "Hotkeys", HotkeyToggleMiniPlayerButton, "мини плеер mini player переключить показать скрыть горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
-        Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output device");
+        Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output wasapi shared");
         Add("Полоса воспроизведения", "Воспроизведение", "Playback", ProgressBarWaveformRadio, "waveform форма звука soundcloud полоса прогресс seek слайдер");
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
@@ -1497,6 +1513,20 @@ public partial class SettingsWindow : FluentWindow
                 });
             }
 
+            // Старые profiles сохраняли имя/порядковый номер WaveOut. До первого playback
+            // преобразуем его к endpoint-ID, иначе ComboBox не найдёт literal Tag и ошибочно
+            // сбросит рабочий выбор на системное устройство.
+            if (!string.IsNullOrWhiteSpace(_settings.OutputDeviceName) &&
+                !AudioOutputDeviceService.IsEndpointPersistedKey(_settings.OutputDeviceName))
+            {
+                string? migratedKey = AudioOutputDeviceService.FindAvailablePersistedKey(_settings.OutputDeviceName);
+                if (!string.IsNullOrWhiteSpace(migratedKey))
+                {
+                    _settings.OutputDeviceName = migratedKey;
+                    _ = SettingsManager.SaveAsync(_settings);
+                }
+            }
+
             var selected = OutputDeviceCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.OutputDeviceName, StringComparison.OrdinalIgnoreCase));
             bool fallbackToSystemDefault = selected is null;
@@ -1514,6 +1544,8 @@ public partial class SettingsWindow : FluentWindow
 
     public void RefreshOutputDeviceSelection() => InitializeOutputDeviceCombo();
 
+    public void RefreshOutputDeviceRuntimeStatus() => RefreshOutputDeviceStatus();
+
     private void RefreshOutputDeviceStatus(bool fellBackToSystemDefault = false)
     {
         var runtime = _owner.GetOutputDeviceRuntimeStatus();
@@ -1521,6 +1553,20 @@ public partial class SettingsWindow : FluentWindow
         OutputDeviceRuntimeValueText.Text = string.Format(
             LocalizationService.Translate("Активно: {0}"),
             runtime.ActiveDeviceName);
+        string format = runtime.OutputFormat ?? LocalizationService.Translate("будет определён при запуске");
+        string recovery = runtime.RecoveryCount == 0
+            ? LocalizationService.Translate("восстановлений: нет")
+            : string.Format(
+                LocalizationService.Translate("восстановлений: {0}; последняя причина: {1}"),
+                runtime.RecoveryCount,
+                LocalizationService.Translate(runtime.LastRecoveryReason ?? "не указана"));
+        OutputDeviceRuntimeModeText.Text = string.Format(
+            LocalizationService.Translate("Режим вывода: {0} · event callbacks · запрошенная задержка: {1} мс · формат: {2} · init: {3} мс · {4}"),
+            runtime.Engine,
+            runtime.RequestedLatencyMilliseconds,
+            format,
+            runtime.InitializationMilliseconds,
+            recovery);
 
         OutputDeviceStatusText.Text = runtime.FallbackFrom is { Length: > 0 }
             ? string.Format(
@@ -1546,6 +1592,7 @@ public partial class SettingsWindow : FluentWindow
         if (string.Equals(_settings.OutputDeviceName, selectedDeviceName, StringComparison.OrdinalIgnoreCase)) return;
 
         _settings.OutputDeviceName = selectedDeviceName;
+        _ = SettingsManager.SaveAsync(_settings);
         RefreshOutputDeviceStatus();
         _owner.ApplyOutputDeviceSelection();
     }
@@ -2548,6 +2595,9 @@ public partial class SettingsWindow : FluentWindow
     private void HotkeyMuteButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Mute);
     private void HotkeyShuffleButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Shuffle);
     private void HotkeyRepeatButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Repeat);
+    private void HotkeyToggleFavoriteButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.ToggleFavorite);
+    private void HotkeyToggleLyricsButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.ToggleLyrics);
+    private void HotkeyToggleMiniPlayerButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.ToggleMiniPlayer);
     private void HotkeyDeleteTrackButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.DeleteTrack);
     private void HotkeySeekForwardButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.SeekForward);
     private void HotkeySeekBackwardButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.SeekBackward);
@@ -2561,6 +2611,9 @@ public partial class SettingsWindow : FluentWindow
     private void HotkeyMuteClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Mute);
     private void HotkeyShuffleClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Shuffle);
     private void HotkeyRepeatClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.Repeat);
+    private void HotkeyToggleFavoriteClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.ToggleFavorite);
+    private void HotkeyToggleLyricsClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.ToggleLyrics);
+    private void HotkeyToggleMiniPlayerClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.ToggleMiniPlayer);
     private void HotkeyDeleteTrackClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.DeleteTrack);
     private void HotkeySeekForwardClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.SeekForward);
     private void HotkeySeekBackwardClearButton_Click(object sender, RoutedEventArgs e) => ClearHotkey(HotkeyTarget.SeekBackward);
@@ -2663,6 +2716,9 @@ public partial class SettingsWindow : FluentWindow
             case HotkeyTarget.Mute: _settings.HotkeyMute = binding; break;
             case HotkeyTarget.Shuffle: _settings.HotkeyShuffle = binding; break;
             case HotkeyTarget.Repeat: _settings.HotkeyRepeat = binding; break;
+            case HotkeyTarget.ToggleFavorite: _settings.HotkeyToggleFavorite = binding; break;
+            case HotkeyTarget.ToggleLyrics: _settings.HotkeyToggleLyrics = binding; break;
+            case HotkeyTarget.ToggleMiniPlayer: _settings.HotkeyToggleMiniPlayer = binding; break;
             case HotkeyTarget.DeleteTrack: _settings.HotkeyDeleteTrack = binding; break;
             case HotkeyTarget.SeekForward: _settings.HotkeySeekForward = binding; break;
             case HotkeyTarget.SeekBackward: _settings.HotkeySeekBackward = binding; break;
@@ -2680,6 +2736,9 @@ public partial class SettingsWindow : FluentWindow
         HotkeyTarget.Mute => _settings.HotkeyMute,
         HotkeyTarget.Shuffle => _settings.HotkeyShuffle,
         HotkeyTarget.Repeat => _settings.HotkeyRepeat,
+        HotkeyTarget.ToggleFavorite => _settings.HotkeyToggleFavorite,
+        HotkeyTarget.ToggleLyrics => _settings.HotkeyToggleLyrics,
+        HotkeyTarget.ToggleMiniPlayer => _settings.HotkeyToggleMiniPlayer,
         HotkeyTarget.DeleteTrack => _settings.HotkeyDeleteTrack,
         HotkeyTarget.SeekForward => _settings.HotkeySeekForward,
         HotkeyTarget.SeekBackward => _settings.HotkeySeekBackward,
@@ -2697,6 +2756,9 @@ public partial class SettingsWindow : FluentWindow
         HotkeyTarget.Mute => HotkeyMuteButton,
         HotkeyTarget.Shuffle => HotkeyShuffleButton,
         HotkeyTarget.Repeat => HotkeyRepeatButton,
+        HotkeyTarget.ToggleFavorite => HotkeyToggleFavoriteButton,
+        HotkeyTarget.ToggleLyrics => HotkeyToggleLyricsButton,
+        HotkeyTarget.ToggleMiniPlayer => HotkeyToggleMiniPlayerButton,
         HotkeyTarget.DeleteTrack => HotkeyDeleteTrackButton,
         HotkeyTarget.SeekForward => HotkeySeekForwardButton,
         HotkeyTarget.SeekBackward => HotkeySeekBackwardButton,

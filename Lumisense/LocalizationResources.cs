@@ -87,6 +87,7 @@ public static class LocalizationKey
     public const string UpdateVelopackBasePackageTitle = "update.velopack.basePackage.title";
     public const string UpdateVelopackBasePackageDescription = "update.velopack.basePackage.description";
     public const string UpdateVelopackBasePackageDownload = "update.velopack.basePackage.download";
+    public const string UpdateVelopackBasePackageReady = "update.velopack.basePackage.ready";
     public const string UpdateVelopackBasePackageAvailable = "update.velopack.basePackage.available";
     public const string UpdateVelopackBasePackagePrepared = "update.velopack.basePackage.prepared";
     public const string UpdateVelopackBasePackageNotManaged = "update.velopack.basePackage.notManaged";
@@ -217,6 +218,7 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateVelopackBasePackageTitle] = "Подготовить компактные обновления",
         [LocalizationKey.UpdateVelopackBasePackageDescription] = "Добровольно скачайте полный пакет текущей MSI-версии один раз. Он станет локальной базой, и следующие совместимые обновления смогут использовать значительно меньшие delta-пакеты. Плеер не будет обновлён или перезапущен.",
         [LocalizationKey.UpdateVelopackBasePackageDownload] = "Скачать базовый пакет",
+        [LocalizationKey.UpdateVelopackBasePackageReady] = "Базовый пакет подготовлен",
         [LocalizationKey.UpdateVelopackBasePackageAvailable] = "Доступен полный пакет {0} · {1}. Для загрузки дополнительно нужно около {2} свободного места.",
         [LocalizationKey.UpdateVelopackBasePackagePrepared] = "Базовый пакет {0} уже подготовлен. Следующие совместимые обновления смогут использовать delta-пакеты.",
         [LocalizationKey.UpdateVelopackBasePackageNotManaged] = "Доступно после перехода на MSI-версию Lumisense.",
@@ -346,6 +348,7 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateVelopackBasePackageTitle] = "Prepare compact updates",
         [LocalizationKey.UpdateVelopackBasePackageDescription] = "Optionally download the full package for the current MSI version once. It becomes a local base, allowing later compatible updates to use much smaller delta packages. The player will not update or restart.",
         [LocalizationKey.UpdateVelopackBasePackageDownload] = "Download base package",
+        [LocalizationKey.UpdateVelopackBasePackageReady] = "Base package ready",
         [LocalizationKey.UpdateVelopackBasePackageAvailable] = "Full package {0} · {1} is available. Downloading safely also requires about {2} of free space.",
         [LocalizationKey.UpdateVelopackBasePackagePrepared] = "Base package {0} is already prepared. Later compatible updates can use delta packages.",
         [LocalizationKey.UpdateVelopackBasePackageNotManaged] = "Available after moving to the MSI version of Lumisense.",

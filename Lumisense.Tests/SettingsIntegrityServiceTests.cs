@@ -80,6 +80,20 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     }
 
     [Fact]
+    public void TryLoad_RetiredWasapiExclusiveSetting_IsIgnored()
+    {
+        // Старые профили могли содержать opt-in Exclusive. После удаления режима неизвестное
+        // JSON-поле не должно ломать загрузку и не требует ручного редактирования settings.json.
+        string json = $"{{\"SettingsSchemaVersion\": {AppSettings.CurrentSettingsSchemaVersion}, \"UseWasapiExclusiveMode\": true}}";
+
+        bool result = TryLoad(json, out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.NotNull(settings);
+        Assert.Equal(AppSettings.CurrentSettingsSchemaVersion, settings!.SettingsSchemaVersion);
+    }
+
+    [Fact]
     public void TryLoad_InvalidEnumLikeValue_FallsBackToDefault()
     {
         bool result = TryLoad("{\"Theme\": \"Neon\"}", out AppSettings? settings, out _);

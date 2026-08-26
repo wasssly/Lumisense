@@ -13,6 +13,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using SoundTouch.Net.NAudioSupport;
@@ -47,15 +48,22 @@ public partial class MainWindow : FluentWindow
     private AudioFileReader? _audioFile;
     private SoundTouchWaveStream? _tempoStream;
 
-    // Живёт одно на всё время работы приложения (см. OnClosed) вместо пересоздания на каждый
-    // трек — StopPlayback останавливает и переиспользует его, LoadAndPlay зовёт Init(...)
-    // заново. Пересоздание WaveOutEvent на каждый трек раньше давало щелчок при открытии
-    // аудиоустройства на уровне драйвера — отдельно от щелчка "холодного старта" эквалайзера,
-    // который маскирует fade-in в LoadAndPlay.
-    private WaveOutEvent? _outputDevice;
+    // WasapiOut открывает поток для конкретного IWaveProvider один раз, поэтому устройство
+    // создаётся заново при загрузке другого трека. Короткий fade-out/fade-in сохраняет плавность
+    // перехода, а endpoint освобождается сразу после Stop. Lumisense использует только Shared:
+    // системные звуки и другие приложения всегда могут пользоваться тем же устройством.
+    private IWavePlayer? _outputDevice;
+    private MMDevice? _outputEndpoint;
+    private AudioOutputEndpointMonitor? _audioOutputEndpointMonitor;
     private bool _isOutputRecoveryInProgress;
+    private string? _activeOutputFormat;
+    private long _lastOutputInitializationMilliseconds;
+    private int _outputRecoveryCount;
+    private string? _lastOutputRecoveryReason;
+    private DateTime _lastOutputRecoveryStartedUtc;
+    private const int OutputRecoveryCooldownMilliseconds = 1500;
 
-    // Отдельно от выбранного в settings.json значения храним то, что реально открыл WaveOut.
+    // Отдельно от выбранного в settings.json значения храним то, что реально открыл WASAPI.
     // Это позволяет Settings объяснить fallback после отключения USB/Bluetooth-устройства, не
     // заставляя пользователя гадать, куда сейчас направлен звук.
     private string _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
@@ -93,6 +101,9 @@ public partial class MainWindow : FluentWindow
     // Смена обложки может происходить, пока WPF ещё распространяет DynamicResource по Popup
     // и анимируемому дереву. Объединяем обновления темы и выполняем их после текущего UI-прохода.
     private bool _albumArtAppearanceRefreshPending;
+    private readonly AlbumArtTransitionBurstPolicy _albumArtTransitionBurstPolicy =
+        new(TimeSpan.FromMilliseconds(240));
+    private int _albumArtTransitionGeneration;
 
     // ---------- Waveform-полоса воспроизведения (см. AppSettings.ProgressBarStyle) ----------
     // Кэш пиков по пути файла — трек может грузиться повторно, пересчитывать форму волны заново
@@ -113,6 +124,9 @@ public partial class MainWindow : FluentWindow
     private CancellationTokenSource? _trackLoadCts;
     private CancellationTokenSource? _replayGainCts;
     private int _trackLoadGeneration;
+    // Сохраняет исходное намерение воспроизведения только на время серии отменяемых Next/Previous.
+    // См. LoadAndPlay: промежуточный StopPlayback не должен превратить последний переход в Pause.
+    private bool _pendingNavigationAutoPlay;
     private readonly CancellationTokenSource _lifetimeCts = new();
 
     private sealed class PreparedTrack : IDisposable
@@ -546,6 +560,18 @@ public partial class MainWindow : FluentWindow
         _hotkeyTrackStepTimer.Tick += HotkeyTrackStepTimer_Tick;
         _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
         _settingsCheckpointTimer.Tick += SettingsCheckpointTimer_Tick;
+
+        try
+        {
+            _audioOutputEndpointMonitor = new AudioOutputEndpointMonitor();
+            _audioOutputEndpointMonitor.EndpointChanged += AudioOutputEndpointMonitor_EndpointChanged;
+        }
+        catch (Exception ex)
+        {
+            // Мониторинг endpoint — улучшение recovery, но его отсутствие не должно мешать
+            // запуску плеера или штатному fallback при ошибке вывода.
+            Logger.Warn($"Не удалось запустить мониторинг WASAPI-устройств: {ex.Message}");
+        }
 
         // Rich Presence использует те же единые события, что и мини-плеер: это исключает
         // отдельный таймер, опрос UI и расхождение со сменой состояния аудиоустройства.
@@ -1008,6 +1034,9 @@ public partial class MainWindow : FluentWindow
             _mediaHotKeys.DeleteTrackPressed += () => Dispatcher.BeginInvoke(DeleteCurrentTrackFromDiskHotkey);
             _mediaHotKeys.SeekForwardPressed += () => Dispatcher.BeginInvoke(() => SeekBy(5));
             _mediaHotKeys.SeekBackwardPressed += () => Dispatcher.BeginInvoke(() => SeekBy(-5));
+            _mediaHotKeys.ToggleFavoritePressed += () => Dispatcher.BeginInvoke(ExternalToggleFavoriteCurrentTrack);
+            _mediaHotKeys.ToggleLyricsPressed += () => Dispatcher.BeginInvoke(() => SetLyricsPanelActive(!_isLyricsPanelActive));
+            _mediaHotKeys.ToggleMiniPlayerPressed += () => Dispatcher.BeginInvoke(ToggleMiniPlayerHotkey);
             _mediaHotKeys.ApplyCustomHotkeys(_settings);
         }
         catch (Exception ex)
@@ -4168,7 +4197,8 @@ public partial class MainWindow : FluentWindow
 
     private async void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
         AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next,
-        TrackChangeOrigin changeOrigin = TrackChangeOrigin.User, bool preserveShuffleSession = false)
+        TrackChangeOrigin changeOrigin = TrackChangeOrigin.User, bool preserveShuffleSession = false,
+        bool preservePendingPlaybackState = false)
     {
         if (!File.Exists(filePath))
         {
@@ -4180,7 +4210,24 @@ public partial class MainWindow : FluentWindow
                 System.Windows.MessageBoxImage.Warning);
             RefreshPlaylistView();
             if (_isFavoritesView) RefreshFavoritesTrackList();
+            _pendingNavigationAutoPlay = false;
             return;
+        }
+
+        // FadeOutBeforeTrackChangeAsync останавливает промежуточный output и сбрасывает
+        // _isPlaying. При быстром Next/Previous следующая заявка могла прочитать уже false и
+        // в итоге загрузить последний трек на паузе. Для одной цепочки навигации сохраняем
+        // исходное намерение пользователя до готовности самого последнего запроса.
+        if (preservePendingPlaybackState)
+        {
+            if (_pendingNavigationAutoPlay)
+                autoPlay = true;
+            else
+                _pendingNavigationAutoPlay = autoPlay;
+        }
+        else
+        {
+            _pendingNavigationAutoPlay = false;
         }
 
         var previousLoad = Interlocked.Exchange(ref _trackLoadCts, null);
@@ -4270,6 +4317,7 @@ public partial class MainWindow : FluentWindow
             fadeIn.BeginFadeIn(70);
             _activeFade = fadeIn;
             InitializeOutputDevice(fadeIn);
+            _settingsWindow?.RefreshOutputDeviceRuntimeStatus();
             performance.MarkStage("initialize-output");
             _outputDevice!.PlaybackStopped += OutputDevice_PlaybackStopped;
             ReapplySavedPlaybackRateAfterTrackReady(generation);
@@ -4309,8 +4357,7 @@ public partial class MainWindow : FluentWindow
             performance.MarkStage("failed");
             performance.Complete(succeeded: false);
             StopPlayback();
-            _outputDevice?.Dispose();
-            _outputDevice = null;
+            DisposeOutputDeviceSafely();
             _currentTrackPath = null;
             _replayGainFactor = 1.0;
             SetTrackInfoText("Файл не выбран", "—");
@@ -4323,7 +4370,11 @@ public partial class MainWindow : FluentWindow
         finally
         {
             prepared?.Dispose();
-            if (ReferenceEquals(_trackLoadCts, cts)) _trackLoadCts = null;
+            if (ReferenceEquals(_trackLoadCts, cts))
+            {
+                _trackLoadCts = null;
+                _pendingNavigationAutoPlay = false;
+            }
             cts.Dispose();
         }
     }
@@ -4643,28 +4694,26 @@ public partial class MainWindow : FluentWindow
     }
 
     // Смена обложки в духе iTunes: снимок прежней обложки "улетает" в сторону с затуханием,
-    // новая в этот момент "влетает" с противоположной стороны. direction == None — новое
-    // изображение применяется мгновенно, без анимации (первая загрузка, анимация выключена
-    // в настройках и т.п.).
+    // новая в этот момент "влетает" с противоположной стороны. При удержании Next/Previous
+    // новые треки приходят быстрее обычных 460 ms. Тогда сохраняется тот же двухслойный
+    // переход, но с короткой длительностью 120 ms — он укладывается в repeat hotkey и не
+    // успевает накопить пересекающиеся ghost-кадры.
     private void AnimateAlbumArtTransition(AlbumArtTransitionDirection direction, Action applyNewArt)
     {
-        if (direction == AlbumArtTransitionDirection.None || !_settings.AlbumArtTransitionEnabled ||
-            AccessibilityPreferences.ShouldReduceMotion(_settings) || !IsLoaded)
+        bool canAnimate = direction != AlbumArtTransitionDirection.None &&
+            _settings.AlbumArtTransitionEnabled &&
+            !AccessibilityPreferences.ShouldReduceMotion(_settings) && IsLoaded;
+
+        if (!canAnimate)
         {
+            ResetAlbumArtTransitionLayers();
+            _albumArtTransitionBurstPolicy.Reset();
             applyNewArt();
             return;
         }
 
-        // Останавливаем анимации предыдущего перехода, если он ещё не успел доиграть
-        // (быстрое переключение треков подряд) — иначе они будут конфликтовать за одни и
-        // те же свойства.
-        AlbumArtGhostTransform.BeginAnimation(TranslateTransform.XProperty, null);
-        AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-        AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
-        AlbumArtGhostBorder.BeginAnimation(OpacityProperty, null);
-        AlbumArtBorderTransform.BeginAnimation(TranslateTransform.XProperty, null);
-        AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
-        AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        bool isBurst = _albumArtTransitionBurstPolicy.ShouldSkipAnimation(DateTime.UtcNow);
+        int transitionGeneration = ResetAlbumArtTransitionLayers();
 
         double size = AlbumArtBorder.ActualWidth > 0 ? AlbumArtBorder.ActualWidth : AlbumArtBorder.Width;
         double distance = size + 24;
@@ -4682,9 +4731,6 @@ public partial class MainWindow : FluentWindow
             ? Brushes.Transparent
             : AlbumArtBorder.Background;
         AlbumArtGhostIcon.Visibility = AlbumArtIcon.Visibility;
-        AlbumArtGhostTransform.X = 0;
-        AlbumArtGhostScale.ScaleX = 1;
-        AlbumArtGhostScale.ScaleY = 1;
         AlbumArtGhostBorder.Opacity = 1;
         AlbumArtGhostBorder.Visibility = Visibility.Visible;
 
@@ -4695,16 +4741,19 @@ public partial class MainWindow : FluentWindow
 
         // Плавные, но разные кривые для "туда" и "оттуда": уезжающая обложка стартует резче и
         // ускоряется (EaseIn), а влетающая — наоборот, гасит скорость к концу и мягко
-        // "садится" на место (EaseOut). Такое сочетание выглядит естественнее одинаковой
-        // кривой в обе стороны и меньше похоже на дёрганый слайд.
-        var duration = TimeSpan.FromMilliseconds(460);
+        // "садится" на место (EaseOut).
+        var duration = isBurst ? TimeSpan.FromMilliseconds(120) : TimeSpan.FromMilliseconds(460);
         var exitEase = new CubicEase { EasingMode = EasingMode.EaseIn };
         var enterEase = new CubicEase { EasingMode = EasingMode.EaseOut };
 
         var ghostSlide = new DoubleAnimation(0, exitX, duration) { EasingFunction = exitEase };
         var ghostScaleAnim = new DoubleAnimation(1, 0.88, duration) { EasingFunction = exitEase };
         var ghostFade = new DoubleAnimation(1, 0, duration) { EasingFunction = exitEase };
-        ghostSlide.Completed += (_, _) => AlbumArtGhostBorder.Visibility = Visibility.Collapsed;
+        ghostSlide.Completed += (_, _) =>
+        {
+            if (transitionGeneration == _albumArtTransitionGeneration)
+                AlbumArtGhostBorder.Visibility = Visibility.Collapsed;
+        };
 
         var enterSlide = new DoubleAnimation(enterFromX, 0, duration) { EasingFunction = enterEase };
         var enterScaleAnim = new DoubleAnimation(0.88, 1, duration) { EasingFunction = enterEase };
@@ -4716,6 +4765,33 @@ public partial class MainWindow : FluentWindow
         AlbumArtBorderTransform.BeginAnimation(TranslateTransform.XProperty, enterSlide);
         AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleXProperty, enterScaleAnim);
         AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleYProperty, enterScaleAnim);
+    }
+
+    private int ResetAlbumArtTransitionLayers()
+    {
+        _albumArtTransitionGeneration++;
+        AlbumArtGhostTransform.BeginAnimation(TranslateTransform.XProperty, null);
+        AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        AlbumArtGhostBorder.BeginAnimation(OpacityProperty, null);
+        AlbumArtBorder.BeginAnimation(OpacityProperty, null);
+        AlbumArtBorderTransform.BeginAnimation(TranslateTransform.XProperty, null);
+        AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+        AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+
+        AlbumArtGhostTransform.X = 0;
+        AlbumArtGhostScale.ScaleX = 1;
+        AlbumArtGhostScale.ScaleY = 1;
+        AlbumArtGhostBorder.Opacity = 1;
+        AlbumArtGhostBorder.Visibility = Visibility.Collapsed;
+        AlbumArtGhostImage.Source = null;
+        AlbumArtGhostImage.Visibility = Visibility.Collapsed;
+        AlbumArtGhostIcon.Visibility = Visibility.Collapsed;
+        AlbumArtBorderTransform.X = 0;
+        AlbumArtBorderScale.ScaleX = 1;
+        AlbumArtBorderScale.ScaleY = 1;
+        AlbumArtBorder.Opacity = 1;
+        return _albumArtTransitionGeneration;
     }
 
     private void OutputDevice_PlaybackStopped(object? sender, StoppedEventArgs e)
@@ -4807,10 +4883,9 @@ public partial class MainWindow : FluentWindow
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
-        // _audioFile, а не _outputDevice — устройство вывода теперь живёт всю сессию
-        // приложения и не обнуляется между треками (см. подробный комментарий у поля
-        // _outputDevice в начале файла), так что null у него означал бы буквально "ничего не
-        // загружали ни разу с самого запуска", а не "сейчас ничего не загружено".
+        // _audioFile, а не _outputDevice: WasapiOut создаётся для текущего источника и
+        // освобождается при StopPlayback. Наличие output само по себе не означает, что трек
+        // загружен, а _audioFile остаётся единственным достоверным признаком готового источника.
         if (_audioFile == null)
         {
             var active = FlattenActive();
@@ -4894,18 +4969,18 @@ public partial class MainWindow : FluentWindow
         StopPlayback(disposeOnly: true);
     }
 
-    private void InitializeOutputDevice(ISampleProvider waveProvider)
+    private const int WasapiSharedLatencyMilliseconds = 100;
+
+    private void InitializeOutputDevice(ISampleProvider sampleProvider)
     {
-        EnsureOutputDevice();
         try
         {
-            _outputDevice!.Init(waveProvider);
+            CreateAndInitializeWasapiOutput(sampleProvider);
         }
         catch (Exception ex) when (!string.IsNullOrWhiteSpace(_settings.OutputDeviceName))
         {
-            // Сохранённое устройство всё ещё могло присутствовать в WaveOut-списке, но уже
-            // отказаться открываться (например, Bluetooth гарнитура отключилась между
-            // перечислением и Init). Однократно пробуем системный audio mapper.
+            // Endpoint мог исчезнуть между перечислением и Init (USB/Bluetooth). Однократно
+            // переходим на системный render endpoint Windows, сохраняя причину fallback в UI.
             Logger.Error("Не удалось инициализировать выбранное устройство вывода; используется системное устройство", ex);
             string failedDeviceKey = _settings.OutputDeviceName;
             DisposeOutputDeviceSafely();
@@ -4914,8 +4989,22 @@ public partial class MainWindow : FluentWindow
             _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
             _ = SettingsManager.SaveAsync(_settings);
             _settingsWindow?.RefreshOutputDeviceSelection();
-            EnsureOutputDevice();
-            _outputDevice!.Init(waveProvider);
+            CreateAndInitializeWasapiOutput(sampleProvider);
+        }
+    }
+
+    private void CreateAndInitializeWasapiOutput(ISampleProvider sampleProvider)
+    {
+        EnsureOutputDevice();
+        var initializationTimer = Stopwatch.StartNew();
+        _outputDevice!.Init(new SampleToWaveProvider(sampleProvider));
+        initializationTimer.Stop();
+        _lastOutputInitializationMilliseconds = initializationTimer.ElapsedMilliseconds;
+
+        if (_outputDevice is WasapiOut wasapiOut)
+        {
+            WaveFormat format = wasapiOut.OutputWaveFormat;
+            _activeOutputFormat = $"{format.SampleRate / 1000.0:0.#} kHz · {format.Channels} ch · {format.BitsPerSample}-bit";
         }
     }
 
@@ -4924,33 +5013,61 @@ public partial class MainWindow : FluentWindow
         if (_outputDevice is not null) return;
 
         string requestedDeviceKey = _settings.OutputDeviceName;
-        int deviceNumber = AudioOutputDeviceService.ResolveDeviceNumber(requestedDeviceKey, out bool usedFallback);
-        _activeOutputDeviceKey = usedFallback ? AudioOutputDeviceService.SystemDefaultDeviceName : requestedDeviceKey;
-        // После controlled fallback повторная инициализация уже идёт с пустым ключом системного
-        // устройства. Не теряем исходную причину до явного нового выбора пользователя.
-        if (usedFallback)
-            _outputDeviceFallbackFrom = requestedDeviceKey;
-        else if (!string.IsNullOrWhiteSpace(requestedDeviceKey))
-            _outputDeviceFallbackFrom = null;
-        if (usedFallback)
+        AudioOutputDeviceService.ResolvedEndpoint resolved = AudioOutputDeviceService.ResolveEndpoint(requestedDeviceKey);
+        _activeOutputFormat = null;
+        _lastOutputInitializationMilliseconds = 0;
+        _activeOutputDeviceKey = resolved.ActiveDeviceKey;
+
+        if (resolved.UsedFallback)
         {
-            Logger.Warn($"Выбранное устройство вывода недоступно: {_settings.OutputDeviceName}. Используется системное устройство Windows.");
+            _outputDeviceFallbackFrom = requestedDeviceKey;
+            Logger.Warn($"Выбранное WASAPI-устройство недоступно: {requestedDeviceKey}. Используется системное устройство Windows.");
             _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
             _ = SettingsManager.SaveAsync(_settings);
             _settingsWindow?.RefreshOutputDeviceSelection();
         }
+        else
+        {
+            _outputDeviceFallbackFrom = null;
+            // Старые WaveOut-ключи мигрируют к устойчивому endpoint-ID без сброса выбора.
+            if (!string.Equals(requestedDeviceKey, resolved.ActiveDeviceKey, StringComparison.Ordinal))
+            {
+                _settings.OutputDeviceName = resolved.ActiveDeviceKey;
+                _ = SettingsManager.SaveAsync(_settings);
+                _settingsWindow?.RefreshOutputDeviceSelection();
+            }
+        }
 
-        _outputDevice = new WaveOutEvent { DeviceNumber = deviceNumber };
+        try
+        {
+            _outputEndpoint = resolved.Device;
+            _outputDevice = new WasapiOut(_outputEndpoint, AudioClientShareMode.Shared,
+                useEventSync: true, WasapiSharedLatencyMilliseconds);
+        }
+        catch
+        {
+            resolved.Device.Dispose();
+            _outputEndpoint = null;
+            throw;
+        }
     }
 
     // Вызывается из SettingsWindow сразу после выбора устройства. Если трек уже загружен,
-    // сохраняем позицию/состояние, создаём новый вывод и возвращаемся к тому же месту.
-    public (string ActiveDeviceName, string? FallbackFrom, bool IsInitialized) GetOutputDeviceRuntimeStatus()
+    // сохраняем позицию и состояние, создаём новый output и возвращаемся к тому же месту.
+    public (string ActiveDeviceName, string? FallbackFrom, bool IsInitialized, string Engine,
+        int RequestedLatencyMilliseconds, string? OutputFormat, long InitializationMilliseconds,
+        int RecoveryCount, string? LastRecoveryReason) GetOutputDeviceRuntimeStatus()
     {
         string activeKey = _outputDevice is null ? _settings.OutputDeviceName : _activeOutputDeviceKey;
         return (AudioOutputDeviceService.GetDisplayName(activeKey),
             string.IsNullOrWhiteSpace(_outputDeviceFallbackFrom) ? null : AudioOutputDeviceService.GetDisplayName(_outputDeviceFallbackFrom),
-            _outputDevice is not null);
+            _outputDevice is not null,
+            "WASAPI Shared",
+            WasapiSharedLatencyMilliseconds,
+            _activeOutputFormat,
+            _lastOutputInitializationMilliseconds,
+            _outputRecoveryCount,
+            _lastOutputRecoveryReason);
     }
 
     public void ApplyOutputDeviceSelection()
@@ -4971,13 +5088,74 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Устройство могло исчезнуть в процессе Play/Pause или прислать PlaybackStopped с ошибкой.
-    // Один controlled retry через Windows audio mapper лучше, чем повторные сообщения об ошибке:
-    // при отключении USB/Bluetooth это обычно уже новое системное устройство Windows.
-    private void RecoverOutputDeviceAfterFailure(Exception error, bool resumePlayback)
+    private void AudioOutputEndpointMonitor_EndpointChanged(object? sender, AudioOutputEndpointChangedEventArgs e)
     {
-        Logger.Error("Ошибка устройства вывода; выполняется восстановление через системное устройство", error);
+        if (_isExiting || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
+            return;
+
+        _ = Dispatcher.BeginInvoke(new Action(() => HandleAudioOutputEndpointChanged(e)), DispatcherPriority.Background);
+    }
+
+    private void HandleAudioOutputEndpointChanged(AudioOutputEndpointChangedEventArgs e)
+    {
+        if (_isExiting)
+            return;
+
+        // Список в Settings должен отражать подключение/отключение сразу, но только если окно
+        // уже создано. Callback мог прийти с COM-потока, поэтому этот код выполняется на Dispatcher.
+        if (_settingsWindow?.IsLoaded == true)
+            _settingsWindow.RefreshOutputDeviceSelection();
+
+        if (_outputDevice is null || _isOutputRecoveryInProgress)
+            return;
+
+        bool usingSystemDefault = string.IsNullOrWhiteSpace(_settings.OutputDeviceName);
+        string? activeEndpointId;
+        try
+        {
+            activeEndpointId = _outputEndpoint?.ID;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось прочитать активный WASAPI endpoint после системного события: {ex.Message}");
+            activeEndpointId = null;
+        }
+
+        bool activeEndpointBecameUnavailable =
+            string.Equals(activeEndpointId, e.EndpointId, StringComparison.Ordinal) &&
+            (e.Kind == AudioOutputEndpointChangeKind.DeviceRemoved ||
+             e.Kind == AudioOutputEndpointChangeKind.DeviceStateChanged && e.State is not DeviceState.Active);
+        bool defaultEndpointChanged = usingSystemDefault && e.Kind == AudioOutputEndpointChangeKind.DefaultDeviceChanged;
+
+        if (!activeEndpointBecameUnavailable && !defaultEndpointChanged)
+            return;
+
+        string reason = defaultEndpointChanged
+            ? "Windows изменил системное устройство вывода"
+            : "активное устройство вывода отключено или стало недоступно";
+        Logger.Warn($"{reason}; выполняется восстановление WASAPI Shared.");
+        RecoverOutputDeviceAfterFailure(new InvalidOperationException(reason), _isPlaying, expectedDeviceEvent: true);
+    }
+
+    // Устройство могло исчезнуть в процессе Play/Pause, прислать PlaybackStopped с ошибкой или
+    // сообщить о недоступности через Core Audio endpoint event. Один controlled retry через Windows
+    // audio mapper лучше, чем повторные сообщения об ошибке: при отключении USB/Bluetooth это обычно
+    // уже новое системное устройство Windows.
+    private void RecoverOutputDeviceAfterFailure(Exception error, bool resumePlayback, bool expectedDeviceEvent = false)
+    {
+        if (expectedDeviceEvent)
+            Logger.Warn($"Восстановление WASAPI после события endpoint: {error.Message}");
+        else
+            Logger.Error("Ошибка устройства вывода; выполняется восстановление через системное устройство", error);
         if (_isOutputRecoveryInProgress || _isExiting) return;
+
+        DateTime now = DateTime.UtcNow;
+        if (_lastOutputRecoveryStartedUtc != DateTime.MinValue &&
+            (now - _lastOutputRecoveryStartedUtc).TotalMilliseconds < OutputRecoveryCooldownMilliseconds)
+        {
+            Logger.Warn("Повторное восстановление WASAPI пропущено: предыдущее ещё стабилизирует вывод.");
+            return;
+        }
 
         string? currentPath = _currentTrackPath;
         TimeSpan position = _audioFile?.CurrentTime ?? TimeSpan.Zero;
@@ -4990,6 +5168,11 @@ public partial class MainWindow : FluentWindow
         }
 
         _isOutputRecoveryInProgress = true;
+        _lastOutputRecoveryStartedUtc = now;
+        _outputRecoveryCount++;
+        _lastOutputRecoveryReason = expectedDeviceEvent
+            ? error.Message
+            : "Ошибка WASAPI при инициализации или воспроизведении";
         try
         {
             StopPlayback(disposeOnly: true);
@@ -5011,19 +5194,29 @@ public partial class MainWindow : FluentWindow
 
     private void DisposeOutputDeviceSafely()
     {
-        if (_outputDevice is null) return;
-
         try
         {
-            _outputDevice.Dispose();
+            _outputDevice?.Dispose();
         }
         catch (Exception ex)
         {
-            Logger.Error("Не удалось освободить WaveOutEvent", ex);
+            Logger.Error("Не удалось освободить WASAPI-устройство вывода", ex);
         }
         finally
         {
             _outputDevice = null;
+            try
+            {
+                _outputEndpoint?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error("Не удалось освободить WASAPI endpoint", ex);
+            }
+            finally
+            {
+                _outputEndpoint = null;
+            }
         }
     }
 
@@ -5050,6 +5243,15 @@ public partial class MainWindow : FluentWindow
 
     private void StopPlayback(bool disposeOnly = false)
     {
+        // Явный Stop отменяет незавершённую цепочку Next/Previous. Внутренний Stop между
+        // треками передаёт disposeOnly: true и не трогает новый запрос загрузки.
+        if (!disposeOnly)
+        {
+            var pendingLoad = Interlocked.Exchange(ref _trackLoadCts, null);
+            pendingLoad?.Cancel();
+            _pendingNavigationAutoPlay = false;
+        }
+
         StopProgressTimerAndAnimation();
 
         // Stop()/Dispose() ниже сами поднимают PlaybackStopped — срабатывает и на естественное
@@ -5059,8 +5261,8 @@ public partial class MainWindow : FluentWindow
         if (_outputDevice != null)
             _outputDevice.PlaybackStopped -= OutputDevice_PlaybackStopped;
 
-        // _outputDevice не останавливается через Dispose и не обнуляется — живёт до закрытия
-        // приложения (см. OnClosed) и переиспользуется через Init(...) в LoadAndPlay.
+        // WasapiOut нельзя безопасно переинициализировать после Init для следующего источника.
+        // После Stop сразу освобождаем output и endpoint перед следующим источником.
         try
         {
             _outputDevice?.Stop();
@@ -5068,6 +5270,10 @@ public partial class MainWindow : FluentWindow
         catch (Exception ex)
         {
             Logger.Error("Не удалось корректно остановить устройство вывода", ex);
+        }
+        finally
+        {
+            DisposeOutputDeviceSafely();
         }
 
         try
@@ -5105,7 +5311,7 @@ public partial class MainWindow : FluentWindow
     {
         if (ComputePreviousTrackPath(GetCurrentTrackPath()) is { } prevPath)
             LoadAndPlay(prevPath, autoPlay: _isPlaying, albumArtDirection: AlbumArtTransitionDirection.Previous,
-                preserveShuffleSession: true);
+                preserveShuffleSession: true, preservePendingPlaybackState: true);
     }
 
     private void NextButton_Click(object sender, RoutedEventArgs e) => PlayNextTrack();
@@ -5113,7 +5319,8 @@ public partial class MainWindow : FluentWindow
     private void PlayNextTrack(TrackChangeOrigin changeOrigin = TrackChangeOrigin.User)
     {
         if (ResolveNextTrackPathRespectingQueue(GetCurrentTrackPath()) is { } nextPath)
-            LoadAndPlay(nextPath, autoPlay: _isPlaying, changeOrigin: changeOrigin, preserveShuffleSession: true);
+            LoadAndPlay(nextPath, autoPlay: _isPlaying, changeOrigin: changeOrigin, preserveShuffleSession: true,
+                preservePendingPlaybackState: true);
     }
 
     // Сначала отдаёт и убирает первый элемент очереди "Играть следующим", если она не пуста;
@@ -5298,7 +5505,8 @@ public partial class MainWindow : FluentWindow
 
         if (targetPath == null) return;
         _hotkeyTrackNavigationCursor = targetPath;
-        LoadAndPlay(targetPath, autoPlay: _isPlaying, albumArtDirection: direction, preserveShuffleSession: true);
+        LoadAndPlay(targetPath, autoPlay: _isPlaying, albumArtDirection: direction, preserveShuffleSession: true,
+            preservePendingPlaybackState: true);
     }
 
     private string GetRandomTrack(List<string> activeTracks, string? excludePath)
@@ -5649,6 +5857,11 @@ public partial class MainWindow : FluentWindow
 
     // Переключает в мини-плеер. Вызывается из SetPlayerViewMode — как по кнопке/пункту
     // меню, так и при восстановлении сохранённого состояния на старте.
+    private void ToggleMiniPlayerHotkey()
+    {
+        SetPlayerViewMode(_isMiniMode ? _preMiniViewMode : PlayerViewMode.Mini);
+    }
+
     private void EnterMiniMode()
     {
         // После фактического возврата в мини-плеер отложенный маркер больше не нужен.
@@ -6824,12 +7037,16 @@ public partial class MainWindow : FluentWindow
         PersistPlaybackAndPlaylistState();
         StopPlayback(disposeOnly: true);
 
-        // Настоящая, финальная утилизация устройства вывода — единственное место, где это
-        // вообще происходит (см. подробный комментарий у поля _outputDevice в начале файла:
-        // между треками StopPlayback теперь только останавливает его, не уничтожая).
+        // StopPlayback уже освобождает WasapiOut и endpoint между треками. Повторный вызов
+        // остаётся безопасной подстраховкой для частично инициализированного output при ошибке.
         DisposeOutputDeviceSafely();
+                if (_audioOutputEndpointMonitor is not null)
+        {
+            _audioOutputEndpointMonitor.EndpointChanged -= AudioOutputEndpointMonitor_EndpointChanged;
+            _audioOutputEndpointMonitor.Dispose();
+            _audioOutputEndpointMonitor = null;
+        }
         _discordRichPresence.Dispose();
-
         _mediaHotKeys?.Dispose();
         _nowPlaying?.Dispose();
         _trayIconManager?.Dispose();
