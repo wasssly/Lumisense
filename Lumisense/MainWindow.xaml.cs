@@ -4959,7 +4959,6 @@ public partial class MainWindow : FluentWindow
 
     private const int TrackChangeFadeOutMilliseconds = 24;
     private const int TrackChangeDrainSafetyMilliseconds = 8;
-    private const int TrackChangeFadeOutTimeoutMilliseconds = 350;
     private const int WasapiSharedLatencyMilliseconds = 60;
 
     private async Task FadeOutBeforeTrackChangeAsync(CancellationToken token)
@@ -4980,9 +4979,15 @@ public partial class MainWindow : FluentWindow
             try
             {
                 activeFade.BeginFadeOut(TrackChangeFadeOutMilliseconds);
+                // Обычно FadeOutComplete приходит от следующего Read audio-thread. Если
+                // output уже paused/stopped и callback не придёт, 350-ms timeout заметно
+                // замедлял Next/Previous. Вместо него ждём расчётный путь: текущий buffer,
+                // 24-ms fade и safety margin. В этот момент endpoint уже воспроизводит
+                // тишину, поэтому Stop не обрывает ненулевой sample.
+                int fallbackDelayMilliseconds = GetTrackChangeFadeFallbackDelayMilliseconds(activeOutput);
                 Task completed = await Task.WhenAny(
                     fadeOutCompleted.Task,
-                    Task.Delay(TrackChangeFadeOutTimeoutMilliseconds, token));
+                    Task.Delay(fallbackDelayMilliseconds, token));
                 token.ThrowIfCancellationRequested();
 
                 if (completed == fadeOutCompleted.Task)
@@ -4993,9 +4998,7 @@ public partial class MainWindow : FluentWindow
                 }
                 else
                 {
-                    // Не блокируем навигацию бесконечно, если audio callback уже не придёт
-                    // вследствие device error или конкурентного завершения воспроизведения.
-                    Logger.Warn("Fade-out не подтвердил тишину до смены трека; выполняется штатная остановка вывода.");
+                    Logger.Info($"Fade-out не получил callback; использован расчётный silent drain {fallbackDelayMilliseconds} ms.");
                 }
             }
             finally
@@ -5007,6 +5010,18 @@ public partial class MainWindow : FluentWindow
         StopPlayback(disposeOnly: true);
     }
 
+    private static int GetTrackChangeFadeFallbackDelayMilliseconds(IWavePlayer? outputDevice)
+    {
+        int drainDelayMilliseconds = GetTrackChangeDrainDelayMilliseconds(outputDevice);
+        if (drainDelayMilliseconds == 0)
+            drainDelayMilliseconds = WasapiSharedLatencyMilliseconds + TrackChangeDrainSafetyMilliseconds;
+
+        return Math.Clamp(
+            drainDelayMilliseconds + TrackChangeFadeOutMilliseconds,
+            TrackChangeFadeOutMilliseconds + TrackChangeDrainSafetyMilliseconds,
+            WasapiSharedLatencyMilliseconds * 2 + TrackChangeFadeOutMilliseconds + TrackChangeDrainSafetyMilliseconds);
+    }
+
     private static int GetTrackChangeDrainDelayMilliseconds(IWavePlayer? outputDevice)
     {
         try
@@ -5015,7 +5030,7 @@ public partial class MainWindow : FluentWindow
             {
                 double milliseconds = wasapiPlayer.CurrentLatency.TotalMilliseconds + TrackChangeDrainSafetyMilliseconds;
                 return Math.Clamp((int)Math.Ceiling(milliseconds), TrackChangeDrainSafetyMilliseconds,
-                    WasapiSharedLatencyMilliseconds + TrackChangeFadeOutMilliseconds);
+                    WasapiSharedLatencyMilliseconds * 3);
             }
         }
         catch (Exception ex)

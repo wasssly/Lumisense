@@ -22,6 +22,7 @@ public sealed class EqualizerSampleProvider : ISampleProvider
     private readonly ISampleProvider _source;
     private readonly int _channels;
     private readonly BiQuadFilter[][] _filters; // [band][channel]
+    private readonly bool[] _bandSupportedBySource;
     private readonly double[] _gainsDb;
 
     public bool Enabled { get; set; }
@@ -35,9 +36,20 @@ public sealed class EqualizerSampleProvider : ISampleProvider
 
         _gainsDb = new double[BandFrequencies.Length];
         _filters = new BiQuadFilter[BandFrequencies.Length][];
+        _bandSupportedBySource = new bool[BandFrequencies.Length];
 
         for (int band = 0; band < BandFrequencies.Length; band++)
         {
+            // NAudio 3 проверяет centreFrequency строго: она должна быть МЕНЬШЕ Nyquist.
+            // У 32-kHz материала полоса 16 kHz равна Nyquist и раньше падала ещё при
+            // создании EQ, даже если пользовательский gain был нулевым.
+            _bandSupportedBySource[band] = BandFrequencies[band] < _source.WaveFormat.SampleRate / 2.0;
+            if (!_bandSupportedBySource[band])
+            {
+                _filters[band] = Array.Empty<BiQuadFilter>();
+                continue;
+            }
+
             _filters[band] = new BiQuadFilter[_channels];
             for (int channel = 0; channel < _channels; channel++)
                 _filters[band][channel] = MakeFilter(band, 0);
@@ -56,6 +68,10 @@ public sealed class EqualizerSampleProvider : ISampleProvider
         gainDb = Math.Clamp(gainDb, MinGainDb, MaxGainDb);
         _gainsDb[band] = gainDb;
 
+        // Сохраняем настройку, чтобы при следующем совместимом треке она применилась, но
+        // не строим недопустимый фильтр для полосы на/выше Nyquist текущего источника.
+        if (!_bandSupportedBySource[band]) return;
+
         for (int channel = 0; channel < _channels; channel++)
             _filters[band][channel] = MakeFilter(band, gainDb);
     }
@@ -73,7 +89,10 @@ public sealed class EqualizerSampleProvider : ISampleProvider
             float sample = buffer[n];
 
             for (int band = 0; band < _filters.Length; band++)
-                sample = _filters[band][channel].Transform(sample);
+            {
+                if (_bandSupportedBySource[band])
+                    sample = _filters[band][channel].Transform(sample);
+            }
 
             buffer[n] = sample;
         }
