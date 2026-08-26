@@ -1,4 +1,5 @@
 using AudioPlayer;
+using System.IO;
 using Xunit;
 
 namespace Lumisense.Tests;
