@@ -28,14 +28,15 @@
 - Регулировка громкости, включая плавную логарифмическую регулировку в нижнем диапазоне.
 - Десятиполосный эквалайзер с пресетами от 31 Гц до 16 кГц и режимом EQ Bypass для быстрого сравнения звука с обработкой и без неё. Пользовательские пресеты можно сохранять, экспортировать и импортировать.
 - Изменение скорости воспроизведения и тона с сохранением высоты тона.
-- Выбор устройства вывода Windows с безопасным переходом на системное устройство, если сохранённое устройство отключено.
+- Выбор устройства вывода Windows, карточка фактически используемого устройства и безопасный переход на системное устройство, если сохранённое устройство отключено.
 - Шафл и три режима повтора: без повтора, повтор плейлиста и повтор одного трека. История предыдущих треков при активном перемешивании сохраняется между запусками.
 
 #### Плейлист и медиатека
 
 - Добавление отдельных файлов, папок с подпапками и пустых папок для последующего наполнения.
 - Группировка треков по папкам, сворачивание и разворачивание групп, включение и отключение отдельных групп в воспроизведении.
-- Проверка добавленных папок на новые файлы и поиск по плейлисту.
+- Проверка добавленных папок на новые файлы и поиск по плейлисту. Если файл стал недоступен, его запись остаётся видимой: можно открыть список проблемных файлов, перейти к треку, найти замену или удалить только запись без удаления файла с диска.
+- Очередь «Играть следующим» с поиском, сортировкой по названию и восстановлением исходного порядка добавления.
 - Виртуализированный список, рассчитанный на работу с большими плейлистами.
 - Избранное с отдельным виртуальным представлением и быстрым переключением из заголовка плейлиста.
 - Редактирование тегов и свойств трека прямо из приложения.
@@ -175,14 +176,15 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 - Volume control, including smooth logarithmic adjustment in the lower range.
 - A ten-band equalizer with presets from 31 Hz to 16 kHz and an EQ Bypass mode for quickly comparing processed and unprocessed sound. Custom presets can be saved, exported, and imported.
 - Playback-speed and pitch adjustment while preserving pitch.
-- Windows output-device selection with a safe fallback to the system device if the saved endpoint becomes unavailable.
+- Windows output-device selection, an Actual device card showing the output currently in use, and a safe fallback to the system device if the saved endpoint becomes unavailable.
 - Shuffle and three repeat modes: no repeat, repeat playlist, and repeat one track. The previous-track history is retained between launches when shuffle is active.
 
 #### Playlist and library
 
 - Adding individual files, folders with subfolders, and empty folders for later use.
 - Grouping tracks by folder, collapsing and expanding groups, and enabling or disabling individual groups for playback.
-- Checking added folders for new files and searching within the playlist.
+- Checking added folders for new files and searching within the playlist. If a file becomes unavailable, its entry remains visible: you can open the affected-files list, navigate to the track, find a replacement, or remove only the entry without deleting the file from disk.
+- A Play Next queue with search, title sorting, and restoration of the original insertion order.
 - A virtualized list designed for large playlists.
 - Favorites with a dedicated virtual view and quick access from the playlist header.
 - Editing track tags and properties directly in the application.

@@ -55,6 +55,20 @@ public sealed class SemanticVersionTests
     }
 }
 
+public sealed class ChangeLevelClassifierTests
+{
+    [Theory]
+    [InlineData("Добавлена очередь «Играть следующим» с поиском по названию, сортировкой по названию и восстановлением порядка добавления")]
+    [InlineData("Добавлена обработка недоступных файлов в плейлисте: статус у трека, список проблемных записей, переход к строке, поиск замены и безопасная очистка только записей без удаления файлов с диска")]
+    [InlineData("В настройках добавлена карточка «Фактическое устройство»: она показывает реально используемый аудиовывод и объясняет переход на системное устройство, если выбранное стало недоступно")]
+    public void Classify_RecognizesRelease118FeaturesAsMinor(string text)
+    {
+        var change = new ChangeItem { Type = "added", Text = text };
+
+        Assert.Equal(ChangeLevelClassifier.Level.Minor, ChangeLevelClassifier.Classify(change));
+    }
+}
+
 public sealed class ChangelogTranslationCatalogTests
 {
     [Fact]

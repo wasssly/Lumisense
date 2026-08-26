@@ -401,6 +401,20 @@ internal static class ChangelogTranslationCatalog
             ["Исправлена навигация и выбор следующего трека при обычном перемешивании"] = "Fixed navigation and selection of the next track in normal shuffle mode",
             ["Устранены зацикливание и возможные зависания при обычном перемешивании треков"] = "Eliminated looping and possible hangs in normal shuffle mode",
             ["Удалены позднее добавленные таймеры управления позицией"] = "Removed recently added timers that controlled window position",
+
+            // Release 1.18.0
+            ["Добавлена возможность удалить обнаруженную старую EXE/Inno Setup-копию после перехода на MSI-версию"] = "Added an option to remove a detected legacy EXE/Inno Setup copy after moving to the MSI version",
+            ["Добавлена настройка «Толщина контура» для полосы прогресса вокруг обложки в мини-плеере при активной настройке"] = "Added an Outline thickness setting for the track-progress ring around mini-player artwork when the related option is enabled",
+            ["Для подходящих слайдеров добавлены заметные точки-ориентиры, помогающие выбирать ключевые значения"] = "Added prominent reference dots to applicable sliders to help select key values",
+            ["В настройках добавлена карточка «Фактическое устройство»: она показывает реально используемый аудиовывод и объясняет переход на системное устройство, если выбранное стало недоступно"] = "Added an Actual device card in Settings: it shows the audio output currently in use and explains fallback to the system device when the selected one becomes unavailable",
+            ["Добавлена очередь «Играть следующим» с поиском по названию, сортировкой по названию и восстановлением порядка добавления"] = "Added a Play Next queue with title search, title sorting, and insertion-order restoration",
+            ["Добавлена обработка недоступных файлов в плейлисте: статус у трека, список проблемных записей, переход к строке, поиск замены и безопасная очистка только записей без удаления файлов с диска"] = "Added unavailable-file handling in the playlist: per-track status, a list of affected entries, row navigation, replacement search, and safe removal of entries only without deleting files from disk",
+            ["Кнопки «Текст» и «Очередь» собраны во всплывающем меню «Ещё»"] = "Grouped the Lyrics and Queue buttons in the More popup menu",
+            ["Автообновление отслеживаемых папок больше не удаляет пропавшие треки молча: они остаются в плейлисте, пока пользователь не найдёт замену или не удалит запись"] = "Auto-refresh of watched folders no longer silently removes missing tracks: they remain in the playlist until you find a replacement or remove the entry",
+            ["Ускорена загрузка и переключение обложек в интерфейсе без ухудшения качества отображения"] = "Improved artwork loading and switching in the interface without reducing display quality",
+            ["Улучшены качество и масштабирование обложки на главном экране"] = "Improved artwork quality and scaling on the main screen",
+            ["Исправлены визуальные артефакты на всех слайдерах"] = "Fixed visual artifacts across all sliders",
+            ["Недоступные треки пропускаются при переходе к следующему и предыдущему, а ручная попытка открыть такой файл не запускает декодирование"] = "Unavailable tracks are skipped when moving to the next or previous track, and a manual attempt to open such a file does not start decoding",
         };
 
     public static string Translate(string source, bool isEnglish)
