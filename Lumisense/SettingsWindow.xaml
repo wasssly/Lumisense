@@ -2373,7 +2373,7 @@
                                 <TextBlock Text="Lumisense — настраиваемый аудиоплеер для Windows 11 в стиле Fluent Design. Он помогает удобно управлять музыкальной библиотекой, настраивать звучание и адаптировать интерфейс под себя — от мини-плеера и горячих клавиш до темы, зависящей от текущей обложки."
                                            TextWrapping="Wrap" Opacity="0.85" Margin="0,12,0,12" />
 
-                                <TextBlock Text="Собрано на .NET 8, WPF-UI и NAudio." TextWrapping="Wrap"
+                                <TextBlock Text="Собрано на .NET 9, WPF-UI и NAudio." TextWrapping="Wrap"
                                            FontSize="12" Opacity="0.6" />
                             </StackPanel>
                         </Border>

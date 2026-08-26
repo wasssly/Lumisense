@@ -1,7 +1,6 @@
 using System;
 using System.Threading;
 using NAudio.CoreAudioApi;
-using NAudio.CoreAudioApi.Interfaces;
 
 namespace AudioPlayer;
 
@@ -30,40 +29,47 @@ internal sealed class AudioOutputEndpointChangedEventArgs : EventArgs
 }
 
 /// <summary>
-/// Подписывается на Core Audio endpoint events. Callback приходит с системного COM-потока,
-/// поэтому потребитель обязан самостоятельно переходить на UI Dispatcher.
+/// Подписывается на Core Audio endpoint events через публичный event API NAudio 3.
+/// Обработчики остаются короткими и передают дальнейшую работу потребителю, который сам
+/// переходит на WPF Dispatcher.
 /// </summary>
-internal sealed class AudioOutputEndpointMonitor : IMMNotificationClient, IDisposable
+internal sealed class AudioOutputEndpointMonitor : IDisposable
 {
     private readonly MMDeviceEnumerator _enumerator = new();
+    private readonly MMDeviceNotificationClient _notifications;
     private int _disposed;
 
     public AudioOutputEndpointMonitor()
     {
-        int result = _enumerator.RegisterEndpointNotificationCallback(this);
-        if (result != 0)
-            Logger.Warn($"Не удалось подписаться на события WASAPI-устройств: HRESULT 0x{result:X8}");
+        // MainWindow уже маршрутизирует событие через Dispatcher.BeginInvoke. Не захватываем
+        // SynchronizationContext здесь, чтобы Core Audio callback оставался неблокирующим.
+        _notifications = _enumerator.CreateNotificationClient(useSynchronizationContext: false);
+        _notifications.DeviceAdded += Notifications_DeviceAdded;
+        _notifications.DeviceRemoved += Notifications_DeviceRemoved;
+        _notifications.DeviceStateChanged += Notifications_DeviceStateChanged;
+        _notifications.DefaultDeviceChanged += Notifications_DefaultDeviceChanged;
+        _notifications.PropertyValueChanged += Notifications_PropertyValueChanged;
     }
 
     public event EventHandler<AudioOutputEndpointChangedEventArgs>? EndpointChanged;
 
-    public void OnDeviceStateChanged(string deviceId, DeviceState newState) =>
-        Raise(AudioOutputEndpointChangeKind.DeviceStateChanged, deviceId, newState);
+    private void Notifications_DeviceAdded(object? sender, DeviceNotificationEventArgs e) =>
+        Raise(AudioOutputEndpointChangeKind.DeviceAdded, e.DeviceId);
 
-    public void OnDeviceAdded(string pwstrDeviceId) =>
-        Raise(AudioOutputEndpointChangeKind.DeviceAdded, pwstrDeviceId);
+    private void Notifications_DeviceRemoved(object? sender, DeviceNotificationEventArgs e) =>
+        Raise(AudioOutputEndpointChangeKind.DeviceRemoved, e.DeviceId);
 
-    public void OnDeviceRemoved(string deviceId) =>
-        Raise(AudioOutputEndpointChangeKind.DeviceRemoved, deviceId);
+    private void Notifications_DeviceStateChanged(object? sender, DeviceStateChangedEventArgs e) =>
+        Raise(AudioOutputEndpointChangeKind.DeviceStateChanged, e.DeviceId, e.NewState);
 
-    public void OnDefaultDeviceChanged(DataFlow flow, Role role, string defaultDeviceId)
+    private void Notifications_DefaultDeviceChanged(object? sender, DefaultDeviceChangedEventArgs e)
     {
-        if (flow == DataFlow.Render && role == Role.Multimedia)
-            Raise(AudioOutputEndpointChangeKind.DefaultDeviceChanged, defaultDeviceId);
+        if (e.Flow == DataFlow.Render && e.Role == Role.Multimedia)
+            Raise(AudioOutputEndpointChangeKind.DefaultDeviceChanged, e.DeviceId);
     }
 
-    public void OnPropertyValueChanged(string pwstrDeviceId, PropertyKey key) =>
-        Raise(AudioOutputEndpointChangeKind.DevicePropertiesChanged, pwstrDeviceId);
+    private void Notifications_PropertyValueChanged(object? sender, DevicePropertyChangedEventArgs e) =>
+        Raise(AudioOutputEndpointChangeKind.DevicePropertiesChanged, e.DeviceId);
 
     private void Raise(AudioOutputEndpointChangeKind kind, string? endpointId, DeviceState? state = null)
     {
@@ -76,7 +82,7 @@ internal sealed class AudioOutputEndpointMonitor : IMMNotificationClient, IDispo
         }
         catch (Exception ex)
         {
-            // COM callback не должен выбрасывать исключение в Windows Audio service thread.
+            // Callback не должен выбрасывать исключение в Windows Audio service thread.
             Logger.Error("Ошибка обработки события WASAPI-устройства", ex);
         }
     }
@@ -86,17 +92,12 @@ internal sealed class AudioOutputEndpointMonitor : IMMNotificationClient, IDispo
         if (Interlocked.Exchange(ref _disposed, 1) != 0)
             return;
 
-        try
-        {
-            _enumerator.UnregisterEndpointNotificationCallback(this);
-        }
-        catch (Exception ex)
-        {
-            Logger.Warn($"Не удалось отписаться от событий WASAPI-устройств: {ex.Message}");
-        }
-        finally
-        {
-            _enumerator.Dispose();
-        }
+        _notifications.DeviceAdded -= Notifications_DeviceAdded;
+        _notifications.DeviceRemoved -= Notifications_DeviceRemoved;
+        _notifications.DeviceStateChanged -= Notifications_DeviceStateChanged;
+        _notifications.DefaultDeviceChanged -= Notifications_DefaultDeviceChanged;
+        _notifications.PropertyValueChanged -= Notifications_PropertyValueChanged;
+        _notifications.Dispose();
+        _enumerator.Dispose();
     }
 }

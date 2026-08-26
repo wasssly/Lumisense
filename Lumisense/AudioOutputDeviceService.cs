@@ -90,7 +90,7 @@ internal static class AudioOutputDeviceService
 
     /// <summary>
     /// Возвращает открытый Core Audio endpoint. Владение MMDevice передаётся вызывающему коду:
-    /// он обязан Dispose endpoint после Dispose WasapiOut.
+    /// он обязан Dispose endpoint после Dispose WasapiPlayer.
     /// </summary>
     public static ResolvedEndpoint ResolveEndpoint(string? preferredDeviceKey)
     {

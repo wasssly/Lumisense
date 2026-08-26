@@ -16,7 +16,7 @@ using Microsoft.Win32;
 using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
-using SoundTouch.Net.NAudioSupport;
+
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
@@ -46,9 +46,9 @@ public partial class MainWindow : FluentWindow
 
     // AudioFileReader умеет читать mp3/wav/wma и сразу даёт регулировку громкости
     private AudioFileReader? _audioFile;
-    private SoundTouchWaveStream? _tempoStream;
+    private SoundTouchSampleProvider? _tempoProvider;
 
-    // WasapiOut открывает поток для конкретного IWaveProvider один раз, поэтому устройство
+    // WasapiPlayer открывает поток для конкретного IWaveProvider один раз, поэтому устройство
     // создаётся заново при загрузке другого трека. Короткий fade-out/fade-in сохраняет плавность
     // перехода, а endpoint освобождается сразу после Stop. Lumisense использует только Shared:
     // системные звуки и другие приложения всегда могут пользоваться тем же устройством.
@@ -132,7 +132,7 @@ public partial class MainWindow : FluentWindow
     private sealed class PreparedTrack : IDisposable
     {
         public required AudioFileReader AudioFile { get; init; }
-        public required SoundTouchWaveStream TempoStream { get; init; }
+        public required SoundTouchSampleProvider TempoProvider { get; init; }
         public required EqualizerSampleProvider Equalizer { get; init; }
         public required double ReplayGainFactor { get; init; }
         public string? Title { get; init; }
@@ -146,7 +146,7 @@ public partial class MainWindow : FluentWindow
         {
             try
             {
-                TempoStream.Dispose();
+                AudioFile.Dispose();
             }
             catch (Exception ex)
             {
@@ -261,6 +261,13 @@ public partial class MainWindow : FluentWindow
     private List<string>? _allTracksCache;
     private List<string>? _activeTracksCache;
     private bool _trackCachesAreFavoritesView;
+    // Обычный FlattenActive кэширует состав плейлиста, но навигация дополнительно проверяет
+    // File.Exists. Короткий cache ниже объединяет эти проверки только для серийных Next/Previous;
+    // LoadAndPlay всё равно проверяет выбранный финальный путь перед открытием.
+    private List<string>? _availableTracksNavigationCache;
+    private bool _availableTracksNavigationCacheIsFavoritesView;
+    private DateTime _availableTracksNavigationCacheCreatedUtc;
+    private const int NavigationAvailabilityCacheMilliseconds = 500;
 
     // Нефильтрованные снимки строк для текущего вида. В отличие от прежнего Binding-конвертера,
     // поиск строит из них отдельный ItemsSource и не запускает массовую смену Visibility.
@@ -2258,7 +2265,7 @@ public partial class MainWindow : FluentWindow
         if (_audioFile.TotalTime > TimeSpan.Zero)
             target = target > _audioFile.TotalTime ? _audioFile.TotalTime : target;
 
-        _audioFile.CurrentTime = target;
+        SeekCurrentAudioFile(target);
 
         // Обновляем полосу и активную строку сразу, не дожидаясь следующего тика таймера.
         _isSyncingProgressFromPlayback = true;
@@ -3215,6 +3222,8 @@ public partial class MainWindow : FluentWindow
     {
         _allTracksCache = null;
         _activeTracksCache = null;
+        _availableTracksNavigationCache = null;
+        _availableTracksNavigationCacheCreatedUtc = DateTime.MinValue;
 
         var items = new List<object>();
 
@@ -4264,7 +4273,7 @@ public partial class MainWindow : FluentWindow
                 return;
 
             _audioFile = prepared.AudioFile;
-            _tempoStream = prepared.TempoStream;
+            _tempoProvider = prepared.TempoProvider;
             ApplyPlaybackRateToCurrentStream();
             _equalizer = prepared.Equalizer;
             _replayGainFactor = prepared.ReplayGainFactor;
@@ -4432,19 +4441,19 @@ public partial class MainWindow : FluentWindow
             };
             try
             {
-                var tempoStream = new SoundTouchWaveStream(reader)
+                var tempoProvider = new SoundTouchSampleProvider(reader)
                 {
                     Tempo = Math.Clamp(playbackSpeed, 0.5, 2.0),
                     PitchSemiTones = Math.Clamp(playbackPitch, -12.0, 12.0)
                 };
-                var equalizer = new EqualizerSampleProvider(tempoStream.ToSampleProvider()) { Enabled = equalizerEnabled };
+                var equalizer = new EqualizerSampleProvider(tempoProvider) { Enabled = equalizerEnabled };
                 for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
                     equalizer.SetBandGain(band, band < equalizerGains.Length ? equalizerGains[band] : 0);
 
                 return new PreparedTrack
                 {
                     AudioFile = reader,
-                    TempoStream = tempoStream,
+                    TempoProvider = tempoProvider,
                     Equalizer = equalizer,
                     ReplayGainFactor = replayGain,
                     Title = title,
@@ -4883,7 +4892,7 @@ public partial class MainWindow : FluentWindow
 
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
-        // _audioFile, а не _outputDevice: WasapiOut создаётся для текущего источника и
+        // _audioFile, а не _outputDevice: WasapiPlayer создаётся для текущего источника и
         // освобождается при StopPlayback. Наличие output само по себе не означает, что трек
         // загружен, а _audioFile остаётся единственным достоверным признаком готового источника.
         if (_audioFile == null)
@@ -4948,34 +4957,80 @@ public partial class MainWindow : FluentWindow
 
     private void StopButton_Click(object sender, RoutedEventArgs e) => StopPlayback();
 
+    private const int TrackChangeFadeOutMilliseconds = 24;
+    private const int TrackChangeDrainSafetyMilliseconds = 8;
+    private const int TrackChangeFadeOutTimeoutMilliseconds = 350;
+    private const int WasapiSharedLatencyMilliseconds = 60;
+
     private async Task FadeOutBeforeTrackChangeAsync(CancellationToken token)
     {
-        if (_activeFade is not null && _isPlaying)
+        FadeInOutSampleProvider? activeFade = _activeFade;
+        IWavePlayer? activeOutput = _outputDevice;
+        if (activeFade is not null && _isPlaying)
         {
-            // Даем текущему аудиографу завершить короткий fade-out, чтобы не обрывать
-            // ненулевой сэмпл перед Stop()/Init() нового reader. Delay асинхронный и не
-            // блокирует Dispatcher.
-            _activeFade.BeginFadeOut(24);
+            // BeginFadeOut применяется только при следующем Read audio-thread. Прежняя
+            // фиксированная пауза 30 ms могла вызвать Stop ещё до того, как был записан
+            // нулевой хвост в WASAPI buffer; на некоторых endpoint это слышно как щелчок.
+            // Ждём сигнал, что fade действительно достиг тишины, затем даём уже
+            // записанному буферу доиграть свой silent tail. Это не меняет Shared-mode,
+            // latency profile или формат, а устраняет обрыв ненулевого sample.
+            var fadeOutCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            EventHandler fadeOutHandler = (_, _) => fadeOutCompleted.TrySetResult(true);
+            activeFade.FadeOutComplete += fadeOutHandler;
             try
             {
-                await Task.Delay(30, token);
+                activeFade.BeginFadeOut(TrackChangeFadeOutMilliseconds);
+                Task completed = await Task.WhenAny(
+                    fadeOutCompleted.Task,
+                    Task.Delay(TrackChangeFadeOutTimeoutMilliseconds, token));
+                token.ThrowIfCancellationRequested();
+
+                if (completed == fadeOutCompleted.Task)
+                {
+                    int drainDelayMilliseconds = GetTrackChangeDrainDelayMilliseconds(activeOutput);
+                    if (drainDelayMilliseconds > 0)
+                        await Task.Delay(drainDelayMilliseconds, token);
+                }
+                else
+                {
+                    // Не блокируем навигацию бесконечно, если audio callback уже не придёт
+                    // вследствие device error или конкурентного завершения воспроизведения.
+                    Logger.Warn("Fade-out не подтвердил тишину до смены трека; выполняется штатная остановка вывода.");
+                }
             }
-            catch (OperationCanceledException)
+            finally
             {
-                throw;
+                activeFade.FadeOutComplete -= fadeOutHandler;
             }
         }
 
         StopPlayback(disposeOnly: true);
     }
 
-    private const int WasapiSharedLatencyMilliseconds = 100;
+    private static int GetTrackChangeDrainDelayMilliseconds(IWavePlayer? outputDevice)
+    {
+        try
+        {
+            if (outputDevice is WasapiPlayer wasapiPlayer)
+            {
+                double milliseconds = wasapiPlayer.CurrentLatency.TotalMilliseconds + TrackChangeDrainSafetyMilliseconds;
+                return Math.Clamp((int)Math.Ceiling(milliseconds), TrackChangeDrainSafetyMilliseconds,
+                    WasapiSharedLatencyMilliseconds + TrackChangeFadeOutMilliseconds);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось получить текущую задержку WASAPI перед сменой трека: {ex.Message}");
+        }
+
+        return 0;
+    }
 
     private void InitializeOutputDevice(ISampleProvider sampleProvider)
     {
         try
         {
-            CreateAndInitializeWasapiOutput(sampleProvider);
+            CreateAndInitializeWasapiPlayer(sampleProvider);
         }
         catch (Exception ex) when (!string.IsNullOrWhiteSpace(_settings.OutputDeviceName))
         {
@@ -4989,11 +5044,11 @@ public partial class MainWindow : FluentWindow
             _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
             _ = SettingsManager.SaveAsync(_settings);
             _settingsWindow?.RefreshOutputDeviceSelection();
-            CreateAndInitializeWasapiOutput(sampleProvider);
+            CreateAndInitializeWasapiPlayer(sampleProvider);
         }
     }
 
-    private void CreateAndInitializeWasapiOutput(ISampleProvider sampleProvider)
+    private void CreateAndInitializeWasapiPlayer(ISampleProvider sampleProvider)
     {
         EnsureOutputDevice();
         var initializationTimer = Stopwatch.StartNew();
@@ -5001,9 +5056,9 @@ public partial class MainWindow : FluentWindow
         initializationTimer.Stop();
         _lastOutputInitializationMilliseconds = initializationTimer.ElapsedMilliseconds;
 
-        if (_outputDevice is WasapiOut wasapiOut)
+        if (_outputDevice is WasapiPlayer wasapiPlayer)
         {
-            WaveFormat format = wasapiOut.OutputWaveFormat;
+            WaveFormat format = wasapiPlayer.OutputWaveFormat;
             _activeOutputFormat = $"{format.SampleRate / 1000.0:0.#} kHz · {format.Channels} ch · {format.BitsPerSample}-bit";
         }
     }
@@ -5041,8 +5096,14 @@ public partial class MainWindow : FluentWindow
         try
         {
             _outputEndpoint = resolved.Device;
-            _outputDevice = new WasapiOut(_outputEndpoint, AudioClientShareMode.Shared,
-                useEventSync: true, WasapiSharedLatencyMilliseconds);
+            _outputDevice = new WasapiPlayerBuilder()
+                .WithDevice(_outputEndpoint)
+                .WithSharedMode()
+                .WithEventSync()
+                .WithLatency(WasapiSharedLatencyMilliseconds)
+                .WithCategory(AudioStreamCategory.Media)
+                .WithMmcssThreadPriority("Audio")
+                .Build();
         }
         catch
         {
@@ -5062,8 +5123,10 @@ public partial class MainWindow : FluentWindow
         return (AudioOutputDeviceService.GetDisplayName(activeKey),
             string.IsNullOrWhiteSpace(_outputDeviceFallbackFrom) ? null : AudioOutputDeviceService.GetDisplayName(_outputDeviceFallbackFrom),
             _outputDevice is not null,
-            "WASAPI Shared",
-            WasapiSharedLatencyMilliseconds,
+            "WASAPI Shared · WasapiPlayer",
+            _outputDevice is WasapiPlayer player
+                ? player.LatencyMilliseconds
+                : WasapiSharedLatencyMilliseconds,
             _activeOutputFormat,
             _lastOutputInitializationMilliseconds,
             _outputRecoveryCount,
@@ -5261,7 +5324,7 @@ public partial class MainWindow : FluentWindow
         if (_outputDevice != null)
             _outputDevice.PlaybackStopped -= OutputDevice_PlaybackStopped;
 
-        // WasapiOut нельзя безопасно переинициализировать после Init для следующего источника.
+        // WasapiPlayer нельзя безопасно переинициализировать после Init для следующего источника.
         // После Stop сразу освобождаем output и endpoint перед следующим источником.
         try
         {
@@ -5278,7 +5341,7 @@ public partial class MainWindow : FluentWindow
 
         try
         {
-            _tempoStream?.Dispose();
+            _audioFile?.Dispose();
         }
         catch (Exception ex)
         {
@@ -5286,7 +5349,7 @@ public partial class MainWindow : FluentWindow
         }
         finally
         {
-            _tempoStream = null;
+            _tempoProvider = null;
             _audioFile = null;
         }
         _equalizer = null;
@@ -5343,12 +5406,31 @@ public partial class MainWindow : FluentWindow
     // только двигает индекс по активному плейлисту либо по истории шафла (см. комментарий
     // над GetShuffleHistoryTrack — там же и мутация истории, она достаточно дешёвая, чтобы
     // звать её хоть на каждое сообщение WM_HOTKEY при зажатой клавише).
-    private string? ComputeNextTrackPath(string? currentPath)
+    private List<string> GetAvailableActiveTracks()
     {
-        // Файлы могли исчезнуть после построения плейлиста. Пропускаем их именно при
-        // навигации, не удаляя запись автоматически: пользователь сам решает, заменить её
-        // или убрать через проверку недоступных файлов.
-        var active = FlattenActive().Where(File.Exists).ToList();
+        DateTime now = DateTime.UtcNow;
+        if (_availableTracksNavigationCache is not null
+            && _availableTracksNavigationCacheIsFavoritesView == _isFavoritesView
+            && (now - _availableTracksNavigationCacheCreatedUtc).TotalMilliseconds <= NavigationAvailabilityCacheMilliseconds)
+        {
+            return _availableTracksNavigationCache;
+        }
+
+        // Это единственная массовая File.Exists-проверка в коротком окне серии. Устаревший
+        // путь не будет открыт вслепую: LoadAndPlay повторяет проверку непосредственно перед
+        // созданием AudioFileReader.
+        _availableTracksNavigationCache = FlattenActive().Where(File.Exists).ToList();
+        _availableTracksNavigationCacheIsFavoritesView = _isFavoritesView;
+        _availableTracksNavigationCacheCreatedUtc = now;
+        return _availableTracksNavigationCache;
+    }
+
+    private string? ComputeNextTrackPath(string? currentPath, List<string>? activeTracks = null)
+    {
+        // Файлы могли исчезнуть после построения плейлиста. Для обычной навигации проверяем
+        // актуальную доступность сразу; при удержании hotkey используем короткоживущий snapshot,
+        // а LoadAndPlay перед открытием всё равно проверит конечный путь повторно.
+        var active = activeTracks ?? GetAvailableActiveTracks();
         if (active.Count == 0) return null;
 
         if (_isShuffleEnabled)
@@ -5366,12 +5448,11 @@ public partial class MainWindow : FluentWindow
         return active[nextPos];
     }
 
-    private string? ComputePreviousTrackPath(string? currentPath)
+    private string? ComputePreviousTrackPath(string? currentPath, List<string>? activeTracks = null)
     {
-        // Файлы могли исчезнуть после построения плейлиста. Пропускаем их именно при
-        // навигации, не удаляя запись автоматически: пользователь сам решает, заменить её
-        // или убрать через проверку недоступных файлов.
-        var active = FlattenActive().Where(File.Exists).ToList();
+        // См. ComputeNextTrackPath: во время одного удержания hotkey повторно используем
+        // уже проверенный snapshot, а обычная навигация всегда строит актуальный список.
+        var active = activeTracks ?? GetAvailableActiveTracks();
         if (active.Count == 0) return null;
 
         if (_isShuffleEnabled)
@@ -5411,6 +5492,10 @@ public partial class MainWindow : FluentWindow
     private bool _hotkeyTrackRepeatStarted;
     private DateTime _hotkeyTrackHoldStartedUtc;
     private string? _hotkeyTrackNavigationCursor;
+    // Для одного удержания hotkey список доступных путей неизменен практически всегда. Снимок
+    // исключает синхронный File.Exists по всему плейлисту каждые 140 ms; перед загрузкой
+    // конечный путь всё равно повторно проверяется в LoadAndPlay.
+    private List<string>? _hotkeyAvailableTracksSnapshot;
 
     private void HandleHotkeyNext(int virtualKey) => HandleHotkeyTrackStep(+1, virtualKey);
 
@@ -5426,6 +5511,7 @@ public partial class MainWindow : FluentWindow
         if (sameHeldKey)
             return;
 
+        _hotkeyAvailableTracksSnapshot = GetAvailableActiveTracks();
         _pendingHotkeyNetSteps += stepDirection;
         CommitPendingHotkeyTrackStep();
 
@@ -5480,6 +5566,7 @@ public partial class MainWindow : FluentWindow
         _hotkeyTrackRepeatStarted = false;
         _hotkeyTrackHoldStartedUtc = DateTime.MinValue;
         _hotkeyTrackNavigationCursor = null;
+        _hotkeyAvailableTracksSnapshot = null;
     }
 
     private void CommitPendingHotkeyTrackStep()
@@ -5493,11 +5580,14 @@ public partial class MainWindow : FluentWindow
         // последовательности треков, а не повторно запрашивает один и тот же следующий файл.
         var direction = steps > 0 ? AlbumArtTransitionDirection.Next : AlbumArtTransitionDirection.Previous;
         string? path = _hotkeyTrackNavigationCursor ?? GetCurrentTrackPath();
+        List<string>? activeTracksSnapshot = _hotkeyAvailableTracksSnapshot;
         string? targetPath = null;
 
         for (int i = 0; i < Math.Abs(steps); i++)
         {
-            string? next = steps > 0 ? ComputeNextTrackPath(path) : ComputePreviousTrackPath(path);
+            string? next = steps > 0
+                ? ComputeNextTrackPath(path, activeTracksSnapshot)
+                : ComputePreviousTrackPath(path, activeTracksSnapshot);
             if (next == null) break;
             targetPath = next;
             path = next;
@@ -6088,8 +6178,8 @@ public partial class MainWindow : FluentWindow
 
     private void ApplyPlaybackRateToCurrentStream()
     {
-        if (_tempoStream != null)
-            _tempoStream.Tempo = _runtimePlaybackRate;
+        if (_tempoProvider != null)
+            _tempoProvider.Tempo = _runtimePlaybackRate;
     }
 
     private void ReapplySavedPlaybackRateAfterTrackReady(int generation)
@@ -6099,7 +6189,7 @@ public partial class MainWindow : FluentWindow
         // Tempo во время восстановления последнего трека при запуске приложения.
         Dispatcher.BeginInvoke(() =>
         {
-            if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) || _tempoStream == null)
+            if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) || _tempoProvider == null)
                 return;
 
             ApplyPlaybackRateToCurrentStream();
@@ -6158,8 +6248,8 @@ public partial class MainWindow : FluentWindow
     {
         double clamped = Math.Clamp(semitones, -12.0, 12.0);
         _settings.PlaybackPitchSemitones = clamped;
-        if (_tempoStream != null)
-            _tempoStream.PitchSemiTones = clamped;
+        if (_tempoProvider != null)
+            _tempoProvider.PitchSemiTones = clamped;
     }
 
     public bool IsEqualizerBypass => _settings.EqualizerBypass;
@@ -6350,12 +6440,21 @@ public partial class MainWindow : FluentWindow
         if (_currentTrackPath != null) ToggleFavoriteAndRefresh(_currentTrackPath);
     }
 
+    private void SeekCurrentAudioFile(TimeSpan position)
+    {
+        if (_audioFile is null)
+            return;
+
+        _audioFile.CurrentTime = position;
+        _tempoProvider?.Clear();
+    }
+
     public void ExternalSeekRatio(double ratio)
     {
         if (_audioFile == null) return;
 
         var newTime = TimeSpan.FromSeconds(_audioFile.TotalTime.TotalSeconds * Math.Clamp(ratio, 0.0, 1.0));
-        _audioFile.CurrentTime = newTime;
+        SeekCurrentAudioFile(newTime);
         ProgressSlider.Value = newTime.TotalSeconds;
         CurrentTimeText.Text = newTime.ToString(@"mm\:ss");
     }
@@ -6407,7 +6506,7 @@ public partial class MainWindow : FluentWindow
         if (newTime < TimeSpan.Zero) newTime = TimeSpan.Zero;
         if (newTime > _audioFile.TotalTime) newTime = _audioFile.TotalTime;
 
-        _audioFile.CurrentTime = newTime;
+        SeekCurrentAudioFile(newTime);
         ProgressSlider.Value = newTime.TotalSeconds;
         CurrentTimeText.Text = newTime.ToString(@"mm\:ss");
         RaiseProgressChanged(newTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
@@ -6548,7 +6647,7 @@ public partial class MainWindow : FluentWindow
         // Во всех остальных случаях — клик в любую точку трека, перетаскивание ползунка
         // или стрелки клавиатуры — сразу перематываем воспроизведение, точно как громкость
         if (_audioFile != null)
-            _audioFile.CurrentTime = TimeSpan.FromSeconds(e.NewValue);
+            SeekCurrentAudioFile(TimeSpan.FromSeconds(e.NewValue));
     }
 
     // ---------- Громкость ----------
@@ -7037,7 +7136,7 @@ public partial class MainWindow : FluentWindow
         PersistPlaybackAndPlaylistState();
         StopPlayback(disposeOnly: true);
 
-        // StopPlayback уже освобождает WasapiOut и endpoint между треками. Повторный вызов
+        // StopPlayback уже освобождает WasapiPlayer и endpoint между треками. Повторный вызов
         // остаётся безопасной подстраховкой для частично инициализированного output при ошибке.
         DisposeOutputDeviceSafely();
                 if (_audioOutputEndpointMonitor is not null)

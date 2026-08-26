@@ -19,9 +19,9 @@ public sealed class AudioLevelSampleProvider : ISampleProvider
     // устаревшего значения без блокировки/выделений памяти в горячем Read-пути.
     public double NormalizedLevel => Volatile.Read(ref _normalizedLevel);
 
-    public int Read(float[] buffer, int offset, int count)
+    public int Read(Span<float> buffer)
     {
-        int read = _source.Read(buffer, offset, count);
+        int read = _source.Read(buffer);
         if (read <= 0)
         {
             Volatile.Write(ref _normalizedLevel, 0d);
@@ -29,7 +29,7 @@ public sealed class AudioLevelSampleProvider : ISampleProvider
         }
 
         double sumSquares = 0;
-        for (int index = offset; index < offset + read; index++)
+        for (int index = 0; index < read; index++)
         {
             double sample = buffer[index];
             sumSquares += sample * sample;

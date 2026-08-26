@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
+    <TargetFramework>net9.0-windows10.0.19041.0</TargetFramework>
     <SupportedOSPlatformVersion>10.0.17763.0</SupportedOSPlatformVersion>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
@@ -37,11 +37,10 @@
 
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="3.0.5" />
-    <!-- Core-вариант SoundTouch собран против NAudio.Core 2.x, сохраняет namespace/API
-         SoundTouchWaveStream и позволяет использовать NAudio 2.2.1 без ABI-конфликта legacy
-         SoundTouch.Net.NAudioSupport, который жёстко требовал NAudio 1.9.0. -->
-    <PackageReference Include="NAudio" Version="2.2.1" />
-    <PackageReference Include="SoundTouch.Net.NAudioSupport.Core" Version="2.3.2" />
+    <!-- NAudio 3 требует net9. Локальный SoundTouchSampleProvider использует public API
+         SoundTouch.Net напрямую, потому что SoundTouch.Net.NAudioSupport.Core собран для ABI NAudio 2.x. -->
+    <PackageReference Include="NAudio" Version="3.0.1" />
+    <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
     <PackageReference Include="TagLibSharp" Version="2.3.0" />
     <PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
     <!-- Локальный Discord IPC / Rich Presence; фиксированная версия делает восстановление сборки воспроизводимым. -->

@@ -62,20 +62,20 @@ public sealed class EqualizerSampleProvider : ISampleProvider
 
     public double GetBandGain(int band) => band >= 0 && band < _gainsDb.Length ? _gainsDb[band] : 0;
 
-    public int Read(float[] buffer, int offset, int count)
+    public int Read(Span<float> buffer)
     {
-        int samplesRead = _source.Read(buffer, offset, count);
+        int samplesRead = _source.Read(buffer);
         if (!Enabled) return samplesRead;
 
         for (int n = 0; n < samplesRead; n++)
         {
             int channel = n % _channels;
-            float sample = buffer[offset + n];
+            float sample = buffer[n];
 
             for (int band = 0; band < _filters.Length; band++)
                 sample = _filters[band][channel].Transform(sample);
 
-            buffer[offset + n] = sample;
+            buffer[n] = sample;
         }
 
         return samplesRead;

@@ -46,7 +46,7 @@ public static class WaveformGenerator
             var chunkPeaks = new System.Collections.Generic.List<float>();
 
             int read;
-            while ((read = reader.Read(buffer, 0, buffer.Length)) > 0)
+            while ((read = reader.Read(buffer.AsSpan())) > 0)
             {
                 ct.ThrowIfCancellationRequested();
 
