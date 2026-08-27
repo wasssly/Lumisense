@@ -61,7 +61,12 @@ public partial class MainWindow : FluentWindow
     private int _outputRecoveryCount;
     private string? _lastOutputRecoveryReason;
     private DateTime _lastOutputRecoveryStartedUtc;
+    private int _meaningfulOutputDeviceEventCount;
+    private AudioOutputEndpointChangeKind? _lastOutputDeviceEventKind;
+    private string? _lastOutputDeviceEventEndpointId;
+    private string? _pendingSystemDefaultEndpointId;
     private const int OutputRecoveryCooldownMilliseconds = 1500;
+    private const int SystemDefaultEndpointDebounceMilliseconds = 180;
 
     // Отдельно от выбранного в settings.json значения храним то, что реально открыл WASAPI.
     // Это позволяет Settings объяснить fallback после отключения USB/Bluetooth-устройства, не
@@ -78,6 +83,10 @@ public partial class MainWindow : FluentWindow
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _playbackRatePersistenceTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+    private readonly DispatcherTimer _systemDefaultEndpointDebounceTimer = new()
+    {
+        Interval = TimeSpan.FromMilliseconds(SystemDefaultEndpointDebounceMilliseconds)
+    };
 
     // Большинство UI-настроек меняются сразу в памяти, а не по отдельному Save на каждое
     // движение слайдера. Короткий checkpoint делает их устойчивыми к закрытию консоли, но
@@ -567,6 +576,7 @@ public partial class MainWindow : FluentWindow
         _hotkeyTrackStepTimer.Tick += HotkeyTrackStepTimer_Tick;
         _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
         _settingsCheckpointTimer.Tick += SettingsCheckpointTimer_Tick;
+        _systemDefaultEndpointDebounceTimer.Tick += SystemDefaultEndpointDebounceTimer_Tick;
 
         try
         {
@@ -5128,25 +5138,52 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Вызывается из SettingsWindow сразу после выбора устройства. Если трек уже загружен,
-    // сохраняем позицию и состояние, создаём новый output и возвращаемся к тому же месту.
-    public (string ActiveDeviceName, string? FallbackFrom, bool IsInitialized, string Engine,
-        int RequestedLatencyMilliseconds, string? OutputFormat, long InitializationMilliseconds,
-        int RecoveryCount, string? LastRecoveryReason) GetOutputDeviceRuntimeStatus()
+    // Вызывается из SettingsWindow сразу после выбора устройства. Снимок разделяет
+    // запрошенную latency профиля и фактическую latency, которую WasapiPlayer получил после Init.
+    internal AudioOutputRuntimeStatus GetOutputDeviceRuntimeStatus()
     {
+        WasapiPlayer? player = _outputDevice as WasapiPlayer;
         string activeKey = _outputDevice is null ? _settings.OutputDeviceName : _activeOutputDeviceKey;
-        return (AudioOutputDeviceService.GetDisplayName(activeKey),
+        string? activeEndpointId = player?.DeviceId ?? TryGetActiveOutputEndpointId();
+        return new AudioOutputRuntimeStatus(
+            AudioOutputDeviceService.GetDisplayName(activeKey),
             string.IsNullOrWhiteSpace(_outputDeviceFallbackFrom) ? null : AudioOutputDeviceService.GetDisplayName(_outputDeviceFallbackFrom),
             _outputDevice is not null,
             "WASAPI Shared · WasapiPlayer",
-            _outputDevice is WasapiPlayer player
-                ? player.LatencyMilliseconds
-                : WasapiSharedLatencyMilliseconds,
+            WasapiSharedLatencyMilliseconds,
+            player?.LatencyMilliseconds,
             _activeOutputFormat,
+            activeEndpointId,
+            GetOutputPlaybackState(_outputDevice),
+            AudioOutputRecoveryPolicy.FollowsSystemDefault(_settings.OutputDeviceName),
             _lastOutputInitializationMilliseconds,
             _outputRecoveryCount,
-            _lastOutputRecoveryReason);
+            _lastOutputRecoveryReason,
+            _meaningfulOutputDeviceEventCount,
+            _lastOutputDeviceEventKind,
+            _lastOutputDeviceEventEndpointId);
     }
+
+    private string? TryGetActiveOutputEndpointId()
+    {
+        try
+        {
+            return _outputEndpoint?.ID;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось прочитать активный WASAPI endpoint: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static string GetOutputPlaybackState(IWavePlayer? outputDevice) => outputDevice?.PlaybackState switch
+    {
+        NAudio.Wave.PlaybackState.Playing => "Воспроизводится",
+        NAudio.Wave.PlaybackState.Paused => "На паузе",
+        NAudio.Wave.PlaybackState.Stopped => "Остановлен",
+        _ => "Не инициализирован"
+    };
 
     public void ApplyOutputDeviceSelection()
     {
@@ -5179,39 +5216,89 @@ public partial class MainWindow : FluentWindow
         if (_isExiting)
             return;
 
-        // Список в Settings должен отражать подключение/отключение сразу, но только если окно
-        // уже создано. Callback мог прийти с COM-потока, поэтому этот код выполняется на Dispatcher.
-        if (_settingsWindow?.IsLoaded == true)
+        // Список и диагностическая карточка Settings должны отражать подключение/отключение
+        // сразу, но callback сначала всегда переносится с Core Audio worker thread на Dispatcher.
+        // PropertyValueChanged может приходить часто (например, при громкости) и не требует
+        // пересборки ComboBox или recovery.
+        if (e.Kind != AudioOutputEndpointChangeKind.DevicePropertiesChanged && _settingsWindow?.IsLoaded == true)
             _settingsWindow.RefreshOutputDeviceSelection();
 
-        if (_outputDevice is null || _isOutputRecoveryInProgress)
+        if (_outputDevice is null || _isOutputRecoveryInProgress ||
+            e.Kind == AudioOutputEndpointChangeKind.DevicePropertiesChanged)
             return;
 
-        bool usingSystemDefault = string.IsNullOrWhiteSpace(_settings.OutputDeviceName);
-        string? activeEndpointId;
-        try
+        RecordMeaningfulOutputDeviceEvent(e);
+        if (e.Kind == AudioOutputEndpointChangeKind.DefaultDeviceChanged)
         {
-            activeEndpointId = _outputEndpoint?.ID;
-        }
-        catch (Exception ex)
-        {
-            Logger.Warn($"Не удалось прочитать активный WASAPI endpoint после системного события: {ex.Message}");
-            activeEndpointId = null;
+            QueueSystemDefaultEndpointRecovery(e.EndpointId);
+            return;
         }
 
+        string? activeEndpointId = TryGetActiveOutputEndpointId();
         bool activeEndpointBecameUnavailable =
             string.Equals(activeEndpointId, e.EndpointId, StringComparison.Ordinal) &&
             (e.Kind == AudioOutputEndpointChangeKind.DeviceRemoved ||
              e.Kind == AudioOutputEndpointChangeKind.DeviceStateChanged && e.State is not DeviceState.Active);
-        bool defaultEndpointChanged = usingSystemDefault && e.Kind == AudioOutputEndpointChangeKind.DefaultDeviceChanged;
-
-        if (!activeEndpointBecameUnavailable && !defaultEndpointChanged)
+        if (!activeEndpointBecameUnavailable)
             return;
 
-        string reason = defaultEndpointChanged
-            ? "Windows изменил системное устройство вывода"
-            : "активное устройство вывода отключено или стало недоступно";
+        const string reason = "активное устройство вывода отключено или стало недоступно";
         Logger.Warn($"{reason}; выполняется восстановление WASAPI Shared.");
+        RecoverOutputDeviceAfterFailure(new InvalidOperationException(reason), _isPlaying, expectedDeviceEvent: true);
+    }
+
+    private void RecordMeaningfulOutputDeviceEvent(AudioOutputEndpointChangedEventArgs e)
+    {
+        _meaningfulOutputDeviceEventCount++;
+        _lastOutputDeviceEventKind = e.Kind;
+        _lastOutputDeviceEventEndpointId = e.EndpointId;
+    }
+
+    private void QueueSystemDefaultEndpointRecovery(string? changedDefaultEndpointId)
+    {
+        if (!AudioOutputRecoveryPolicy.FollowsSystemDefault(_settings.OutputDeviceName))
+        {
+            Logger.Info("Смена системного устройства Windows не влияет на явно выбранный WASAPI endpoint.");
+            return;
+        }
+
+        _pendingSystemDefaultEndpointId = changedDefaultEndpointId;
+        _systemDefaultEndpointDebounceTimer.Stop();
+        _systemDefaultEndpointDebounceTimer.Interval = TimeSpan.FromMilliseconds(SystemDefaultEndpointDebounceMilliseconds);
+        _systemDefaultEndpointDebounceTimer.Start();
+        Logger.Info("Windows изменил системное устройство вывода; endpoint будет подтверждён перед восстановлением WASAPI Shared.");
+    }
+
+    private void SystemDefaultEndpointDebounceTimer_Tick(object? sender, EventArgs e)
+    {
+        _systemDefaultEndpointDebounceTimer.Stop();
+        if (_isExiting || _outputDevice is null || _isOutputRecoveryInProgress)
+            return;
+
+        DateTime now = DateTime.UtcNow;
+        double elapsedSinceRecovery = (now - _lastOutputRecoveryStartedUtc).TotalMilliseconds;
+        if (_lastOutputRecoveryStartedUtc != DateTime.MinValue && elapsedSinceRecovery < OutputRecoveryCooldownMilliseconds)
+        {
+            // Endpoint notifications часто приходят пачкой. Не теряем последнее default-событие,
+            // если recovery ещё stabilizes, а ждём окончание уже действующего cooldown.
+            _systemDefaultEndpointDebounceTimer.Interval = TimeSpan.FromMilliseconds(
+                Math.Max(1, OutputRecoveryCooldownMilliseconds - elapsedSinceRecovery));
+            _systemDefaultEndpointDebounceTimer.Start();
+            return;
+        }
+
+        string? changedDefaultEndpointId = _pendingSystemDefaultEndpointId;
+        _pendingSystemDefaultEndpointId = null;
+        string? activeEndpointId = TryGetActiveOutputEndpointId();
+        if (!AudioOutputRecoveryPolicy.ShouldRecoverAfterDefaultDeviceChanged(
+                _settings.OutputDeviceName, activeEndpointId, changedDefaultEndpointId))
+        {
+            Logger.Info("Смена default WASAPI endpoint уже отражена активным устройством; recovery не требуется.");
+            return;
+        }
+
+        const string reason = "Windows изменил системное устройство вывода";
+        Logger.Info($"{reason}; выполняется controlled recovery WASAPI Shared.");
         RecoverOutputDeviceAfterFailure(new InvalidOperationException(reason), _isPlaying, expectedDeviceEvent: true);
     }
 
@@ -7132,6 +7219,7 @@ public partial class MainWindow : FluentWindow
         // параллельно с закрытием окна.
         _playbackRatePersistenceTimer.Stop();
         _settingsCheckpointTimer.Stop();
+        _systemDefaultEndpointDebounceTimer.Stop();
         _playlistSearchDebounceTimer.Stop();
         StopHotkeyTrackRepeat();
         _playlistSearchCts?.Cancel();

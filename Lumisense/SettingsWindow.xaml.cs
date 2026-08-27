@@ -1554,6 +1554,8 @@ public partial class SettingsWindow : FluentWindow
             LocalizationService.Translate("Активно: {0}"),
             runtime.ActiveDeviceName);
         string format = runtime.OutputFormat ?? LocalizationService.Translate("будет определён при запуске");
+        string actualLatency = runtime.ActualLatencyMilliseconds?.ToString()
+            ?? LocalizationService.Translate("будет определена при запуске");
         string recovery = runtime.RecoveryCount == 0
             ? LocalizationService.Translate("восстановлений: нет")
             : string.Format(
@@ -1561,12 +1563,30 @@ public partial class SettingsWindow : FluentWindow
                 runtime.RecoveryCount,
                 LocalizationService.Translate(runtime.LastRecoveryReason ?? "не указана"));
         OutputDeviceRuntimeModeText.Text = string.Format(
-            LocalizationService.Translate("Режим вывода: {0} · event callbacks · запрошенная задержка: {1} мс · формат: {2} · init: {3} мс · {4}"),
+            LocalizationService.Translate("Движок: {0} · состояние: {1}\nФормат вывода: {2}\nФактическая задержка: {3} мс (запрошено: {4} мс) · init: {5} мс · {6}"),
             runtime.Engine,
-            runtime.RequestedLatencyMilliseconds,
+            LocalizationService.Translate(runtime.PlaybackState),
             format,
+            actualLatency,
+            runtime.RequestedLatencyMilliseconds,
             runtime.InitializationMilliseconds,
             recovery);
+
+        string routing = runtime.FollowsSystemDefault
+            ? LocalizationService.Translate("системное устройство Windows по умолчанию")
+            : LocalizationService.Translate("явно выбранный WASAPI endpoint");
+        string lastEvent = runtime.LastDeviceEventKind is null
+            ? LocalizationService.Translate("нет")
+            : string.Format(
+                LocalizationService.Translate("{0}: {1}"),
+                LocalizationService.Translate(GetOutputDeviceEventName(runtime.LastDeviceEventKind.Value)),
+                runtime.LastDeviceEventEndpointId ?? "—");
+        OutputDeviceRuntimeDiagnosticsText.Text = string.Format(
+            LocalizationService.Translate("Маршрутизация: {0}\nEndpoint ID: {1}\nСобытия WASAPI: {2}; последнее: {3}"),
+            routing,
+            runtime.ActiveEndpointId ?? "—",
+            runtime.MeaningfulDeviceEventCount,
+            lastEvent);
 
         OutputDeviceStatusText.Text = runtime.FallbackFrom is { Length: > 0 }
             ? string.Format(
@@ -1581,6 +1601,16 @@ public partial class SettingsWindow : FluentWindow
                         runtime.ActiveDeviceName)
                     : LocalizationService.Translate("Выбранное устройство применяется сразу; текущий трек продолжится с сохранённой позиции.");
     }
+
+    private static string GetOutputDeviceEventName(AudioOutputEndpointChangeKind kind) => kind switch
+    {
+        AudioOutputEndpointChangeKind.DeviceAdded => "устройство подключено",
+        AudioOutputEndpointChangeKind.DeviceRemoved => "устройство отключено",
+        AudioOutputEndpointChangeKind.DeviceStateChanged => "состояние устройства изменено",
+        AudioOutputEndpointChangeKind.DefaultDeviceChanged => "изменено системное устройство по умолчанию",
+        AudioOutputEndpointChangeKind.DevicePropertiesChanged => "свойства устройства изменены",
+        _ => "не указано"
+    };
 
     private void OutputDeviceCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
