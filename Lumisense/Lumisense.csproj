@@ -36,7 +36,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="WPF-UI" Version="3.0.5" />
+    <PackageReference Include="WPF-UI" Version="4.3.0" />
     <!-- NAudio 3 требует net9. Локальный SoundTouchSampleProvider использует public API
          SoundTouch.Net напрямую, потому что SoundTouch.Net.NAudioSupport.Core собран для ABI NAudio 2.x. -->
     <PackageReference Include="NAudio" Version="3.0.1" />

@@ -418,6 +418,13 @@ public sealed class TrayIconManager : IDisposable
             e.Graphics.DrawLine(pen, bounds.Left, bounds.Y, bounds.Right, bounds.Y);
         }
 
+        // Не вызываем base: системная прямоугольная граница WinForms конфликтует со
+        // скруглённым Region и оставляет неоднородные светлые полосы по сторонам без углов.
+        // У меню остаются скруглённая форма, фон, разделители и hover; внешней рамки нет.
+        protected override void OnRenderToolStripBorder(ToolStripRenderEventArgs e)
+        {
+        }
+
         private static GraphicsPath RoundedPath(Rectangle bounds, int radius)
         {
             int d = radius * 2;

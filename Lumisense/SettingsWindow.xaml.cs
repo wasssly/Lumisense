@@ -75,11 +75,19 @@ public partial class SettingsWindow : FluentWindow
     // То же самое, что и MainWindow.ApplyWindowBackdrop — этому окну нужна собственная копия,
     // а не вызов чужого метода, потому что применяется к его СОБСТВЕННОМУ HWND, а не к HWND
     // главного окна.
-    private void ApplyWindowBackdrop(AppSettings settings)
+    private void ApplyWindowBackdrop(AppSettings settings, bool forceReapply = false)
     {
-        WindowBackdropType = settings.WindowBackdropType == "Acrylic"
+        var desiredBackdrop = settings.WindowBackdropType == "Acrylic"
             ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
             : Wpf.Ui.Controls.WindowBackdropType.Mica;
+
+        // См. MainWindow.ApplyWindowBackdrop: при смене темы WPF-UI может оставить
+        // dependency property равной Acrylic, но повторно наложить нативный Mica.
+        // None → desired заставляет FluentWindow заново применить нужный backdrop.
+        if (forceReapply && WindowBackdropType == desiredBackdrop)
+            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
+
+        WindowBackdropType = desiredBackdrop;
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -149,6 +157,7 @@ public partial class SettingsWindow : FluentWindow
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
         InitializeOutputDeviceCombo();
+        TrackLoadTraceCheckBox.IsChecked = _settings.TrackLoadTraceEnabled;
         NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked = _settings.NeverAutoPlayLastTrackOnStartup;
         TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
         InitializeToastPolicy();
@@ -1149,8 +1158,25 @@ public partial class SettingsWindow : FluentWindow
 
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         _owner.ApplyAccentColor(); // акцент пересчитывает светлые/тёмные варианты под новую тему
+        ReapplyWindowBackdropsAfterThemeChange();
         _owner.ApplyTrayTheme(_settings.IsLightThemeResolved());
         _owner.ApplyMiniPlayerThemeLive();
+    }
+
+    // WPF-UI 4 ставит собственное обновление FluentWindow в очередь Dispatcher после
+    // ApplicationThemeManager.Apply. Синхронного присваивания WindowBackdropType недостаточно:
+    // оно могло быть перезаписано дефолтным Mica в конце того же UI-прохода. Повторяем выбранный
+    // backdrop на ContextIdle, не меняя сохранённое значение AppSettings.
+    private void ReapplyWindowBackdropsAfterThemeChange()
+    {
+        _owner.ApplyWindowBackdrop(forceReapply: true);
+        ApplyWindowBackdrop(_settings, forceReapply: true);
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            _owner.ApplyWindowBackdrop(forceReapply: true);
+            if (IsLoaded)
+                ApplyWindowBackdrop(_settings, forceReapply: true);
+        }), DispatcherPriority.ContextIdle);
     }
 
     private void AccentModeRadio_Changed(object sender, RoutedEventArgs e)
@@ -1333,6 +1359,16 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.NeverAutoPlayLastTrackOnStartup = NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked == true;
+    }
+
+    private void TrackLoadTraceCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackLoadTraceEnabled = TrackLoadTraceCheckBox.IsChecked == true;
+        AudioDiagnosticsCopyStatusText.Text = _settings.TrackLoadTraceEnabled
+            ? LocalizationService.Translate("Trace подготовки трека включён")
+            : LocalizationService.Translate("Trace подготовки трека выключен");
     }
 
     private async void ClearArtworkCacheButton_Click(object sender, RoutedEventArgs e)
@@ -1612,6 +1648,20 @@ public partial class SettingsWindow : FluentWindow
         _ => "не указано"
     };
 
+    private void CopyAudioDiagnosticsButton_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            System.Windows.Clipboard.SetText(_owner.BuildAudioDiagnosticsReport());
+            AudioDiagnosticsCopyStatusText.Text = LocalizationService.Translate("Аудиодиагностика скопирована в буфер обмена");
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось скопировать аудиодиагностику: {ex.Message}");
+            AudioDiagnosticsCopyStatusText.Text = LocalizationService.Translate("Не удалось скопировать аудиодиагностику");
+        }
+    }
+
     private void OutputDeviceCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
         if (_isInitializing || _isRefreshingOutputDevices) return;
@@ -1679,26 +1729,39 @@ public partial class SettingsWindow : FluentWindow
     // что кэшировать список между открытиями смысла нет.
     private void InitializeToastMonitorCombo()
     {
-        ToastMonitorCombo.Items.Clear();
-
-        var autoItem = new System.Windows.Controls.ComboBoxItem
+        // Items.Clear и назначение SelectedItem вызывают SelectionChanged. При смене языка
+        // список создаётся заново, но выбранный DeviceName остаётся настройкой, а не должен
+        // временно превратиться в пустое значение «Автоматически».
+        bool wasInitializing = _isInitializing;
+        _isInitializing = true;
+        try
         {
-            Content = LocalizationService.Translate("Автоматически (тот же монитор, что и окно плеера)"), Tag = ""
-        };
-        ToastMonitorCombo.Items.Add(autoItem);
+            string savedMonitor = _settings.TrackChangeToastMonitor;
+            ToastMonitorCombo.Items.Clear();
 
-        var screens = System.Windows.Forms.Screen.AllScreens;
-        for (int i = 0; i < screens.Length; i++)
-        {
-            var s = screens[i];
-            string label = LocalizationService.Translate($"Монитор {i + 1} — {s.Bounds.Width}×{s.Bounds.Height}") +
-                (s.Primary ? LocalizationService.Translate(" (основной)") : "");
-            ToastMonitorCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = label, Tag = s.DeviceName });
+            var autoItem = new System.Windows.Controls.ComboBoxItem
+            {
+                Content = LocalizationService.Translate("Автоматически (тот же монитор, что и окно плеера)"), Tag = ""
+            };
+            ToastMonitorCombo.Items.Add(autoItem);
+
+            var screens = System.Windows.Forms.Screen.AllScreens;
+            for (int i = 0; i < screens.Length; i++)
+            {
+                var s = screens[i];
+                string label = LocalizationService.Translate($"Монитор {i + 1} — {s.Bounds.Width}×{s.Bounds.Height}") +
+                    (s.Primary ? LocalizationService.Translate(" (основной)") : "");
+                ToastMonitorCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = label, Tag = s.DeviceName });
+            }
+
+            var selected = ToastMonitorCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+                .FirstOrDefault(i => (string)i.Tag == savedMonitor);
+            ToastMonitorCombo.SelectedItem = selected ?? autoItem;
         }
-
-        var selected = ToastMonitorCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
-            .FirstOrDefault(i => (string)i.Tag == _settings.TrackChangeToastMonitor);
-        ToastMonitorCombo.SelectedItem = selected ?? autoItem;
+        finally
+        {
+            _isInitializing = wasInitializing;
+        }
     }
 
     private void ToastPositionRadio_Changed(object sender, RoutedEventArgs e)

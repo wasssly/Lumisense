@@ -1077,6 +1077,19 @@
                                                    TextWrapping="Wrap" Margin="0,4,0,0" />
                                         <TextBlock x:Name="OutputDeviceRuntimeDiagnosticsText" FontSize="11" Opacity="0.66"
                                                    TextWrapping="Wrap" Margin="0,6,0,0" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                            <ui:Button x:Name="CopyAudioDiagnosticsButton" Appearance="Secondary"
+                                                       Content="Копировать аудиодиагностику"
+                                                       Click="CopyAudioDiagnosticsButton_Click" />
+                                            <TextBlock x:Name="AudioDiagnosticsCopyStatusText" FontSize="11" Opacity="0.7"
+                                                       VerticalAlignment="Center" TextWrapping="Wrap" Margin="10,0,0,0" />
+                                        </StackPanel>
+                                        <CheckBox x:Name="TrackLoadTraceCheckBox" Content="Подробный trace подготовки трека"
+                                                  Checked="TrackLoadTraceCheckBox_Changed"
+                                                  Unchecked="TrackLoadTraceCheckBox_Changed"
+                                                  Margin="0,12,0,0" />
+                                        <TextBlock Text="Добавляет в локальный лог длительность этапов загрузки трека; пути и метаданные треков не записываются."
+                                                   FontSize="11" Opacity="0.62" TextWrapping="Wrap" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </Border>
                                 <TextBlock x:Name="OutputDeviceStatusText" FontSize="12" Opacity="0.62" TextWrapping="Wrap"

@@ -25,6 +25,29 @@ public sealed class EqualizerSampleProviderTests
         Assert.All(output, sample => Assert.True(float.IsFinite(sample)));
     }
 
+    [Theory]
+    [InlineData(22050)]
+    [InlineData(32000)]
+    [InlineData(44100)]
+    [InlineData(48000)]
+    public void StandardAudioSampleRates_ApplyAllStoredBandGainsWithoutInvalidFilters(int sampleRate)
+    {
+        var source = new TestSampleProvider(
+            WaveFormat.CreateIeeeFloatWaveFormat(sampleRate, 2),
+            new float[] { 0.25f, -0.25f, 0.5f, -0.5f });
+        var provider = new EqualizerSampleProvider(source) { Enabled = true };
+
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            provider.SetBandGain(band, band - 4.5);
+
+        var output = new float[4];
+        int samplesRead = provider.Read(output);
+
+        Assert.Equal(4, samplesRead);
+        Assert.All(output, sample => Assert.True(float.IsFinite(sample)));
+        Assert.Equal(4.5, provider.GetBandGain(9), 6);
+    }
+
     private sealed class TestSampleProvider : ISampleProvider
     {
         private readonly float[] _samples;

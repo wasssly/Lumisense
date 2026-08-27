@@ -282,6 +282,10 @@ public class AppSettings
     // при первой инициализации и мягко мигрируют к endpoint-ID.
     public string OutputDeviceName { get; set; } = "";
 
+    // Подробный технический trace этапов загрузки трека выключен по умолчанию. Он не содержит
+    // пути или метаданные, но помогает измерять редкое замедление Next/Previous локально.
+    public bool TrackLoadTraceEnabled { get; set; }
+
     public string LyricsSearchPolicy { get; set; } = "AutoExact";
 
     // Всплывающее уведомление в углу экрана при смене трека (обложка + название, исчезает
@@ -530,12 +534,32 @@ public static class SettingsManager
         try
         {
             var json = JsonSerializer.Serialize(settings, JsonOptions);
-            WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
+            // Публикуем готовый JSON до I/O: если процесс оборвётся в WriteJsonAtomic,
+            // аварийный обработчик сможет сохранить тот же снимок без чтения WPF-состояния.
             Volatile.Write(ref LastObservedSettingsJson, json);
+            WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
         }
         catch (Exception ex)
         {
             Logger.Warn($"Не удалось сохранить settings.json ({SettingsFilePath}): {ex.Message}");
+        }
+    }
+
+    // Используется из ProcessExit/Console.CancelKeyPress, которые могут выполняться вне WPF
+    // Dispatcher. Здесь нет сериализации модели или обращения к MainWindow: записываем только
+    // уже подготовленный JSON-снимок, опубликованный при Load/Save/SaveAsync/checkpoint.
+    internal static void SaveLastObservedSnapshot()
+    {
+        string? json = Volatile.Read(ref LastObservedSettingsJson);
+        if (string.IsNullOrEmpty(json)) return;
+
+        try
+        {
+            WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось сохранить аварийный снимок settings.json ({SettingsFilePath}): {ex.Message}");
         }
     }
 
@@ -548,9 +572,9 @@ public static class SettingsManager
         try
         {
             json = JsonSerializer.Serialize(settings, JsonOptions);
+            Volatile.Write(ref LastObservedSettingsJson, json);
             var revision = Interlocked.Increment(ref NextSaveRevision);
             await Task.Run(() => WriteJsonAtomic(json, revision)).ConfigureAwait(false);
-            Volatile.Write(ref LastObservedSettingsJson, json);
         }
         catch (Exception ex)
         {
@@ -582,9 +606,9 @@ public static class SettingsManager
             if (string.Equals(json, Volatile.Read(ref LastObservedSettingsJson), StringComparison.Ordinal))
                 return;
 
+            Volatile.Write(ref LastObservedSettingsJson, json);
             var revision = Interlocked.Increment(ref NextSaveRevision);
             await Task.Run(() => WriteJsonAtomic(json, revision)).ConfigureAwait(false);
-            Volatile.Write(ref LastObservedSettingsJson, json);
         }
         catch (Exception ex)
         {

@@ -531,10 +531,6 @@ public partial class MainWindow : FluentWindow
         FireAndForget(SettingsManager.SaveIfChangedAsync(_settings), "SaveSettingsCheckpointAsync");
     }
 
-    // Вызывается из last-chance обработчиков AppDomain/консоли. Не читает UI или аудио-объекты,
-    // поэтому безопасен как best-effort snapshot даже когда штатный WPF shutdown уже не начался.
-    internal void SaveSettingsForUnexpectedTermination() => SettingsManager.Save(_settings);
-
     public MainWindow()
     {
         InitializeComponent();
@@ -1596,11 +1592,20 @@ public partial class MainWindow : FluentWindow
     // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте и
     // заново из окна настроек при переключении этой настройки (см.
     // SettingsWindow.WindowBackdropRadio_Changed), пока главное окно уже открыто.
-    public void ApplyWindowBackdrop()
+    public void ApplyWindowBackdrop(bool forceReapply = false)
     {
-        WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
+        var desiredBackdrop = _settings.WindowBackdropType == "Acrylic"
             ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
             : Wpf.Ui.Controls.WindowBackdropType.Mica;
+
+        // WPF dependency properties не вызывают callback при присваивании того же значения.
+        // После ApplicationThemeManager.Apply WPF-UI 4 может заново применить свой дефолт Mica,
+        // хотя AppSettings всё ещё содержит Acrylic. Краткий переход через None запускает
+        // OnBackdropTypeChanged и повторно накладывает фактически выбранную основу на HWND.
+        if (forceReapply && WindowBackdropType == desiredBackdrop)
+            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
+
+        WindowBackdropType = desiredBackdrop;
         ApplyCoverBaseBackground();
     }
 
@@ -4258,25 +4263,42 @@ public partial class MainWindow : FluentWindow
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
         _trackLoadCts = cts;
         PreparedTrack? prepared = null;
-        var performance = new TrackLoadPerformanceMeasurement();
+        Task<PreparedTrack>? preparationTask = null;
+        var performance = new TrackLoadPerformanceMeasurement(_settings.TrackLoadTraceEnabled);
 
         try
         {
             SetTrackUserState(TrackUserState.Loading);
+
+            // Подготавливаем независимый граф следующего трека, пока текущий поток выполняет
+            // уже проверенный fade/drain. Новый WasapiPlayer здесь намеренно НЕ создаётся:
+            // endpoint по-прежнему останавливается только после нулевого хвоста в его буфере.
+            double volumeSliderValue = VolumeSlider.Value;
+            bool replayGainEnabled = _settings.ReplayGainEnabled;
+            bool equalizerEnabled = _settings.EqualizerEnabled;
+            double[] equalizerGains = (double[])_settings.EqualizerBandGainsDb.Clone();
+            double playbackSpeed = _runtimePlaybackRate;
+            double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
+            bool traceTrackPreparation = _settings.TrackLoadTraceEnabled;
+            preparationTask = PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
+                equalizerEnabled, equalizerGains, playbackSpeed, playbackPitch, traceTrackPreparation, cts.Token);
+
             await FadeOutBeforeTrackChangeAsync(cts.Token);
             performance.MarkStage("fade-out");
             if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
                 return;
 
-            double volumeSliderValue = VolumeSlider.Value;
-            bool replayGainEnabled = _settings.ReplayGainEnabled;
-            bool equalizerEnabled = _settings.EqualizerEnabled;
-                    double[] equalizerGains = (double[])_settings.EqualizerBandGainsDb.Clone();
-        double playbackSpeed = _runtimePlaybackRate;
-        double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
-        prepared = await PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
-            equalizerEnabled, equalizerGains, playbackSpeed, playbackPitch, cts.Token);
-            performance.MarkStage("prepare-audio-and-metadata");
+            try
+            {
+                prepared = await preparationTask;
+            }
+            finally
+            {
+                // После await результат либо передан prepared, либо fault/cancellation уже
+                // наблюдаются текущей цепочкой. Фоновая очистка нужна только при раннем exit.
+                preparationTask = null;
+            }
+            performance.MarkStage("wait-prepared-audio-and-metadata");
 
             cts.Token.ThrowIfCancellationRequested();
             if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
@@ -4389,6 +4411,13 @@ public partial class MainWindow : FluentWindow
         finally
         {
             prepared?.Dispose();
+            if (preparationTask is not null)
+            {
+                // При отмене во время fade задача могла создать AudioFileReader, но ещё не
+                // вернуться в этот метод. Дожидаемся её отдельно и освобождаем result, чтобы
+                // быстрые Next/Previous не оставляли файловый handle у устаревшего запроса.
+                FireAndForget(DisposeUnusedPreparedTrackAsync(preparationTask), "DisposeUnusedPreparedTrackAsync");
+            }
             if (ReferenceEquals(_trackLoadCts, cts))
             {
                 _trackLoadCts = null;
@@ -4398,14 +4427,32 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    private static async Task DisposeUnusedPreparedTrackAsync(Task<PreparedTrack> task)
+    {
+        try
+        {
+            (await task.ConfigureAwait(false)).Dispose();
+        }
+        catch (OperationCanceledException)
+        {
+            // Обычный исход при следующем запросе Next/Previous.
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось завершить отменённую подготовку трека: {ex.Message}");
+        }
+    }
+
     private async Task<PreparedTrack> PrepareTrackAsync(string filePath, double volumeSliderValue,
         bool replayGainEnabled, bool equalizerEnabled, double[] equalizerGains, double playbackSpeed,
-        double playbackPitch, CancellationToken token)
+        double playbackPitch, bool traceTrackPreparation, CancellationToken token)
     {
         return await Task.Run(() =>
         {
             token.ThrowIfCancellationRequested();
+            var replayGainTimer = Stopwatch.StartNew();
             double replayGain = replayGainEnabled ? ReplayGainReader.GetTrackGainLinear(filePath) : 1.0;
+            long replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
             token.ThrowIfCancellationRequested();
 
             string? title = null;
@@ -4414,7 +4461,11 @@ public partial class MainWindow : FluentWindow
             byte[]? albumArtBytes = null;
             string? albumArtMimeType = null;
             TagLib.PictureType? albumArtPictureType = null;
+            long tagsMilliseconds = 0;
+            long embeddedArtworkMilliseconds = 0;
+            bool tagsMeasured = false;
 
+            var tagsTimer = Stopwatch.StartNew();
             try
             {
                 using var tagFile = TagLib.File.Create(filePath);
@@ -4422,8 +4473,11 @@ public partial class MainWindow : FluentWindow
                 artist = !string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer)
                     ? tagFile.Tag.FirstPerformer
                     : tagFile.Tag.FirstAlbumArtist;
+                tagsMilliseconds = tagsTimer.ElapsedMilliseconds;
+                tagsMeasured = true;
                 if (tagFile.Tag.Pictures.Length > 0)
                 {
+                    var artworkTimer = Stopwatch.StartNew();
                     var picture = tagFile.Tag.Pictures[0];
                     albumArtBytes = picture.Data.Data;
                     using var stream = new MemoryStream(albumArtBytes);
@@ -4437,18 +4491,23 @@ public partial class MainWindow : FluentWindow
                     albumArt = bitmap;
                     albumArtMimeType = string.IsNullOrWhiteSpace(picture.MimeType) ? "image/jpeg" : picture.MimeType;
                     albumArtPictureType = picture.Type;
+                    embeddedArtworkMilliseconds = artworkTimer.ElapsedMilliseconds;
                 }
             }
             catch (Exception ex)
             {
+                if (!tagsMeasured)
+                    tagsMilliseconds = tagsTimer.ElapsedMilliseconds;
                 Logger.Warn($"Не удалось прочитать metadata или embedded cover для файла {filePath}: {ex.Message}");
             }
 
             token.ThrowIfCancellationRequested();
+            var audioFileReaderTimer = Stopwatch.StartNew();
             var reader = new AudioFileReader(filePath)
             {
                 Volume = ComputeAudioFileVolume(volumeSliderValue, replayGain)
             };
+            long audioFileReaderMilliseconds = audioFileReaderTimer.ElapsedMilliseconds;
             try
             {
                 var tempoProvider = new SoundTouchSampleProvider(reader)
@@ -4459,6 +4518,15 @@ public partial class MainWindow : FluentWindow
                 var equalizer = new EqualizerSampleProvider(tempoProvider) { Enabled = equalizerEnabled };
                 for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
                     equalizer.SetBandGain(band, band < equalizerGains.Length ? equalizerGains[band] : 0);
+
+                if (traceTrackPreparation)
+                {
+                    Logger.Info(TrackPreparationTraceFormatter.Format(
+                        replayGainMilliseconds,
+                        tagsMilliseconds,
+                        embeddedArtworkMilliseconds,
+                        audioFileReaderMilliseconds));
+                }
 
                 return new PreparedTrack
                 {
@@ -4931,6 +4999,7 @@ public partial class MainWindow : FluentWindow
                 return;
             }
 
+            _isPlaying = false;
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
             StopProgressTimerAndAnimation();
             _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
@@ -4955,6 +5024,7 @@ public partial class MainWindow : FluentWindow
                 return;
             }
 
+            _isPlaying = true;
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
             _progressTimer.Start();
             _playbackClock.Start();
@@ -4962,7 +5032,6 @@ public partial class MainWindow : FluentWindow
             RaisePlaybackStateChanged(true);
             SetTrackUserState(TrackUserState.Playing);
         }
-        _isPlaying = !_isPlaying;
     }
 
     private void StopButton_Click(object sender, RoutedEventArgs e) => StopPlayback();
@@ -5163,6 +5232,11 @@ public partial class MainWindow : FluentWindow
             _lastOutputDeviceEventKind,
             _lastOutputDeviceEventEndpointId);
     }
+
+    // Отчёт формируется только по явному действию пользователя для clipboard. Он не включает
+    // путь, название, исполнителя или другие данные текущего трека.
+    internal string BuildAudioDiagnosticsReport() =>
+        AudioDiagnosticsReportFormatter.Format(UpdateChecker.GetCurrentVersion(), GetOutputDeviceRuntimeStatus());
 
     private string? TryGetActiveOutputEndpointId()
     {

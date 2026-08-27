@@ -84,6 +84,37 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     }
 
     [Fact]
+    public void TryLoad_NewerSchemaVersion_PreservesNestedFutureAudioSettings()
+    {
+        string json = $$"""
+        {
+          "SettingsSchemaVersion": {{AppSettings.CurrentSettingsSchemaVersion + 1}},
+          "TrackLoadTraceEnabled": true,
+          "FutureAudioDiagnostics": { "BufferHistoryDepth": 12, "Enabled": true }
+        }
+        """;
+
+        bool result = TryLoad(json, out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.True(settings!.TrackLoadTraceEnabled);
+        Assert.True(settings.ForwardCompatibleProperties!["FutureAudioDiagnostics"].TryGetProperty("Enabled", out JsonElement enabled));
+        Assert.True(enabled.GetBoolean());
+        Assert.Contains("FutureAudioDiagnostics", JsonSerializer.Serialize(settings));
+    }
+
+    [Fact]
+    public void TryLoad_TrackLoadTraceSetting_IsPreserved()
+    {
+        string json = $"{{\"SettingsSchemaVersion\": {AppSettings.CurrentSettingsSchemaVersion}, \"TrackLoadTraceEnabled\": true}}";
+
+        bool result = TryLoad(json, out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.True(settings!.TrackLoadTraceEnabled);
+    }
+
+    [Fact]
     public void TryLoad_EmptyObject_SucceedsWithDefaults()
     {
         bool result = TryLoad("{}", out AppSettings? settings, out string? failure);
@@ -92,6 +123,7 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
         Assert.NotNull(settings);
         Assert.Null(failure);
         Assert.Equal("Dark", settings!.Theme);
+        Assert.False(settings.TrackLoadTraceEnabled);
         Assert.Equal(AppSettings.CurrentSettingsSchemaVersion, settings.SettingsSchemaVersion);
     }
 

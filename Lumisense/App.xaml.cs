@@ -250,8 +250,10 @@ public partial class App : Application
 
         try
         {
-            if (MainWindow is AudioPlayer.MainWindow window)
-                window.SaveSettingsForUnexpectedTermination();
+            // ProcessExit и Console.CancelKeyPress могут выполняться не в Dispatcher-потоке.
+            // Не обращаемся к MainWindow: используем последний атомарно опубликованный JSON,
+            // чтобы не читать WPF UI-объекты во время разрушения приложения.
+            SettingsManager.SaveLastObservedSnapshot();
         }
         catch (Exception ex)
         {

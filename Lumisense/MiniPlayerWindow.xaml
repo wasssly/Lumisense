@@ -118,10 +118,14 @@
                                             Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="24" />
+                                                <!-- WPF-UI 4 CheckBox имеет более широкую visual geometry,
+                                                     чем прежняя 3.x; 32 DIP предотвращает обрезание glyph
+                                                     у левой границы popup. -->
+                                                <ColumnDefinition Width="32" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
                                             <CheckBox x:Name="ToggleCheckBox" Grid.Column="0"
+                                                      Style="{DynamicResource MiniPlayerSettingsCheckBoxStyle}"
                                                       IsHitTestVisible="False" Focusable="False"
                                                       VerticalAlignment="Center" HorizontalAlignment="Center"
                                                       RenderTransformOrigin="0.5,0.5"
@@ -164,6 +168,55 @@
                                         </Trigger>
                                         <Trigger Property="IsEnabled" Value="False">
                                             <Setter Property="Opacity" Value="0.45" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                    <!-- Popup должен быть компактным, но indicator обязан совпадать с
+                         CheckBox в Settings. Поэтому воспроизводим штатную 20-DIP геометрию
+                         и палитру WPF-UI 4, не наследуя его 120-DIP minimum для пункта с text. -->
+                    <Style x:Key="MiniPlayerSettingsCheckBoxStyle" TargetType="{x:Type CheckBox}">
+                        <Setter Property="Width" Value="20" />
+                        <Setter Property="Height" Value="20" />
+                        <Setter Property="MinWidth" Value="20" />
+                        <Setter Property="MinHeight" Value="20" />
+                        <Setter Property="Padding" Value="0" />
+                        <Setter Property="Background" Value="{DynamicResource CheckBoxBackground}" />
+                        <Setter Property="Foreground" Value="{DynamicResource CheckBoxForeground}" />
+                        <Setter Property="BorderBrush" Value="{DynamicResource CheckBoxBorderBrush}" />
+                        <Setter Property="BorderThickness" Value="1" />
+                        <Setter Property="Border.CornerRadius" Value="{DynamicResource ControlCornerRadius}" />
+                        <Setter Property="OverridesDefaultStyle" Value="True" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="{x:Type CheckBox}">
+                                    <Border x:Name="ControlBorderIconPresenter" Width="20" Height="20"
+                                            Background="{TemplateBinding Background}"
+                                            CornerRadius="{TemplateBinding Border.CornerRadius}">
+                                        <Border x:Name="StrokeBorder"
+                                                BorderBrush="{TemplateBinding BorderBrush}"
+                                                BorderThickness="{TemplateBinding BorderThickness}"
+                                                CornerRadius="{TemplateBinding Border.CornerRadius}">
+                                            <ui:SymbolIcon x:Name="ControlIcon"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"
+                                                           FontSize="13" FontWeight="Bold"
+                                                           Foreground="{DynamicResource CheckBoxCheckGlyphForeground}"
+                                                           Symbol="Checkmark48" Visibility="Collapsed" />
+                                        </Border>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsChecked" Value="True">
+                                            <Setter TargetName="ControlIcon" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="ControlBorderIconPresenter" Property="Background"
+                                                    Value="{DynamicResource CheckBoxCheckBackgroundFillChecked}" />
+                                            <Setter TargetName="StrokeBorder" Property="BorderBrush"
+                                                    Value="{DynamicResource CheckBoxCheckBorderBrush}" />
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter TargetName="ControlBorderIconPresenter" Property="Opacity" Value="0.45" />
                                         </Trigger>
                                     </ControlTemplate.Triggers>
                                 </ControlTemplate>

@@ -15,7 +15,15 @@ internal sealed class TrackLoadPerformanceMeasurement
 
     private readonly Stopwatch _total = Stopwatch.StartNew();
     private readonly List<(string Name, long Milliseconds)> _stages = new();
+    private readonly bool _traceAllLoads;
+    private readonly Action<string> _log;
     private long _lastMarkMilliseconds;
+
+    internal TrackLoadPerformanceMeasurement(bool traceAllLoads = false, Action<string>? log = null)
+    {
+        _traceAllLoads = traceAllLoads;
+        _log = log ?? Logger.Info;
+    }
 
     public void MarkStage(string name)
     {
@@ -28,7 +36,7 @@ internal sealed class TrackLoadPerformanceMeasurement
     {
         long totalMilliseconds = _total.ElapsedMilliseconds;
         bool hasSlowStage = _stages.Any(stage => stage.Milliseconds >= SlowStageMilliseconds);
-        if (totalMilliseconds < SlowTrackLoadMilliseconds && !hasSlowStage) return;
+        if (!_traceAllLoads && totalMilliseconds < SlowTrackLoadMilliseconds && !hasSlowStage) return;
 
         var details = new StringBuilder();
         foreach ((string name, long milliseconds) in _stages)
@@ -37,6 +45,7 @@ internal sealed class TrackLoadPerformanceMeasurement
             details.Append(name).Append('=').Append(milliseconds).Append("ms");
         }
 
-        Logger.Info($"PERF track-load {(succeeded ? "completed" : "failed")}: total={totalMilliseconds}ms; {details}");
+        string category = _traceAllLoads ? "TRACE track-load" : "PERF track-load";
+        _log($"{category} {(succeeded ? "completed" : "failed")}: total={totalMilliseconds}ms; {details}");
     }
 }
