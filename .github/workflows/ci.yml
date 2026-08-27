@@ -46,10 +46,12 @@ jobs:
             Write-Host "No test project exists yet; build validation completed."
             exit 0
           }
+          # xUnit v3 uses Microsoft Testing Platform. The repository global.json selects MTP
+          # for .NET 10 SDKs; it is ignored by the .NET 9 SDK used by existing local workflows.
           foreach ($project in $projects) {
             dotnet restore $project
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-            dotnet test $project --configuration Release --no-restore
+            dotnet test --project $project --configuration Release --no-restore
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
 
