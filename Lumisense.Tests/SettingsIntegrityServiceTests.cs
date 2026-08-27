@@ -56,15 +56,31 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     }
 
     [Fact]
-    public void TryLoad_NewerSchemaVersionThanCurrent_ReturnsFalse()
+    public void TryLoad_NewerSchemaVersionThanCurrent_LoadsKnownProfileAndPreservesAdditiveFields()
     {
-        string json = $"{{\"SettingsSchemaVersion\": {AppSettings.CurrentSettingsSchemaVersion + 1}}}";
+        string json = $$"""
+        {
+          "SettingsSchemaVersion": {{AppSettings.CurrentSettingsSchemaVersion + 1}},
+          "Theme": "Light",
+          "SavedPlaylistFolders": [
+            { "DisplayName": "Music", "Tracks": ["C:\\Music\\track.mp3"] }
+          ],
+          "FutureAdditiveSetting": "must-survive"
+        }
+        """;
 
         bool result = TryLoad(json, out AppSettings? settings, out string? failure);
 
-        Assert.False(result);
-        Assert.Null(settings);
-        Assert.NotNull(failure);
+        Assert.True(result);
+        Assert.NotNull(settings);
+        Assert.Null(failure);
+        Assert.Equal("Light", settings!.Theme);
+        Assert.Single(settings.SavedPlaylistFolders);
+        Assert.Single(settings.SavedPlaylistFolders[0].Tracks);
+        Assert.Equal(AppSettings.CurrentSettingsSchemaVersion, settings.SettingsSchemaVersion);
+        Assert.NotNull(settings.ForwardCompatibleProperties);
+        Assert.Equal("must-survive", settings.ForwardCompatibleProperties!["FutureAdditiveSetting"].GetString());
+        Assert.Contains("FutureAdditiveSetting", JsonSerializer.Serialize(settings));
     }
 
     [Fact]

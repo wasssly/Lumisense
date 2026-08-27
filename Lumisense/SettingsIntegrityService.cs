@@ -114,8 +114,10 @@ internal static class SettingsIntegrityService
             int sourceSchemaVersion = ReadSchemaVersion(document.RootElement);
             if (sourceSchemaVersion > AppSettings.CurrentSettingsSchemaVersion)
             {
-                failure = "Файл настроек создан более новой версией Lumisense.";
-                return false;
+                // Нельзя подменять весь профиль дефолтами только из-за additive-полей более
+                // новой версии. System.Text.Json прочитает известную часть, а extension data
+                // в AppSettings сохранит неизвестные поля при следующей записи.
+                Logger.Warn($"settings.json имеет более новую schema {sourceSchemaVersion}; загружается совместимая часть профиля.");
             }
 
             AppSettings? loaded = JsonSerializer.Deserialize<AppSettings>(json, JsonOptions);

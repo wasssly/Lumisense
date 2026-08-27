@@ -52,10 +52,16 @@ public class HotkeyBinding
 // Настройки приложения, сохраняемые между запусками
 public class AppSettings
 {
-    // Увеличивается только при изменении формата или семантики settings.json. Старые файлы
-    // без поля считаются схемой 0 и мигрируются в SettingsIntegrityService.
-    public const int CurrentSettingsSchemaVersion = 8;
+    // Увеличивается только при несовместимом изменении формата или семантики settings.json.
+    // Переход на WASAPI endpoint-ID и добавленные хоткеи остаются additive: старая 1.18.0
+    // может прочитать основной профиль, поэтому сохраняем совместимую schema 7.
+    public const int CurrentSettingsSchemaVersion = 7;
     public int SettingsSchemaVersion { get; set; } = CurrentSettingsSchemaVersion;
+
+    // Неизвестные поля из более новой сборки не теряются при временном запуске старой или
+    // экспериментальной версии. System.Text.Json вернёт их обратно при следующем Save.
+    [JsonExtensionData]
+    public Dictionary<string, JsonElement>? ForwardCompatibleProperties { get; set; }
 
     // "Dark" / "Light" — выбирается в настройках (страница "Оформление").
     public string Theme { get; set; } = "Dark";
