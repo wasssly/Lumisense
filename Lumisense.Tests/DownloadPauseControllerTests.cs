@@ -68,7 +68,7 @@ public sealed class DownloadPauseControllerTests
         using var controller = new DownloadPauseController();
 
         Task waitTask = controller.WaitIfPausedAsync(CancellationToken.None);
-        Task completed = await Task.WhenAny(waitTask, Task.Delay(HangGuard));
+        Task completed = await Task.WhenAny(waitTask, Task.Delay(HangGuard, TestContext.Current.CancellationToken));
 
         Assert.Same(waitTask, completed);
     }
@@ -82,11 +82,11 @@ public sealed class DownloadPauseControllerTests
         Task waitTask = controller.WaitIfPausedAsync(CancellationToken.None);
 
         // Пока не вызван Resume, ожидание не должно завершаться — победить должен таймер.
-        Task stillWaiting = await Task.WhenAny(waitTask, Task.Delay(TimeSpan.FromMilliseconds(200)));
+        Task stillWaiting = await Task.WhenAny(waitTask, Task.Delay(TimeSpan.FromMilliseconds(200), TestContext.Current.CancellationToken));
         Assert.NotSame(waitTask, stillWaiting);
 
         controller.Resume();
-        Task completedAfterResume = await Task.WhenAny(waitTask, Task.Delay(HangGuard));
+        Task completedAfterResume = await Task.WhenAny(waitTask, Task.Delay(HangGuard, TestContext.Current.CancellationToken));
         Assert.Same(waitTask, completedAfterResume);
     }
 
@@ -100,7 +100,7 @@ public sealed class DownloadPauseControllerTests
         Task waitTask = controller.WaitIfPausedAsync(cts.Token);
         cts.Cancel();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask.WaitAsync(HangGuard));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => waitTask.WaitAsync(HangGuard, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -112,7 +112,7 @@ public sealed class DownloadPauseControllerTests
 
         controller.Dispose();
 
-        Task completed = await Task.WhenAny(waitTask, Task.Delay(HangGuard));
+        Task completed = await Task.WhenAny(waitTask, Task.Delay(HangGuard, TestContext.Current.CancellationToken));
         Assert.Same(waitTask, completed);
     }
 

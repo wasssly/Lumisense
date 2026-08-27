@@ -18,7 +18,7 @@ public sealed class LyricsServiceTests : IDisposable
     {
         Directory.CreateDirectory(_temporaryDirectory);
         string audioPath = Path.Combine(_temporaryDirectory, "track.mp3");
-        await File.WriteAllBytesAsync(audioPath, Array.Empty<byte>());
+        await File.WriteAllBytesAsync(audioPath, Array.Empty<byte>(), TestContext.Current.CancellationToken);
         _managedLrcPath = LyricsService.GetManagedLrcPath(audioPath);
 
         var result = new OnlineLyricsResult(
@@ -47,7 +47,7 @@ public sealed class LyricsServiceTests : IDisposable
     {
         Directory.CreateDirectory(_temporaryDirectory);
         string audioPath = Path.Combine(_temporaryDirectory, "plain-track.mp3");
-        await File.WriteAllBytesAsync(audioPath, Array.Empty<byte>());
+        await File.WriteAllBytesAsync(audioPath, Array.Empty<byte>(), TestContext.Current.CancellationToken);
         _managedTextPath = LyricsService.GetManagedTextPath(audioPath);
 
         var result = new OnlineLyricsResult(
