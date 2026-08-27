@@ -242,6 +242,22 @@ public partial class App : Application
         thread.Start();
     }
 
+    // Вызывается из UI-потока сразу после успешного SettingsManager.Save и перед передачей
+    // управления Update.exe. ProcessExit этого намеренного restart не должен повторно писать
+    // snapshot с фонового потока: это устраняет warning из журнала и не ослабляет аварийное
+    // сохранение для реального сбоя или принудительного завершения.
+    internal void MarkPlannedUpdateRestart()
+    {
+        Volatile.Write(ref _isOrderlyExit, 1);
+    }
+
+    // Если сам запуск Update.exe выбросил исключение и приложение остаётся открытым, возвращаем
+    // аварийный путь сохранения для последующих действительно непредвиденных завершений.
+    internal void CancelPlannedUpdateRestart()
+    {
+        Volatile.Write(ref _isOrderlyExit, 0);
+    }
+
     private void SaveSettingsOnUnexpectedTermination()
     {
         if (Volatile.Read(ref _isOrderlyExit) != 0

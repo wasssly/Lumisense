@@ -10,18 +10,22 @@ using Velopack.Sources;
 namespace AudioPlayer;
 
 /// <summary>
-/// Транспорт обновлений только для прототипа Velopack.
+/// Транспорт обновлений для установки, управляемой Velopack.
 ///
-/// Он намеренно не подключён к текущему UpdateAvailableWindow: пользователи существующей
-/// Inno Setup-установки не имеют Velopack package store и не могут безопасно применить delta.
-/// После проверки переходного релиза UI будет переключаться на этот сервис только тогда,
-/// когда <see cref="IsManagedInstall"/> возвращает true.
+/// Пользователи legacy Inno Setup-установки не имеют Velopack package store и не могут
+/// безопасно применить delta. Поэтому окно обновления использует этот сервис только тогда,
+/// когда <see cref="IsManagedInstall"/> возвращает true; для EXE/MSI сохранён отдельный
+/// проверенный путь с SHA-256.
 /// </summary>
 internal sealed class VelopackUpdateService
 {
     internal const string PackId = "Wasssly.Lumisense";
     internal const string ReleaseChannel = "win";
-    private const string RepositoryUrl = "https://github.com/wasssly/Lumisense";
+    // Публичный latest/download всегда перенаправляет на releases.win.json последнего
+    // опубликованного GitHub Release. SimpleWebSource читает сам feed, поэтому не перебирает
+    // исторические releases без этого файла и не зависит от GitHub Releases API rate limit.
+    // Workflow публикует feed рядом с full/delta package в каждом tag release.
+    internal const string PublicReleaseFeedUrl = "https://github.com/wasssly/Lumisense/releases/latest/download/";
 
 #if VELOPACK_LOCAL_FEED_TEST
     // Этот override существует только в ручном test build. В обычном release код ниже
@@ -59,7 +63,7 @@ internal sealed class VelopackUpdateService
 #endif
 
         usesLocalTestFeed = false;
-        source = new GithubSource(RepositoryUrl, accessToken: null, prerelease: false);
+        source = new SimpleWebSource(PublicReleaseFeedUrl);
         return new UpdateManager(source, options);
     }
 

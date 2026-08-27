@@ -117,6 +117,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         VelopackDiagnosticsTitleText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackDiagnosticsTitle);
         CopyVelopackDiagnosticsButton.Content = LocalizationService.Get(LocalizationKey.UpdateVelopackCopyDiagnostics);
         OpenVelopackLogsButton.Content = LocalizationService.Get(LocalizationKey.UpdateVelopackOpenLogs);
+        VelopackDeliveryText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackPlanDelivery);
+        VelopackTelemetryLimitText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackRuntimeTelemetryLimit);
 
         var lines = new List<string>
         {
@@ -144,6 +146,41 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
 
         VelopackPlanText.Text = string.Join(Environment.NewLine, lines);
+        RefreshVelopackRuntimePresentation();
+    }
+
+    // В отличие от legacy EXE, Velopack SDK публично сообщает только этап и нормализованный
+    // процент. Показываем их вместе с планом и временем, но не вычисляем фиктивные байты,
+    // скорость или фактически выбранный delta/full package.
+    private void RefreshVelopackRuntimePresentation()
+    {
+        if (_velopackDiagnostics is null) return;
+
+        string state = _velopackDiagnostics.Stage switch
+        {
+            VelopackUpdateStage.Downloading => LocalizationService.Get(LocalizationKey.UpdateVelopackRuntimeDownloading),
+            VelopackUpdateStage.Paused => LocalizationService.Get(LocalizationKey.UpdateVelopackRuntimePaused),
+            VelopackUpdateStage.PreparingRestart => LocalizationService.Get(LocalizationKey.UpdateVelopackRuntimePreparing),
+            VelopackUpdateStage.Cancelled => LocalizationService.Get(LocalizationKey.UpdateVelopackRuntimeCancelled),
+            VelopackUpdateStage.Failed => LocalizationService.Get(LocalizationKey.UpdateVelopackRuntimeFailed),
+            _ => LocalizationService.Get(LocalizationKey.UpdateVelopackRuntimeReady)
+        };
+
+        VelopackRuntimeStateText.Text = LocalizationService.FormatKey(LocalizationKey.UpdateVelopackRuntimeState, state);
+        VelopackRuntimeProgressText.Text = _velopackDiagnostics.Stage switch
+        {
+            VelopackUpdateStage.Paused => LocalizationService.FormatKey(
+                LocalizationKey.UpdateVelopackRuntimePausedProgress,
+                _velopackDiagnostics.ProgressPercentage,
+                _velopackDiagnostics.ElapsedText),
+            VelopackUpdateStage.PreparingRestart => LocalizationService.FormatKey(
+                LocalizationKey.UpdateVelopackRuntimePreparedProgress,
+                _velopackDiagnostics.ElapsedText),
+            _ => LocalizationService.FormatKey(
+                LocalizationKey.UpdateVelopackRuntimeProgress,
+                _velopackDiagnostics.ProgressPercentage,
+                _velopackDiagnostics.ElapsedText)
+        };
     }
 
     private void CopyVelopackDiagnosticsButton_Click(object sender, RoutedEventArgs e)
@@ -300,6 +337,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             // безопасна: при продолжении UpdateManager повторно проверяет пакеты и их checksums.
             _isVelopackPaused = true;
             _velopackDiagnostics?.Pause();
+            RefreshVelopackRuntimePresentation();
             PauseDownloadButton.IsEnabled = false;
             PhaseText.Text = LocalizationService.Get(LocalizationKey.UpdateVelopackDownloadPaused);
             PhaseText.Visibility = Visibility.Visible;
@@ -331,6 +369,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             _isVelopackPaused = false;
             _velopackDiagnostics?.Cancelled();
             SetDownloading(false);
+            RefreshVelopackRuntimePresentation();
             return;
         }
 
@@ -447,6 +486,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         _isVelopackDownload = true;
         _velopackDiagnostics?.Start(isResuming);
         SetDownloading(true);
+        VelopackDiagnosticsPanel.IsExpanded = true;
+        RefreshVelopackRuntimePresentation();
         _downloadCts = new CancellationTokenSource();
         var progress = new Progress<int>(UpdateVelopackProgressUi);
 
@@ -457,9 +498,38 @@ public partial class UpdateAvailableWindow : FluentWindow
 
             _velopackDiagnostics?.Prepared();
             SetPreparing(isVelopack: true);
+            RefreshVelopackRuntimePresentation();
+
+            // До ApplyAndRestart синхронно фиксируем уже существующие настройки на UI-потоке.
+            // Если запись не подтверждена, намеренно не закрываем приложение: пользователь не
+            // должен выбирать между применением обновления и сохранностью плейлиста/настроек.
+            if (_settings is null || !SettingsManager.Save(_settings))
+            {
+                _velopackDiagnostics?.Failed(new InvalidOperationException("Settings save before planned update restart was not confirmed."));
+                SetDownloading(false);
+                RefreshVelopackRuntimePresentation();
+                ShowError(LocalizationService.Get(LocalizationKey.UpdateVelopackSaveBeforeRestartFailed));
+                return;
+            }
+
+            // После успешного snapshot это плановый restart, а не аварийное завершение. Ставим
+            // marker до запуска Update.exe, чтобы ProcessExit не пытался второй раз писать JSON
+            // с фонового потока и не выдавал ложное cross-thread предупреждение.
+            App? plannedRestartApp = Application.Current as App;
+            plannedRestartApp?.MarkPlannedUpdateRestart();
+
             // При успехе Update.exe завершит этот процесс, применит уже проверенный package
-            // и запустит Lumisense заново. Если метод бросит исключение, UI останется живым.
-            service.ApplyAndRestart(_result.VelopackUpdate);
+            // и запустит Lumisense заново. Если сам запуск updater бросит исключение, UI
+            // останется живым, а аварийное сохранение снова будет доступно.
+            try
+            {
+                service.ApplyAndRestart(_result.VelopackUpdate);
+            }
+            catch
+            {
+                plannedRestartApp?.CancelPlannedUpdateRestart();
+                throw;
+            }
         }
         catch (OperationCanceledException)
         {
@@ -469,12 +539,14 @@ public partial class UpdateAvailableWindow : FluentWindow
             {
                 _velopackDiagnostics?.Cancelled();
                 SetDownloading(false);
+                RefreshVelopackRuntimePresentation();
             }
         }
         catch (Exception ex)
         {
             _velopackDiagnostics?.Failed(ex);
             SetDownloading(false);
+            RefreshVelopackRuntimePresentation();
             ShowError($"{LocalizationService.Get(LocalizationKey.UpdateVelopackUnavailable)}\n{ex.Message}");
         }
     }
@@ -661,6 +733,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         DownloadProgressBar.IsIndeterminate = false;
         DownloadProgressBar.Value = normalized / 100d;
         _velopackDiagnostics?.Progress(normalized);
+        RefreshVelopackRuntimePresentation();
         PhaseText.Text = LocalizationService.FormatKey(
             LocalizationKey.UpdateVelopackDownloadProgress,
             normalized,

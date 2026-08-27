@@ -32,12 +32,26 @@ public sealed class VelopackUpdatePlan
 /// который пользователь может скопировать. Модуль намеренно не угадывает fallback: SDK 1.2.0
 /// не передаёт выбранный asset, его байты либо причину переключения на full package.
 /// </summary>
+public enum VelopackUpdateStage
+{
+    Ready,
+    Downloading,
+    Paused,
+    PreparingRestart,
+    Cancelled,
+    Failed,
+}
+
 public sealed class VelopackUpdateDiagnostics : IDisposable
 {
     private readonly string _currentVersion;
     private readonly Stopwatch _timer = new();
     private bool _disposed;
-    private int _lastProgress = -1;
+    private int _lastLoggedProgress = -1;
+    private int _progressPercentage;
+
+    public VelopackUpdateStage Stage { get; private set; } = VelopackUpdateStage.Ready;
+    public int ProgressPercentage => _progressPercentage;
 
     public VelopackUpdateDiagnostics(string currentVersion, UpdateInfo update)
     {
@@ -69,10 +83,15 @@ public sealed class VelopackUpdateDiagnostics : IDisposable
     public void Start(bool resumed)
     {
         EnsureActive();
-        if (resumed) _timer.Start(); else _timer.Restart();
-        _lastProgress = -1;
+        // Pause в публичном API реализована отменой. При нажатии «Продолжить» SDK заново
+        // проверяет операцию и не гарантирует сохранение прежней позиции, поэтому не переносим
+        // старый процент как подтверждённый прогресс новой попытки.
+        _timer.Restart();
+        _progressPercentage = 0;
+        _lastLoggedProgress = -1;
+        Stage = VelopackUpdateStage.Downloading;
         Logger.Info(resumed
-            ? $"Velopack download resumed; elapsed={FormatElapsed(_timer.Elapsed)}."
+            ? "Velopack download retry started after pause; the public SDK does not expose a confirmed resume offset."
             : "Velopack download started; the public SDK provides percent only, without transfer bytes or speed.");
     }
 
@@ -80,15 +99,17 @@ public sealed class VelopackUpdateDiagnostics : IDisposable
     {
         if (_disposed) return;
         _timer.Stop();
-        Logger.Info($"Velopack download paused; elapsed={FormatElapsed(_timer.Elapsed)}.");
+        Stage = VelopackUpdateStage.Paused;
+        Logger.Info($"Velopack download paused at {_progressPercentage}%; elapsed={FormatElapsed(_timer.Elapsed)}.");
     }
 
     public void Progress(int percentage)
     {
         if (_disposed) return;
         int value = Math.Clamp(percentage, 0, 100);
-        if (value != 0 && value != 100 && value / 10 == _lastProgress / 10) return;
-        _lastProgress = value;
+        _progressPercentage = value;
+        if (value != 0 && value != 100 && value / 10 == _lastLoggedProgress / 10) return;
+        _lastLoggedProgress = value;
         Logger.Info($"Velopack progress={value}%; elapsed={FormatElapsed(_timer.Elapsed)}.");
     }
 
@@ -96,6 +117,8 @@ public sealed class VelopackUpdateDiagnostics : IDisposable
     {
         if (_disposed) return;
         _timer.Stop();
+        _progressPercentage = 100;
+        Stage = VelopackUpdateStage.PreparingRestart;
         Logger.Info($"Velopack target prepared: {Describe(Plan.FullPackage)}; elapsed={FormatElapsed(_timer.Elapsed)}. " +
                     "The SDK does not disclose whether this full package was reconstructed from delta or downloaded directly.");
     }
@@ -104,13 +127,15 @@ public sealed class VelopackUpdateDiagnostics : IDisposable
     {
         if (_disposed) return;
         _timer.Stop();
-        Logger.Info($"Velopack download cancelled; elapsed={FormatElapsed(_timer.Elapsed)}.");
+        Stage = VelopackUpdateStage.Cancelled;
+        Logger.Info($"Velopack download cancelled at {_progressPercentage}%; elapsed={FormatElapsed(_timer.Elapsed)}.");
     }
 
     public void Failed(Exception exception)
     {
         if (_disposed) return;
         _timer.Stop();
+        Stage = VelopackUpdateStage.Failed;
         Logger.Warn($"Velopack update failed after {FormatElapsed(_timer.Elapsed)}: {exception.GetType().Name}: {exception.Message}");
     }
 
@@ -118,8 +143,11 @@ public sealed class VelopackUpdateDiagnostics : IDisposable
     {
         var report = new StringBuilder();
         report.AppendLine("Lumisense Velopack update diagnostics");
+        report.AppendLine("Delivery: managed Velopack update from the public GitHub Releases feed");
         report.AppendLine($"Current version: {_currentVersion}");
         report.AppendLine($"Target version: {Plan.FullPackage.Version}");
+        report.AppendLine($"State: {Stage}");
+        report.AppendLine($"Progress reported by SDK: {_progressPercentage}%");
         report.AppendLine($"Full package: {Describe(Plan.FullPackage)}");
         if (Plan.HasDeltaPlan)
         {
@@ -132,7 +160,7 @@ public sealed class VelopackUpdateDiagnostics : IDisposable
             report.AppendLine("Plan: no candidate delta package was supplied; a full package is expected.");
         }
 
-        report.AppendLine("Note: this is a pre-download plan. The public Velopack API does not expose the actual transferred file or fallback reason.");
+        report.AppendLine("Note: the public Velopack API does not expose the actual transferred file, transfer bytes, speed, or fallback reason.");
         report.AppendLine($"Elapsed in this dialog: {FormatElapsed(_timer.Elapsed)}");
         return report.ToString();
     }

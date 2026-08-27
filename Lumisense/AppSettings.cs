@@ -136,7 +136,8 @@ public class AppSettings
 
     public bool AlwaysOnTop { get; set; }                  // Держать окно поверх остальных
     public bool RememberVolume { get; set; } = true;       // Запоминать громкость между запусками
-    public double SavedVolume { get; set; } = 0.3;
+    // Только для чистого профиля: существующий SavedVolume из settings.json не перезаписывается.
+    public double SavedVolume { get; set; } = 0.15;
 
     // Линейный ползунок (0..1) сильнее всего меняет громкость на верхнем участке — слух
     // воспринимает громкость логарифмически. При включении позиция переводится в децибелы
@@ -529,7 +530,10 @@ public static class SettingsManager
         return defaults;
     }
 
-    public static void Save(AppSettings settings)
+    // Возвращает false только при неудаче записи. Существующие места, которым не нужно
+    // останавливать сценарий, могут безопасно игнорировать результат; Velopack apply, напротив,
+    // использует его как явный барьер перед плановым перезапуском.
+    public static bool Save(AppSettings settings)
     {
         try
         {
@@ -538,10 +542,12 @@ public static class SettingsManager
             // аварийный обработчик сможет сохранить тот же снимок без чтения WPF-состояния.
             Volatile.Write(ref LastObservedSettingsJson, json);
             WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
+            return true;
         }
         catch (Exception ex)
         {
             Logger.Warn($"Не удалось сохранить settings.json ({SettingsFilePath}): {ex.Message}");
+            return false;
         }
     }
 
