@@ -17,10 +17,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Setup .NET 9
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       - name: Validate project version
         shell: pwsh
@@ -47,7 +47,7 @@ jobs:
             exit 0
           }
           # xUnit v3 uses Microsoft Testing Platform. The repository global.json selects MTP
-          # for .NET 10 SDKs; it is ignored by the .NET 9 SDK used by existing local workflows.
+          # for .NET 10 SDKs, which run this candidate's xUnit v3 tests through MTP.
           foreach ($project in $projects) {
             dotnet restore $project
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

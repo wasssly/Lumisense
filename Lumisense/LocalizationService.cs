@@ -435,7 +435,7 @@ public static class LocalizationService
         ["Полный список версий плеера с GitHub — можно поставить не только последнюю, но и любую другую, в том числе более старую."] = "Full list of player versions from GitHub — you can install not only the latest but any other, including older releases.",
         ["Загружаем список версий…"] = "Loading version list…",
         ["Lumisense — настраиваемый аудиоплеер для Windows 11 в стиле Fluent Design. Он помогает удобно управлять музыкальной библиотекой, настраивать звучание и адаптировать интерфейс под себя — от мини-плеера и горячих клавиш до темы, зависящей от текущей обложки."] = "Lumisense — a customizable audio player for Windows 11 with Fluent Design. It helps you manage your music library, fine-tune sound, and adapt the interface to your needs — from a mini player and hotkeys to a theme that matches the current album art.",
-        ["Собрано на .NET 9, WPF-UI и NAudio."] = "Built on .NET 9, WPF UI and NAudio.",
+        ["Собрано на .NET 10, WPF-UI и NAudio."] = "Built on .NET 10, WPF UI and NAudio.",
         ["Разработчик"] = "Developer",
         ["Открыть папку с логами"] = "Open logs folder",
         ["Пригодится, если плеер упал или повёл себя странно"] = "Useful if the player crashed or behaved strangely.",

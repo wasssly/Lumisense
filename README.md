@@ -70,7 +70,7 @@
 
 ### Требования
 
-Для запуска из исходников потребуется Windows 10 или Windows 11 с поддержкой WPF и .NET 9. Для разработки используйте Visual Studio 2022 с workload **.NET desktop development** и установленным **.NET 9 SDK**.
+Для запуска из исходников потребуется Windows 10 или Windows 11 с поддержкой WPF и .NET 10. Для разработки используйте Visual Studio 2022 с workload **.NET desktop development** и установленным **.NET 10 SDK**.
 
 ### Запуск из исходников
 
@@ -106,7 +106,7 @@
 
 ### Технологический стек
 
-- **.NET 9** и WPF (`net9.0-windows10.0.19041.0`).
+- **.NET 10** и WPF (`net10.0-windows10.0.19041.0`).
 - **[WPF-UI](https://github.com/lepoco/wpfui)** — Fluent-компоненты, `FluentWindow`, Mica-фон и системные элементы интерфейса.
 - **[NAudio](https://github.com/naudio/NAudio)** — декодирование и воспроизведение аудио.
 - **SoundTouch.Net** и локальный Span-based adapter — изменение скорости и тона во время воспроизведения.
@@ -218,7 +218,7 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 
 ### Requirements
 
-Running from source requires Windows 10 or Windows 11 with WPF and .NET 9 support. For development, use Visual Studio 2022 with the **.NET desktop development** workload and an installed **.NET 9 SDK**.
+Running from source requires Windows 10 or Windows 11 with WPF and .NET 10 support. For development, use Visual Studio 2022 with the **.NET desktop development** workload and an installed **.NET 10 SDK**.
 
 ### Running from source
 
@@ -254,7 +254,7 @@ The player can check GitHub Releases for new versions, verifies downloaded insta
 
 ### Technology stack
 
-- **.NET 9** and WPF (`net9.0-windows10.0.19041.0`).
+- **.NET 10** and WPF (`net10.0-windows10.0.19041.0`).
 - **[WPF-UI](https://github.com/lepoco/wpfui)** for Fluent components, `FluentWindow`, the Mica background, and system UI elements.
 - **[NAudio](https://github.com/naudio/NAudio)** for audio decoding and playback.
 - **SoundTouch.Net** with a local Span-based adapter for playback-speed and pitch adjustment.

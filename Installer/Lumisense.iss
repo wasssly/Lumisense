@@ -77,7 +77,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; TargetFramework/RuntimeIdentifier в Lumisense.csproj). Раньше здесь был захардкожен
 ; конкретный путь на диске одного компьютера ("C:\Users\Administrator\..."), из-за чего
 ; сборка ломалась на любой другой машине, включая CI (см. .github/workflows/release.yml).
-Source: "..\Lumisense\bin\Release\net9.0-windows10.0.19041.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\Lumisense\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Иконка отдельно (если не попала в publish)
 Source: "..\Lumisense\Icons\app\lumisense.ico"; DestDir: "{app}"; Flags: ignoreversion

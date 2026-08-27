@@ -66,10 +66,10 @@ jobs:
             -OutputPath "release_notes.md" `
             -Version "${{ steps.ver.outputs.version }}"
 
-      - name: Setup .NET 9
+      - name: Setup .NET 10
         uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with:
-          dotnet-version: "9.0.x"
+          dotnet-version: "10.0.x"
 
       # Тег не должен публиковать регрессию, даже если обычный CI ещё не завершился.
       - name: Restore, build and test before packaging
@@ -108,7 +108,7 @@ jobs:
       - name: Verify published assembly version
         shell: pwsh
         run: |
-          $exe = "Lumisense\bin\Release\net9.0-windows10.0.19041.0\win-x64\publish\Lumisense.exe"
+          $exe = "Lumisense\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish\Lumisense.exe"
           if (-not (Test-Path $exe)) { throw "Published Lumisense.exe was not found." }
           $productVersion = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($exe).ProductVersion
           if ($productVersion -notmatch "^${{ steps.ver.outputs.version }}(?:[+\\-].*)?$") {
@@ -143,7 +143,7 @@ jobs:
           vpk pack `
             --packId Wasssly.Lumisense `
             --packVersion "${{ steps.ver.outputs.version }}" `
-            --packDir "Lumisense\bin\Release\net9.0-windows10.0.19041.0\win-x64\publish" `
+            --packDir "Lumisense\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish" `
             --mainExe Lumisense.exe `
             --runtime win-x64 `
             --channel win `
