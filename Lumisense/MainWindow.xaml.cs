@@ -135,9 +135,8 @@ public partial class MainWindow : FluentWindow
     // чем расчёт закончился — иначе устаревший результат может перезаписать уже показанную
     // форму волны нового трека.
     private CancellationTokenSource? _waveformCts;
-    private CancellationTokenSource? _trackLoadCts;
+    private readonly AudioPlaybackCoordinator _audioPlaybackCoordinator = new();
     private CancellationTokenSource? _replayGainCts;
-    private int _trackLoadGeneration;
     // Сохраняет исходное намерение воспроизведения только на время серии отменяемых Next/Previous.
     // См. LoadAndPlay: промежуточный StopPlayback не должен превратить последний переход в Pause.
     private bool _pendingNavigationAutoPlay;
@@ -4259,14 +4258,20 @@ public partial class MainWindow : FluentWindow
             _pendingNavigationAutoPlay = false;
         }
 
-        var previousLoad = Interlocked.Exchange(ref _trackLoadCts, null);
-        previousLoad?.Cancel();
         var previousGain = Interlocked.Exchange(ref _replayGainCts, null);
         previousGain?.Cancel();
 
-        int generation = Interlocked.Increment(ref _trackLoadGeneration);
-        var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
-        _trackLoadCts = cts;
+        AudioPlaybackCoordinator.LoadOperation operation;
+        try
+        {
+            operation = await _audioPlaybackCoordinator.BeginTrackLoadAsync(_lifetimeCts.Token);
+        }
+        catch (OperationCanceledException)
+        {
+            return;
+        }
+
+        int generation = operation.Generation;
         PreparedTrack? prepared = null;
         Task<PreparedTrack>? preparationTask = null;
         var performance = new TrackLoadPerformanceMeasurement(_settings.TrackLoadTraceEnabled);
@@ -4286,11 +4291,12 @@ public partial class MainWindow : FluentWindow
             double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
             bool traceTrackPreparation = _settings.TrackLoadTraceEnabled;
             preparationTask = PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
-                equalizerEnabled, equalizerGains, playbackSpeed, playbackPitch, traceTrackPreparation, cts.Token);
+                equalizerEnabled, equalizerGains, playbackSpeed, playbackPitch, traceTrackPreparation,
+                operation.CancellationToken);
 
-            await FadeOutBeforeTrackChangeAsync(cts.Token);
+            await FadeOutBeforeTrackChangeAsync(operation.CancellationToken);
             performance.MarkStage("fade-out");
-            if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
+            if (!operation.IsCurrent || _isExiting)
                 return;
 
             try
@@ -4305,8 +4311,8 @@ public partial class MainWindow : FluentWindow
             }
             performance.MarkStage("wait-prepared-audio-and-metadata");
 
-            cts.Token.ThrowIfCancellationRequested();
-            if (generation != Volatile.Read(ref _trackLoadGeneration) || _isExiting)
+            operation.CancellationToken.ThrowIfCancellationRequested();
+            if (!operation.IsCurrent || _isExiting)
                 return;
 
             _audioFile = prepared.AudioFile;
@@ -4423,12 +4429,9 @@ public partial class MainWindow : FluentWindow
                 // быстрые Next/Previous не оставляли файловый handle у устаревшего запроса.
                 FireAndForget(DisposeUnusedPreparedTrackAsync(preparationTask), "DisposeUnusedPreparedTrackAsync");
             }
-            if (ReferenceEquals(_trackLoadCts, cts))
-            {
-                _trackLoadCts = null;
+            if (operation.IsCurrent)
                 _pendingNavigationAutoPlay = false;
-            }
-            cts.Dispose();
+            operation.Dispose();
         }
     }
 
@@ -4891,7 +4894,7 @@ public partial class MainWindow : FluentWindow
         // Сохраняем generation и путь именно того reader, который остановился. Callback
         // приходит с audio thread, а Dispatcher может выполнить его уже после быстрой загрузки
         // следующего трека.
-        int generation = Volatile.Read(ref _trackLoadGeneration);
+        int generation = _audioPlaybackCoordinator.CurrentGeneration;
         string? stoppedPath = _currentTrackPath;
         Exception? playbackError = e.Exception;
         if (_isExiting || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished) return;
@@ -4902,7 +4905,7 @@ public partial class MainWindow : FluentWindow
             {
                 try
                 {
-                    if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) ||
+                    if (_isExiting || generation != _audioPlaybackCoordinator.CurrentGeneration ||
                         !string.Equals(stoppedPath, _currentTrackPath, StringComparison.Ordinal))
                         return;
 
@@ -4998,9 +5001,11 @@ public partial class MainWindow : FluentWindow
             return;
         }
         _playPauseTransitionInProgress = true;
+        AudioPlaybackCoordinator.ExclusiveLease? audioLease = null;
 
         try
         {
+            audioLease = await _audioPlaybackCoordinator.EnterExclusiveAsync(_lifetimeCts.Token);
             if (_isPlaying)
             {
                 IWavePlayer? output = _outputDevice;
@@ -5067,8 +5072,13 @@ public partial class MainWindow : FluentWindow
                 SetTrackUserState(TrackUserState.Playing);
             }
         }
+        catch (OperationCanceledException)
+        {
+            // A track load or application shutdown owns the audio graph at the moment.
+        }
         finally
         {
+            audioLease?.Dispose();
             _playPauseTransitionInProgress = false;
             if (_playPausePendingToggle)
             {
@@ -5532,8 +5542,7 @@ public partial class MainWindow : FluentWindow
         // треками передаёт disposeOnly: true и не трогает новый запрос загрузки.
         if (!disposeOnly)
         {
-            var pendingLoad = Interlocked.Exchange(ref _trackLoadCts, null);
-            pendingLoad?.Cancel();
+            _audioPlaybackCoordinator.CancelCurrentLoad();
             _pendingNavigationAutoPlay = false;
         }
 
@@ -6411,7 +6420,7 @@ public partial class MainWindow : FluentWindow
         // Tempo во время восстановления последнего трека при запуске приложения.
         Dispatcher.BeginInvoke(() =>
         {
-            if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) || _tempoProvider == null)
+            if (_isExiting || generation != _audioPlaybackCoordinator.CurrentGeneration || _tempoProvider == null)
                 return;
 
             ApplyPlaybackRateToCurrentStream();
@@ -6936,7 +6945,7 @@ public partial class MainWindow : FluentWindow
 
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
         _replayGainCts = cts;
-        int generation = Volatile.Read(ref _trackLoadGeneration);
+        int generation = _audioPlaybackCoordinator.CurrentGeneration;
         FireAndForget(RefreshReplayGainAsync(path, generation, cts), "RefreshReplayGainAsync");
     }
 
@@ -6946,7 +6955,7 @@ public partial class MainWindow : FluentWindow
         {
             double gain = await Task.Run(() => ReplayGainReader.GetTrackGainLinear(path), cts.Token);
             cts.Token.ThrowIfCancellationRequested();
-            if (_isExiting || generation != Volatile.Read(ref _trackLoadGeneration) ||
+            if (_isExiting || generation != _audioPlaybackCoordinator.CurrentGeneration ||
                 !string.Equals(path, _currentTrackPath, StringComparison.Ordinal)) return;
 
             _replayGainFactor = gain;
@@ -7348,7 +7357,7 @@ public partial class MainWindow : FluentWindow
         StopFolderWatchers();
         LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         _lifetimeCts.Cancel();
-        _trackLoadCts?.Cancel();
+        _audioPlaybackCoordinator.CancelCurrentLoad();
         _replayGainCts?.Cancel();
         _waveformCts?.Cancel();
         CancelMainWindowLyricsLoad();
@@ -7357,8 +7366,8 @@ public partial class MainWindow : FluentWindow
         // PersistPlaybackAndPlaylistState читает текущую позицию именно из него.
         FlushPlaybackClock();
         PersistPlaybackAndPlaylistState();
-        StopPlayback(disposeOnly: true);
-
+                StopPlayback(disposeOnly: true);
+        _audioPlaybackCoordinator.Dispose();
         // StopPlayback уже освобождает WasapiPlayer и endpoint между треками. Повторный вызов
         // остаётся безопасной подстраховкой для частично инициализированного output при ошибке.
         DisposeOutputDeviceSafely();
