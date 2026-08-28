@@ -1,10 +1,20 @@
-# CLAUDE.md
+# AGENTS.md
 
 ## Project Guidelines
 
 These instructions apply to the entire repository.
 
 Lumisense is a Windows desktop audio player. Keep the existing architecture, behavior, UI style, and project conventions unless the user explicitly asks to change them.
+
+## Project Stack
+
+- Target framework: .NET 10 for Windows.
+- UI: WPF with WPF-UI.
+- Audio: NAudio with WasapiPlayer in shared mode.
+- Tests: xUnit v3 with Microsoft Testing Platform.
+- Updates: Velopack and the existing GitHub release feed.
+
+Do not change the target framework, audio engine, test platform, or update mechanism unless the task explicitly requires it.
 
 ---
 
@@ -225,6 +235,8 @@ When working with WPF:
 
 When changing UI behavior, check both XAML and the corresponding code-behind or view-model logic where applicable.
 
+When changing visible UI behavior, verify both the default state and the relevant interaction states, such as hover, click, drag, disabled, light theme, dark theme, and high-DPI scaling when applicable.
+
 ---
 
 # 5. Async and Threading
@@ -302,6 +314,8 @@ When modifying update or installer functionality:
 - keep update-related code isolated from unrelated functionality.
 
 Do not modify installer configuration unless the task requires it.
+
+When changing update-check behavior, preserve a useful distinction between network errors, invalid release data, unavailable assets, and UI errors while opening update dialogs. Do not report every failure as a GitHub connection problem.
 
 ---
 
@@ -422,6 +436,10 @@ A small task should normally produce a small, focused diff.
 
 ---
 
+For Windows-specific changes, verify the project on Windows when possible. At minimum, run restore, build, and test, and manually check the affected UI or audio behavior.
+
+---
+
 # 11. Before Finishing a Task
 
 Before considering a task complete:
@@ -460,7 +478,7 @@ When instructions conflict, follow this priority:
 1. Explicit user request.
 2. Safety and platform requirements.
 3. Existing project behavior and architecture.
-4. This `CLAUDE.md`.
+4. This `AGENTS.md`.
 5. General coding conventions.
 
 Do not interpret these guidelines as a reason to avoid making requested changes.
