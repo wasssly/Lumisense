@@ -783,6 +783,9 @@
                                         <Slider x:Name="InterfaceScaleSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="85" Maximum="135"
                                                 TickFrequency="5" local:SliderMilestoneMarkers.IsEnabled="True"
                                                 IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                PreviewMouseLeftButtonDown="InterfaceScaleSlider_PreviewMouseLeftButtonDown"
+                                                PreviewMouseMove="InterfaceScaleSlider_PreviewMouseMove"
+                                                PreviewMouseLeftButtonUp="InterfaceScaleSlider_PreviewMouseLeftButtonUp"
                                                 ValueChanged="InterfaceScaleSlider_ValueChanged" />
                                     </Grid>
                                     <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"

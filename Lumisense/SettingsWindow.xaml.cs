@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Globalization;
 using System.Linq;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -1278,6 +1279,27 @@ public partial class SettingsWindow : FluentWindow
 
     public void ApplyAccessibilityPreferences() => AccessibilityPreferences.ApplyToWindow(this, _settings);
 
+    private void InterfaceScaleSlider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Клик по дорожке обрабатывается самим Slider через IsMoveToPointEnabled.
+        // Если событие пришло от Thumb, блокируем только захват бегунка и тем самым
+        // оставляем изменение масштаба по точечному клику без перетаскивания.
+        if (e.OriginalSource is Thumb)
+            e.Handled = true;
+    }
+
+    private void InterfaceScaleSlider_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (e.LeftButton == MouseButtonState.Pressed && e.OriginalSource is Thumb)
+            e.Handled = true;
+    }
+
+    private void InterfaceScaleSlider_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Slider slider && slider.IsMouseCaptured)
+            slider.ReleaseMouseCapture();
+    }
+
     private void InterfaceScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_isInitializing || InterfaceScaleValueText is null) return;
@@ -2516,7 +2538,7 @@ public partial class SettingsWindow : FluentWindow
 
     private void NavItem_Checked(object sender, RoutedEventArgs e)
     {
-        // Полное имя типа, а не using System.Windows.Controls, чтобы не столкнуть RadioButton
+        // Полное имя типа, а не using System.Windows.Controls.Primitives; чтобы не столкнуть RadioButton
         // с Wpf.Ui.Controls.Button, который в этом файле используется как просто "Button".
         if (sender is not System.Windows.Controls.RadioButton { Tag: string key }) return;
 

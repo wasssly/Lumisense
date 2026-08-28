@@ -899,7 +899,7 @@
                 <ui:Button x:Name="PlaybackControlButton" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="0,0,4,0"
                            Click="PlaybackControlButton_Click" MouseWheel="PlaybackControlButton_MouseWheel"
-                           ToolTip="Скорость воспроизведения">
+                           ToolTip="Скорость и тон воспроизведения">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconSpeed" Size="15" />
                     </ui:Button.Icon>
@@ -943,7 +943,8 @@
                     </Grid.RowDefinitions>
                     <Grid Grid.Row="0" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
+                            <!-- Фиксированная ширина подписки выравнивает оба слайдера. -->
+                            <ColumnDefinition Width="64" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
@@ -963,7 +964,8 @@
                                         </Grid>
                     <Grid Grid.Row="1">
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
+                            <!-- Та же ширина, что и у строки скорости. -->
+                            <ColumnDefinition Width="64" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>

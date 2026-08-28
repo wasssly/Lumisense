@@ -270,9 +270,10 @@
                      мыши надёжнее нативного Thumb. Двойной клик возвращает 1.00× и 0 st. -->
                 <MenuItem StaysOpenOnClick="True" Focusable="False">
                     <MenuItem.Header>
-                        <Grid Width="220">
+                        <Grid Width="240">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
+                                <!-- Запас по ширине предотвращает обрезание подписи «Скорость». -->
+                                <ColumnDefinition Width="76" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
@@ -292,9 +293,10 @@
                 </MenuItem>
                 <MenuItem StaysOpenOnClick="True" Focusable="False">
                     <MenuItem.Header>
-                        <Grid Width="220">
+                        <Grid Width="240">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
+                                <!-- Та же ширина, что и у строки скорости. -->
+                                <ColumnDefinition Width="76" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>

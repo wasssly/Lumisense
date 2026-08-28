@@ -201,8 +201,18 @@ public partial class MiniPlayerWindow : Window
     {
         TitleText.Text = title;
         _lastArtist = artist;
-        _lastCurrentSeconds = 0;
-        _lastTotalSeconds = 0;
+
+        // RaiseTrackInfoChanged сначала публикует PlaybackSnapshot, а затем уведомляет UI о
+        // новой обложке и тексте. Поэтому к этому моменту snapshot уже может содержать
+        // восстановленные position/duration. Не затираем их нулями: иначе при включённом
+        // контуре прогресса первый визуальный кадр будет пустым, а следующий тик резко
+        // перескочит к сохранённой позиции.
+        var snapshot = _mainWindow.PlaybackState.Current;
+        bool snapshotBelongsToTrack = snapshot.DurationSeconds > 0
+            && string.Equals(snapshot.Title, title, StringComparison.Ordinal)
+            && string.Equals(snapshot.Artist, artist, StringComparison.Ordinal);
+        _lastCurrentSeconds = snapshotBelongsToTrack ? snapshot.PositionSeconds : 0;
+        _lastTotalSeconds = snapshotBelongsToTrack ? snapshot.DurationSeconds : 0;
         UpdateSecondaryLine();
 
         // Новый трек — новое избранное-состояние; если сейчас выбран режим "Избранное" (см.
@@ -228,9 +238,9 @@ public partial class MiniPlayerWindow : Window
             ArtIcon.Visibility = art is null ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        // Новый трек не должен коротко показывать заполнение от предыдущей композиции, пока
-        // не придёт первый тик ProgressChanged для новой.
-        UpdateArtworkProgressOutline(0.0);
+        // Если snapshot уже содержит восстановленные position/duration, сразу рисуем их.
+        // Нулевой прогресс нужен только для действительно нового трека без готовой длительности.
+        UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
         UpdateTitleMarquee();
     }
 
