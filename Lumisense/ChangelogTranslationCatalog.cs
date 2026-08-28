@@ -434,6 +434,20 @@ internal static class ChangelogTranslationCatalog
             ["Эквалайзер корректно обрабатывает файлы с низкой частотой дискретизации: полосы выше частоты Найквиста не создают недопустимые фильтры"] = "Equalizer correctly handles files with low sample rates: bands above the Nyquist frequency do not create invalid filters",
             ["При отключении сохранённого устройства вывода плеер безопасно восстанавливает воспроизведение через системное устройство Windows и показывает причину восстановления в диагностике"] = "When the saved output device disconnects, playback safely recovers through the Windows system device and shows the recovery reason in diagnostics",
             ["Исправлена загрузка settings.json с более новой schema: совместимые данные восстанавливаются, а незнакомые дополнительные поля сохраняются"] = "Loading settings.json with a newer schema is fixed: compatible data is restored and unknown additive fields are preserved",
+
+            // Release 1.20.0
+            ["При временном исчезновении USB- или Bluetooth-устройства вывода плеер использует системное устройство по умолчанию для текущего воспроизведения, но не перезаписывает сохранённый идентификатор выбранного устройства. После восстановления подключения исходное устройство может быть автоматически восстановлено"] = "When a USB or Bluetooth audio output device temporarily disappears, the player uses the system default device for current playback without overwriting the saved identifier of the selected device. After reconnection, the original device may be restored automatically",
+            ["Для слайдера масштаба интерфейса запрещено перетаскивание бегунка, при этом клик по дорожке по-прежнему изменяет значение"] = "Dragging the interface-scale slider thumb is disabled, while clicking the track still changes its value",
+            ["Обновление через Velopack теперь показывает подробную информацию о скачивании и подготовке обновления, включая ход выполнения и текущий этап"] = "Velopack updates now show detailed download and preparation information, including progress and the current stage",
+            ["Введена единая блокировка проверки обновлений, предотвращающая запуск нескольких параллельных update-check при повторных нажатиях"] = "Added a single update-check lock that prevents multiple parallel update checks from repeated clicks",
+            ["Выровнено отображение слайдеров скорости и тона в главном окне и контекстном меню мини-плеера; уточнена подсказка кнопки управления скоростью"] = "Aligned the speed and pitch sliders in the main window and mini-player context menu; clarified the playback-control button tooltip",
+            ["Устранено предупреждение WFO0003, связанное с устаревшими DPI-настройками в app.manifest"] = "Fixed the WFO0003 warning related to obsolete DPI settings in app.manifest",
+            ["Исправлено начальное отображение прогресса вокруг обложки в мини-плеере: при запуске сразу показываются сохранённые позиция и длительность трека без краткого пустого кольца и скачка прогресса"] = "Fixed the initial artwork progress display in the mini-player so the saved track position and duration appear immediately without a brief empty ring or progress jump",
+            ["Удалены устаревшие DPI-настройки из app.manifest; теперь они задаются через свойство проекта ApplicationHighDpiMode"] = "Removed obsolete DPI settings from app.manifest; they are now configured through the ApplicationHighDpiMode project property",
+
+            // Release 1.20.1
+            ["Исправлена ошибка открытия окна информации о выбранной версии обновления, из-за которой плеер мог завершиться с ошибкой XamlParseException"] = "Fixed an error when opening the update information window for a selected version that could cause the player to close with a XamlParseException",
+            ["Добавлен резервный стиль заголовка секции для окна обновления и защита от необработанного исключения при его открытии"] = "Added a fallback section-title style for the update window and protection against an unhandled exception when opening it",
         };
 
     public static string Translate(string source, bool isEnglish)

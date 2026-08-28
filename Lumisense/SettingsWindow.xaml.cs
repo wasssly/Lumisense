@@ -975,7 +975,17 @@ public partial class SettingsWindow : FluentWindow
             ReleaseNotes = item.Release.ReleaseNotes,
         };
 
-        new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
+        try
+        {
+            new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Не удалось открыть окно информации об обновлении: {ex}");
+            LocalizedMessageBox.Show(this,
+                "Не удалось открыть информацию об обновлении. Подробности записаны в журнал.",
+                "Ошибка обновления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
     }
 
     // ---------- Поиск настроек ----------
