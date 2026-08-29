@@ -29,17 +29,34 @@ internal sealed class AudioPlaybackCoordinator : IDisposable
         CancellationTokenSource? previous = Interlocked.Exchange(ref _activeLoadCts, loadCts);
         // Освобождается владельцем предыдущего LoadOperation после завершения его finally.
         // До этого момента его CancellationToken может использоваться отменённой задачей.
-        previous?.Cancel();
+        try
+        {
+            previous?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Предыдущая операция уже завершилась и освободила свой CTS.
+        }
 
         int generation = Interlocked.Increment(ref _generation);
+        bool gateAcquired = false;
         try
         {
             await _audioGate.WaitAsync(loadCts.Token);
+            gateAcquired = true;
             loadCts.Token.ThrowIfCancellationRequested();
-            return new LoadOperation(this, loadCts, generation);
+
+            LoadOperation operation = new(this, loadCts, generation);
+            gateAcquired = false;
+            return operation;
         }
         catch
         {
+            if (gateAcquired)
+            {
+                _audioGate.Release();
+            }
+
             Interlocked.CompareExchange(ref _activeLoadCts, null, loadCts);
             loadCts.Dispose();
             throw;
@@ -68,7 +85,14 @@ internal sealed class AudioPlaybackCoordinator : IDisposable
 
         // CTS освобождается самим LoadOperation после выхода из его finally-блока.
         // Здесь только запрашиваем отмену, чтобы не обнулить токен у ещё выполняющейся задачи.
-        Volatile.Read(ref _activeLoadCts)?.Cancel();
+        try
+        {
+            Volatile.Read(ref _activeLoadCts)?.Cancel();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Активная операция завершилась одновременно с закрытием coordinator.
+        }
     }
 
     private void Complete(ExclusiveLease lease)
