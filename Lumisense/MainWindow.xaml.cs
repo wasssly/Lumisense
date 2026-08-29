@@ -54,6 +54,7 @@ public partial class MainWindow : FluentWindow
     // системные звуки и другие приложения всегда могут пользоваться тем же устройством.
     private IWavePlayer? _outputDevice;
     private MMDevice? _outputEndpoint;
+    private readonly AudioOutputSession _audioOutputSession = new();
     private AudioOutputEndpointMonitor? _audioOutputEndpointMonitor;
     private bool _isOutputRecoveryInProgress;
     private string? _activeOutputFormat;
@@ -136,37 +137,12 @@ public partial class MainWindow : FluentWindow
     // форму волны нового трека.
     private CancellationTokenSource? _waveformCts;
     private readonly AudioPlaybackCoordinator _audioPlaybackCoordinator = new();
+    private readonly TrackPreparationService _trackPreparationService = new();
     private CancellationTokenSource? _replayGainCts;
     // Сохраняет исходное намерение воспроизведения только на время серии отменяемых Next/Previous.
     // См. LoadAndPlay: промежуточный StopPlayback не должен превратить последний переход в Pause.
     private bool _pendingNavigationAutoPlay;
     private readonly CancellationTokenSource _lifetimeCts = new();
-
-    private sealed class PreparedTrack : IDisposable
-    {
-        public required AudioFileReader AudioFile { get; init; }
-        public required SoundTouchSampleProvider TempoProvider { get; init; }
-        public required EqualizerSampleProvider Equalizer { get; init; }
-        public required double ReplayGainFactor { get; init; }
-        public string? Title { get; init; }
-        public string? Artist { get; init; }
-        public BitmapImage? AlbumArt { get; init; }
-        public byte[]? AlbumArtBytes { get; init; }
-        public string? AlbumArtMimeType { get; init; }
-        public TagLib.PictureType? AlbumArtPictureType { get; init; }
-
-        public void Dispose()
-        {
-            try
-            {
-                AudioFile.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("Не удалось освободить подготовленный AudioFileReader", ex);
-            }
-        }
-    }
 
     // Прослушивание засчитывается только когда реально воспроизведена (не перемотана) как
     // минимум половина композиции — см. ProgressTimer_Tick. Сбрасывается на каждую новую
@@ -309,6 +285,7 @@ public partial class MainWindow : FluentWindow
     private bool _isSyncingProgressFromPlayback;
     private bool _isPlaying;
     private TrackUserState _trackUserState = TrackUserState.NoTrack;
+    private readonly PlaybackStateMachine _playbackStateMachine = new();
     private bool _isShuffleEnabled;
 
     // История треков, сыгранных в режиме шафла: "Вперёд" на новом месте генерирует
@@ -4290,8 +4267,17 @@ public partial class MainWindow : FluentWindow
             double playbackSpeed = _runtimePlaybackRate;
             double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
             bool traceTrackPreparation = _settings.TrackLoadTraceEnabled;
-            preparationTask = PrepareTrackAsync(filePath, volumeSliderValue, replayGainEnabled,
-                equalizerEnabled, equalizerGains, playbackSpeed, playbackPitch, traceTrackPreparation,
+            preparationTask = _trackPreparationService.PrepareAsync(
+                filePath,
+                new TrackPreparationOptions(
+                    volumeSliderValue,
+                    _settings.UseLogarithmicVolume,
+                    replayGainEnabled,
+                    equalizerEnabled,
+                    equalizerGains,
+                    playbackSpeed,
+                    playbackPitch,
+                    traceTrackPreparation),
                 operation.CancellationToken);
 
             await FadeOutBeforeTrackChangeAsync(operation.CancellationToken);
@@ -4451,114 +4437,6 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    private async Task<PreparedTrack> PrepareTrackAsync(string filePath, double volumeSliderValue,
-        bool replayGainEnabled, bool equalizerEnabled, double[] equalizerGains, double playbackSpeed,
-        double playbackPitch, bool traceTrackPreparation, CancellationToken token)
-    {
-        return await Task.Run(() =>
-        {
-            token.ThrowIfCancellationRequested();
-            var replayGainTimer = Stopwatch.StartNew();
-            double replayGain = replayGainEnabled ? ReplayGainReader.GetTrackGainLinear(filePath) : 1.0;
-            long replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
-            token.ThrowIfCancellationRequested();
-
-            string? title = null;
-            string? artist = null;
-            BitmapImage? albumArt = null;
-            byte[]? albumArtBytes = null;
-            string? albumArtMimeType = null;
-            TagLib.PictureType? albumArtPictureType = null;
-            long tagsMilliseconds = 0;
-            long embeddedArtworkMilliseconds = 0;
-            bool tagsMeasured = false;
-
-            var tagsTimer = Stopwatch.StartNew();
-            try
-            {
-                using var tagFile = TagLib.File.Create(filePath);
-                title = tagFile.Tag.Title;
-                artist = !string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer)
-                    ? tagFile.Tag.FirstPerformer
-                    : tagFile.Tag.FirstAlbumArtist;
-                tagsMilliseconds = tagsTimer.ElapsedMilliseconds;
-                tagsMeasured = true;
-                if (tagFile.Tag.Pictures.Length > 0)
-                {
-                    var artworkTimer = Stopwatch.StartNew();
-                    var picture = tagFile.Tag.Pictures[0];
-                    albumArtBytes = picture.Data.Data;
-                    using var stream = new MemoryStream(albumArtBytes);
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                    bitmap.DecodePixelWidth = ArtworkDisplayDecodePixelWidth;
-                    bitmap.StreamSource = stream;
-                    bitmap.EndInit();
-                    bitmap.Freeze();
-                    albumArt = bitmap;
-                    albumArtMimeType = string.IsNullOrWhiteSpace(picture.MimeType) ? "image/jpeg" : picture.MimeType;
-                    albumArtPictureType = picture.Type;
-                    embeddedArtworkMilliseconds = artworkTimer.ElapsedMilliseconds;
-                }
-            }
-            catch (Exception ex)
-            {
-                if (!tagsMeasured)
-                    tagsMilliseconds = tagsTimer.ElapsedMilliseconds;
-                Logger.Warn($"Не удалось прочитать metadata или embedded cover для файла {filePath}: {ex.Message}");
-            }
-
-            token.ThrowIfCancellationRequested();
-            var audioFileReaderTimer = Stopwatch.StartNew();
-            var reader = new AudioFileReader(filePath)
-            {
-                Volume = ComputeAudioFileVolume(volumeSliderValue, replayGain)
-            };
-            long audioFileReaderMilliseconds = audioFileReaderTimer.ElapsedMilliseconds;
-            try
-            {
-                var tempoProvider = new SoundTouchSampleProvider(reader)
-                {
-                    Tempo = Math.Clamp(playbackSpeed, 0.5, 2.0),
-                    PitchSemiTones = Math.Clamp(playbackPitch, -12.0, 12.0)
-                };
-                var equalizer = new EqualizerSampleProvider(tempoProvider) { Enabled = equalizerEnabled };
-                for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
-                    equalizer.SetBandGain(band, band < equalizerGains.Length ? equalizerGains[band] : 0);
-
-                if (traceTrackPreparation)
-                {
-                    Logger.Info(TrackPreparationTraceFormatter.Format(
-                        replayGainMilliseconds,
-                        tagsMilliseconds,
-                        embeddedArtworkMilliseconds,
-                        audioFileReaderMilliseconds));
-                }
-
-                return new PreparedTrack
-                {
-                    AudioFile = reader,
-                    TempoProvider = tempoProvider,
-                    Equalizer = equalizer,
-                    ReplayGainFactor = replayGain,
-                    Title = title,
-                    Artist = artist,
-                    AlbumArt = albumArt,
-                    AlbumArtBytes = albumArtBytes,
-                    AlbumArtMimeType = albumArtMimeType,
-                    AlbumArtPictureType = albumArtPictureType
-                };
-            }
-            catch
-            {
-                reader.Dispose();
-                throw;
-            }
-        }, token).ConfigureAwait(true);
-    }
-
-
     // ---------- Подсветка и автопрокрутка плейлиста к текущему треку ----------
     // Подсветка — обычное выделение строки (ListViewItem.IsSelected), то же самое, что при
     // клике мышью. При смене трека просто выставляем SelectedItem нужной строки, разворачиваем
@@ -4647,7 +4525,13 @@ public partial class MainWindow : FluentWindow
 
     private void SetTrackUserState(TrackUserState state)
     {
-        _trackUserState = state;
+        if (!_playbackStateMachine.TryTransitionTo(state))
+        {
+            Logger.Warn($"Недопустимый переход состояния воспроизведения: {_playbackStateMachine.Current} → {state}");
+            return;
+        }
+
+        _trackUserState = _playbackStateMachine.Current;
         UpdateTrackUserStatePresentation();
     }
 
@@ -5036,7 +4920,9 @@ public partial class MainWindow : FluentWindow
 
                 _isPlaying = false;
                 PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
-                StopProgressTimerAndAnimation();
+                // UI-таймер оставляем активным во время паузы: он продолжает подтверждать
+                // текущую позицию и не оставляет устаревшее время до следующего Play.
+                FlushPlaybackClock();
                 _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
                 RaisePlaybackStateChanged(false);
                 SetTrackUserState(TrackUserState.Paused);
@@ -5202,7 +5088,7 @@ public partial class MainWindow : FluentWindow
     {
         EnsureOutputDevice();
         var initializationTimer = Stopwatch.StartNew();
-        _outputDevice!.Init(new SampleToWaveProvider(sampleProvider));
+        _audioOutputSession.Initialize(sampleProvider);
         initializationTimer.Stop();
         _lastOutputInitializationMilliseconds = initializationTimer.ElapsedMilliseconds;
 
@@ -5254,6 +5140,7 @@ public partial class MainWindow : FluentWindow
                 .WithCategory(AudioStreamCategory.Media)
                 .WithMmcssThreadPriority("Audio")
                 .Build();
+            _audioOutputSession.Attach(_outputDevice!, _outputEndpoint!);
         }
         catch
         {
@@ -5491,7 +5378,7 @@ public partial class MainWindow : FluentWindow
     {
         try
         {
-            _outputDevice?.Dispose();
+            _audioOutputSession.Release();
         }
         catch (Exception ex)
         {
@@ -5500,18 +5387,7 @@ public partial class MainWindow : FluentWindow
         finally
         {
             _outputDevice = null;
-            try
-            {
-                _outputEndpoint?.Dispose();
-            }
-            catch (Exception ex)
-            {
-                Logger.Error("Не удалось освободить WASAPI endpoint", ex);
-            }
-            finally
-            {
-                _outputEndpoint = null;
-            }
+            _outputEndpoint = null;
         }
     }
 
@@ -6831,13 +6707,11 @@ public partial class MainWindow : FluentWindow
 
         RaiseProgressChanged(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
 
-        // Статистика (см. StatisticsWindow) — суммарное время реального воспроизведения.
-        // Таймер тикает только пока трек действительно играет (см. _progressTimer.Start/Stop
-        // вокруг пауз), поэтому просто прибавляем длину тика — надёжнее, чем пытаться
-        // вычислить это позже из длительностей файлов и счётчиков (перемотка/повторы и так
-        // никак не искажают эту сумму, ведь она набирается по факту реального проигрывания).
-        // DispatcherTimer используется только для отображения. Статистика начисляется через
-        // Stopwatch в StopProgressTimerAndAnimation, поэтому задержки UI не искажают время.
+        // UI-таймер продолжает синхронизировать позицию и в паузе, но статистика и отметка
+        // прослушивания относятся только к фактическому воспроизведению.
+        if (!_isPlaying)
+            return;
+
         _settings.StatsStartedAt ??= DateTime.Now.ToString("O");
 
         // Прослушивание засчитывается не при старте трека, а только когда реально
