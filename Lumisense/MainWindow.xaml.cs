@@ -55,13 +55,14 @@ public partial class MainWindow : FluentWindow
     private IWavePlayer? _outputDevice;
     private MMDevice? _outputEndpoint;
     private readonly AudioOutputSession _audioOutputSession = new();
+    private readonly AudioOutputDeviceManager _audioOutputDeviceManager = new();
+    private readonly AudioOutputRecoveryCoordinator _audioOutputRecoveryCoordinator = new();
+    private readonly AudioOutputRecoveryService _audioOutputRecoveryService;
     private AudioOutputEndpointMonitor? _audioOutputEndpointMonitor;
-    private bool _isOutputRecoveryInProgress;
     private string? _activeOutputFormat;
     private long _lastOutputInitializationMilliseconds;
     private int _outputRecoveryCount;
     private string? _lastOutputRecoveryReason;
-    private DateTime _lastOutputRecoveryStartedUtc;
     private int _meaningfulOutputDeviceEventCount;
     private AudioOutputEndpointChangeKind? _lastOutputDeviceEventKind;
     private string? _lastOutputDeviceEventEndpointId;
@@ -514,6 +515,8 @@ public partial class MainWindow : FluentWindow
 
     public MainWindow()
     {
+        _audioOutputRecoveryService = new(
+            _audioOutputRecoveryCoordinator, TimeSpan.FromMilliseconds(OutputRecoveryCooldownMilliseconds));
         InitializeComponent();
         AccessibilityPreferences.ApplyToWindow(this, _settings);
         LyricsPanelSyncedList.ItemsSource = _mainWindowSyncedLyrics;
@@ -5076,7 +5079,7 @@ public partial class MainWindow : FluentWindow
             string failedDeviceKey = _settings.OutputDeviceName;
             DisposeOutputDeviceSafely();
             _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
-            _outputDeviceFallbackFrom = failedDeviceKey;
+            _outputDeviceFallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(failedDeviceKey, usedFallback: true);
             _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
             _ = SettingsManager.SaveAsync(_settings);
             _settingsWindow?.RefreshOutputDeviceSelection();
@@ -5104,7 +5107,7 @@ public partial class MainWindow : FluentWindow
         if (_outputDevice is not null) return;
 
         string requestedDeviceKey = _settings.OutputDeviceName;
-        AudioOutputDeviceService.ResolvedEndpoint resolved = AudioOutputDeviceService.ResolveEndpoint(requestedDeviceKey);
+        AudioOutputDeviceService.ResolvedEndpoint resolved = _audioOutputDeviceManager.Resolve(requestedDeviceKey);
         _activeOutputFormat = null;
         _lastOutputInitializationMilliseconds = 0;
         _activeOutputDeviceKey = resolved.ActiveDeviceKey;
@@ -5121,7 +5124,8 @@ public partial class MainWindow : FluentWindow
         {
             _outputDeviceFallbackFrom = null;
             // Старые WaveOut-ключи мигрируют к устойчивому endpoint-ID без сброса выбора.
-            if (!string.Equals(requestedDeviceKey, resolved.ActiveDeviceKey, StringComparison.Ordinal))
+            if (AudioOutputDeviceManager.ShouldPersistActiveKey(
+                    requestedDeviceKey, resolved.ActiveDeviceKey, resolved.UsedFallback))
             {
                 _settings.OutputDeviceName = resolved.ActiveDeviceKey;
                 _ = SettingsManager.SaveAsync(_settings);
@@ -5240,7 +5244,7 @@ public partial class MainWindow : FluentWindow
         if (e.Kind != AudioOutputEndpointChangeKind.DevicePropertiesChanged && _settingsWindow?.IsLoaded == true)
             _settingsWindow.RefreshOutputDeviceSelection();
 
-        if (_outputDevice is null || _isOutputRecoveryInProgress ||
+        if (_outputDevice is null || _audioOutputRecoveryCoordinator.IsInProgress ||
             e.Kind == AudioOutputEndpointChangeKind.DevicePropertiesChanged)
             return;
 
@@ -5289,12 +5293,13 @@ public partial class MainWindow : FluentWindow
     private void SystemDefaultEndpointDebounceTimer_Tick(object? sender, EventArgs e)
     {
         _systemDefaultEndpointDebounceTimer.Stop();
-        if (_isExiting || _outputDevice is null || _isOutputRecoveryInProgress)
+        if (_isExiting || _outputDevice is null || _audioOutputRecoveryCoordinator.IsInProgress)
             return;
 
         DateTime now = DateTime.UtcNow;
-        double elapsedSinceRecovery = (now - _lastOutputRecoveryStartedUtc).TotalMilliseconds;
-        if (_lastOutputRecoveryStartedUtc != DateTime.MinValue && elapsedSinceRecovery < OutputRecoveryCooldownMilliseconds)
+        DateTime lastRecoveryStartedUtc = _audioOutputRecoveryCoordinator.LastStartedUtc;
+        double elapsedSinceRecovery = (now - lastRecoveryStartedUtc).TotalMilliseconds;
+        if (lastRecoveryStartedUtc != DateTime.MinValue && elapsedSinceRecovery < OutputRecoveryCooldownMilliseconds)
         {
             // Endpoint notifications часто приходят пачкой. Не теряем последнее default-событие,
             // если recovery ещё stabilizes, а ждём окончание уже действующего cooldown.
@@ -5329,49 +5334,64 @@ public partial class MainWindow : FluentWindow
             Logger.Warn($"Восстановление WASAPI после события endpoint: {error.Message}");
         else
             Logger.Error("Ошибка устройства вывода; выполняется восстановление через системное устройство", error);
-        if (_isOutputRecoveryInProgress || _isExiting) return;
+        if (_isExiting) return;
 
         DateTime now = DateTime.UtcNow;
-        if (_lastOutputRecoveryStartedUtc != DateTime.MinValue &&
-            (now - _lastOutputRecoveryStartedUtc).TotalMilliseconds < OutputRecoveryCooldownMilliseconds)
-        {
-            Logger.Warn("Повторное восстановление WASAPI пропущено: предыдущее ещё стабилизирует вывод.");
-            return;
-        }
+        OutputRecoveryReason reason = expectedDeviceEvent
+            ? OutputRecoveryReason.EndpointUnavailable
+            : OutputRecoveryReason.PlaybackFailure;
+        var request = new OutputRecoveryRequest(
+            reason, error.Message, resumePlayback, expectedDeviceEvent);
+        OutputRecoveryExecutionResult execution = _audioOutputRecoveryService.Execute(
+            request,
+            now,
+            CapturePlaybackRecoverySnapshot,
+            ExecutePlaybackRecovery,
+            out OutputRecoveryDecision decision);
 
-        string? currentPath = _currentTrackPath;
-        TimeSpan position = _audioFile?.CurrentTime ?? TimeSpan.Zero;
-        if (string.IsNullOrWhiteSpace(currentPath) || !File.Exists(currentPath))
+        if (!execution.Started)
+            return;
+
+        SetTrackUserState(TrackUserState.Loading);
+        _outputRecoveryCount = execution.RecoveryCount;
+        _lastOutputRecoveryReason = expectedDeviceEvent
+            ? error.Message
+            : "Ошибка WASAPI при инициализации или воспроизведении";
+        if (!execution.Completed)
         {
             StopPlayback();
             DisposeOutputDeviceSafely();
             SetTrackUserState(TrackUserState.Error);
-            return;
         }
+    }
 
-        _isOutputRecoveryInProgress = true;
-        _lastOutputRecoveryStartedUtc = now;
-        _outputRecoveryCount++;
-        _lastOutputRecoveryReason = expectedDeviceEvent
-            ? error.Message
-            : "Ошибка WASAPI при инициализации или воспроизведении";
-        try
-        {
-            StopPlayback(disposeOnly: true);
-            string failedDeviceKey = _settings.OutputDeviceName;
-            DisposeOutputDeviceSafely();
-            _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
-            _outputDeviceFallbackFrom = failedDeviceKey;
-            _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
-            _ = SettingsManager.SaveAsync(_settings);
-            _settingsWindow?.RefreshOutputDeviceSelection();
-            LoadAndPlay(currentPath, autoPlay: resumePlayback, startPosition: position,
-                changeOrigin: TrackChangeOrigin.Automatic);
-        }
-        finally
-        {
-            _isOutputRecoveryInProgress = false;
-        }
+    private PlaybackRecoverySnapshot? CapturePlaybackRecoverySnapshot()
+    {
+        string? currentPath = _currentTrackPath;
+        if (string.IsNullOrWhiteSpace(currentPath) || !File.Exists(currentPath))
+            return null;
+
+        return new PlaybackRecoverySnapshot(
+            currentPath,
+            _audioFile?.CurrentTime ?? TimeSpan.Zero,
+            _isPlaying,
+            _settings.OutputDeviceName,
+            TryGetActiveOutputEndpointId());
+    }
+
+    private void ExecutePlaybackRecovery(PlaybackRecoverySnapshot snapshot)
+    {
+        StopPlayback(disposeOnly: true);
+        string failedDeviceKey = snapshot.SavedDeviceKey ?? string.Empty;
+        DisposeOutputDeviceSafely();
+        _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
+        _outputDeviceFallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(
+            failedDeviceKey, usedFallback: true);
+        _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
+        _ = SettingsManager.SaveAsync(_settings);
+        _settingsWindow?.RefreshOutputDeviceSelection();
+        LoadAndPlay(snapshot.TrackPath, autoPlay: snapshot.WasPlaying,
+            startPosition: snapshot.Position, changeOrigin: TrackChangeOrigin.Automatic);
     }
 
     private void DisposeOutputDeviceSafely()
