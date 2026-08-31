@@ -65,12 +65,8 @@ internal sealed class TrackPreparationService
         CancellationToken token)
     {
         token.ThrowIfCancellationRequested();
-        var replayGainTimer = Stopwatch.StartNew();
-        double replayGain = options.ReplayGainEnabled
-            ? ReplayGainReader.GetTrackGainLinear(filePath)
-            : 1.0;
-        long replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
-        token.ThrowIfCancellationRequested();
+        long replayGainMilliseconds = 0;
+        double replayGain = 1.0;
 
         string? title = null;
         string? artist = null;
@@ -86,6 +82,12 @@ internal sealed class TrackPreparationService
         try
         {
             using var tagFile = TagLib.File.Create(filePath);
+            if (options.ReplayGainEnabled)
+            {
+                var replayGainTimer = Stopwatch.StartNew();
+                replayGain = ReplayGainReader.GetTrackGainLinear(tagFile.Tag);
+                replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
+            }
             title = tagFile.Tag.Title;
             artist = !string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer)
                 ? tagFile.Tag.FirstPerformer
@@ -129,6 +131,7 @@ internal sealed class TrackPreparationService
         long audioFileReaderMilliseconds = audioFileReaderTimer.ElapsedMilliseconds;
         try
         {
+            var pipelineTimer = Stopwatch.StartNew();
             var tempoProvider = new SoundTouchSampleProvider(reader)
             {
                 Tempo = Math.Clamp(options.PlaybackSpeed, 0.5, 2.0),
@@ -140,6 +143,7 @@ internal sealed class TrackPreparationService
             };
             for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
                 equalizer.SetBandGain(band, band < options.EqualizerGains.Length ? options.EqualizerGains[band] : 0);
+            long pipelineMilliseconds = pipelineTimer.ElapsedMilliseconds;
 
             if (options.TraceEnabled)
             {
@@ -147,7 +151,8 @@ internal sealed class TrackPreparationService
                     replayGainMilliseconds,
                     tagsMilliseconds,
                     embeddedArtworkMilliseconds,
-                    audioFileReaderMilliseconds));
+                    audioFileReaderMilliseconds,
+                    pipelineMilliseconds));
             }
 
             return new PreparedTrack

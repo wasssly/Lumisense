@@ -1,4 +1,6 @@
 using Lumisense;
+using System;
+using System.Linq;
 using NAudio.Wave;
 using Xunit;
 
@@ -6,6 +8,27 @@ namespace Lumisense.Tests;
 
 public sealed class EqualizerSampleProviderTests
 {
+    [Fact]
+    public void BypassTransition_IsFiniteAndConvergesToDrySignal()
+    {
+        var source = new TestSampleProvider(
+            WaveFormat.CreateIeeeFloatWaveFormat(48000, 1),
+            Enumerable.Repeat(0.25f, 4096).ToArray());
+        var provider = new EqualizerSampleProvider(source) { Enabled = true };
+        provider.SetBandGain(4, 12.0);
+
+        var warmup = new float[2048];
+        provider.Read(warmup);
+        Assert.All(warmup, sample => Assert.True(float.IsFinite(sample)));
+
+        provider.Enabled = false;
+        var output = new float[2048];
+        provider.Read(output);
+
+        Assert.All(output, sample => Assert.True(float.IsFinite(sample)));
+        Assert.InRange(output[^1], 0.249f, 0.251f);
+    }
+
     [Fact]
     public void LowSampleRateSource_SkipsBandAtNyquistWithoutBreakingPlayback()
     {

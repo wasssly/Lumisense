@@ -20,8 +20,19 @@ public static class ReplayGainReader
         try
         {
             using var file = TagLib.File.Create(filePath);
+            return GetTrackGainLinear(file.Tag);
+        }
+        catch
+        {
+            return 1.0;
+        }
+    }
 
-            double gainDb = file.Tag.ReplayGainTrackGain;
+    internal static double GetTrackGainLinear(TagLib.Tag tag)
+    {
+        try
+        {
+            double gainDb = tag.ReplayGainTrackGain;
             if (double.IsNaN(gainDb)) return 1.0;
 
             double linear = System.Math.Pow(10.0, gainDb / 20.0);
@@ -32,7 +43,7 @@ public static class ReplayGainReader
             // сильнее, чем вообще без ReplayGain. Peak — уже линейное значение (доля от полной
             // шкалы, обычно ~0.1–1.1, не дБ), поэтому единственная защита здесь — не позволить
             // linear * peak превысить 1.0.
-            double peak = file.Tag.ReplayGainTrackPeak;
+            double peak = tag.ReplayGainTrackPeak;
             if (!double.IsNaN(peak) && peak > 0)
                 linear = System.Math.Min(linear, 1.0 / peak);
 

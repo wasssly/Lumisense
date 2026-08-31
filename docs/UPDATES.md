@@ -31,7 +31,7 @@ Lumisense публикует готовые файлы на странице [Gi
 
 ### Переход на MSI и компактные обновления
 
-MSI не является обязательным обновлением EXE-установки. В актуальной EXE-копии откройте проверку обновлений и выберите переход на компактные обновления, либо скачайте versioned MSI со страницы release. Перед запуском MSI закройте Lumisense и будьте готовы подтвердить запрос UAC.
+MSI не является обязательным обновлением EXE-установки. В актуальной EXE-копии откройте проверку обновлений и выберите переход на компактные обновления, либо скачайте versioned MSI со страницы release. Перед запуском MSI закройте Lumisense и будьте готовы подтвердить запрос UAC. В окне перехода Lumisense можно выбрать, создавать ли ярлык на рабочем столе; выбор сохраняется и применяется после установки и при последующих Velopack-обновлениях. Сам MSI Velopack остаётся штатным one-click-установщиком без отдельной страницы задач.
 
 После установки из MSI приложение получает последующие обновления через Velopack. Updater сам выбирает подходящий delta package или full package по фактическому состоянию локальной установки и опубликованному feed. Delta используется не всегда: если нужной базы нет, пакет не подходит или полный вариант надёжнее, будет скачан full package. В окне обновления Lumisense отображает доступную диагностику фактического плана.
 
@@ -69,7 +69,7 @@ The internal Velopack `PackageId` remains `Wasssly.Lumisense` even though public
 
 ### Moving to MSI and compact updates
 
-The MSI is not a required update for an EXE installation. In an up-to-date EXE copy, open the update check and choose the move to compact updates, or download the versioned MSI from the release page. Close Lumisense before starting the MSI and be ready to approve the UAC prompt.
+The MSI is not a required update for an EXE installation. In an up-to-date EXE copy, open the update check and choose the move to compact updates, or download the versioned MSI from the release page. Close Lumisense before starting the MSI and be ready to approve the UAC prompt. The Lumisense migration/update window lets you choose whether to create a desktop shortcut; the choice is saved and applied after installation and during later Velopack updates. The Velopack MSI itself remains the standard one-click installer without a separate tasks page.
 
 After an MSI installation, the application receives later updates through Velopack. The updater selects a suitable delta package or full package based on the actual local installation state and the published feed. Delta is not guaranteed: if the required base is unavailable, the package is unsuitable, or full is safer, the full package is downloaded. Lumisense exposes available diagnostics for the actual plan in its update window.
 

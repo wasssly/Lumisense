@@ -1,3 +1,5 @@
+using System;
+using System.Threading;
 using NAudio.Dsp;
 using NAudio.Wave;
 
@@ -6,26 +8,31 @@ namespace Lumisense;
 // N-полосный графический эквалайзер поверх ISampleProvider на BiQuadFilter.PeakingEQ.
 // У каждой полосы отдельный фильтр на каждый канал — BiQuadFilter хранит состояние по
 // предыдущим сэмплам, гонять оба канала через один и тот же фильтр нельзя, звук исказится.
-// При Enabled=false сэмплы отдаются как есть, без единого лишнего вычисления.
 public sealed class EqualizerSampleProvider : ISampleProvider
 {
-    // 10 стандартных ISO-частот, как в большинстве плееров/ресиверов с 10-полосным EQ
     public static readonly int[] BandFrequencies = { 31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000 };
 
     public const double MinGainDb = -12.0;
     public const double MaxGainDb = 12.0;
 
-    // Q фильтра — 0.9 типично для графического (не параметрического) EQ: соседние полосы
-    // плавно перекрываются, а не звучат отдельными "провалами"
     private const double Bandwidth = 0.9;
+    private const double BypassTransitionMilliseconds = 8.0;
 
     private readonly ISampleProvider _source;
     private readonly int _channels;
-    private readonly BiQuadFilter[][] _filters; // [band][channel]
+    private readonly BiQuadFilter[][] _filters;
     private readonly bool[] _bandSupportedBySource;
     private readonly double[] _gainsDb;
+    private int _targetEnabled;
+    private float _wetMix;
 
-    public bool Enabled { get; set; }
+    // Переключение не обрывает sample stream: target меняется на UI-потоке, а audio thread
+    // плавно доводит wet mix до нового значения за несколько миллисекунд.
+    public bool Enabled
+    {
+        get => Volatile.Read(ref _targetEnabled) != 0;
+        set => Interlocked.Exchange(ref _targetEnabled, value ? 1 : 0);
+    }
 
     public WaveFormat WaveFormat => _source.WaveFormat;
 
@@ -40,9 +47,6 @@ public sealed class EqualizerSampleProvider : ISampleProvider
 
         for (int band = 0; band < BandFrequencies.Length; band++)
         {
-            // NAudio 3 проверяет centreFrequency строго: она должна быть МЕНЬШЕ Nyquist.
-            // У 32-kHz материала полоса 16 kHz равна Nyquist и раньше падала ещё при
-            // создании EQ, даже если пользовательский gain был нулевым.
             _bandSupportedBySource[band] = BandFrequencies[band] < _source.WaveFormat.SampleRate / 2.0;
             if (!_bandSupportedBySource[band])
             {
@@ -59,17 +63,12 @@ public sealed class EqualizerSampleProvider : ISampleProvider
     private BiQuadFilter MakeFilter(int band, double gainDb) =>
         BiQuadFilter.PeakingEQ(_source.WaveFormat.SampleRate, BandFrequencies[band], (float)Bandwidth, (float)gainDb);
 
-    // Гейн одной полосы в дБ, обрезается до [-12; 12]; пересчитывает фильтры на лету,
-    // без перезапуска трека
     public void SetBandGain(int band, double gainDb)
     {
         if (band < 0 || band >= BandFrequencies.Length) return;
 
         gainDb = Math.Clamp(gainDb, MinGainDb, MaxGainDb);
         _gainsDb[band] = gainDb;
-
-        // Сохраняем настройку, чтобы при следующем совместимом треке она применилась, но
-        // не строим недопустимый фильтр для полосы на/выше Nyquist текущего источника.
         if (!_bandSupportedBySource[band]) return;
 
         for (int channel = 0; channel < _channels; channel++)
@@ -81,22 +80,34 @@ public sealed class EqualizerSampleProvider : ISampleProvider
     public int Read(Span<float> buffer)
     {
         int samplesRead = _source.Read(buffer);
-        if (!Enabled) return samplesRead;
+        if (samplesRead == 0) return 0;
+
+        float target = Volatile.Read(ref _targetEnabled) != 0 ? 1f : 0f;
+        float mix = _wetMix;
+        float step = 1f / Math.Max(1f,
+            (float)(_source.WaveFormat.SampleRate * (BypassTransitionMilliseconds / 1000.0)));
 
         for (int n = 0; n < samplesRead; n++)
         {
+            float dry = buffer[n];
+            float wet = dry;
             int channel = n % _channels;
-            float sample = buffer[n];
 
             for (int band = 0; band < _filters.Length; band++)
             {
                 if (_bandSupportedBySource[band])
-                    sample = _filters[band][channel].Transform(sample);
+                    wet = _filters[band][channel].Transform(wet);
             }
 
-            buffer[n] = sample;
+            if (mix < target)
+                mix = Math.Min(target, mix + step);
+            else if (mix > target)
+                mix = Math.Max(target, mix - step);
+
+            buffer[n] = dry + (wet - dry) * mix;
         }
 
+        _wetMix = mix;
         return samplesRead;
     }
 }

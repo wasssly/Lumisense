@@ -308,8 +308,9 @@ public partial class MainWindow : FluentWindow
     private readonly ObservableCollection<QueueDisplayItem> _queueDisplayItems = new();
     private readonly ObservableCollection<PlaylistTrackRow> _unavailableFileRows = new();
 
-    // "Колода" для шаффла без повторов (см. GetNextShuffleTrack) — активна только когда
-    // включена настройка Settings.UseImprovedShuffle.
+    // Общая колода history-aware shuffle. Она используется и обычным shuffle, и
+    // режимом UseImprovedShuffle; разница между режимами сохраняется в настройках/UI,
+    // а выбор следующего трека теперь не допускает раздражающих повторов.
     private List<string> _shuffleBag = new();
     private bool _isMiniMode;
 
@@ -5728,18 +5729,8 @@ public partial class MainWindow : FluentWindow
 
     private string GetRandomTrack(List<string> activeTracks, string? excludePath)
     {
-        if (activeTracks.Count <= 1) return activeTracks[0];
-
-        // У плейлиста могут быть несколько ссылок на один и тот же файл. Старый do/while в
-        // таком случае мог бесконечно искать отличный от текущего путь. Сначала строим
-        // допустимый набор и только затем выбираем из него, сохраняя именно обычный
-        // случайный режим (это не «шаффл без повторов» и не использует _shuffleBag).
-        var candidates = activeTracks
-            .Where(path => !string.Equals(path, excludePath, StringComparison.OrdinalIgnoreCase))
-            .ToList();
-        if (candidates.Count == 0) return activeTracks[0];
-
-        return candidates[_random.Next(candidates.Count)];
+        return ShuffleBagSelector.TakeNext(_shuffleBag, activeTracks, excludePath, _random)
+            ?? throw new InvalidOperationException("Не удалось выбрать следующий трек из пустого плейлиста.");
     }
 
     private void StartStandardShuffleSession(string currentPath)
@@ -5749,49 +5740,15 @@ public partial class MainWindow : FluentWindow
         _shuffleHistory.Clear();
         _shuffleHistory.Add(currentPath);
         _shuffleHistoryIndex = 0;
+        _shuffleBag.Clear();
     }
 
-    // ---------- Шаффл без повторов (Settings.UseImprovedShuffle) ----------
-    // "Колода" (bag shuffle) вместо чисто случайного выбора на каждом шаге: тасуем весь активный
-    // плейлист один раз и идём по нему по порядку — так каждый трек играет ровно один раз,
-    // прежде чем что-то повторится. Первый трек новой колоды не должен совпасть с последним
-    // треком предыдущей, иначе один и тот же трек мог бы прозвучать дважды подряд на стыке.
+    // Обычный shuffle и UseImprovedShuffle используют одну и ту же безопасную колоду.
+    // Это исключает повтор до завершения цикла и не допускает повтора текущего трека
+    // на границе новой колоды. Различия режима сохраняются на уровне настроек и UI.
     private string GetNextShuffleTrack(List<string> activeTracks, string? excludePath)
     {
-        if (!_settings.UseImprovedShuffle)
-            return GetRandomTrack(activeTracks, excludePath);
-
-        if (activeTracks.Count <= 1) return activeTracks[0];
-
-        // Убираем из колоды треки, которых уже нет в активном плейлисте (сняли галочку с
-        // папки, удалили файл и т.п.)
-        _shuffleBag.RemoveAll(t => !activeTracks.Contains(t));
-
-        if (_shuffleBag.Count == 0)
-        {
-            _shuffleBag = new List<string>(activeTracks);
-            ShuffleInPlace(_shuffleBag);
-
-            if (excludePath != null && _shuffleBag.Count > 1 && _shuffleBag[0] == excludePath)
-            {
-                int swapIndex = _random.Next(1, _shuffleBag.Count);
-                (_shuffleBag[0], _shuffleBag[swapIndex]) = (_shuffleBag[swapIndex], _shuffleBag[0]);
-            }
-        }
-
-        var next = _shuffleBag[0];
-        _shuffleBag.RemoveAt(0);
-        return next;
-    }
-
-    // Классическая тасовка Фишера-Йейтса — равновероятная случайная перестановка списка на месте.
-    private void ShuffleInPlace(List<string> list)
-    {
-        for (int i = list.Count - 1; i > 0; i--)
-        {
-            int j = _random.Next(i + 1);
-            (list[i], list[j]) = (list[j], list[i]);
-        }
+        return GetRandomTrack(activeTracks, excludePath);
     }
 
     // Двигается по уже накопленной истории шафла на shift (-1 — назад, +1 — вперёд) и

@@ -150,6 +150,7 @@ jobs:
             --outputDir VelopackReleases `
             --packTitle Lumisense `
             --packAuthors wasssly `
+            --shortcuts StartMenuRoot `
             --icon "Lumisense\Icons\app\lumisense.ico" `
             --releaseNotes release_notes.md `
             --noPortable true `

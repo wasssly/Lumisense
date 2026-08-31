@@ -63,6 +63,8 @@ public static class LocalizationKey
     public const string UpdateMsiMigrationLaunching = "update.msiMigration.launching";
     public const string UpdateMsiMigrationUnavailable = "update.msiMigration.unavailable";
     public const string UpdateMsiMigrationDownloadFailed = "update.msiMigration.downloadFailed";
+    public const string UpdateDesktopShortcutLabel = "update.desktopShortcut.label";
+    public const string UpdateDesktopShortcutHint = "update.desktopShortcut.hint";
     public const string UpdateDownloadCancel = "update.download.cancel";
     public const string UpdateDownloadCancelling = "update.download.cancelling";
     public const string UpdateDownloadPause = "update.download.pause";
@@ -207,6 +209,8 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateMsiMigrationLaunching] = "Запуск MSI-установщика…",
         [LocalizationKey.UpdateMsiMigrationUnavailable] = "В этом релизе нет проверенного MSI-пакета. Используйте обычный EXE-установщик или откройте релиз на GitHub.",
         [LocalizationKey.UpdateMsiMigrationDownloadFailed] = "Не удалось полностью скачать MSI из-за временного сетевого сбоя. Проверьте подключение и повторите попытку.",
+        [LocalizationKey.UpdateDesktopShortcutLabel] = "Создать ярлык Lumisense на рабочем столе",
+        [LocalizationKey.UpdateDesktopShortcutHint] = "Выбор сохраняется и используется при последующих обновлениях MSI/Velopack.",
         [LocalizationKey.UpdateDownloadCancel] = "Отменить загрузку",
         [LocalizationKey.UpdateDownloadCancelling] = "Отмена загрузки…",
         [LocalizationKey.UpdateDownloadPause] = "Приостановить",
@@ -350,6 +354,8 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateMsiMigrationLaunching] = "Launching the MSI installer…",
         [LocalizationKey.UpdateMsiMigrationUnavailable] = "This release has no verified MSI package. Use the standard EXE installer or open the release on GitHub.",
         [LocalizationKey.UpdateMsiMigrationDownloadFailed] = "The MSI could not be downloaded completely because of a temporary network error. Check your connection and try again.",
+        [LocalizationKey.UpdateDesktopShortcutLabel] = "Create a Lumisense desktop shortcut",
+        [LocalizationKey.UpdateDesktopShortcutHint] = "This choice is saved and used for subsequent MSI/Velopack updates.",
         [LocalizationKey.UpdateDownloadCancel] = "Cancel download",
         [LocalizationKey.UpdateDownloadCancelling] = "Cancelling download…",
         [LocalizationKey.UpdateDownloadPause] = "Pause",

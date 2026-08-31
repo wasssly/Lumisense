@@ -132,9 +132,9 @@ internal static class LegacyIntegrationRepairService
         {
 #pragma warning disable CS0618 // Velopack 1.2.0 exposes this API for explicit repair scenarios.
             var shortcuts = new Shortcuts();
-            shortcuts.CreateShortcutForThisExe(ShortcutLocation.Desktop | ShortcutLocation.StartMenuRoot);
+            shortcuts.CreateShortcutForThisExe(ShortcutLocation.StartMenuRoot);
 #pragma warning restore CS0618
-            Logger.Info("Восстановлены Desktop и Start Menu ярлыки текущей MSI/Velopack-копии после legacy cleanup.");
+            Logger.Info("Восстановлен ярлык Start Menu текущей MSI/Velopack-копии после legacy cleanup; Desktop shortcut сохраняется только по выбору пользователя.");
         }
         catch (Exception ex)
         {

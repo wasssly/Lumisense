@@ -75,6 +75,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Baseline package creation failed.' }
     --channel prototype `
     --packTitle Lumisense `
     --packAuthors wasssly `
+    --shortcuts StartMenuRoot `
     --icon (Join-Path $PSScriptRoot '..\Lumisense\Icons\app\lumisense.ico') `
     --noPortable true `
     --msi true `

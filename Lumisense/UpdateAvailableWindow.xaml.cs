@@ -42,6 +42,7 @@ public partial class UpdateAvailableWindow : FluentWindow
 
         ApplyMigrationPresentation();
         ApplyVelopackDiagnosticsPresentation();
+        ApplyDesktopShortcutPresentation();
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
         Closing += (_, _) =>
         {
@@ -71,6 +72,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     {
         ApplyMigrationPresentation();
         ApplyVelopackDiagnosticsPresentation();
+        ApplyDesktopShortcutPresentation();
         RefreshDownloadControlLabels();
     }
 
@@ -105,6 +107,20 @@ public partial class UpdateAvailableWindow : FluentWindow
             MsiMigrationHintText.Text = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationHint);
             MigrateToMsiButton.Content = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationButton);
         }
+    }
+
+    private void ApplyDesktopShortcutPresentation()
+    {
+        bool isMsiMigration = _isMsiMigrationOnly &&
+                              !string.IsNullOrWhiteSpace(_result.MsiDownloadUrl) &&
+                              !string.IsNullOrWhiteSpace(_result.MsiSha256);
+        bool isVelopackUpdate = !_isMsiMigrationOnly && _result.DeliveryKind == UpdateDeliveryKind.Velopack &&
+                                _result.VelopackUpdate is not null;
+        DesktopShortcutPanel.Visibility = isMsiMigration || isVelopackUpdate
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+        DesktopShortcutCheckBox.Content = LocalizationService.Get(LocalizationKey.UpdateDesktopShortcutLabel);
+        DesktopShortcutHintText.Text = LocalizationService.Get(LocalizationKey.UpdateDesktopShortcutHint);
     }
 
     private void ApplyVelopackDiagnosticsPresentation()
@@ -315,7 +331,10 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
 
         if (_result.DeliveryKind == UpdateDeliveryKind.Velopack)
+        {
+            VelopackMigrationLifecycle.SaveDesktopShortcutPreference(DesktopShortcutCheckBox.IsChecked == true);
             await InstallViaVelopackAsync();
+        }
         else
             await InstallViaExeAsync();
     }
@@ -464,8 +483,9 @@ public partial class UpdateAvailableWindow : FluentWindow
             System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Information,
             System.Windows.MessageBoxResult.No);
-        if (confirmation != System.Windows.MessageBoxResult.Yes) return;
+                if (confirmation != System.Windows.MessageBoxResult.Yes) return;
 
+        VelopackMigrationLifecycle.SaveDesktopShortcutPreference(DesktopShortcutCheckBox.IsChecked == true);
         await DownloadAndLaunchLegacyAssetAsync(isMsi: true);
     }
 

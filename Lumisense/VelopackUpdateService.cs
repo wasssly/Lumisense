@@ -303,7 +303,14 @@ internal static class UpdateMigrationGuard
     /// </summary>
     public static void TryShowFirstRunNotice()
     {
-        if (!IsVelopackManagedInstall() || !VelopackMigrationLifecycle.TryConsumeFirstRunMarker())
+        if (!IsVelopackManagedInstall())
+            return;
+
+        // Выбор ярлыка сохраняется до MSI/Velopack-перезапуска и применяется до уведомления.
+        // Этот вызов выполняется также после обычного Velopack-обновления, когда first-run marker
+        // уже отсутствует, поэтому предпочтение пользователя не теряется между версиями.
+        VelopackMigrationLifecycle.TryApplyPendingDesktopShortcutPreference();
+        if (!VelopackMigrationLifecycle.TryConsumeFirstRunMarker())
             return;
 
         try

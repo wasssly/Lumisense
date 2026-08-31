@@ -104,7 +104,7 @@
             <ContextMenu x:Name="MiniPlayerContextMenu" Opened="MiniPlayerContextMenu_Opened">
                 <ContextMenu.Resources>
                     <!-- Локальный шаблон применяется исключительно к двум переключаемым пунктам.
-                         Используется тот же штатный WPF-UI CheckBox, что и на странице настроек:
+                         Используется тот же размер и геометрия индикатора, что и на странице настроек:
                          размер и геометрия индикатора полностью совпадают. IsChecked принадлежит
                          самому MenuItem, а CheckBox служит только некликабельным отображением. -->
                     <Style x:Key="MiniPlayerToggleMenuItemStyle" TargetType="{x:Type MenuItem}">
@@ -199,17 +199,23 @@
                                                 BorderBrush="{TemplateBinding BorderBrush}"
                                                 BorderThickness="{TemplateBinding BorderThickness}"
                                                 CornerRadius="{TemplateBinding Border.CornerRadius}">
-                                            <ui:SymbolIcon x:Name="ControlIcon"
-                                                           HorizontalAlignment="Center"
-                                                           VerticalAlignment="Center"
-                                                           FontSize="13" FontWeight="Bold"
-                                                           Foreground="{DynamicResource CheckBoxCheckGlyphForeground}"
-                                                           Symbol="Checkmark48" Visibility="Collapsed" />
+                                            <Path x:Name="ControlIcon"
+                                                  Width="10" Height="10"
+                                                  HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  Stretch="None"
+                                                  Stroke="{DynamicResource CheckBoxCheckGlyphForeground}"
+                                                  StrokeThickness="2"
+                                                  StrokeStartLineCap="Round"
+                                                  StrokeEndLineCap="Round"
+                                                  Data="M 1,5 L 4,8 L 9,2"
+                                                  Opacity="0"
+                                                  RenderTransformOrigin="0.5,0.5" />
                                         </Border>
                                     </Border>
                                     <ControlTemplate.Triggers>
                                         <Trigger Property="IsChecked" Value="True">
-                                            <Setter TargetName="ControlIcon" Property="Visibility" Value="Visible" />
+                                            <Setter TargetName="ControlIcon" Property="Opacity" Value="1" />
                                             <Setter TargetName="ControlBorderIconPresenter" Property="Background"
                                                     Value="{DynamicResource CheckBoxCheckBackgroundFillChecked}" />
                                             <Setter TargetName="StrokeBorder" Property="BorderBrush"
