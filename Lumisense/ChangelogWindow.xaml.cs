@@ -8,7 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Окно "Список изменений": список версий слева (поиск + фильтр + сортировка), детали
 // справа — верстаются декларативно через ElementName-биндинг на VersionsListBox.SelectedItem,

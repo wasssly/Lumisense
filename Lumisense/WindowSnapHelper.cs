@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Общая инфраструктура "прилипания к краям экрана" при перетаскивании окна — используется
 // мини-плеером (MiniPlayerWindow, см. AppSettings.MiniPlayerSnapToEdges и перехват WM_MOVING в

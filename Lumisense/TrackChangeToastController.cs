@@ -1,6 +1,6 @@
 using System.Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Координирует переиспользуемое toast-окно и выбор экрана. Политика «показывать ли сейчас»
 // остаётся в MainWindow, потому что зависит от причины смены трека и состояния playback.

@@ -1,6 +1,6 @@
 using System;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 internal enum OutputRecoveryReason
 {

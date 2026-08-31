@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Стабильные ключи для новых и динамических строк. В отличие от Translate("русская фраза"),
 // ключ не меняется при редактуре текста и поэтому не разрывает связь между RU/EN ресурсами.

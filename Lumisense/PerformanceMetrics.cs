@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Локальная диагностика производительности: измеряет длительности операций, но намеренно не
 // сохраняет путь, метаданные трека, текст песни или сетевые ответы. В журнал попадают только

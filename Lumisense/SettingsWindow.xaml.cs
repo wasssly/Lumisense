@@ -14,7 +14,7 @@ using System.Windows.Threading;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 public partial class SettingsWindow : FluentWindow
 {

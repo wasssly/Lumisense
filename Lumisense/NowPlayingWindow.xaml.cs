@@ -14,7 +14,7 @@ using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using System.Windows.Media.Imaging;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 public partial class NowPlayingWindow : Window
 {

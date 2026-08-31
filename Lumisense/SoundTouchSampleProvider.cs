@@ -2,7 +2,7 @@ using System;
 using NAudio.Wave;
 using SoundTouch;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Применяет изменения tempo, pitch и rate из SoundTouch к IEEE-float sample pipeline NAudio 3.

@@ -3,7 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using Microsoft.Win32;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Находит именно историческую Inno Setup-установку Lumisense и запускает её собственный

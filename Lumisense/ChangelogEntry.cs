@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Version и IsCurrent в JSON не хранятся, их выставляет ChangelogLoader.AssignComputedFields
 // (Version — semver по смыслу изменений, IsCurrent — у записи с самой свежей датой)

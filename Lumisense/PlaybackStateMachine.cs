@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Owns the user-visible playback state and rejects impossible state transitions.

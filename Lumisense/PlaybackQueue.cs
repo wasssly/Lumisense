@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Очередь "Играть следующим" — временная вставка треков перед обычным продолжением
 // плейлиста/шаффла (см. MainWindow.ResolveNextTrackPathRespectingQueue). Не меняет сам

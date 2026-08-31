@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text.Json;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Формат файла для переноса настроек плеера на другой компьютер (.lumi) — обычный JSON с
 // другим расширением, тот же подход, что и у settings.json (см. SettingsManager.Load/Save).

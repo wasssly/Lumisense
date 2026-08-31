@@ -3,7 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Своё окно "Свойства" для обложки трека (по образцу TrackPropertiesWindow) — открывается
 // из контекстного меню по правому клику на обложке. Показывает формат, размеры и вес

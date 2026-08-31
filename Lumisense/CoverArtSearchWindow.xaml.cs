@@ -14,7 +14,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Поиск обложки трека в интернете по исполнителю и названию через два открытых API без
 // ключа: iTunes Search и Deezer, запросы параллельно, результаты объединяются в один список.

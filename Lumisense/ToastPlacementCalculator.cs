@@ -1,7 +1,7 @@
 using System.Drawing;
 using System.Runtime.InteropServices;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 internal readonly record struct ToastPlacement(int X, int Y, int Width, int Height);
 

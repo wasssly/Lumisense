@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // image: абсолютный URL / полный путь — как есть, иначе относительный путь внутри папки Changelog.
 // Папка Changelog в установленной версии не существует (changelog.json теперь EmbeddedResource),

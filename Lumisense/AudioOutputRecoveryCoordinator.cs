@@ -1,6 +1,6 @@
 using System;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Guards controlled output recovery against re-entry and repeated recovery during cooldown.

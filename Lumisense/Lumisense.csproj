@@ -10,10 +10,10 @@
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Icons\app\lumisense.ico</ApplicationIcon>
-    <RootNamespace>AudioPlayer</RootNamespace>
+    <RootNamespace>Lumisense</RootNamespace>
     <AssemblyName>Lumisense</AssemblyName>
     <!-- Velopack должен обработать hooks до WPF App; generated App.Main не используется. -->
-    <StartupObject>AudioPlayer.Program</StartupObject>
+    <StartupObject>Lumisense.Program</StartupObject>
     <!-- Базовая версия локальной сборки; release workflow передаёт -p:Version из vX.Y.Z тега. -->
     <Version>1.20.1</Version>
     <InformationalVersion>$(Version)</InformationalVersion>

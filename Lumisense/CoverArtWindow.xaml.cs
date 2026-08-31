@@ -5,7 +5,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Отдельное окно для просмотра обложки трека крупно.
 // Управление: клик приближает картинку ещё сильнее относительно точки клика (можно кликать

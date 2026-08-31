@@ -1,6 +1,6 @@
 using System.IO;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Строка трека для единого виртуализируемого ListView (и обычного плейлиста с группировкой
 // по Folder, и "Избранного" — там Folder указывает на _favoritesFolder ради общего шаблона).

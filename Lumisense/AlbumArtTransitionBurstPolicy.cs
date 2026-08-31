@@ -1,6 +1,6 @@
 using System;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Определяет, нужно ли пропустить следующий slide-переход обложки во время короткой серии

@@ -4,7 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Включает точки дискретных значений только у Slider, которые явно помечены в XAML.

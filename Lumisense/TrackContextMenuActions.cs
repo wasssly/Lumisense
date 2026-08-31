@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Список известных необязательных действий контекстного меню строки трека. «Воспроизвести»
 // намеренно отсутствует: базовое действие всегда доступно, а список настроек не зависит от

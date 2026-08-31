@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Окно "Статистика" — сводка по PlayCountManager (число прослушиваний по пути файла) и
 // AppSettings.TotalListenSeconds (суммарное время реального воспроизведения, копится в

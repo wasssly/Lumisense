@@ -1,7 +1,7 @@
 using System.IO;
 using System.Text;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Отдельный журнал Discord Rich Presence не содержит названий треков или путей к файлам: он
 // предназначен для диагностики IPC, а не для дублирования пользовательских метаданных.

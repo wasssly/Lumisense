@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using NAudio.Wave;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Небольшой измеритель RMS-уровня в выходной цепочке. Он не меняет samples и не влияет на
 // звучание: значение используется только для визуальной реакции Now Playing на музыку.

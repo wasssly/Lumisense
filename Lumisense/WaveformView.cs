@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Полоса воспроизведения в виде формы звука (как у SoundCloud) — альтернатива обычному
 // Slider'у, см. AppSettings.ProgressBarStyle == "Waveform" и MainWindow.ApplyProgressBarStyle.

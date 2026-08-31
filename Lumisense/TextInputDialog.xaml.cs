@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Модальный диалог "введите текст" — сейчас нужен только для названия новой ручной папки
 // плейлиста (MainWindow.CreateFolderMenuItem_Click)

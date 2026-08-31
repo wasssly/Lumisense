@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 internal static class IconResources
 {

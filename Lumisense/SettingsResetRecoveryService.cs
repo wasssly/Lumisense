@@ -4,7 +4,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text.Json;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Локальные точки восстановления, создаваемые только перед явным сбросом пользователя.
 // Это не профиль для передачи: снимок содержит полный settings.json (плейлист, избранное,

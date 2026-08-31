@@ -3,7 +3,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Всплывающее уведомление о смене трека, в углу экрана — см. подробный комментарий в
 // TrackChangeToastWindow.xaml. Единственный экземпляр переиспользуется на каждую смену

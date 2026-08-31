@@ -1,6 +1,6 @@
 using System;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Независимый от WPF/NAudio снимок состояния, достаточный для мини-плеера, Now Playing,
 // интеграций и будущих подписчиков. Обложка и кисти намеренно не входят сюда: это ресурсы

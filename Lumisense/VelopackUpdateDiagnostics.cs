@@ -7,7 +7,7 @@ using System.Text;
 using Velopack;
 using Velopack.Logging;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Данные, которые UpdateManager уже вычислил до загрузки. Это план, а не подтверждение

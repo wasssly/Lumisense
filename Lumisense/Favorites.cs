@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Глобальный список избранного (сердечко у трека), общий для всего приложения, а не для
 // какой-то одной группы PlaylistFolder. Виртуальная группа "Избранное" (MainWindow._favoritesFolder)

@@ -1,7 +1,7 @@
 using NAudio.Dsp;
 using NAudio.Wave;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // N-полосный графический эквалайзер поверх ISampleProvider на BiQuadFilter.PeakingEQ.
 // У каждой полосы отдельный фильтр на каждый канал — BiQuadFilter хранит состояние по

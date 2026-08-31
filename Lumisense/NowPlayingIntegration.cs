@@ -2,7 +2,7 @@ using System.Windows;
 using System.Windows.Interop;
 using Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Интеграция с "Now Playing" в Windows 11 (медиа-виджет на панели задач, блокировка экрана,
 // беспроводные наушники с кнопками) через System Media Transport Controls.

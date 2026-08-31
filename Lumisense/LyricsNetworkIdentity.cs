@@ -1,7 +1,7 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Единый идентификатор для всех сетевых запросов LyricsService. Версия берётся из assembly
 // metadata через UpdateChecker, поэтому release workflow меняет User-Agent автоматически.

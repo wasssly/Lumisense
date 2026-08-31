@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Определяет "вес" строки изменения из changelog (Patch/Minor/Major) по смыслу текста,
 // а не по формальному type (added/changed/fixed/removed) — используется в ChangelogLoader

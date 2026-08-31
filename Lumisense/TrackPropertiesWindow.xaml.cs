@@ -4,7 +4,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Своё окно "Свойства" для трека вместо системного shell-диалога — те же данные
 // (имя, папка, размер, даты) плюс аудио-параметры и обложка, в стиле остальных окон плеера

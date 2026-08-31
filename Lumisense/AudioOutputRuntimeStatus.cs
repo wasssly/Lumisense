@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Единый снимок фактического состояния WASAPI output для Settings и диагностических логов.

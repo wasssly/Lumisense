@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Модальный диалог "доступно обновление". Когда его показывать (тихо на старте только для
 // новой версии или всегда по кнопке в настройках) — решает вызывающая сторона, сам он ничего

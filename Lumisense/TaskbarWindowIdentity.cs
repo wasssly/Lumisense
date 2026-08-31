@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Interop;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Windows группирует кнопки панели задач по AppUserModelID. У основного окна и мини-плеера
 // общий идентификатор приложения, но открытые Settings должны сохранять собственный значок

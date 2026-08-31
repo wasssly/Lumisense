@@ -1,6 +1,6 @@
 using System.Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Обёртка над ChangeItem для UI: помимо текста сразу несёт готовые для биндинга
 // подпись типа, ключ иконки и цвет — см. ChangeTypeCatalog

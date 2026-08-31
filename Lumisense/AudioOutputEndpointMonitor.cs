@@ -2,7 +2,7 @@ using System;
 using System.Threading;
 using NAudio.CoreAudioApi;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 internal enum AudioOutputEndpointChangeKind
 {

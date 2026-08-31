@@ -2,7 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Windows.Data;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Только имя файла, без расширения и пути
 public class FileNameConverter : IValueConverter

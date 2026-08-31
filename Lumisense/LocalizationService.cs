@@ -9,7 +9,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Controls.Primitives;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Локализация интерфейса без изменения существующих XAML-разметок. Все статические русские
 // подписи собраны в словарь, а при создании и смене языка переводятся на уровне визуального

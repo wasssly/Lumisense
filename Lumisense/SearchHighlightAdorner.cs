@@ -4,7 +4,7 @@ using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Временная подсветка вокруг элемента настройки, к которому переходят из результатов поиска
 // (SettingsWindow.SearchResultItem_Click). Полупрозрачный скруглённый прямоугольник,

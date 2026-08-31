@@ -20,7 +20,7 @@ using NAudio.Wave.SampleProviders;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Элемент для отображения в QueueItemsList (см. RefreshQueueUi) — DisplayName только для
 // показа, реальные операции (удаление и т.д.) всегда идут по FilePath.

@@ -1,5 +1,5 @@
 using System.Collections.Generic;
-using AudioPlayer;
+using Lumisense;
 using Xunit;
 
 namespace Lumisense.Tests;

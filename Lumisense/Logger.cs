@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Файловый журнал для локальной диагностики. Он не отправляется по сети, но может быть
 // приложен к issue, поэтому перед записью удаляются персональные сегменты абсолютных путей.

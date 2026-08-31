@@ -2,7 +2,7 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Читает список версий из changelog.json — встроен в сборку как EmbeddedResource
 // (Lumisense.csproj), не лежит рядом с .exe отдельным файлом. Редактировать — в исходниках,
@@ -26,7 +26,7 @@ namespace AudioPlayer;
 // ]
 public static class ChangelogLoader
 {
-    // Ищем ресурс по суффиксу имени, а не по точному "AudioPlayer.Changelog.changelog.json" —
+    // Ищем ресурс по суффиксу имени, а не по точному "Lumisense.Changelog.changelog.json" —
     // так переименование RootNamespace не сломает поиск
     public static List<ChangelogEntry> Load()
     {

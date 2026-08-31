@@ -2,7 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Группа треков в плейлисте — либо папка, добавленная целиком (рекурсивное сканирование),
 // либо набор отдельных файлов ("Отдельные файлы"). Группу можно выключить целиком — треки

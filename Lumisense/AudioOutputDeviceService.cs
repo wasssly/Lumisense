@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using NAudio.CoreAudioApi;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Перечисляет Windows Core Audio render endpoints для WASAPI и хранит их устойчивые endpoint-ID.

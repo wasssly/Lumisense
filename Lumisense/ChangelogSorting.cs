@@ -1,7 +1,7 @@
 using System.Globalization;
 using System.Linq;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Парсит поле "date" из changelog.json (ISO или "12 июля 2026") для сортировки записей.
 // Не дата, а произвольный текст вроде "Первый релиз" — считается DateTime.MinValue,

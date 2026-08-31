@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Решает, можно ли безопасно оставить WPF-приложение работающим после исключения,
 // дошедшего до DispatcherUnhandledException. Политика намеренно консервативна:

@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Чистые правила, по которым Lumisense решает, нужно ли пересоздать fixed-endpoint

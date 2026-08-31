@@ -9,7 +9,7 @@ using System.Xml.Linq;
 using SharpVectors.Converters;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Векторная SVG-иконка: рисует .svg из Icons/svg через SharpVectors, а не геометрию,
 // зашитую в код/XAML. Чтобы поменять иконку — заменить файл и пересобрать. Цвет заливки

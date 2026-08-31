@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Состояние, которое видит пользователь рядом с текущим треком. Это не копия низкоуровневого
 // NAudio PlaybackState: Loading и Error нужны именно для понятного сценария интерфейса.

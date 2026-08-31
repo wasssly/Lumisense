@@ -1,6 +1,6 @@
 using System.Threading;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Serializes operations that replace the active audio graph and cancels superseded track loads.

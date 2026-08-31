@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Одна сохранённая группа плейлиста (папка целиком или набор отдельных файлов) —
 // то, что пишется в settings.json и восстанавливается при следующем запуске

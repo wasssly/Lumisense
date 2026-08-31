@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Нормализует ИМЕНА уже добавленных аудиофайлов, не меняя папку, расширение или содержимое
 // файла. Процесс намеренно двухэтапный: сначала BuildPreview строит полностью проверяемый план,

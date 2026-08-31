@@ -1,7 +1,7 @@
 using System;
 using NAudio.CoreAudioApi;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Isolates endpoint selection decisions from MainWindow.

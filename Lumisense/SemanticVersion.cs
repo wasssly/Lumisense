@@ -3,7 +3,7 @@ using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Минимальная реализация SemVer 2.0 для локальной проверки обновлений. System.Version не
 // поддерживает prerelease/metadata, а строковое сравнение могло предлагать ложное обновление.

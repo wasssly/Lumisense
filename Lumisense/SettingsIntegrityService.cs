@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Централизует загрузку старых settings.json, их нормализацию и резервные копии.
 // Пользовательские данные никогда не должны пропадать из-за одной некорректной строки,

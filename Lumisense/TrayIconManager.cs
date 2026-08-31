@@ -4,7 +4,7 @@ using System.IO;
 using System.Reflection;
 using System.Windows.Forms;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Обёртка над System.Windows.Forms.NotifyIcon — значок в трее при свёрнутом окне,
 // с контекстным меню (воспроизведение, открытие/выход). Отдельный класс, чтобы не тащить

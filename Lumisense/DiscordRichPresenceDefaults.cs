@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Публичный идентификатор приложения Discord Rich Presence для Lumisense. Он не является
 // токеном или секретом: Discord использует его для выбора зарегистрированного приложения при

@@ -1,6 +1,6 @@
 using System.Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Ключи в changelog.json — латиницей в нижнем регистре, ровно как в ChangeItem.Type
 public static class ChangeTypeCatalog

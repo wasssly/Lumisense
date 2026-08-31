@@ -2,7 +2,7 @@ using System;
 using System.Windows;
 using Velopack;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Явная точка входа WPF для Velopack. Run() должен выполняться до создания App и любого UI:

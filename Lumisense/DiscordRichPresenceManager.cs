@@ -1,6 +1,6 @@
 using DiscordRPC;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Изолирует Discord IPC от аудиопотока и WPF: отсутствие Discord, неверный Application ID
 // или ошибка сторонней библиотеки никогда не должны мешать воспроизведению. Rich Presence

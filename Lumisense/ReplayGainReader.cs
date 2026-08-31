@@ -1,4 +1,4 @@
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Читает ReplayGain из тегов файла — REPLAYGAIN_TRACK_GAIN/PEAK, TXXX-фреймы у ID3v2, те же
 // поля у Vorbis Comments/APE и т.д. TagLibSharp сам разбирается, откуда именно их читать, в

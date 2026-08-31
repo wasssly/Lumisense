@@ -3,7 +3,7 @@ using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Централизованные параметры доступности. Масштаб применяется к корневому visual tree
 // каждого окна, а не только к наследуемому FontSize: большая часть интерфейса Lumisense

@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Обёртка над ChangelogEntry для окна списка изменений: сама ChangelogEntry — POCO под JSON,
 // здесь — то, что нужно для UI (типизированные строки, поиск, ключи сортировки)

@@ -3,7 +3,7 @@ using System.IO;
 using Microsoft.Win32;
 using Velopack.Windows;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Repairs autostart and the "Open in Lumisense" context menu before the legacy Inno Setup

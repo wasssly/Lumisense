@@ -3,7 +3,7 @@ using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Owns one initialized audio output and its WASAPI endpoint.

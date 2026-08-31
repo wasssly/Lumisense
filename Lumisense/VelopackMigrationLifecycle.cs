@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Минимальный маркер первого обычного запуска после установки Velopack.

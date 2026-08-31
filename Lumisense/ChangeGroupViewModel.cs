@@ -1,6 +1,6 @@
 using System.Windows.Media;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Группа строк одного типа внутри версии ("Добавлено", "Исправлено" и т.п.)
 public sealed class ChangeGroupViewModel

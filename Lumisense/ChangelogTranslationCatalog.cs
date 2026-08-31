@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Исторические переводы пунктов changelog хранятся отдельно от коротких UI-строк.
 // Источник changelog остаётся русским (Changelog/changelog.json); для RU он показывается

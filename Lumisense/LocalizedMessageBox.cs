@@ -1,6 +1,6 @@
 using System.Windows;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Все системные диалоги проходят через один слой: MessageBox не входит в visual tree,
 // поэтому обычный обход окна не может перевести его текст при открытии.

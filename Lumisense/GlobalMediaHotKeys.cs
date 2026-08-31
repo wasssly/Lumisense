@@ -3,7 +3,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Регистрирует мультимедийные клавиши (Play/Pause, Next, Previous, Stop) как глобальные
 // хоткеи через WinAPI RegisterHotKey — плеер реагирует, даже когда окно свёрнуто или не

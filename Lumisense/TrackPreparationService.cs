@@ -4,7 +4,7 @@ using System.Threading;
 using System.Windows.Media.Imaging;
 using NAudio.Wave;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 internal sealed class PreparedTrack : IDisposable
 {

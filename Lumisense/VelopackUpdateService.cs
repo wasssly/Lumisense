@@ -7,7 +7,7 @@ using Velopack;
 using Velopack.Locators;
 using Velopack.Sources;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 /// <summary>
 /// Транспорт обновлений для установки, управляемой Velopack.

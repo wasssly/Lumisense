@@ -8,7 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Velopack;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 public enum UpdateCheckStatus { UpdateAvailable, MsiMigrationAvailable, UpToDate, Error }
 
@@ -222,7 +222,7 @@ public static class UpdateChecker
         // установщика используется ResponseHeadersRead и отдельный read-idle timeout ниже.
         var client = new HttpClient { Timeout = System.TimeSpan.FromSeconds(30) };
         // GitHub API отклоняет запросы без User-Agent
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Lumisense-AudioPlayer", "1.0"));
+        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Lumisense", "1.0"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }

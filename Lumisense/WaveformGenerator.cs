@@ -3,7 +3,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using NAudio.Wave;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Считает данные для WaveformView (см. AppSettings.ProgressBarStyle == "Waveform") — массив
 // нормализованных (0..1) пиков амплитуды на весь трек, фиксированной длины BucketCount вне

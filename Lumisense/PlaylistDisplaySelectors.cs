@@ -1,7 +1,7 @@
 using System.Windows;
 using System.Windows.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // PlaylistFoldersControl.ItemsSource — плоский список, где вперемешку лежат PlaylistFolder
 // (заголовок папки) и PlaylistTrackRow (строка трека). Селектор выбирает шаблон по типу.

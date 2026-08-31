@@ -7,7 +7,7 @@ using System.Windows.Media.Imaging;
 using Microsoft.Win32;
 using Wpf.Ui.Controls;
 
-namespace AudioPlayer;
+namespace Lumisense;
 
 // Окно редактирования тегов (ID3/Vorbis/MP4 — через TagLib#) — название, исполнитель,
 // альбом, год, номер трека, жанр, комментарий
