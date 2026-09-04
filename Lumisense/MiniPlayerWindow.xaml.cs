@@ -184,6 +184,7 @@ public partial class MiniPlayerWindow : Window
             case WindowSnapHelper.WM_EXITSIZEMOVE:
                 _isDragging = false;
                 break;
+
         }
 
         return IntPtr.Zero;
@@ -363,19 +364,21 @@ public partial class MiniPlayerWindow : Window
     // светлую/тёмную тему в настройках, пока мини-плеер уже открыт.
     public void ApplyThemeLive() => ApplyTheme();
 
-    // Default сохраняет привычную скруглённую квадратную обложку. Vinyl превращает только
-    // сам визуальный слой в круг и добавляет медленное вращение; индикатор прогресса остаётся
-    // отдельным неподвижным слоем поверх, чтобы не терять читаемость позиции трека.
+    // Default сохраняет привычную скруглённую квадратную обложку. Vinyl и StaticCircle
+    // превращают визуальный слой в круг; только Vinyl дополнительно вращается во время
+    // воспроизведения. Индикатор прогресса остаётся отдельным неподвижным слоем под обложкой.
     public void ApplyArtworkStyle()
     {
-        bool vinyl = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal);
-        ArtBorder.CornerRadius = vinyl ? new CornerRadius(21) : new CornerRadius(8);
-        ArtProgressTrack.CornerRadius = vinyl ? new CornerRadius(21) : new CornerRadius(8);
-        ApplyArtworkImageClip(vinyl);
-        ApplyArtworkProgressClip(vinyl);
-        UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
+        string style = _mainWindow.Settings.MiniPlayerArtworkStyle;
+        bool circle = string.Equals(style, "Vinyl", StringComparison.Ordinal)
+                      || string.Equals(style, "StaticCircle", StringComparison.Ordinal);
+        bool rotatingVinyl = string.Equals(style, "Vinyl", StringComparison.Ordinal);
+        ArtBorder.CornerRadius = circle ? new CornerRadius(21) : new CornerRadius(8);
+        ApplyArtworkImageClip(circle);
+        ApplyArtworkProgressClip(circle);
+        ApplyArtworkProgressThickness();
 
-        if (!vinyl)
+        if (!rotatingVinyl)
         {
             StopVinylRotation();
             return;
@@ -385,22 +388,21 @@ public partial class MiniPlayerWindow : Window
         UpdateVinylRotation(_mainWindow.IsPlayingNow);
     }
 
-    private void ApplyArtworkImageClip(bool vinyl)
+    private void ApplyArtworkImageClip(bool circle)
     {
         // Border.CornerRadius не обрезает дочерний Image. Поэтому форма задаётся самому
-        // пиксельному слою: скруглённый квадрат в обычном виде и безупречный круг в Vinyl.
-        ArtImage.Clip = vinyl
+        // пиксельному слою: скруглённый квадрат или круглая обложка.
+        ArtImage.Clip = circle
             ? new EllipseGeometry(new Point(21, 21), 21, 21)
             : new RectangleGeometry(new Rect(0, 0, 42, 42), 8, 8);
     }
 
-    private void ApplyArtworkProgressClip(bool vinyl)
+    private void ApplyArtworkProgressClip(bool circle)
     {
-        // Контур строится отдельным Path, поэтому он тоже получает точную маску формы,
-        // иначе край штриха мог выходить за сетку и давать цветные фрагменты на углах.
-        ArtProgressOutline.Clip = vinyl
-            ? new EllipseGeometry(new Point(21, 21), 21, 21)
-            : new RectangleGeometry(new Rect(0, 0, 42, 42), 8, 8);
+        // Контур находится под обложкой. Не обрезаем его по 42×42: небольшой внешний
+        // участок должен выступать за край и закрывать антиалиасинговые пиксели изображения;
+        // внутренний участок всё равно полностью закрывается ArtBorder.
+        ArtProgressOutline.Clip = null;
     }
 
     private void EnsureVinylRotation()
@@ -1099,6 +1101,20 @@ public partial class MiniPlayerWindow : Window
     public void ApplyArtworkProgressThickness()
     {
         double thickness = Math.Clamp(_mainWindow.Settings.MiniPlayerArtworkProgressThickness, 1.0, 4.0);
+        // Прямые участки фоновой рамки остаются на полном контуре обложки. Небольшое
+        // уменьшение радиуса касается только углов и убирает артефакты маски изображения.
+        // В сравнительном варианте контур находится внутри artwork-области 42×42.
+        // Внешняя граница штриха совпадает с границей контейнера и не выступает наружу.
+        const double canvasSize = 42.0;
+        ArtworkCanvas.Width = canvasSize;
+        ArtworkCanvas.Height = canvasSize;
+        ArtProgressTrack.Width = canvasSize;
+        ArtProgressTrack.Height = canvasSize;
+        bool circle = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal)
+                      || string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "StaticCircle", StringComparison.Ordinal);
+        ArtProgressTrack.CornerRadius = circle
+            ? new CornerRadius(canvasSize / 2.0)
+            : new CornerRadius(8.0);
         ArtProgressTrack.BorderThickness = new Thickness(thickness);
         ArtProgressOutline.StrokeThickness = thickness;
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
@@ -1145,13 +1161,16 @@ public partial class MiniPlayerWindow : Window
             return;
         }
 
-        if (string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal))
+        bool circle = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal)
+                      || string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "StaticCircle", StringComparison.Ordinal);
+        if (circle)
         {
-            // Отступ равен половине текущей толщины: внешний край штриха совпадает с
-            // границей маски и не создаёт цветной ободок снаружи Vinyl-обложки.
-            const double center = 21.0;
-            double vinylInset = ArtProgressOutline.StrokeThickness / 2.0;
-            double radius = Math.Max(0.0, center - vinylInset);
+            // Кольцо находится внутри круглой области и рисуется поверх обложки. Радиус
+            // уменьшается на половину толщины, чтобы внешний край штриха совпадал с границей
+            // 42-px области и не обрезался контейнером.
+            double strokeThickness = ArtProgressOutline.StrokeThickness;
+            double center = 21.0;
+            double radius = Math.Max(0.0, 21.0 - strokeThickness / 2.0);
             if (ratio >= 0.9999)
             {
                 ArtProgressOutline.Data = new EllipseGeometry(new Point(center, center), radius, radius);
@@ -1167,28 +1186,30 @@ public partial class MiniPlayerWindow : Window
             return;
         }
 
-        // Отступ равен половине выбранной толщины. Поэтому внешняя граница штриха
-        // совпадает с границей скруглённой маски без видимого ободка в углах.
-        double inset = ArtProgressOutline.StrokeThickness / 2.0;
+        // Отступ равен половине выбранной толщины. Поэтому внешний край штриха
+        // совпадает с границей внутренней 42-px области и не выходит за контейнер.
+        double thickness = ArtProgressOutline.StrokeThickness;
+        double inset = thickness / 2.0;
         double side = 42.0 - 2.0 * inset;
         double cornerRadius = Math.Max(0.0, 8.0 - inset);
         double straightSide = side - 2 * cornerRadius;
         double perimeter = 4 * straightSide + 2 * Math.PI * cornerRadius;
         ratio = Math.Clamp(ratio, 0.0, 1.0);
 
+        double left = inset;
+        double top = inset;
+        double right = left + side;
+        double bottom = top + side;
+
         // Path с замыкающей дугой при совпадающих начальной и конечной точках не рисует
         // полный контур надёжно, поэтому на 100% используем явную RectangleGeometry.
         if (ratio >= 0.9999)
         {
             ArtProgressOutline.Data = new RectangleGeometry(
-                new Rect(inset, inset, side, side), cornerRadius, cornerRadius);
+                new Rect(left, top, side, side), cornerRadius, cornerRadius);
             return;
         }
 
-        double left = inset;
-        double top = inset;
-        double right = inset + side;
-        double bottom = inset + side;
         double remaining = perimeter * ratio;
 
         // Старт в центре верхней грани; дальше контур заполняется по часовой стрелке:

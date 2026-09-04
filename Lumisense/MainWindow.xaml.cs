@@ -58,6 +58,8 @@ public partial class MainWindow : FluentWindow
     private readonly AudioOutputDeviceManager _audioOutputDeviceManager = new();
     private readonly AudioOutputRecoveryCoordinator _audioOutputRecoveryCoordinator = new();
     private readonly AudioOutputRecoveryService _audioOutputRecoveryService;
+    private readonly TrackExportService _trackExportService = new();
+    private bool _trackExportInProgress;
     private AudioOutputEndpointMonitor? _audioOutputEndpointMonitor;
     private string? _activeOutputFormat;
     private long _lastOutputInitializationMilliseconds;
@@ -3987,6 +3989,60 @@ public partial class MainWindow : FluentWindow
         System.Windows.Clipboard.SetText(Path.GetFileNameWithoutExtension(row.FilePath));
     }
 
+    private async void ExportProcessedCopyMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (_trackExportInProgress || sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
+        if (!File.Exists(row.FilePath)) return;
+
+        string stem = Path.GetFileNameWithoutExtension(row.FilePath);
+        string suffix = $" - speed {_runtimePlaybackRate:0.##}x pitch {_settings.PlaybackPitchSemitones:+0.##;-0.##;0}st";
+        var dialog = new SaveFileDialog
+        {
+            Title = "Сохранить обработанную копию",
+            Filter = "MP3-файл (*.mp3)|*.mp3",
+            DefaultExt = ".mp3",
+            AddExtension = true,
+            OverwritePrompt = false,
+            InitialDirectory = Path.GetDirectoryName(row.FilePath),
+            FileName = stem + suffix
+        };
+        if (dialog.ShowDialog() != true) return;
+        if (string.Equals(Path.GetFullPath(dialog.FileName), Path.GetFullPath(row.FilePath), StringComparison.OrdinalIgnoreCase))
+        {
+            LocalizedMessageBox.Show(this, "Копия должна сохраняться в отдельный MP3-файл.", "Сохранение копии",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+        if (File.Exists(dialog.FileName))
+        {
+            LocalizedMessageBox.Show(this, "Файл с таким именем уже существует. Выберите другое имя, чтобы не перезаписывать его.",
+                                "Файл уже существует", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+            return;
+        }
+        _trackExportInProgress = true;
+        System.Windows.Input.Mouse.OverrideCursor = System.Windows.Input.Cursors.Wait;
+        try
+        {
+            await _trackExportService.ExportMp3Async(
+                row.FilePath,
+                dialog.FileName,
+                new TrackExportOptions(_runtimePlaybackRate, _settings.PlaybackPitchSemitones));
+            LocalizedMessageBox.Show(this, $"Копия сохранена:\n{dialog.FileName}", "Сохранение завершено",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось сохранить обработанную MP3-копию '{dialog.FileName}': {ex.Message}");
+            LocalizedMessageBox.Show(this, $"Не удалось сохранить MP3-копию:\n{ex.Message}", "Ошибка сохранения",
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+        finally
+        {
+            System.Windows.Input.Mouse.OverrideCursor = null;
+            _trackExportInProgress = false;
+        }
+    }
+
     private void CopyPathMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -4347,6 +4403,13 @@ public partial class MainWindow : FluentWindow
             _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
             RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
             RaiseProgressChanged(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+
+            // Сохраняем shuffle-сессию сразу после успешного применения нового трека. Одного
+            // периодического checkpoint недостаточно: при быстром переключении и последующем
+            // выходе приложение могло закрыться раньше таймера, и после запуска оставалась
+            // устаревшая история/колода.
+            if (_isShuffleEnabled && _playlistRestoreCompleted)
+                PersistPlaybackAndPlaylistState(asyncSave: true);
 
             // Панель текста не выполняет работу в фоне, пока скрыта. Если пользователь уже
             // открыл её, новая композиция сразу отменяет предыдущий запрос и загружает свой
@@ -6742,18 +6805,19 @@ public partial class MainWindow : FluentWindow
         VolumeSlider.Value = Math.Clamp(VolumeSlider.Value + delta, VolumeSlider.Minimum, VolumeSlider.Maximum);
     }
 
-    // Переводит положение ползунка (0..1, линейное) в множитель амплитуды. Выключено — как и
-    // раньше, множитель совпадает с положением один в один. Включено — ползунок сначала
+    // Переводит положение ползунка (0..1) в множитель амплитуды. В обычном режиме используется
+    // мягкая audio-taper кривая, а в логарифмическом режиме ползунок сначала
     // переводится в децибелы [MinDb, 0], потом в множитель амплитуды (10^(dB/20)), чтобы
     // движение ползунка воспринималось на слух равномерно, а не сжато в нижние 10-20% хода.
     private const double MinVolumeDb = -40.0; // тише практически не слышно — дальше просто тишина
+    private const double LinearVolumeExponent = 2.0;
 
     private float ToOutputVolume(double sliderValue)
     {
         sliderValue = Math.Clamp(sliderValue, 0.0, 1.0);
 
         if (!_settings.UseLogarithmicVolume)
-            return (float)sliderValue;
+            return (float)Math.Pow(sliderValue, LinearVolumeExponent);
 
         if (sliderValue <= 0.0) return 0f;
 

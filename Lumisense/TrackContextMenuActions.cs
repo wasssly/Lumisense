@@ -15,6 +15,7 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
     public const string CopyTrackName = "CopyTrackName";
     public const string CopyPath = "CopyPath";
     public const string CopyFile = "CopyFile";
+    public const string ExportProcessedCopy = "ExportProcessedCopy";
     public const string Properties = "Properties";
     public const string EditTags = "EditTags";
     public const string NormalizeFileName = "NormalizeFileName";
@@ -33,6 +34,7 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
         [CopyTrackName] = CopyTrackName,
         [CopyPath] = CopyPath,
         [CopyFile] = CopyFile,
+        [ExportProcessedCopy] = ExportProcessedCopy,
         [Properties] = Properties,
         [EditTags] = EditTags,
         [NormalizeFileName] = NormalizeFileName,

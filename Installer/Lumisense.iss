@@ -117,8 +117,22 @@ Root: HKCR; Subkey: ".wma"; ValueType: string; ValueName: ""; ValueData: "Lumise
 
 Root: HKCR; Subkey: "Lumisense.AudioFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Lumisense.exe,0"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "Lumisense.AudioFile\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "*\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "*\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+; Пункт показывается только для поддерживаемых аудиофайлов. Wildcard (*) здесь намеренно
+; не используется: он добавлял «Открыть в Lumisense» к текстовым и любым другим файлам.
+Root: HKCR; Subkey: "SystemFileAssociations\.mp3\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.mp3\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.wav\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.wav\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.flac\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.flac\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.m4a\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.m4a\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.aac\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.aac\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.ogg\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.ogg\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.wma\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.wma\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
 
 ; ============================================
 ; ЗАПУСК ПОСЛЕ УСТАНОВКИ
@@ -167,7 +181,22 @@ russian.LaunchLumisense=Запустить Lumisense
 var
   ShouldDeleteSettings: Boolean;
 
+procedure RemoveLegacyWildcardContextMenu;
+begin
+  // До этой версии пункт регистрировался в *\\shell и отображался для любого файла.
+  // Удаляем старый ключ при установке/обновлении, иначе он останется в реестре даже
+  // после перехода на SystemFileAssociations.<extension>.
+  RegDeleteKeyIncludingSubkeys(HKEY_CLASSES_ROOT, '*\\shell\\LumisenseOpen');
+end;
+
+function InitializeSetup(): Boolean;
+begin
+  RemoveLegacyWildcardContextMenu;
+  Result := True;
+end;
+
 function InstallerLanguageCode(): String;
+
 begin
   if ActiveLanguage = 'english' then
     Result := 'en'

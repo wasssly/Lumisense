@@ -45,6 +45,7 @@ internal sealed record TrackPreparationOptions(
 internal sealed class TrackPreparationService
 {
     private const double MinVolumeDb = -40.0;
+    private const double LinearVolumeExponent = 2.0;
     private const int ArtworkDisplayDecodePixelWidth = 512;
 
     public async Task<PreparedTrack> PrepareAsync(
@@ -185,7 +186,9 @@ internal sealed class TrackPreparationService
         float outputVolume;
         if (!useLogarithmicVolume)
         {
-            outputVolume = (float)sliderValue;
+            // Небольшой audio taper делает верхний диапазон различимее на слух:
+            // 70%, 80% и 100% больше не воспринимаются почти одинаково.
+            outputVolume = (float)Math.Pow(sliderValue, LinearVolumeExponent);
         }
         else if (sliderValue <= 0.0)
         {

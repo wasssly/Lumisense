@@ -484,7 +484,9 @@
 
     </ui:FluentWindow.Resources>
 
-    <Grid>
+    <Grid x:Name="RootLayout"
+          PreviewMouseWheel="SettingsRoot_PreviewMouseWheel"
+>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -561,28 +563,6 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <!-- Интеграции вынесены отдельно: Discord не относится к аудиообработке,
-                         а объединяет подключение внешнего сервиса, приватность и диагностику. -->
-                    <RadioButton x:Name="NavIntegrations" Style="{StaticResource NavItemStyle}"
-                                 GroupName="SettingsNav" Tag="Integrations" Checked="NavItem_Checked">
-                        <StackPanel Orientation="Horizontal">
-                            <local:SvgPathIcon Icon="IconWrench" Size="18" VerticalAlignment="Center" />
-                            <TextBlock Text="Интеграции" Margin="10,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </RadioButton>
-
-                    <!-- Вынесено в отдельную страницу из "Воспроизведение" — карточек про
-                         всплывающее уведомление о смене трека (вкл/выкл, расположение, размер,
-                         монитор) набралось достаточно, чтобы не мешать настройкам громкости и
-                         шаффла на той же странице. -->
-                    <RadioButton x:Name="NavNotifications" Style="{StaticResource NavItemStyle}"
-                                 GroupName="SettingsNav" Tag="Notifications" Checked="NavItem_Checked">
-                        <StackPanel Orientation="Horizontal">
-                            <local:SvgPathIcon Icon="IconBell" Size="18" VerticalAlignment="Center" />
-                            <TextBlock Text="Уведомления" Margin="10,0,0,0" VerticalAlignment="Center" />
-                        </StackPanel>
-                    </RadioButton>
-
                     <RadioButton x:Name="NavEqualizer" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Equalizer" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -590,6 +570,8 @@
                             <TextBlock Text="Эквалайзер" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
+
+                    <TextBlock Text="МИНИ-ПЛЕЕР И УВЕДОМЛЕНИЯ" Style="{StaticResource NavSectionTitleStyle}" />
 
                     <RadioButton x:Name="NavMiniPlayer" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="MiniPlayer" Checked="NavItem_Checked">
@@ -599,6 +581,16 @@
                         </StackPanel>
                     </RadioButton>
 
+                    <RadioButton x:Name="NavNotifications" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Notifications" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconBell" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Уведомления" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <TextBlock Text="ИНСТРУМЕНТЫ" Style="{StaticResource NavSectionTitleStyle}" />
+
                     <RadioButton x:Name="NavHotkeys" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Hotkeys" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -607,10 +599,14 @@
                         </StackPanel>
                     </RadioButton>
 
-                    <!-- Вынесено в отдельную страницу из "Экспериментальное" — экспорт/импорт
-                         настроек в .lumi-файл (см. LumiProfile.cs) это не экспериментальная
-                         функция, а обычная и завершённая, ей просто не хватало собственного
-                         места вместо соседства со случайным набором мелких переключателей. -->
+                    <RadioButton x:Name="NavIntegrations" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Integrations" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconWrench" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Интеграции" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
                     <RadioButton x:Name="NavProfile" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Profile" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -621,10 +617,6 @@
 
                     <TextBlock Text="СИСТЕМА" Style="{StaticResource NavSectionTitleStyle}" />
 
-                    <!-- Вынесено в отдельную страницу из "О плеере" — проверка обновлений,
-                         выбор источника загрузки и полный список версий разрослись до трёх
-                         самостоятельных блоков, которым тесно соседствовать с описанием
-                         приложения и карточкой разработчика на одной странице. -->
                     <RadioButton x:Name="NavUpdates" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Updates" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -1638,8 +1630,11 @@
                                              Checked="MiniArtworkStyleRadio_Changed" Margin="0,0,0,10" />
                                 <RadioButton x:Name="MiniArtworkVinylRadio" Content="Винил (медленное вращение во время воспроизведения)"
                                              GroupName="MiniPlayerArtworkStyle"
+                                             Checked="MiniArtworkStyleRadio_Changed" Margin="0,0,0,10" />
+                                <RadioButton x:Name="MiniArtworkStaticCircleRadio" Content="Круглая (без вращения)"
+                                             GroupName="MiniPlayerArtworkStyle"
                                              Checked="MiniArtworkStyleRadio_Changed" />
-                                <TextBlock Text="Виниловый режим делает обложку круглой и приостанавливает её вращение вместе с треком."
+                                <TextBlock Text="Виниловый режим делает обложку круглой и приостанавливает её вращение вместе с треком. Круглый режим оставляет обложку неподвижной."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,10,0,0" />
                             </StackPanel>
                         </Border>
@@ -2532,5 +2527,6 @@
             </Border>
 
         </Grid>
+
     </Grid>
 </ui:FluentWindow>

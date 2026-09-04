@@ -17,12 +17,18 @@ public sealed class EqualizerSampleProvider : ISampleProvider
 
     private const double Bandwidth = 0.9;
     private const double BypassTransitionMilliseconds = 8.0;
+    private const double FilterTransitionMilliseconds = 8.0;
 
     private readonly ISampleProvider _source;
     private readonly int _channels;
     private readonly BiQuadFilter[][] _filters;
     private readonly bool[] _bandSupportedBySource;
     private readonly double[] _gainsDb;
+    private readonly object _filterUpdateLock = new();
+    private double[]? _pendingGainsDb;
+    private int _pendingFilterRebuild;
+    private float _filterMix = 1f;
+    private float _filterMixTarget = 1f;
     private int _targetEnabled;
     private float _wetMix;
 
@@ -68,11 +74,14 @@ public sealed class EqualizerSampleProvider : ISampleProvider
         if (band < 0 || band >= BandFrequencies.Length) return;
 
         gainDb = Math.Clamp(gainDb, MinGainDb, MaxGainDb);
-        _gainsDb[band] = gainDb;
-        if (!_bandSupportedBySource[band]) return;
-
-        for (int channel = 0; channel < _channels; channel++)
-            _filters[band][channel] = MakeFilter(band, gainDb);
+        lock (_filterUpdateLock)
+        {
+            _gainsDb[band] = gainDb;
+            _pendingGainsDb ??= (double[])_gainsDb.Clone();
+            _pendingGainsDb[band] = gainDb;
+            Volatile.Write(ref _pendingFilterRebuild, 1);
+            Volatile.Write(ref _filterMixTarget, 0f);
+        }
     }
 
     public double GetBandGain(int band) => band >= 0 && band < _gainsDb.Length ? _gainsDb[band] : 0;
@@ -84,11 +93,24 @@ public sealed class EqualizerSampleProvider : ISampleProvider
 
         float target = Volatile.Read(ref _targetEnabled) != 0 ? 1f : 0f;
         float mix = _wetMix;
-        float step = 1f / Math.Max(1f,
+        float bypassStep = 1f / Math.Max(1f,
             (float)(_source.WaveFormat.SampleRate * (BypassTransitionMilliseconds / 1000.0)));
+        float filterMix = _filterMix;
+        float filterMixTarget = Volatile.Read(ref _filterMixTarget);
+        float filterStep = 1f / Math.Max(1f,
+            (float)(_source.WaveFormat.SampleRate * (FilterTransitionMilliseconds / 1000.0)));
 
         for (int n = 0; n < samplesRead; n++)
         {
+            filterMixTarget = Volatile.Read(ref _filterMixTarget);
+            if (filterMix < filterMixTarget)
+                filterMix = Math.Min(filterMixTarget, filterMix + filterStep);
+            else if (filterMix > filterMixTarget)
+                filterMix = Math.Max(filterMixTarget, filterMix - filterStep);
+
+            if (filterMix <= 0f && Volatile.Read(ref _pendingFilterRebuild) != 0)
+                ApplyPendingFilters();
+
             float dry = buffer[n];
             float wet = dry;
             int channel = n % _channels;
@@ -99,15 +121,38 @@ public sealed class EqualizerSampleProvider : ISampleProvider
                     wet = _filters[band][channel].Transform(wet);
             }
 
-            if (mix < target)
-                mix = Math.Min(target, mix + step);
-            else if (mix > target)
-                mix = Math.Max(target, mix - step);
+            float filtered = dry + (wet - dry) * filterMix;
 
-            buffer[n] = dry + (wet - dry) * mix;
+            if (mix < target)
+                mix = Math.Min(target, mix + bypassStep);
+            else if (mix > target)
+                mix = Math.Max(target, mix - bypassStep);
+
+            buffer[n] = dry + (filtered - dry) * mix;
         }
 
+        _filterMix = filterMix;
         _wetMix = mix;
         return samplesRead;
+    }
+
+    private void ApplyPendingFilters()
+    {
+        lock (_filterUpdateLock)
+        {
+            if (_pendingFilterRebuild == 0 || _pendingGainsDb is null)
+                return;
+
+            for (int band = 0; band < _filters.Length; band++)
+            {
+                if (!_bandSupportedBySource[band]) continue;
+                double gainDb = _pendingGainsDb[band];
+                for (int channel = 0; channel < _channels; channel++)
+                    _filters[band][channel] = MakeFilter(band, gainDb);
+            }
+
+            _pendingFilterRebuild = 0;
+            Volatile.Write(ref _filterMixTarget, 1f);
+        }
     }
 }

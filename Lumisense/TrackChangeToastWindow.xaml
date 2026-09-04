@@ -33,7 +33,8 @@
         <SolidColorBrush x:Key="ControlFillColorSecondaryBrush" Color="#1AFFFFFF" />
     </Window.Resources>
 
-    <Border x:Name="RootBorder" CornerRadius="12" Padding="12" Opacity="0">
+    <Border x:Name="RootBorder" CornerRadius="12" Padding="12" Opacity="0"
+            MouseLeftButtonDown="RootBorder_MouseLeftButtonDown">
         <Border.Effect>
             <DropShadowEffect Color="Black" Opacity="0.35" BlurRadius="18" ShadowDepth="4" Direction="270" />
         </Border.Effect>

@@ -1,0 +1,56 @@
+<Window x:Class="Lumisense.ScaleRestartDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Lumisense"
+        Width="430"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Border Margin="8"
+            Padding="26,22,26,20"
+            CornerRadius="16"
+            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+            BorderThickness="1"
+            MouseLeftButtonDown="DialogBorder_MouseLeftButtonDown">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.32" />
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Text="Изменение масштаба интерфейса"
+                       FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+
+            <TextBlock Grid.Row="1" Margin="0,18,0,24"
+                       Text="Новый масштаб будет применён после перезапуска Lumisense. Текущая работа плеера не будет прервана, если выбрать «Позже»."
+                       TextWrapping="Wrap" FontSize="14" LineHeight="21"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+            <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="LaterButton" Content="Позже" MinWidth="100" Height="36"
+                        Margin="0,0,10,0" Padding="18,0"
+                        Click="LaterButton_Click" />
+                <Button x:Name="RestartButton" Content="Перезапустить" MinWidth="136" Height="36"
+                        Padding="18,0"
+                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                        Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                        Click="RestartButton_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
+

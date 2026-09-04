@@ -102,6 +102,9 @@
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=CopyPath}" />
                         <MenuItem Header="Копировать файл" Click="CopyFileMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=CopyFile}" />
+                        <MenuItem Header="Сохранить обработанную копию…" Click="ExportProcessedCopyMenuItem_Click"
+                                  ToolTip="MP3-копия с текущими скоростью и тоном"
+                                  Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=ExportProcessedCopy}" />
                         <Separator />
                         <MenuItem Header="Свойства" Click="TrackPropertiesMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=Properties}" />

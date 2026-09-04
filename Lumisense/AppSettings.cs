@@ -253,7 +253,8 @@ public class AppSettings
     public double MiniPlayerOpacity { get; set; } = 1.0;
 
     // Default — обычная скруглённая обложка; Vinyl — круглая «пластинка», медленно
-    // вращающаяся только во время воспроизведения (см. MiniPlayerWindow).
+    // вращающаяся только во время воспроизведения; StaticCircle — круглая неподвижная
+    // обложка (см. MiniPlayerWindow).
     public string MiniPlayerArtworkStyle { get; set; } = "Default";
     public bool MiniPlayerAlwaysOnTop { get; set; } = true;
     public bool MiniPlayerPinned { get; set; }               // Запрещает перетаскивание окна мышью

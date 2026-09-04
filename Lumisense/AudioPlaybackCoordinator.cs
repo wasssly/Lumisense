@@ -46,6 +46,12 @@ internal sealed class AudioPlaybackCoordinator : IDisposable
             gateAcquired = true;
             loadCts.Token.ThrowIfCancellationRequested();
 
+            // Новый запрос мог появиться сразу после освобождения gate, но до возврата
+            // lease старой операции. Повторная проверка generation не позволяет устаревшему
+            // audio graph успешно выйти из coordinator при такой гонке.
+            if (generation != Volatile.Read(ref _generation))
+                throw new OperationCanceledException(loadCts.Token);
+
             LoadOperation operation = new(this, loadCts, generation);
             gateAcquired = false;
             return operation;

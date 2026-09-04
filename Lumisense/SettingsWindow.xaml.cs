@@ -23,6 +23,7 @@ public partial class SettingsWindow : FluentWindow
     private readonly AppSettings _settings;
     private readonly MainWindow _owner;
     private bool _isInitializing = true;
+    private bool _interfaceScaleRestartNoticeShown;
     private bool _isRefreshingOutputDevices;
     private CancellationTokenSource? _sourceProbeCts;
     private IReadOnlyList<UpdateSourceProbeResult>? _sourceProbeResults;
@@ -100,6 +101,12 @@ public partial class SettingsWindow : FluentWindow
     public SettingsWindow(AppSettings settings, MainWindow owner, string? initialPage = null)
     {
         InitializeComponent();
+        _autoScrollTimer.Tick += AutoScrollTimer_Tick;
+        // Class handlers получают событие даже если дочерний контрол пометил MouseDown
+        // обработанным. Это важно для клика по тексту, Slider и другим элементам страницы.
+        AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(SettingsWindow_PreviewMouseDown), true);
+        AddHandler(Mouse.PreviewMouseMoveEvent, new MouseEventHandler(SettingsWindow_PreviewMouseMove), true);
+        AddHandler(UIElement.LostMouseCaptureEvent, new MouseEventHandler(SettingsRoot_LostMouseCapture), true);
 
         ApplyWindowBackdrop(settings);
 
@@ -183,7 +190,9 @@ public partial class SettingsWindow : FluentWindow
         MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
         MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
         MiniArtworkVinylRadio.IsChecked = _settings.MiniPlayerArtworkStyle == "Vinyl";
-        MiniArtworkDefaultRadio.IsChecked = !MiniArtworkVinylRadio.IsChecked.GetValueOrDefault();
+        MiniArtworkStaticCircleRadio.IsChecked = _settings.MiniPlayerArtworkStyle == "StaticCircle";
+        MiniArtworkDefaultRadio.IsChecked = !MiniArtworkVinylRadio.IsChecked.GetValueOrDefault()
+                                             && !MiniArtworkStaticCircleRadio.IsChecked.GetValueOrDefault();
         MiniShowProgressCheckBox.IsChecked = _settings.MiniPlayerShowProgress;
         MiniShowArtworkProgressCheckBox.IsChecked = _settings.MiniPlayerShowArtworkProgress;
         MiniArtworkProgressThicknessSlider.Value = _settings.MiniPlayerArtworkProgressThickness;
@@ -275,6 +284,8 @@ public partial class SettingsWindow : FluentWindow
         };
         Closed += (_, _) =>
         {
+            StopAutoScrolling();
+            _autoScrollTimer.Tick -= AutoScrollTimer_Tick;
             _sourceProbeCts?.Cancel();
             _basePackageCts?.Cancel();
             LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
@@ -1289,6 +1300,121 @@ public partial class SettingsWindow : FluentWindow
 
     public void ApplyAccessibilityPreferences() => AccessibilityPreferences.ApplyToWindow(this, _settings);
 
+    private bool _isAutoScrolling;
+    private Cursor? _previousCursor;
+    private Point _autoScrollOrigin;
+    private System.Windows.Controls.ScrollViewer? _autoScrollViewer;
+    private readonly DispatcherTimer _autoScrollTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+
+    private void SettingsWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton != MouseButton.Middle) return;
+
+        if (_isAutoScrolling)
+        {
+            StopAutoScrolling();
+            e.Handled = true;
+            return;
+        }
+
+        var source = e.OriginalSource as DependencyObject;
+        _autoScrollViewer = FindVisualAncestor<System.Windows.Controls.ScrollViewer>(source)
+                             ?? PART_ContentScroll;
+        if (_autoScrollViewer is null || _autoScrollViewer.ScrollableHeight <= 0) return;
+
+        _autoScrollOrigin = e.GetPosition(RootLayout);
+        _previousCursor = Cursor;
+        _isAutoScrolling = true;
+        Mouse.Capture(this, CaptureMode.SubTree);
+        Cursor = Cursors.ScrollNS;
+        _autoScrollTimer.Start();
+        e.Handled = true;
+    }
+
+    private void SettingsWindow_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (!_isAutoScrolling || _autoScrollViewer is null) return;
+
+        Point current = Mouse.GetPosition(RootLayout);
+        double distance = current.Y - _autoScrollOrigin.Y;
+        Cursor = distance < -4 ? Cursors.ScrollN : distance > 4 ? Cursors.ScrollS : Cursors.ScrollNS;
+        e.Handled = true;
+    }
+
+    private void SettingsRoot_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        StopAutoScrolling();
+    }
+
+    private void AutoScrollTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_isAutoScrolling || _autoScrollViewer is null) return;
+
+        Point current = Mouse.GetPosition(RootLayout);
+        double distance = current.Y - _autoScrollOrigin.Y;
+        if (Math.Abs(distance) < 4) return;
+
+        // Чем дальше курсор от точки запуска, тем быстрее движется страница. Умножение на
+        // 0.12 даёт мягкую скорость, близкую к стандартной автопрокрутке браузеров.
+        double delta = Math.Clamp(distance * 0.12, -24, 24);
+        double nextOffset = Math.Clamp(
+            _autoScrollViewer.VerticalOffset + delta,
+            0,
+            _autoScrollViewer.ScrollableHeight);
+        _autoScrollViewer.ScrollToVerticalOffset(nextOffset);
+    }
+
+    private void StopAutoScrolling()
+    {
+        if (!_isAutoScrolling && !_autoScrollTimer.IsEnabled) return;
+        _isAutoScrolling = false;
+        _autoScrollTimer.Stop();
+        if (Mouse.Captured is not null) Mouse.Capture(null);
+        Cursor = _previousCursor ?? Cursors.Arrow;
+        _previousCursor = null;
+        _autoScrollViewer = null;
+    }
+
+    private void SettingsRoot_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        // Вертикальные Slider (в первую очередь эквалайзер) используют колесо для изменения
+        // своего значения и сами помечают событие обработанным. Не перехватываем их здесь.
+        if (FindVisualAncestor<System.Windows.Controls.Slider>(e.OriginalSource as DependencyObject) is not null)
+            return;
+
+        var scrollViewer = FindVisualAncestor<System.Windows.Controls.ScrollViewer>(e.OriginalSource as DependencyObject)
+                           ?? PART_ContentScroll;
+        if (scrollViewer.ScrollableHeight <= 0) return;
+
+        double offset = scrollViewer.VerticalOffset - e.Delta * 0.45;
+        scrollViewer.ScrollToVerticalOffset(Math.Clamp(offset, 0, scrollViewer.ScrollableHeight));
+        e.Handled = true;
+    }
+
+    private static T? FindVisualAncestor<T>(DependencyObject? source) where T : DependencyObject
+    {
+        for (DependencyObject? current = source; current is not null;)
+        {
+            if (current is T match) return match;
+
+            // TextBlock.Text часто отдаёт Run как OriginalSource. Run является
+            // FrameworkContentElement, а не Visual, поэтому VisualTreeHelper.GetParent
+            // для него выбрасывает InvalidOperationException.
+            current = current switch
+            {
+                System.Windows.Media.Visual visual =>
+                    System.Windows.Media.VisualTreeHelper.GetParent(visual),
+                System.Windows.Media.Media3D.Visual3D visual3D =>
+                    System.Windows.Media.VisualTreeHelper.GetParent(visual3D),
+                System.Windows.FrameworkContentElement contentElement =>
+                    contentElement.Parent,
+                _ => null
+            };
+        }
+
+        return null;
+    }
+
     private void InterfaceScaleSlider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         // Клик по дорожке обрабатывается самим Slider через IsMoveToPointEnabled.
@@ -1316,8 +1442,20 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.InterfaceScale = AccessibilityPreferences.NormalizeScale(e.NewValue / 100d);
         InterfaceScaleValueText.Text = $"{_settings.InterfaceScale * 100:0}%";
-        ApplyAccessibilityPreferences();
-        _owner.ApplyAccessibilityPreferences();
+
+        // Масштаб WPF применяется безопасно при создании окон. Попытка перестроить уже
+        // открытые окна на лету может оставить mini-player в смешанном DPI/layout-состоянии,
+        // особенно после последовательности 100% → 135% → 100%. Значение сохраняем, но
+        // применяем его после перезапуска приложения.
+        if (!_interfaceScaleRestartNoticeShown)
+        {
+            _interfaceScaleRestartNoticeShown = true;
+            var restartDialog = new ScaleRestartDialog(this, _settings);
+            restartDialog.ShowDialog();
+            // «Позже» относится только к текущему изменению. При следующем изменении
+            // масштаба уведомление должно появиться снова.
+            _interfaceScaleRestartNoticeShown = false;
+        }
     }
 
     private void ReduceMotionCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -1952,7 +2090,9 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.MiniPlayerArtworkStyle = MiniArtworkVinylRadio.IsChecked == true ? "Vinyl" : "Default";
+        _settings.MiniPlayerArtworkStyle = MiniArtworkVinylRadio.IsChecked == true
+            ? "Vinyl"
+            : MiniArtworkStaticCircleRadio.IsChecked == true ? "StaticCircle" : "Default";
         _owner.ApplyMiniPlayerArtworkStyleLive();
     }
 

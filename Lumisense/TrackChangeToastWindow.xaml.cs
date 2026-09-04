@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
@@ -99,6 +100,17 @@ public partial class TrackChangeToastWindow : Window
         var fadeOut = new DoubleAnimation(0, FadeDuration);
         fadeOut.Completed += (_, _) => Hide();
         RootBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+    }
+
+    private void RootBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        // Уведомление не является интерактивным элементом. Любой клик по карточке должен
+        // закрывать её сразу, не дожидаясь окончания видимой задержки или fade-out.
+        _hideTimer.Stop();
+        RootBorder.BeginAnimation(UIElement.OpacityProperty, null);
+        RootBorder.Opacity = 0;
+        Hide();
+        e.Handled = true;
     }
 
     protected override void OnClosed(EventArgs e)

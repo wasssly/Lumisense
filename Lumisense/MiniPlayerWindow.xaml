@@ -384,15 +384,15 @@
             <StackPanel x:Name="HeaderPanel" Grid.Row="0" Orientation="Horizontal" Margin="14,10,14,2"
                         Background="Transparent"
                         MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <!-- Индикатор прогресса не влияет на размер или перетаскивание заголовка:
-                     это только визуальный слой поверх обложки. Его скруглённый контур
-                     повторяет обложку 42×42 с CornerRadius=8. -->
-                <Grid Width="42" Height="42" ClipToBounds="True"
+                <!-- Альтернативный вариант для сравнения: контур находится внутри области
+                     самой обложки 42×42 и рисуется поверх изображения. -->
+                <Grid x:Name="ArtworkCanvas" Width="42" Height="42" ClipToBounds="True"
                       SnapsToDevicePixels="True" UseLayoutRounding="True">
                     <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
                             Background="{DynamicResource ControlFillColorSecondaryBrush}">
                         <!-- В режиме Vinyl вращается только этот слой обложки. Контур прогресса
-                             остаётся неподвижным и продолжает точно показывать позицию трека. -->
+                             остаётся неподвижным и рисуется отдельным верхним слоем. -->
                         <Border.RenderTransform>
                             <RotateTransform x:Name="ArtRotateTransform" CenterX="21" CenterY="21" />
                         </Border.RenderTransform>
@@ -407,7 +407,8 @@
                         </Grid>
                     </Border>
                     <Border x:Name="ArtProgressTrack" Width="42" Height="42" CornerRadius="8"
-                            BorderThickness="1" BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                            HorizontalAlignment="Center" VerticalAlignment="Center"
+                            BorderThickness="1" BorderBrush="Transparent"
                             Visibility="Collapsed" IsHitTestVisible="False" />
                     <Path x:Name="ArtProgressOutline" StrokeThickness="1.5"
                           Stroke="{DynamicResource AccentFillColorDefaultBrush}"
