@@ -239,6 +239,12 @@
                 <MenuItem x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           Click="TopmostMenuItem_Click" />
+                <MenuItem x:Name="OverlayCompatibilityMenuItem"
+                          Header="Совместимость с играми и оверлеем"
+                          IsCheckable="True"
+                          Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
+                          ToolTip="Упрощает рендеринг плавающих окон для снижения риска сбоев Steam Overlay"
+                          Click="OverlayCompatibilityMenuItem_Click" />
                 <Separator />
                 <!-- Выбор единственной второй кнопки управления. Три компактные иконки сохраняют
                      главное меню коротким, а Tooltip раскрывает назначение без постоянного текста. -->

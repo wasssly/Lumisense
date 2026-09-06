@@ -26,6 +26,8 @@ public partial class TrackChangeToastWindow : Window
     private static readonly Color LightBackground = Color.FromRgb(0xF2, 0xF2, 0xF2);
 
     private readonly DispatcherTimer _hideTimer;
+    private bool _overlayCompatibilityMode;
+    private readonly System.Windows.Media.Effects.Effect? _normalEffect;
 
     public TrackChangeToastWindow()
     {
@@ -33,6 +35,7 @@ public partial class TrackChangeToastWindow : Window
 
         _hideTimer = new DispatcherTimer { Interval = VisibleDuration };
         _hideTimer.Tick += HideTimer_Tick;
+        _normalEffect = RootBorder.Effect;
     }
 
     // isLightTheme — та же логика, что и у MiniPlayerWindow.ApplyTheme: карточка не связана
@@ -91,12 +94,39 @@ public partial class TrackChangeToastWindow : Window
         }
         PositionOnScreen(screen, position);
 
+        if (_overlayCompatibilityMode)
+        {
+            RootBorder.Opacity = 1;
+            _hideTimer.Start();
+            return;
+        }
+
         RootBorder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, FadeDuration));
         _hideTimer.Start();
     }
 
+    // В compatibility mode toast остаётся простым непрозрачным слоем без DropShadow и
+    // fade-анимаций, чтобы не конкурировать с композицией Steam Overlay/DWM.
+    public void ApplyOverlayCompatibilityLive(bool enabled)
+    {
+        _overlayCompatibilityMode = enabled;
+        RootBorder.Effect = enabled ? null : _normalEffect;
+        if (enabled)
+        {
+            RootBorder.BeginAnimation(UIElement.OpacityProperty, null);
+            if (IsVisible) RootBorder.Opacity = 1;
+        }
+    }
+
     private void FadeOutAndHide()
     {
+        if (_overlayCompatibilityMode)
+        {
+            RootBorder.Opacity = 0;
+            Hide();
+            return;
+        }
+
         var fadeOut = new DoubleAnimation(0, FadeDuration);
         fadeOut.Completed += (_, _) => Hide();
         RootBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);

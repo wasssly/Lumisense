@@ -9,9 +9,26 @@
 </p>
 
 <details id="russian" open>
-<summary><strong>Русский</strong></summary>
+<summary><strong style="font-size: 1.5em;">Русский</strong></summary>
 
-<br>
+## Содержание
+
+- [Возможности](#возможности)
+  - [Воспроизведение и звук](#воспроизведение-и-звук)
+  - [Плейлист и коллекция](#плейлист-и-коллекция)
+  - [Мини-плеер и внешний вид](#мини-плеер-и-внешний-вид)
+  - [Тексты песен и интеграции](#тексты-песен-и-интеграции)
+  - [Состояние, диагностика и обновления](#состояние-диагностика-и-обновления)
+- [Сборка из исходников](#сборка-из-исходников)
+  - [Требования](#требования)
+  - [Запуск приложения](#запуск-приложения)
+  - [Сборка Release](#сборка-release)
+  - [Запуск тестов](#запуск-тестов)
+- [Обновления](#обновления)
+- [Технологии](#технологии)
+  - [Структура репозитория](#структура-репозитория)
+- [Обратная связь](#обратная-связь)
+- [English](#english)
 
 **Lumisense** — локальный аудиоплеер для Windows 11 в стиле Fluent Design. Он воспроизводит музыку с диска без стриминга и облачных сервисов, поддерживает обложки, теги, плейлисты, эквалайзер, статистику прослушиваний, мини-плеер, Live Lyrics, Discord Rich Presence и обновление через GitHub Releases.
 
@@ -19,102 +36,156 @@
 
 > **Дисклеймер.** Lumisense в значительной степени создавался с помощью **Claude** и **Manus AI** и первоначально разрабатывался для личного использования — под конкретные привычки и предпочтения автора, а не как универсальный продукт для всех. Поэтому отдельные решения могут быть субъективными, а некоторые функции — ещё требовать доработки. Если вы нашли ошибку, столкнулись с неудобством или считаете, что проекту не хватает важной возможности, пожалуйста, создайте [issue](https://github.com/wasssly/Lumisense/issues).
 
-### Возможности
+## Возможности
 
-#### Воспроизведение и звук
+### Воспроизведение и звук
 
-- Воспроизведение MP3, WAV, WMA, FLAC, M4A, AAC, OGG и других поддерживаемых NAudio форматов.
-- Play/pause/stop, переход между треками, перемотка по прогресс-бару и автоматический переход к следующей композиции.
-- Регулировка громкости, включая плавную логарифмическую регулировку в нижнем диапазоне.
-- Десятиполосный эквалайзер с пресетами от 31 Гц до 16 кГц и режимом EQ Bypass для быстрого сравнения звука с обработкой и без неё. Пользовательские пресеты можно сохранять, экспортировать и импортировать.
-- Изменение скорости воспроизведения и тона с сохранением высоты тона.
-- Выбор устройства вывода Windows, карточка фактически используемого устройства и безопасный переход на системное устройство, если сохранённое устройство отключено.
-- Шафл и три режима повтора: без повтора, повтор плейлиста и повтор одного трека. История предыдущих треков при активном перемешивании сохраняется между запусками.
+- Поддержка MP3, WAV, WMA, FLAC, M4A, AAC и OGG.
+- Управление воспроизведением: запуск, пауза, остановка, предыдущий и следующий трек.
+- Перемотка по прогресс-бару и переход к следующей композиции.
+- Три режима повтора: без повтора, повтор всего плейлиста и повтор одного трека.
+- Обычный шаффл с учётом истории. Треки из всех активных папок плейлиста попадают в общую колоду и не повторяются до её исчерпания.
+- Сохранение истории и очереди сыгранных треков при активном шаффле.
+- Логарифмическая и нелогарифмическая регулировка громкости с более плавной квадратичной аудиокривой в нелогарифмическом режиме.
+- Десятиполосный эквалайзер с пресетами и пользовательскими настройками.
+- Режим EQ Bypass для быстрого сравнения обработанного и исходного сигнала.
+- Изменение скорости воспроизведения и тона без изменения исходного файла.
+- ReplayGain.
+- Выбор устройства вывода Windows и отображение фактически используемого устройства.
+- Безопасное восстановление воспроизведения через системное устройство, если сохранённое устройство стало недоступно.
+- Экспорт обработанной MP3-копии с текущими скоростью и тоном. Исходный файл не перезаписывается; перед сохранением можно выбрать новое имя.
 
-#### Плейлист и медиатека
+### Плейлист и коллекция
 
-- Добавление отдельных файлов, папок с подпапками и пустых папок для последующего наполнения.
-- Группировка треков по папкам, сворачивание и разворачивание групп, включение и отключение отдельных групп в воспроизведении.
-- Проверка добавленных папок на новые файлы и поиск по плейлисту. Если файл стал недоступен, его запись остаётся видимой: можно открыть список проблемных файлов, перейти к треку, найти замену или удалить только запись без удаления файла с диска.
-- Очередь «Играть следующим» с поиском, сортировкой по названию и восстановлением исходного порядка добавления.
-- Виртуализированный список, рассчитанный на работу с большими плейлистами.
-- Избранное с отдельным виртуальным представлением и быстрым переключением из заголовка плейлиста.
-- Редактирование тегов и свойств трека прямо из приложения.
-- Нормализация имён аудиофайлов по шаблону, в том числе из контекстного меню трека.
+- Добавление отдельных аудиофайлов и папок вместе с вложенными папками.
+- Добавление пустых папок для последующего наполнения.
+- Группировка треков по папкам.
+- Сворачивание и разворачивание групп.
+- Включение и отключение отдельных папок из воспроизведения.
+- Поиск по плейлисту.
+- Виртуализированный список для больших коллекций.
+- Очередь «Играть следующим» с поиском и сортировкой.
+- Избранное с отдельным представлением и быстрым переключением из заголовка плейлиста.
+- Массовое выделение с помощью `Ctrl` и `Shift`.
+- Drag & Drop.
+- Проверка отслеживаемых папок на новые файлы.
+- Обработка недоступных файлов без удаления исходного файла с диска: можно найти замену или удалить только запись из плейлиста.
+- Редактирование тегов, свойств и обложки трека.
+- Поиск обложек в интернете и локальное кэширование найденных изображений.
+- Нормализация имён аудиофайлов по настраиваемому шаблону.
 
-#### Интерфейс и интеграция с Windows
+### Мини-плеер и внешний вид
 
-- Обычный, квадратный и компактный режим мини-плеера.
-- Мини-плеер поверх других окон, настройка прозрачности, перемещение с привязкой к краям экрана и фон, адаптирующийся к текущей обложке. Для обложки доступны стандартный вид и вращающийся винил, а также контур прогресса текущего трека.
-- Полноэкранный режим Now Playing с крупной обложкой, управлением воспроизведением, динамичным фоном и текстом песни; открывается по `F11`, через меню видов или контекстное меню мини-плеера.
-- Жесты на обложке с возможностью отключения в настройках.
-- Тёмная и светлая темы, системный или пользовательский акцентный цвет, Mica/Acrylic и дополнительные параметры внешнего вида.
-- Русский и английский языки с мгновенным переключением открытых окон, меню, статистики, Now Playing и списка изменений.
-- Медиа-клавиши Windows, пользовательские горячие клавиши, значок в системном трее и Now Playing через System Media Transport Controls.
-- Необязательная интеграция Discord Rich Presence с настройками приватности.
-- Настраиваемое уведомление о смене трека: политика показа, размер, ширина, угол и выбранный монитор. Позиционирование учитывает масштаб Windows конкретного монитора.
-- Масштаб интерфейса и режим снижения движения для более комфортного использования.
-- Автозапуск вместе с Windows, запуск свёрнутым в трей, сворачивание в трей вместо закрытия и создание ярлыка на рабочем столе.
+- Обычный режим, квадратный режим с крупной обложкой и компактный мини-плеер.
+- Настройка прозрачности, положения, прилипания к краям экрана и отображаемых элементов мини-плеера.
+- Стандартный режим обложки.
+- Вращающийся виниловый режим обложки.
+- Статичный круглый режим обложки.
+- Контур прогресса текущего трека вокруг обложки.
+- Настройка толщины контура прогресса.
+- Фон мини-плеера, адаптирующийся к цвету текущей обложки.
+- Жесты на обложке.
+- Полноэкранный режим Now Playing с крупной обложкой, динамичным фоном, управлением и текстом песни.
+- Светлая и тёмная темы.
+- Системный или пользовательский акцентный цвет.
+- Mica/Acrylic и другие параметры оформления Windows-интерфейса.
+- Масштаб интерфейса от 85% до 135%.
+- Режим «Снизить движение» для отключения декоративных анимаций.
+- Автопрокрутка настроек по клику средней кнопкой мыши: первый клик включает режим, повторный клик выключает его.
 
-#### Метаданные и история
+### Тексты песен и интеграции
 
-- Чтение обложек из тегов, поиск обложек в интернете, ручная установка изображения и локальное кэширование найденных обложек.
-- Просмотр и редактирование свойств обложки.
-- Live Lyrics: синхронные тексты из `.lrc`, обычные тексты из `.txt` и тега Comment, встроенный поиск, ручная загрузка, локальное кэширование добавленных текстов и политика поиска текста.
-- Статистика прослушиваний со счётчиком для каждого трека и отдельным окном сводки.
-- Возобновление последнего трека после запуска с отдельной возможностью отключить автоматическое воспроизведение.
-- Защита данных плейлиста, избранного и статистики от раннего перезаписывания при запуске, включая резервное сохранение пользовательских данных, миграции настроек и локальные точки восстановления перед сбросом.
-- Экспорт и импорт настроек в один `.lumi`-файл, включая выбранный язык интерфейса.
-- Список изменений внутри приложения с поиском, сортировкой, визуальными категориями и автоматическим расчётом версии по SemVer. Номер опубликованной версии открывает соответствующий GitHub Release.
-- Проверка обновлений через GitHub Releases и установка новой версии из приложения.
+- Live Lyrics из `.lrc`.
+- Обычные тексты из `.txt` и тега Comment.
+- Поиск текстов и ручная загрузка.
+- Настройка политики поиска: локальные источники, автоматический точный поиск или ручной поиск.
+- Управляемое локальное хранение кэша текстов и обложек.
+- Discord Rich Presence с настройками приватности.
+- Windows media keys.
+- Пользовательские глобальные горячие клавиши.
+- System Media Transport Controls.
+- Значок в системном трее.
+- Автозапуск вместе с Windows и запуск в свёрнутом виде.
+- Сворачивание в трей вместо закрытия.
+- Создание ярлыка на рабочем столе.
+
+### Состояние, диагностика и обновления
+
+- Сохранение последнего трека и позиции воспроизведения.
+- Настройка автоматического возобновления последнего трека.
+- Счётчик прослушиваний и отдельное окно статистики.
+- Экспорт и импорт профиля в один `.lumi`-файл.
+- Версионные миграции настроек.
+- Проверка и исправление некорректных значений настроек при запуске.
+- Резервное сохранение пользовательских данных.
+- Локальные точки восстановления перед сбросом настроек или данных.
+- Ограничение размера логов.
+- Диагностика аудиовывода и фоновых операций.
+- Встроенный список изменений с категориями, поиском и сортировкой.
+- Проверка обновлений через GitHub Releases.
+- Проверка SHA-256 установщиков перед запуском.
+- Поддержка обычного EXE/Inno Setup-сценария и компактных Velopack/MSI-обновлений.
+- Уведомление о смене трека можно мгновенно скрыть кликом по карточке.
+
+## Сборка из исходников
 
 ### Требования
 
-Для запуска из исходников потребуется Windows 10 или Windows 11 с поддержкой WPF и .NET 10. Для разработки используйте Visual Studio 2022 с workload **.NET desktop development** и установленным **.NET 10 SDK**.
+- Windows 10 или Windows 11.
+- .NET 10 SDK.
+- Visual Studio 2022 с workload **.NET desktop development** — если используется Visual Studio.
+- Git.
 
-### Запуск из исходников
+### Запуск приложения
 
-1. Клонируйте репозиторий и перейдите в его корневую папку:
+В репозитории находятся отдельные проекты приложения и тестов. Поэтому в командах ниже путь к `.csproj` указан явно.
 
-   ```powershell
-   git clone https://github.com/wasssly/Lumisense.git
-   cd Lumisense
-   ```
+```powershell
+git clone https://github.com/wasssly/Lumisense.git
+cd Lumisense
 
-2. Восстановите зависимости и запустите проект:
+dotnet restore .\Lumisense\Lumisense.csproj
+dotnet run --project .\Lumisense\Lumisense.csproj
+```
 
-   ```powershell
-   dotnet restore .\Lumisense\Lumisense.csproj
-   dotnet run --project .\Lumisense\Lumisense.csproj
-   ```
+### Сборка Release
 
-3. Запустите unit-тесты:
+```powershell
+dotnet build .\Lumisense\Lumisense.csproj -c Release
+```
 
-   ```powershell
-   dotnet test .\Lumisense.Tests\Lumisense.Tests.csproj -c Release
-   ```
+### Запуск тестов
 
-Также можно открыть `Lumisense.csproj` в Visual Studio и запустить приложение клавишей **F5**. При первом восстановлении NuGet автоматически загрузит необходимые пакеты.
+```powershell
+dotnet test .\Lumisense.Tests\Lumisense.Tests.csproj -c Release
+```
 
-### Готовые сборки и обновления
+Открыть проект можно в Visual Studio, выбрав `Lumisense/Lumisense.csproj`. Тестовый проект находится в `Lumisense.Tests/Lumisense.Tests.csproj`.
 
-Готовые сборки публикуются на странице [Releases](https://github.com/wasssly/Lumisense/releases) при создании тегов формата `v*.*.*`. Начиная с release с versioned public assets, для обычной установки используется `Lumisense-<version>-Setup.exe`; установщик предлагает выбрать русский или английский язык. Сборка выполняется автоматически через [GitHub Actions](https://github.com/wasssly/Lumisense/actions) с self-contained `dotnet publish`, Inno Setup из `Installer/Lumisense.iss` и Velopack packages для MSI-копий.
+## Обновления
 
-Для обычной установки и обновления выбирайте EXE. `Lumisense-<version>-win-x64.msi` предназначен только для добровольного перехода на компактные Velopack-обновления; файлы `.nupkg`, `RELEASES` и `releases.win.json` запускать вручную не нужно. Точные назначения всех assets, сценарии EXE/MSI и особенности исторических release описаны в [документации об установке и обновлениях](docs/UPDATES.md#русский).
+Lumisense может проверять наличие новых версий через GitHub Releases. Перед применением загруженного установщика проверяется его SHA-256-контрольная сумма, опубликованная для соответствующего релиза.
 
-Сам плеер умеет проверять новые версии через GitHub Releases, проверяет скачиваемые установщики по SHA-256 и подсказывает пользователю дальнейшее действие. Перед использованием конкретной сборки ознакомьтесь с описанием соответствующего release.
+В зависимости от типа установки используются разные сценарии:
 
-### Технологический стек
+| Тип установки | Основной сценарий |
+|---|---|
+| EXE/Inno Setup | Полный установщик `.exe` |
+| Velopack/MSI | Компактные обновления через пакеты Velopack |
+| Переход EXE → MSI | Отдельный управляемый сценарий миграции |
 
-- **.NET 10** и WPF (`net10.0-windows10.0.19041.0`).
-- **[WPF-UI](https://github.com/lepoco/wpfui)** — Fluent-компоненты, `FluentWindow`, Mica-фон и системные элементы интерфейса.
+Если обновление не запускается автоматически, откройте страницу нужного релиза и используйте соответствующий EXE-установщик. Не запускайте отдельные служебные файлы Velopack вручную.
+
+## Технологии
+
+- **.NET 10** и **WPF**.
+- **[WPF-UI](https://github.com/lepoco/wpfui)** — Fluent-компоненты и оформление окна.
 - **[NAudio](https://github.com/naudio/NAudio)** — декодирование и воспроизведение аудио.
-- **SoundTouch.Net** и локальный Span-based adapter — изменение скорости и тона во время воспроизведения.
+- **SoundTouch.Net** — изменение скорости и тона.
 - **[TagLibSharp](https://github.com/mono/taglib-sharp)** — чтение и запись тегов и обложек.
-- **DiscordRichPresence** — локальная интеграция Discord Rich Presence.
-- **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** — отображение SVG-иконок интерфейса.
-- **Windows Forms** — системный трей и `NotifyIcon`.
-- **xUnit** — unit-тесты чистой логики версий, локализации и размещения уведомлений.
+- **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** — отображение SVG.
+- **DiscordRichPresence** — интеграция с Discord.
+- **xUnit v3** и Microsoft Testing Platform — автоматические тесты.
 
 ### Структура репозитория
 
@@ -150,16 +221,25 @@ Lumisense/
     └── Icons/                           — SVG-иконки и иконка приложения
 ```
 
-### Обратная связь
+## Обратная связь
 
-Если вы нашли ошибку или хотите предложить улучшение, создайте [issue в репозитории](https://github.com/wasssly/Lumisense/issues). В описании желательно указать версию приложения, шаги воспроизведения проблемы и, если возможно, фрагмент лога или скриншот.
+Перед созданием issue проверьте, что используете последнюю доступную версию. В сообщении укажите:
+
+1. версию Lumisense;
+2. версию Windows;
+3. шаги воспроизведения проблемы;
+4. ожидаемый и фактический результат;
+5. скриншот или очищенный фрагмент лога, если это помогает понять проблему.
+
+Не прикладывайте логи с личными путями, именами пользователей или другой чувствительной информацией без предварительного редактирования.
+
+Создать issue можно в [репозитории Lumisense](https://github.com/wasssly/Lumisense/issues).
+
 
 </details>
 
 <details id="english" open>
-<summary><strong>English</strong></summary>
-
-<br>
+<summary><strong style="font-size: 1.5em;">English</strong></summary>
 
 **Lumisense** is a local Fluent Design audio player for Windows 11. It plays music stored on disk without streaming or cloud services, and supports cover art, tags, playlists, an equalizer, listening statistics, a mini player, Live Lyrics, Discord Rich Presence, and updates through GitHub Releases.
 
@@ -171,98 +251,63 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 
 #### Playback and audio
 
-- Playback of MP3, WAV, WMA, FLAC, M4A, AAC, OGG, and other formats supported by NAudio.
-- Play, pause, stop, track navigation, seeking through the progress bar, and automatic advance to the next track.
-- Volume control, including smooth logarithmic adjustment in the lower range.
-- A ten-band equalizer with presets from 31 Hz to 16 kHz and an EQ Bypass mode for quickly comparing processed and unprocessed sound. Custom presets can be saved, exported, and imported.
-- Playback-speed and pitch adjustment while preserving pitch.
-- Windows output-device selection, an Actual device card showing the output currently in use, and a safe fallback to the system device if the saved endpoint becomes unavailable.
-- Shuffle and three repeat modes: no repeat, repeat playlist, and repeat one track. The previous-track history is retained between launches when shuffle is active.
+- MP3, WAV, WMA, FLAC, M4A, AAC, OGG, and other formats supported by NAudio.
+- Play, pause, stop, track navigation, seeking, repeat modes, and history-aware shuffle across all active playlist folders.
+- Persisted shuffle history and queue state between launches.
+- Ten-band equalizer, presets, EQ Bypass, ReplayGain, playback speed, and pitch controls.
+- Windows output-device selection with safe fallback and audio recovery when a saved endpoint becomes unavailable.
+- Processed MP3 export using the current speed and pitch without overwriting the original file; a new filename can be selected before saving.
 
 #### Playlist and library
 
-- Adding individual files, folders with subfolders, and empty folders for later use.
-- Grouping tracks by folder, collapsing and expanding groups, and enabling or disabling individual groups for playback.
-- Checking added folders for new files and searching within the playlist. If a file becomes unavailable, its entry remains visible: you can open the affected-files list, navigate to the track, find a replacement, or remove only the entry without deleting the file from disk.
-- A Play Next queue with search, title sorting, and restoration of the original insertion order.
-- A virtualized list designed for large playlists.
-- Favorites with a dedicated virtual view and quick access from the playlist header.
-- Editing track tags and properties directly in the application.
-- Normalizing audio-file names from a template, including through a track’s context menu.
+- Files, folders, nested folders, empty folders, grouping, search, Favorites, Play Next, Drag & Drop, and a virtualized list for large collections.
+- Unavailable-file recovery, tag and artwork editing, online artwork search, local artwork caching, and filename normalization.
 
-#### Interface and Windows integration
+#### Mini-player and Windows integration
 
-- Standard, square, and compact mini-player modes.
-- A mini player that can stay above other windows, supports adjustable opacity, edge snapping, and a background that adapts to the current artwork. Artwork can use the standard view or a rotating vinyl view, with an optional track-progress outline.
-- A full-screen Now Playing mode with large artwork, playback controls, a dynamic background, and lyrics; it can be opened with `F11`, through the view menu, or from the mini player’s context menu.
-- Configurable artwork gestures that can be disabled in Settings.
-- Dark and light themes, a system or custom accent color, Mica/Acrylic, and additional appearance settings.
-- Russian and English languages, with immediate updates to open windows, menus, statistics, Now Playing, and the changelog.
-- Windows media keys, custom hotkeys, a system-tray icon, and Now Playing via System Media Transport Controls.
-- Optional Discord Rich Presence integration with privacy settings.
-- A configurable track-change notification: display policy, size, width, corner, and monitor selection. Positioning uses the Windows scale of the selected monitor.
-- Interface scaling and a reduced-motion mode for a more comfortable experience.
-- Launching with Windows, starting minimized to the tray, minimizing to the tray instead of closing, and creating a desktop shortcut.
+- Standard, square, and compact mini-player modes with adjustable opacity, edge snapping, artwork gestures, progress outline, standard artwork, rotating vinyl, and static circular artwork.
+- Full-screen Now Playing with lyrics and dynamic background.
+- Dark and light themes, Mica/Acrylic, custom accents, interface scaling, reduced motion, system tray, media keys, global hotkeys, Discord Rich Presence, and System Media Transport Controls.
+- Auto-scroll in Settings toggled by clicking the middle mouse button once to enable it and again to disable it; the pointer indicates the active direction.
+- Track-change notification settings; the notification can be dismissed immediately by clicking its card.
 
-#### Metadata and history
+### Build from source
 
-- Reading embedded cover art, searching for cover art online, manually setting an image, and locally caching found artwork.
-- Viewing and editing cover-art properties.
-- Live Lyrics: synchronized text from `.lrc`, plain text from `.txt` and the Comment tag, built-in search, manual loading, local caching of added lyrics, and a lyrics-search policy.
-- Listening statistics with a per-track counter and a dedicated summary window.
-- Resuming the last track after launch, with a separate option to prevent automatic playback.
-- Protecting playlist, favorites, and statistics data from early overwrite at startup, including user-data backup, settings migrations, and local recovery points before reset.
-- Exporting and importing settings in a single `.lumi` file, including the selected interface language.
-- An in-app changelog with search, sorting, visual categories, and automatic SemVer version calculation. The number of a published version opens its corresponding GitHub Release.
-- Checking for updates through GitHub Releases and installing a new version from the application.
+Requirements:
 
-### Requirements
+- Windows 10 or Windows 11;
+- .NET 10 SDK;
+- Visual Studio 2022 with **.NET desktop development**, if using Visual Studio;
+- Git.
 
-Running from source requires Windows 10 or Windows 11 with WPF and .NET 10 support. For development, use Visual Studio 2022 with the **.NET desktop development** workload and an installed **.NET 10 SDK**.
+```powershell
+git clone https://github.com/wasssly/Lumisense.git
+cd Lumisense
 
-### Running from source
+dotnet restore .\Lumisense\Lumisense.csproj
+dotnet run --project .\Lumisense\Lumisense.csproj
+dotnet build .\Lumisense\Lumisense.csproj -c Release
+dotnet test .\Lumisense.Tests\Lumisense.Tests.csproj -c Release
+```
 
-1. Clone the repository and change to its root directory:
+The repository contains separate application and test projects, so explicit `.csproj` paths are recommended from the repository root.
 
-   ```powershell
-   git clone https://github.com/wasssly/Lumisense.git
-   cd Lumisense
-   ```
+### Updates
 
-2. Restore dependencies and run the project:
+Ready-to-use builds are published on [GitHub Releases](https://github.com/wasssly/Lumisense/releases). Use `Lumisense-<version>-Setup.exe` for normal installation and updates. The MSI package is intended for users who want to migrate to compact Velopack updates. Do not run `.nupkg`, `RELEASES`, or `releases.win.json` files manually. See [docs/UPDATES.md](docs/UPDATES.md) for the exact EXE/MSI scenarios and asset roles.
 
-   ```powershell
-   dotnet restore .\Lumisense\Lumisense.csproj
-   dotnet run --project .\Lumisense\Lumisense.csproj
-   ```
+### Technologies
 
-3. Run the unit tests:
-
-   ```powershell
-   dotnet test .\Lumisense.Tests\Lumisense.Tests.csproj -c Release
-   ```
-
-You can also open `Lumisense.csproj` in Visual Studio and start the application with **F5**. NuGet will automatically download the required packages during the first restore.
-
-### Ready-made builds and updates
-
-Ready-to-use builds are published on the [Releases](https://github.com/wasssly/Lumisense/releases) page when tags in the `v*.*.*` format are created. Starting with the release that introduces versioned public assets, use `Lumisense-<version>-Setup.exe` for a normal installation; the installer offers a choice between Russian and English. Builds are produced automatically through [GitHub Actions](https://github.com/wasssly/Lumisense/actions), using self-contained `dotnet publish`, Inno Setup from `Installer/Lumisense.iss`, and Velopack packages for MSI installations.
-
-Choose the EXE for normal installation and updating. `Lumisense-<version>-win-x64.msi` is only for an optional move to compact Velopack updates; do not run `.nupkg`, `RELEASES`, or `releases.win.json` manually. See the [installation and update guide](docs/UPDATES.md#english) for the purpose of every asset, EXE/MSI scenarios, and details for historical releases.
-
-The player can check GitHub Releases for new versions, verifies downloaded installers with SHA-256, and guides the user through the next action. Before using a specific build, read the description of its corresponding release.
-
-### Technology stack
-
-- **.NET 10** and WPF (`net10.0-windows10.0.19041.0`).
-- **[WPF-UI](https://github.com/lepoco/wpfui)** for Fluent components, `FluentWindow`, the Mica background, and system UI elements.
+- **.NET 10** and **WPF**.
+- **[WPF-UI](https://github.com/lepoco/wpfui)** for Fluent components and window styling.
 - **[NAudio](https://github.com/naudio/NAudio)** for audio decoding and playback.
-- **SoundTouch.Net** with a local Span-based adapter for playback-speed and pitch adjustment.
-- **[TagLibSharp](https://github.com/mono/taglib-sharp)** for reading and writing tags and cover art.
-- **DiscordRichPresence** for local Discord Rich Presence integration.
-- **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** for rendering SVG interface icons.
-- **Windows Forms** for the system tray and `NotifyIcon`.
-- **xUnit** for unit tests covering version handling, localization, and notification placement.
+- **SoundTouch.Net** for playback speed and pitch processing.
+- **[TagLibSharp](https://github.com/mono/taglib-sharp)** for tags and cover art.
+- **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** for SVG icons.
+- **DiscordRichPresence** for Discord integration.
+- **xUnit v3** and Microsoft Testing Platform for automated tests.
+
+Key internal components include `AudioPlaybackCoordinator`, `TrackPreparationService`, and `TrackExportService`.
 
 ### Repository structure
 
@@ -300,6 +345,7 @@ Lumisense/
 
 ### Feedback
 
-If you find a bug or would like to propose an improvement, please create an [issue in the repository](https://github.com/wasssly/Lumisense/issues). Include the application version, steps to reproduce the problem, and, if possible, a log excerpt or screenshot.
+If you find a bug or would like to propose an improvement, open an [issue in the repository](https://github.com/wasssly/Lumisense/issues). Include the application version, Windows version, reproduction steps, expected and actual results, and a redacted log excerpt or screenshot when available. Remove personal paths, usernames, and other sensitive information before sharing logs.
+
 
 </details>

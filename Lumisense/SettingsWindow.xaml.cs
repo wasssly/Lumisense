@@ -181,6 +181,7 @@ public partial class SettingsWindow : FluentWindow
         MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
+        GameOverlayCompatibilityCheckBox.IsChecked = _settings.GameOverlayCompatibilityMode;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
         MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
         MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
@@ -2052,6 +2053,14 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.MiniPlayerAlwaysOnTop = MiniAlwaysOnTopCheckBox.IsChecked == true;
         _owner.ApplyMiniPlayerTopmostLive(_settings.MiniPlayerAlwaysOnTop);
+    }
+
+    private void GameOverlayCompatibilityCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.GameOverlayCompatibilityMode = GameOverlayCompatibilityCheckBox.IsChecked == true;
+        _owner.ApplyMiniPlayerOverlayCompatibilityLive(_settings.GameOverlayCompatibilityMode);
     }
 
     private void MiniPinnedCheckBox_Changed(object sender, RoutedEventArgs e)

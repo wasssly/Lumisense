@@ -1573,6 +1573,13 @@
                                           Checked="MiniAlwaysOnTopCheckBox_Changed" Unchecked="MiniAlwaysOnTopCheckBox_Changed" />
                                 <TextBlock Text="Мини-плеер остаётся видимым, пока вы работаете в других приложениях."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
+                                <CheckBox x:Name="GameOverlayCompatibilityCheckBox"
+                                          Content="Режим совместимости с играми и overlay"
+                                          Checked="GameOverlayCompatibilityCheckBox_Changed"
+                                          Unchecked="GameOverlayCompatibilityCheckBox_Changed"
+                                          Margin="0,0,0,0" />
+                                <TextBlock Text="Включите перед запуском игры или Steam Overlay. Уменьшает анимации и эффекты плавающих окон, чтобы снизить риск мигания и проблем с WPF-рендерингом."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="MiniPinnedCheckBox" Content="Закрепить положение (запретить перетаскивание)"
                                           Checked="MiniPinnedCheckBox_Changed" Unchecked="MiniPinnedCheckBox_Changed" />
                                 <TextBlock Text="Защищает выбранную позицию мини-плеера при изменении режима экрана или запуске игры."

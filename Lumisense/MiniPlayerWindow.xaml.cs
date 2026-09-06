@@ -300,6 +300,7 @@ public partial class MiniPlayerWindow : Window
     private static readonly (byte R, byte G, byte B) LightBackgroundRgb = (0xF2, 0xF2, 0xF2);
 
     private bool _isLightTheme;
+    private bool _overlayCompatibilityMode;
 
     // Кисти получаются через FindResource по x:Key и кэшируются один раз, чтобы не искать
     // их в дереве ресурсов при каждом обновлении темы/прозрачности
@@ -351,7 +352,9 @@ public partial class MiniPlayerWindow : Window
     // MiniOpacitySlider), базовый RGB берётся из текущей темы (см. ApplyTheme).
     private void ApplyBackground()
     {
-        byte alpha = (byte)Math.Round(Math.Clamp(_mainWindow.Settings.MiniPlayerOpacity, 0.0, 1.0) * 255);
+        byte alpha = _overlayCompatibilityMode
+            ? (byte)255
+            : (byte)Math.Round(Math.Clamp(_mainWindow.Settings.MiniPlayerOpacity, 0.0, 1.0) * 255);
         var rgb = _isLightTheme ? LightBackgroundRgb : DarkBackgroundRgb;
         MiniBackgroundBrush.Color = Color.FromArgb(alpha, rgb.R, rgb.G, rgb.B);
     }
@@ -359,6 +362,19 @@ public partial class MiniPlayerWindow : Window
     // Вызывается из MainWindow.ApplyMiniPlayerOpacityLive, когда пользователь двигает
     // слайдер прозрачности в окне настроек, пока мини-плеер уже открыт.
     public void ApplyOpacityLive() => ApplyBackground();
+
+    // Ручной режим для игр/Steam Overlay. Не меняет настройки пользователя, а временно
+    // делает слой мини-плеера плотным и останавливает декоративную rotation-анимацию.
+    public void ApplyOverlayCompatibilityLive(bool enabled)
+    {
+        _overlayCompatibilityMode = enabled;
+        if (enabled)
+            StopVinylRotation();
+        else
+            UpdateVinylRotation(_mainWindow.IsPlayingNow);
+
+        ApplyBackground();
+    }
 
     // Вызывается из MainWindow.ApplyMiniPlayerThemeLive, когда пользователь переключает
     // светлую/тёмную тему в настройках, пока мини-плеер уже открыт.
@@ -420,7 +436,8 @@ public partial class MiniPlayerWindow : Window
 
     private void UpdateVinylRotation(bool isPlaying)
     {
-        if (!string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal))
+        if (_overlayCompatibilityMode
+            || !string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal))
             return;
 
         EnsureVinylRotation();
@@ -517,6 +534,13 @@ public partial class MiniPlayerWindow : Window
         };
         _volumeOverlayRestoreTimer.Tick += VolumeOverlayRestoreTimer_Tick;
         _volumeOverlayRestoreTimer.Start();
+
+        if (_overlayCompatibilityMode)
+        {
+            VolumeIndicator.BeginAnimation(UIElement.OpacityProperty, null);
+            VolumeIndicator.Opacity = 1;
+            return;
+        }
 
         var storyboard = (Storyboard)FindResource("VolumeIndicatorStoryboard");
         storyboard.Begin(this, true);
@@ -802,8 +826,10 @@ public partial class MiniPlayerWindow : Window
     {
         PinnedMenuItem.IsCheckable = true;
         TopmostMenuItem.IsCheckable = true;
+        OverlayCompatibilityMenuItem.IsCheckable = true;
         PinnedMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerPinned;
         TopmostMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerAlwaysOnTop;
+        OverlayCompatibilityMenuItem.IsChecked = _mainWindow.Settings.GameOverlayCompatibilityMode;
     }
 
     private void MiniSecondaryContextButton_Click(object sender, RoutedEventArgs e)
@@ -938,6 +964,14 @@ public partial class MiniPlayerWindow : Window
 
     private void TopmostMenuItem_Click(object sender, RoutedEventArgs e)
         => _mainWindow.SetMiniPlayerTopmost(TopmostMenuItem.IsChecked);
+
+    private void OverlayCompatibilityMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        bool enabled = OverlayCompatibilityMenuItem.IsChecked;
+        _mainWindow.Settings.GameOverlayCompatibilityMode = enabled;
+        _mainWindow.ApplyMiniPlayerOverlayCompatibilityLive(enabled);
+        SettingsManager.Save(_mainWindow.Settings);
+    }
 
     // Оверлей поверх MiniOpacityContextSlider (см. MiniPlayerWindow.xaml) — сам Slider
     // IsHitTestVisible="False", мышь ловит этот прозрачный Border и сам вычисляет значение по

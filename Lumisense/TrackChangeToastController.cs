@@ -12,8 +12,14 @@ internal sealed class TrackChangeToastController : IDisposable
         System.Windows.Forms.Screen screen, AppSettings settings)
     {
         _window ??= new TrackChangeToastWindow();
+        _window.ApplyOverlayCompatibilityLive(settings.GameOverlayCompatibilityMode);
         _window.ShowToast(title, artist, art, isLightTheme, screen,
             settings.TrackChangeToastPosition, settings.TrackChangeToastSize, settings.TrackChangeToastWidth);
+    }
+
+    public void ApplyOverlayCompatibilityLive(bool enabled)
+    {
+        _window?.ApplyOverlayCompatibilityLive(enabled);
     }
 
     public void Dispose()

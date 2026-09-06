@@ -6113,6 +6113,7 @@ public partial class MainWindow : FluentWindow
         {
             Topmost = _settings.MiniPlayerAlwaysOnTop
         };
+        _miniPlayerWindow.ApplyOverlayCompatibilityLive(_settings.GameOverlayCompatibilityMode);
 
         // Возвращаем мини-плеер туда, куда его в прошлый раз поставил пользователь.
         // Если позиция ещё ни разу не задавалась — ставим его в правый нижний угол
@@ -6192,6 +6193,14 @@ public partial class MainWindow : FluentWindow
     public void ApplyMiniPlayerTopmostLive(bool topmost)
     {
         if (_miniPlayerWindow != null) _miniPlayerWindow.Topmost = topmost;
+    }
+
+    // Ручной режим совместимости с играми/Steam Overlay: снижает количество эффектов и
+    // анимаций сразу в обоих плавающих окнах, не меняя сохранённые обычные настройки.
+    public void ApplyMiniPlayerOverlayCompatibilityLive(bool enabled)
+    {
+        _miniPlayerWindow?.ApplyOverlayCompatibilityLive(enabled);
+        _trackChangeToastController.ApplyOverlayCompatibilityLive(enabled);
     }
 
     // Позволяет окну настроек мгновенно применить смену светлой/тёмной темы к мини-плееру,
