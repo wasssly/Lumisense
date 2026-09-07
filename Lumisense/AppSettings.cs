@@ -66,6 +66,12 @@ public class AppSettings
     // "Dark" / "Light" — выбирается в настройках (страница "Оформление").
     public string Theme { get; set; } = "Dark";
 
+    // "Duotone" / "Outline" / "Bold" / "Fill" / "Thin" — набор иконок интерфейса (см. IconPacks
+    // и IconPackContext в SvgPathIcon.cs). Меняется вживую (IconPacks.SetCurrent) сразу на всех
+    // открытых окнах, без перезапуска приложения; это поле — только то, что подхватывается при
+    // следующем запуске.
+    public string IconPack { get; set; } = IconPacks.Duotone;
+
     // Язык статического интерфейса: "ru" или "en". На первом запуске установщик может
     // передать свой выбор через одноразовый marker-файл в папке данных приложения.
     public string Language { get; set; } = "ru";

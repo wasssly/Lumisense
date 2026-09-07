@@ -518,6 +518,13 @@ public partial class MainWindow : FluentWindow
 
     public MainWindow()
     {
+        // Должно случиться до InitializeComponent(): SvgPathIcon читает IconPacks.Current уже
+        // при первом построении визуального дерева этого окна, чтобы понять, из какой подпапки
+        // Icons/svg/{Pack} брать файлы. Дальнейшая смена пака (IconPacks.SetCurrent) применяется
+        // сразу и на этом окне тоже — MultiBinding в SvgPathIcon подписан на IconPackContext,
+        // так что этот вызов задаёт только начальное значение при первом построении.
+        IconPacks.Initialize(_settings);
+
         _audioOutputRecoveryService = new(
             _audioOutputRecoveryCoordinator, TimeSpan.FromMilliseconds(OutputRecoveryCooldownMilliseconds));
         InitializeComponent();

@@ -137,6 +137,8 @@ public partial class SettingsWindow : FluentWindow
         ThemeLightRadio.IsChecked = _settings.Theme == "Light";
         ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault();
 
+        RefreshIconPackCardSelection();
+
         AccentManualRadio.IsChecked = _settings.AccentColorMode == "Manual";
         AccentCoverRadio.IsChecked = _settings.AccentColorMode == "Cover";
         AccentSystemRadio.IsChecked = !AccentManualRadio.IsChecked.GetValueOrDefault()
@@ -1200,6 +1202,57 @@ public partial class SettingsWindow : FluentWindow
             if (IsLoaded)
                 ApplyWindowBackdrop(_settings, forceReapply: true);
         }), DispatcherPriority.ContextIdle);
+    }
+
+    // Клик по карточке пака в галерее превью (см. Icons/svg/{Pack} и IconPacks в SvgPathIcon.cs).
+    // Применяется сразу на всех уже открытых окнах через IconPacks.SetCurrent (живой источник —
+    // IconPackContext), без перезапуска приложения.
+    private void IconPackCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Border { Tag: string pack } || !IconPacks.IsKnown(pack))
+            return;
+
+        if (pack == _settings.IconPack) return;
+
+        _settings.IconPack = pack;
+        RefreshIconPackCardSelection();
+
+        if (_isInitializing) return;
+
+        IconPacks.SetCurrent(pack);
+        _ = SettingsManager.SaveAsync(_settings);
+    }
+
+    // ПКМ по карточке пака — открыть окно со всем набором иконок этого пака (не обязательно
+    // выбранного сейчас), см. IconPackPreviewWindow.
+    private void IconPackCard_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Border { Tag: string pack } || !IconPacks.IsKnown(pack))
+            return;
+
+        e.Handled = true;
+        new IconPackPreviewWindow(this, pack).ShowDialog();
+    }
+
+    // Подсвечивает рамкой карточку пака, совпадающего с _settings.IconPack — по аналогии с
+    // RefreshAccentSwatchSelection выше.
+    private void RefreshIconPackCardSelection()
+    {
+        (System.Windows.Controls.Border card, string pack)[] cards =
+        {
+            (IconPackCardDuotone, IconPacks.Duotone),
+            (IconPackCardOutline, IconPacks.Outline),
+            (IconPackCardBold, IconPacks.Bold),
+            (IconPackCardFill, IconPacks.Fill),
+            (IconPackCardThin, IconPacks.Thin),
+        };
+
+        foreach (var (card, pack) in cards)
+        {
+            card.BorderBrush = pack == _settings.IconPack
+                ? (Brush)FindResource("AccentFillColorDefaultBrush")
+                : Brushes.Transparent;
+        }
     }
 
     private void AccentModeRadio_Changed(object sender, RoutedEventArgs e)

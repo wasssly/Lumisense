@@ -703,6 +703,113 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Набор иконок интерфейса — см. IconPacks/IconPackContext (SvgPathIcon.cs) и
+                             IconPackCard_MouseLeftButtonDown / IconPackCard_MouseRightButtonDown в code-behind.
+                             Каждая карточка — превью нескольких характерных иконок ИМЕННО из своего пака:
+                             SvgPathIcon.Pack переопределяет активный IconPacks.Current только для этой иконки,
+                             поэтому здесь видно все паки сразу, а не только выбранный сейчас. ЛКМ — выбрать пак,
+                             применяется немедленно на всех открытых окнах (IconPacks.SetCurrent, живая привязка
+                             через IconPackContext). ПКМ — открыть IconPackPreviewWindow со всем набором иконок пака. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Набор иконок" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Применяется сразу. ПКМ по карточке — посмотреть весь набор."
+                                           FontSize="12" Opacity="0.6" Margin="0,-6,0,14" TextWrapping="Wrap" />
+
+                                <WrapPanel>
+                                    <Border x:Name="IconPackCardDuotone" Tag="Duotone" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
+                                            MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                                <local:SvgPathIcon Pack="Duotone" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Duotone" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Duotone" Icon="IconSettings" Size="22" />
+                                            </StackPanel>
+                                            <TextBlock Text="Duotone" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Мягкие, двухцветные" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border x:Name="IconPackCardOutline" Tag="Outline" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
+                                            MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                                <local:SvgPathIcon Pack="Outline" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Outline" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Outline" Icon="IconSettings" Size="22" />
+                                            </StackPanel>
+                                            <TextBlock Text="Outline" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Тонкий контур, round cap" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border x:Name="IconPackCardBold" Tag="Bold" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
+                                            MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                                <local:SvgPathIcon Pack="Bold" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Bold" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Bold" Icon="IconSettings" Size="22" />
+                                            </StackPanel>
+                                            <TextBlock Text="Bold" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Плотный, контрастный" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border x:Name="IconPackCardFill" Tag="Fill" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
+                                            MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                                <local:SvgPathIcon Pack="Fill" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Fill" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Fill" Icon="IconSettings" Size="22" />
+                                            </StackPanel>
+                                            <TextBlock Text="Fill" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Сплошные силуэты" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border x:Name="IconPackCardThin" Tag="Thin" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
+                                            MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,10">
+                                                <local:SvgPathIcon Pack="Thin" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Thin" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="Thin" Icon="IconSettings" Size="22" />
+                                            </StackPanel>
+                                            <TextBlock Text="Thin" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Ультратонкая линия" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.AccentColorMode/AccentColorHex. Пресеты — просто восемь
                              готовых hex-цветов; "Свой" открывает стандартный системный ColorDialog. У
                              выбранного сейчас цвета (если это один из пресетов) рамка подсвечена белым —
