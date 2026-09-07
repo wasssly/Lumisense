@@ -25,6 +25,7 @@
         <local:IsPinnedMultiConverter x:Key="IsPinnedMultiConverter" />
         <local:PlayCountMultiConverter x:Key="PlayCountMultiConverter" />
         <local:TrackContextMenuActionVisibilityConverter x:Key="TrackContextMenuActionVisibilityConverter" />
+        <local:TrackContextMenuGroupVisibilityConverter x:Key="TrackContextMenuGroupVisibilityConverter" />
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
 
@@ -93,7 +94,7 @@
                                 <local:SvgPathIcon Icon="IconPin" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <Separator />
+                        <Separator Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuGroupVisibilityConverter}, ConverterParameter='ShowInExplorer|CopyTrackName|CopyPath|CopyFile|ExportProcessedCopy'}" />
                         <MenuItem Header="Показать в проводнике" Click="ShowInExplorerMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=ShowInExplorer}" />
                         <MenuItem Header="Копировать имя трека" Click="CopyTrackNameMenuItem_Click"
@@ -105,7 +106,7 @@
                         <MenuItem Header="Сохранить обработанную копию…" Click="ExportProcessedCopyMenuItem_Click"
                                   ToolTip="MP3-копия с текущими скоростью и тоном"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=ExportProcessedCopy}" />
-                        <Separator />
+                        <Separator Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuGroupVisibilityConverter}, ConverterParameter='Properties|EditTags|NormalizeFileName'}" />
                         <MenuItem Header="Свойства" Click="TrackPropertiesMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=Properties}" />
                         <MenuItem Header="Изменить теги" Click="EditTagsMenuItem_Click"
@@ -120,7 +121,7 @@
                                 <local:SvgPathIcon Icon="IconEdit" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <Separator />
+                        <Separator Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuGroupVisibilityConverter}, ConverterParameter='RemoveFromPlaylist|DeleteFromDisk'}" />
                         <MenuItem Header="Убрать из плейлиста" Click="RemoveTrackMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=RemoveFromPlaylist}">
                             <MenuItem.Icon>

@@ -115,3 +115,28 @@ public sealed class TrackContextMenuActionVisibilityConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
+
+// Разделитель между секциями меню отключается вместе со всей секцией, которую он открывает —
+// иначе при отключении в настройках всех действий одной секции (например, все три "Копировать…")
+// разделители по обе стороны от пустой секции остаются на месте и превращаются в два подряд идущих
+// или в висящий в никуда разделитель. ConverterParameter — идентификаторы действий секции через
+// "|" (например "ShowInExplorer|CopyTrackName|CopyPath|CopyFile|ExportProcessedCopy"); видимо, если
+// хотя бы одно из них включено.
+public sealed class TrackContextMenuGroupVisibilityConverter : IValueConverter
+{
+    public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (parameter is not string actionIds) return Visibility.Collapsed;
+
+        foreach (string actionId in actionIds.Split('|', StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (TrackContextMenuActions.Instance.IsEnabled(actionId))
+                return Visibility.Visible;
+        }
+
+        return Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture)
+        => throw new NotSupportedException();
+}

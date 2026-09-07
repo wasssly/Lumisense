@@ -308,6 +308,7 @@ public partial class SettingsWindow : FluentWindow
             TrackContextCopyNameCheckBox,
             TrackContextCopyPathCheckBox,
             TrackContextCopyFileCheckBox,
+            TrackContextExportProcessedCopyCheckBox,
             TrackContextPropertiesCheckBox,
             TrackContextEditTagsCheckBox,
             TrackContextNormalizeFileNameCheckBox,

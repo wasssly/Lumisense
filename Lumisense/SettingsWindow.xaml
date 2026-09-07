@@ -1273,6 +1273,8 @@
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextCopyFileCheckBox" Tag="CopyFile" Content="Копировать файл"
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextExportProcessedCopyCheckBox" Tag="ExportProcessedCopy" Content="Сохранить обработанную копию"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextPropertiesCheckBox" Tag="Properties" Content="Свойства"
                                               Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="TrackContextEditTagsCheckBox" Tag="EditTags" Content="Изменить теги"
