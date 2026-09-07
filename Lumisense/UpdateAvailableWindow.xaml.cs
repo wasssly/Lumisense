@@ -20,6 +20,11 @@ public partial class UpdateAvailableWindow : FluentWindow
     private DownloadPauseController? _pauseController;
     private bool _isVelopackDownload;
     private bool _isVelopackPaused;
+    // Устанавливается после успешного скачивания+проверки Velopack-обновления, если пользователь
+    // в UpdateReadyDialog выбрал «Позже» вместо немедленного рестарта — см. InstallViaVelopackAsync
+    // и InstallButton_Click. Пока true, повторный клик по кнопке установки не скачивает пакет
+    // заново, а сразу переходит к ApplyAndRestart (пакет уже на диске и проверен).
+    private bool _velopackReadyToApply;
     // Смена источника никогда не смешивает байты разных зеркал: текущий запрос отменяется,
     // его .part удаляется сетевым слоем, а новый полный запрос начинается только после этого.
     private bool _restartLegacyDownloadFromNewSource;
@@ -330,6 +335,12 @@ public partial class UpdateAvailableWindow : FluentWindow
             return;
         }
 
+        if (_velopackReadyToApply)
+        {
+            await ApplyVelopackUpdateAndRestartAsync();
+            return;
+        }
+
         if (_result.DeliveryKind == UpdateDeliveryKind.Velopack)
         {
             VelopackMigrationLifecycle.SaveDesktopShortcutPreference(DesktopShortcutCheckBox.IsChecked == true);
@@ -532,24 +543,20 @@ public partial class UpdateAvailableWindow : FluentWindow
                 return;
             }
 
-            // После успешного snapshot это плановый restart, а не аварийное завершение. Ставим
-            // marker до запуска Update.exe, чтобы ProcessExit не пытался второй раз писать JSON
-            // с фонового потока и не выдавал ложное cross-thread предупреждение.
-            App? plannedRestartApp = Application.Current as App;
-            plannedRestartApp?.MarkPlannedUpdateRestart();
+            // Пакет скачан, проверен и настройки зафиксированы — раньше сразу следовал
+            // автоматический рестарт. Теперь спрашиваем: применить сейчас или продолжить
+            // работу и сделать это позже (пользователь сам решает момент, а не приложение).
+            var readyDialog = new UpdateReadyDialog(this);
+            bool restartNow = readyDialog.ShowDialog() == true && readyDialog.RestartNow;
 
-            // При успехе Update.exe завершит этот процесс, применит уже проверенный package
-            // и запустит Lumisense заново. Если сам запуск updater бросит исключение, UI
-            // останется живым, а аварийное сохранение снова будет доступно.
-            try
+            if (!restartNow)
             {
-                service.ApplyAndRestart(_result.VelopackUpdate);
+                _velopackReadyToApply = true;
+                SetVelopackReadyToApplyUi();
+                return;
             }
-            catch
-            {
-                plannedRestartApp?.CancelPlannedUpdateRestart();
-                throw;
-            }
+
+            await ApplyVelopackUpdateAndRestartAsync(service);
         }
         catch (OperationCanceledException)
         {
@@ -569,6 +576,60 @@ public partial class UpdateAvailableWindow : FluentWindow
             RefreshVelopackRuntimePresentation();
             ShowError($"{LocalizationService.Get(LocalizationKey.UpdateVelopackUnavailable)}\n{ex.Message}");
         }
+    }
+
+    // Вынесено из InstallViaVelopackAsync: сам перезапуск и применение уже скачанного пакета —
+    // либо сразу после UpdateReadyDialog, либо позже, вторым кликом по InstallButton, когда
+    // _velopackReadyToApply уже true (см. InstallButton_Click). Повторного скачивания не
+    // происходит в обоих случаях, пакет уже на диске и проверен.
+    private async Task ApplyVelopackUpdateAndRestartAsync(VelopackUpdateService? service = null)
+    {
+        if (_result.VelopackUpdate is null) return;
+
+        service ??= new VelopackUpdateService();
+
+        // После успешного snapshot это плановый restart, а не аварийное завершение. Ставим
+        // marker до запуска Update.exe, чтобы ProcessExit не пытался второй раз писать JSON
+        // с фонового потока и не выдавал ложное cross-thread предупреждение.
+        App? plannedRestartApp = Application.Current as App;
+        plannedRestartApp?.MarkPlannedUpdateRestart();
+
+        // При успехе Update.exe завершит этот процесс, применит уже проверенный package
+        // и запустит Lumisense заново. Если сам запуск updater бросит исключение, UI
+        // останется живым, а аварийное сохранение снова будет доступно.
+        try
+        {
+            service.ApplyAndRestart(_result.VelopackUpdate);
+        }
+        catch (Exception ex)
+        {
+            plannedRestartApp?.CancelPlannedUpdateRestart();
+            _velopackDiagnostics?.Failed(ex);
+            SetDownloading(false);
+            _velopackReadyToApply = false;
+            RefreshVelopackRuntimePresentation();
+            ShowError($"{LocalizationService.Get(LocalizationKey.UpdateVelopackUnavailable)}\n{ex.Message}");
+        }
+    }
+
+    // Обновление скачано и подтверждено, но пользователь отложил рестарт (см. UpdateReadyDialog).
+    // Окно остаётся открытым: кнопка установки меняет подпись и по клику сразу вызывает
+    // ApplyVelopackUpdateAndRestartAsync, без повторного скачивания.
+    private void SetVelopackReadyToApplyUi()
+    {
+        _isDownloading = false;
+        PauseDownloadButton.Visibility = Visibility.Collapsed;
+        CancelDownloadButton.Visibility = Visibility.Collapsed;
+        DownloadProgressBar.Visibility = Visibility.Collapsed;
+        if (!_isMsiMigrationOnly)
+            InstallButton.Visibility = Visibility.Visible;
+        InstallButton.Content = LocalizationService.Translate("Установить при следующем перезапуске");
+        InstallButton.Appearance = ControlAppearance.Primary;
+        LaterButton.IsEnabled = true;
+        LaterButton.Visibility = Visibility.Visible;
+        PhaseText.Text = LocalizationService.Translate("Обновление готово");
+        PhaseText.Visibility = Visibility.Visible;
+        StatusText.Visibility = Visibility.Collapsed;
     }
 
     // Скачивает и запускает Inno Setup установщик. Отмена прерывает HTTP-запрос

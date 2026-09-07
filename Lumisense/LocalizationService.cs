@@ -485,6 +485,11 @@ public static class LocalizationService
         ["Позже"] = "Later",
         ["Подробнее"] = "Learn more",
         ["Скачать и установить"] = "Download and install",
+        ["Обновление готово"] = "Update ready",
+        ["Новая версия Lumisense загружена и готова к установке. Перезапустить сейчас, чтобы применить её, или продолжить работу и сделать это позже?"] =
+            "The new version of Lumisense has been downloaded and is ready to install. Restart now to apply it, or keep working and do it later?",
+        ["Перезапустить сейчас"] = "Restart now",
+        ["Установить при следующем перезапуске"] = "Install on next restart",
         ["Поиск по версиям и типу"] = "Search by versions and type",
         ["Исполнитель и название трека"] = "Artist and track title",
         ["Поиск по плейлисту"] = "Search by playlist",
