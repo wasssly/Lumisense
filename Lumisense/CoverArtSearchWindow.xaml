@@ -5,7 +5,7 @@
         xmlns:local="clr-namespace:Lumisense"
         Title="Поиск обложки"
         Icon="/Icons/app/lumisense.ico"
-        Height="580" Width="460"
+        Height="610" Width="560"
         MinHeight="420" MinWidth="360"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
@@ -14,6 +14,7 @@
 
     <Grid>
         <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
@@ -41,7 +42,17 @@
                        Visibility="Collapsed" Click="CancelSearchButton_Click" />
         </Grid>
 
-        <Grid Grid.Row="2" Margin="24,0,24,8">
+        <!-- Выбор источников — влияет только на следующий поиск (уже показанные результаты не
+             перефильтровываются). Хотя бы один должен остаться включён, иначе RunSearch
+             откажется искать и покажет об этом статус-текст. -->
+        <StackPanel Grid.Row="2" Orientation="Horizontal" Margin="24,0,24,12">
+            <TextBlock Text="Источники:" VerticalAlignment="Center" Opacity="0.6" FontSize="12" Margin="0,0,10,0" />
+            <CheckBox x:Name="ItunesSourceCheckBox" Content="iTunes" IsChecked="True" Margin="0,0,14,0" />
+            <CheckBox x:Name="DeezerSourceCheckBox" Content="Deezer" IsChecked="True" Margin="0,0,14,0" />
+            <CheckBox x:Name="MusicBrainzSourceCheckBox" Content="MusicBrainz" IsChecked="True" />
+        </StackPanel>
+
+        <Grid Grid.Row="3" Margin="24,0,24,8">
             <TextBlock x:Name="StatusText" HorizontalAlignment="Center" VerticalAlignment="Top"
                        Margin="0,32,0,0" Opacity="0.6" FontSize="13" TextWrapping="Wrap"
                        TextAlignment="Center" MaxWidth="320"
@@ -52,10 +63,10 @@
             </ScrollViewer>
         </Grid>
 
-        <Grid Grid.Row="3" Margin="24,0,24,20">
+        <Grid Grid.Row="4" Margin="24,0,24,20">
             <TextBlock VerticalAlignment="Center" FontSize="11" Opacity="0.45" TextWrapping="Wrap" MaxWidth="260"
                        HorizontalAlignment="Left"
-                       Text="Источники обложек — открытые каталоги iTunes и Deezer (без регистрации и ключей)" />
+                       Text="Источники обложек — открытые каталоги iTunes, Deezer и MusicBrainz/Cover Art Archive (без регистрации и ключей)" />
             <ui:Button Content="Закрыть" Appearance="Secondary" HorizontalAlignment="Right" Click="CloseButton_Click" />
         </Grid>
     </Grid>

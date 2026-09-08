@@ -164,6 +164,12 @@ public class AppSettings
     public bool DiscordRichPresenceEnabled { get; set; }
     public bool DiscordRichPresenceShowTrackInfo { get; set; } = true;
     public bool DiscordRichPresenceShowTimeline { get; set; } = true;
+    // Действует только вместе с DiscordRichPresenceShowTrackInfo — обложка сама по себе выдаёт
+    // трек не хуже текста, поэтому показ картинки при скрытых названии/исполнителе не имеет
+    // смысла (см. DiscordRichPresenceManager.BuildPresence). Ищется автоматически по
+    // артисту/названию через открытые API (DiscordCoverArtLookupService), а не берётся из
+    // локального файла — Discord Rich Presence умеет показывать только внешние HTTPS-ссылки.
+    public bool DiscordRichPresenceShowCoverArt { get; set; } = true;
 
     // Темп воспроизведения без изменения высоты тона. 1.0 — обычная скорость.
     public double PlaybackSpeed { get; set; } = 1.0;

@@ -20,9 +20,21 @@ public sealed class DiscordRichPresenceManager : IDisposable
     private bool _lastShowTrackInfo;
     private bool _lastShowTimeline;
     private double _lastPublishedPositionSeconds;
+    private double _lastPublishedTotalSeconds;
     private DateTime _lastPublishedAtUtc;
     private DateTime _nextConnectionAttemptUtc;
     private bool _disposed;
+    // Ссылка на тот же AppSettings, что и MainWindow передаёт в Update — используется только
+    // RefreshCoverArtAsync, чтобы переотправить presence с уже актуальными на тот момент флагами
+    // приватности, не сохраняя их отдельным моментальным снимком.
+    private AppSettings? _lastSettings;
+
+    // Версия увеличивается при каждой смене метаданных (см. Update). Асинхронный поиск обложки
+    // (RefreshCoverArtAsync) сверяет свою версию перед тем, как применить результат — если трек
+    // успел смениться ещё раз, пока лукап летал по сети, устаревший URL просто отбрасывается.
+    private long _coverLookupVersion;
+    private bool _coverLookupStartedForCurrentTrack;
+    private string? _currentCoverUrl;
 
     public void Update(AppSettings settings, string? title, string? artist, bool isPlaying,
         double currentSeconds, double totalSeconds, bool hasTrack, bool force = false)
@@ -45,8 +57,12 @@ public sealed class DiscordRichPresenceManager : IDisposable
             string normalizedTitle = NormalizeText(title);
             string normalizedArtist = NormalizeText(artist);
 
-            bool metadataChanged = !string.Equals(normalizedTitle, _lastTitle, StringComparison.Ordinal) ||
-                                   !string.Equals(normalizedArtist, _lastArtist, StringComparison.Ordinal) ||
+            // Отдельно от metadataChanged: play/pause и смена настроек приватности не должны
+            // сбрасывать уже найденную обложку и запускать повторный лукап по сети.
+            bool trackChanged = !string.Equals(normalizedTitle, _lastTitle, StringComparison.Ordinal) ||
+                                !string.Equals(normalizedArtist, _lastArtist, StringComparison.Ordinal);
+
+            bool metadataChanged = trackChanged ||
                                    isPlaying != _lastPlaying ||
                                    settings.DiscordRichPresenceShowTrackInfo != _lastShowTrackInfo ||
                                    settings.DiscordRichPresenceShowTimeline != _lastShowTimeline;
@@ -60,9 +76,32 @@ public sealed class DiscordRichPresenceManager : IDisposable
 
             if (!force && !metadataChanged && !seeked) return;
 
-            var presence = BuildPresence(settings, normalizedTitle, normalizedArtist, isPlaying, currentSeconds, totalSeconds);
+            if (trackChanged)
+            {
+                _coverLookupVersion++;
+                _coverLookupStartedForCurrentTrack = false;
+                _currentCoverUrl = null;
+            }
+
+            bool wantsCoverArt = settings.DiscordRichPresenceShowTrackInfo && settings.DiscordRichPresenceShowCoverArt;
+            if (!wantsCoverArt)
+            {
+                // Настройку могли выключить, пока обложка уже была найдена и показана —
+                // не оставляем зависший URL от предыдущего состояния.
+                _currentCoverUrl = null;
+            }
+            else if (!_coverLookupStartedForCurrentTrack)
+            {
+                _coverLookupStartedForCurrentTrack = true;
+                _ = RefreshCoverArtAsync(normalizedArtist, normalizedTitle, _coverLookupVersion);
+            }
+
+            _lastSettings = settings;
+
+            var presence = BuildPresence(settings, normalizedTitle, normalizedArtist, isPlaying, currentSeconds, totalSeconds,
+                wantsCoverArt ? _currentCoverUrl : null);
             client.SetPresence(presence);
-            DiscordRichPresenceLogger.Info($"Presence отправлен: playing={isPlaying}, timeline={settings.DiscordRichPresenceShowTimeline && isPlaying && totalSeconds > 0}, trackInfo={settings.DiscordRichPresenceShowTrackInfo}, buttons={presence.Buttons?.Length ?? 0}.");
+            DiscordRichPresenceLogger.Info($"Presence отправлен: playing={isPlaying}, timeline={settings.DiscordRichPresenceShowTimeline && isPlaying && totalSeconds > 0}, trackInfo={settings.DiscordRichPresenceShowTrackInfo}, cover={presence.Assets != null}, buttons={presence.Buttons?.Length ?? 0}.");
 
             _lastTitle = normalizedTitle;
             _lastArtist = normalizedArtist;
@@ -70,6 +109,7 @@ public sealed class DiscordRichPresenceManager : IDisposable
             _lastShowTrackInfo = settings.DiscordRichPresenceShowTrackInfo;
             _lastShowTimeline = settings.DiscordRichPresenceShowTimeline;
             _lastPublishedPositionSeconds = currentSeconds;
+            _lastPublishedTotalSeconds = totalSeconds;
             _lastPublishedAtUtc = DateTime.UtcNow;
         }
         catch (Exception ex)
@@ -178,7 +218,7 @@ public sealed class DiscordRichPresenceManager : IDisposable
     }
 
     private static RichPresence BuildPresence(AppSettings settings, string title, string artist,
-        bool isPlaying, double currentSeconds, double totalSeconds)
+        bool isPlaying, double currentSeconds, double totalSeconds, string? coverUrl)
     {
         string activityState = isPlaying ? "Воспроизводится" : "На паузе";
         var presence = new RichPresence
@@ -200,6 +240,25 @@ public sealed class DiscordRichPresenceManager : IDisposable
             }
         };
 
+        // Discord принимает произвольный https-URL прямо в LargeImageKey — не нужен заранее
+        // загруженный в Developer Portal asset. coverUrl приходит от DiscordCoverArtLookupService
+        // (см. RefreshCoverArtAsync); пока лукап ещё не завершился или ничего не нашёл, Assets
+        // просто не выставляется, и Discord показывает иконку приложения по умолчанию.
+        //
+        // LargeImageText — всплывающая подсказка при наведении на саму обложку. Если название и
+        // исполнитель и так уже показаны текстом (Details/State), дублировать их же во всплывашке
+        // не нужно — оставляем LargeImageText пустым, и Discord просто не покажет тултип. Подпись
+        // нужна только как запасной вариант, когда трек скрыт настройками приватности: тогда хотя
+        // бы при наведении будет ясно, что это Lumisense, а не голая картинка без подписи.
+        if (!string.IsNullOrWhiteSpace(coverUrl))
+        {
+            presence.Assets = new Assets
+            {
+                LargeImageKey = coverUrl,
+                LargeImageText = settings.DiscordRichPresenceShowTrackInfo ? null : "Lumisense"
+            };
+        }
+
         // Таймлайн скрывается на паузе: иначе Discord продолжал бы отсчёт и показывал неверное
         // оставшееся время. Для играющего трека задаём абсолютные timestamps от UTC.
         if (settings.DiscordRichPresenceShowTimeline && isPlaying && totalSeconds > 0)
@@ -211,6 +270,46 @@ public sealed class DiscordRichPresenceManager : IDisposable
         }
 
         return presence;
+    }
+
+    // Ищет обложку в фоне (см. DiscordCoverArtLookupService — сам может занимать до нескольких
+    // секунд) и, если к моменту завершения трек всё ещё тот же самый (version совпадает),
+    // переотправляет presence уже с найденной картинкой. Не блокирует Update и не мешает
+    // воспроизведению, даже если поиск зависнет или сеть недоступна.
+    private async Task RefreshCoverArtAsync(string artist, string title, long version)
+    {
+        string? url;
+        try
+        {
+            url = await DiscordCoverArtLookupService.TryGetCoverUrlAsync(artist, title, CancellationToken.None);
+        }
+        catch
+        {
+            url = null;
+        }
+
+        lock (_sync)
+        {
+            if (_disposed || _client is null || version != _coverLookupVersion || _lastSettings is null)
+                return;
+
+            _currentCoverUrl = url;
+
+            bool wantsCoverArt = _lastSettings.DiscordRichPresenceShowTrackInfo && _lastSettings.DiscordRichPresenceShowCoverArt;
+            if (!wantsCoverArt) return; // настройку выключили, пока лукап летал — не показываем найденное
+
+            var presence = BuildPresence(_lastSettings, _lastTitle ?? title, _lastArtist ?? artist,
+                _lastPlaying, _lastPublishedPositionSeconds, _lastPublishedTotalSeconds, url);
+            try
+            {
+                _client.SetPresence(presence);
+                DiscordRichPresenceLogger.Info($"Presence обновлён после поиска обложки: найдена={url != null}.");
+            }
+            catch (Exception ex)
+            {
+                DiscordRichPresenceLogger.Error("Не удалось отправить Rich Presence с найденной обложкой", ex);
+            }
+        }
     }
 
     private static string NormalizeText(string? value)
@@ -228,6 +327,11 @@ public sealed class DiscordRichPresenceManager : IDisposable
         _lastShowTrackInfo = false;
         _lastShowTimeline = false;
         _lastPublishedPositionSeconds = 0;
+        _lastPublishedTotalSeconds = 0;
         _lastPublishedAtUtc = default;
+        _lastSettings = null;
+        _coverLookupVersion++;
+        _coverLookupStartedForCurrentTrack = false;
+        _currentCoverUrl = null;
     }
 }

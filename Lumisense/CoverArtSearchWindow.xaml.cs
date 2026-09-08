@@ -3,8 +3,6 @@ using System.Linq;
 using System.Net.Http;
 using System.Security.Cryptography;
 using System.Text;
-using System.Text.Json;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -13,14 +11,16 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using Wpf.Ui.Controls;
+using ArtResult = Lumisense.CoverArtProviders.ArtResult;
 
 namespace Lumisense;
 
-// Поиск обложки трека в интернете по исполнителю и названию через два открытых API без
-// ключа: iTunes Search и Deezer, запросы параллельно, результаты объединяются в один список.
-// Один iTunes нередко не находил обложки исполнителей вне основного каталога (русские/СНГ
-// и другие локальные артисты) — каталог Deezer пересекается, но не идентичен, вместе
-// закрывают больше запросов. Если один источник недоступен, второй всё равно отвечает.
+// Поиск обложки трека в интернете по исполнителю и названию через три открытых API без ключа:
+// iTunes Search, Deezer и MusicBrainz/Cover Art Archive (см. CoverArtProviders) — запросы
+// параллельно, результаты объединяются в один список. Каждый источник по отдельности нередко
+// не находит обложку (локальные/СНГ-исполнители у iTunes, редкие релизы у Deezer, задержки и
+// отсутствие сканов у Cover Art Archive) — три источника вместе закрывают больше запросов, чем
+// любой один. Если источник недоступен или отключен галочкой, остальные всё равно отвечают.
 //
 // Показывает варианты миниатюрами; при выборе скачивает изображение в повышенном разрешении
 // и возвращает его TrackTagsWindow — та сохраняет так же, как обложку с диска.
@@ -29,7 +29,6 @@ namespace Lumisense;
 // личный Client Access Token — без ключа от пользователя не заработает.
 public partial class CoverArtSearchWindow : FluentWindow
 {
-    private const int MaxApiJsonBytes = 2 * 1024 * 1024;
     private const int MaxImageBytes = 10 * 1024 * 1024;
 
     // Обложки из поиска сохраняются в %AppData%\\Lumisense\\cover-cache. URL не попадает
@@ -40,12 +39,6 @@ public partial class CoverArtSearchWindow : FluentWindow
     private static readonly string ArtworkCacheDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lumisense", "cover-cache");
 
-    private static readonly HashSet<string> TrustedImageHosts = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "mzstatic.com", "apple.com", "deezer.com", "dzcdn.net"
-    };
-    private static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
-
     // Результат ручной очистки для интерфейса настроек. FailedFiles > 0 обычно означает,
     // что параллельно с очисткой какой-то файл кэша был занят новой загрузкой.
     public readonly record struct ArtworkCacheClearResult(int DeletedFiles, long FreedBytes, int FailedFiles);
@@ -54,12 +47,6 @@ public partial class CoverArtSearchWindow : FluentWindow
     // при закрытии окна без выбора (Escape/крестик/"Закрыть") остаётся null.
     public byte[]? SelectedImageBytes { get; private set; }
     public string? SelectedImageMimeType { get; private set; }
-
-    // Единая карточка результата независимо от источника: у iTunes полноразмерная обложка
-    // получается подстановкой размера в тот же URL миниатюры (см. WithArtworkSize), а у
-    // Deezer это в принципе отдельный URL (cover_medium/cover_xl) — поэтому модель хранит оба
-    // адреса сразу, а не пытается вывести один из другого.
-    private readonly record struct ArtResult(string ThumbUrl, string FullUrl, string Label);
 
     // Отменяет предыдущий незавершённый поиск (и все ещё летящие по нему запросы миниатюр),
     // когда пользователь запускает новый поиск или явно нажимает "Отмена". Без него смена
@@ -131,16 +118,25 @@ public partial class CoverArtSearchWindow : FluentWindow
 
         try
         {
-            // Оба источника запрашиваются параллельно и независимо друг от друга: если один
-            // упал с ошибкой (сеть, таймаут, блокировка) — SearchItunesAsync/SearchDeezerAsync
-            // сами гасят исключение и возвращают пустой список, чтобы не обрушить второй.
-            var itunesTask = SearchItunesAsync(query, token);
-            var deezerTask = SearchDeezerAsync(query, token);
-            await Task.WhenAll(itunesTask, deezerTask);
+            // Источники запрашиваются параллельно и независимо друг от друга: если один упал с
+            // ошибкой (сеть, таймаут, блокировка) — CoverArtProviders сам гасит исключение и
+            // возвращает пустой список, чтобы не обрушить остальные. Отключенный галочкой
+            // источник вообще не запрашивается.
+            var searchTasks = new List<Task<List<ArtResult>>>();
+            if (ItunesSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchItunesAsync(query, token));
+            if (DeezerSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchDeezerAsync(query, token));
+            if (MusicBrainzSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchMusicBrainzAsync(query, token));
 
+            if (searchTasks.Count == 0)
+            {
+                StatusText.Text = LocalizationService.Translate("Выберите хотя бы один источник обложек.");
+                return;
+            }
+
+            await Task.WhenAll(searchTasks);
             token.ThrowIfCancellationRequested();
 
-            var entries = MergeAndDedupe(itunesTask.Result, deezerTask.Result);
+            var entries = MergeAndDedupe(searchTasks.Select(t => t.Result).ToList());
 
             if (entries.Count == 0)
             {
@@ -179,145 +175,25 @@ public partial class CoverArtSearchWindow : FluentWindow
         }
     }
 
-    // ---------- iTunes Search API ----------
+    // ---------- Объединение результатов включённых источников ----------
 
-    private static async Task<List<ArtResult>> SearchItunesAsync(string query, CancellationToken token)
+    // Простое чередование по кругу (по одному из каждого включённого источника за проход) вместо
+    // "сначала все результаты первого источника, потом все следующего" — так пользователь сразу
+    // видит, что источников несколько и они разные, а не долистывает вниз в поисках второго.
+    // Дубликаты между источниками не схлопываются (адреса обложек у них никогда не совпадают
+    // буквально), но это не страшно — совсем одинаковых на вид миниатюр из разных источников
+    // почти не бывает.
+    private static List<ArtResult> MergeAndDedupe(List<List<ArtResult>> sources)
     {
-        try
-        {
-            var url = $"https://itunes.apple.com/search?term={Uri.EscapeDataString(query)}&entity=song&limit=16";
-            using var response = await Http.GetAsync(url, token);
-            response.EnsureSuccessStatusCode();
-            var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
-            return ParseItunesResults(json);
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            // Настоящая отмена — либо пользователь нажал "Отмена", либо запущен новый поиск
-            // поверх этого (см. _searchCts?.Cancel() в начале RunSearch). Пробрасываем дальше,
-            // чтобы RunSearch мог сам корректно завершиться через ThrowIfCancellationRequested.
-            throw;
-        }
-        catch
-        {
-            // Сюда же попадает и TaskCanceledException от СОБСТВЕННОГО таймаута HttpClient
-            // (Http.Timeout = 15 секунд, см. поле выше) — она тоже наследуется от
-            // OperationCanceledException, но НЕ связана с нашим token: если ловить её как
-            // обычную отмену (как было раньше), исключение улетало бы вверх до RunSearch,
-            // который принял бы его за настоящую отмену пользователем и не обновил бы
-            // интерфейс вообще — экран так и оставался на "Ищем…" навсегда, хотя запрос давно
-            // не выполняется. Сеть недоступна, iTunes вернул ошибку, JSON не распарсился,
-            // истёк таймаут и т.п. — во всех этих случаях второй источник (Deezer) всё ещё
-            // может найти результат, поэтому просто отдаём пустой список вместо того, чтобы
-            // обрушить весь поиск целиком.
-            return new List<ArtResult>();
-        }
-    }
-
-    // Разбирает ответ iTunes Search API и схлопывает повторы одной и той же обложки у
-    // разных треков одного альбома (artworkUrl уникален на альбом, а не на трек).
-    private static List<ArtResult> ParseItunesResults(string json)
-    {
-        var entries = new List<ArtResult>();
-
-        using var doc = JsonDocument.Parse(json);
-        if (!doc.RootElement.TryGetProperty("results", out var results) || results.ValueKind != JsonValueKind.Array)
-            return entries;
-
-        var seenArt = new HashSet<string>();
-        foreach (var item in results.EnumerateArray())
-        {
-            var artwork = item.TryGetProperty("artworkUrl100", out var artEl) ? artEl.GetString() : null;
-            if (string.IsNullOrEmpty(artwork) || !seenArt.Add(artwork)) continue;
-
-            var trackArtist = item.TryGetProperty("artistName", out var aEl) ? aEl.GetString() : "";
-            var collection = item.TryGetProperty("collectionName", out var cEl) ? cEl.GetString() : "";
-            var label = string.IsNullOrEmpty(collection) ? trackArtist ?? "" : $"{trackArtist} — {collection}";
-
-            entries.Add(new ArtResult(WithItunesArtworkSize(artwork, 200), WithItunesArtworkSize(artwork, 1200), label));
-        }
-
-        return entries;
-    }
-
-    // Ссылки iTunes на обложки содержат размер прямо в пути (например ".../100x100bb.jpg") —
-    // подставляя своё значение вместо 100, можно получить то же изображение в нужном разрешении.
-    private static string WithItunesArtworkSize(string artworkUrl, int size) =>
-        Regex.Replace(artworkUrl, @"\d+x\d+bb(?=\.\w+$)", $"{size}x{size}bb");
-
-    // ---------- Deezer Search API ----------
-
-    private static async Task<List<ArtResult>> SearchDeezerAsync(string query, CancellationToken token)
-    {
-        try
-        {
-            var url = $"https://api.deezer.com/search?q={Uri.EscapeDataString(query)}&limit=16";
-            using var response = await Http.GetAsync(url, token);
-            response.EnsureSuccessStatusCode();
-            var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
-            return ParseDeezerResults(json);
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch
-        {
-            // См. подробный комментарий в SearchItunesAsync — сюда же попадает и таймаут
-            // самого HttpClient, а не только настоящая отмена.
-            return new List<ArtResult>();
-        }
-    }
-
-    // Разбирает ответ Deezer Search API и схлопывает повторы одной и той же обложки у разных
-    // треков одного альбома, как и для iTunes выше.
-    private static List<ArtResult> ParseDeezerResults(string json)
-    {
-        var entries = new List<ArtResult>();
-
-        using var doc = JsonDocument.Parse(json);
-        if (!doc.RootElement.TryGetProperty("data", out var data) || data.ValueKind != JsonValueKind.Array)
-            return entries;
-
-        var seenArt = new HashSet<string>();
-        foreach (var item in data.EnumerateArray())
-        {
-            if (!item.TryGetProperty("album", out var album)) continue;
-
-            var thumb = album.TryGetProperty("cover_medium", out var thumbEl) ? thumbEl.GetString() : null;
-            thumb ??= album.TryGetProperty("cover_big", out var thumbBigEl) ? thumbBigEl.GetString() : null;
-            if (string.IsNullOrEmpty(thumb) || !seenArt.Add(thumb)) continue;
-
-            var full = album.TryGetProperty("cover_xl", out var fullEl) ? fullEl.GetString() : null;
-            full ??= album.TryGetProperty("cover_big", out var fullBigEl) ? fullBigEl.GetString() : null;
-            full ??= thumb;
-
-            var trackArtist = item.TryGetProperty("artist", out var artistEl) && artistEl.TryGetProperty("name", out var nameEl)
-                ? nameEl.GetString() : "";
-            var albumTitle = album.TryGetProperty("title", out var titleEl) ? titleEl.GetString() : "";
-            var label = string.IsNullOrEmpty(albumTitle) ? trackArtist ?? "" : $"{trackArtist} — {albumTitle}";
-
-            entries.Add(new ArtResult(thumb, full, label));
-        }
-
-        return entries;
-    }
-
-    // ---------- Объединение результатов из обоих источников ----------
-
-    // Простое чередование (по одному из каждого источника) вместо "сначала все iTunes, потом
-    // все Deezer" — так пользователь сразу видит, что источников несколько и они разные,
-    // а не долистывает вниз в поисках второго. Дубликаты между источниками не схлопываются
-    // (адреса обложек у них никогда не совпадают буквально), но это не страшно — совсем
-    // одинаковых на вид миниатюр из разных источников почти не бывает.
-    private static List<ArtResult> MergeAndDedupe(List<ArtResult> itunes, List<ArtResult> deezer)
-    {
-        var merged = new List<ArtResult>(itunes.Count + deezer.Count);
-        int max = Math.Max(itunes.Count, deezer.Count);
+        int total = sources.Sum(s => s.Count);
+        var merged = new List<ArtResult>(total);
+        int max = sources.Count == 0 ? 0 : sources.Max(s => s.Count);
         for (int i = 0; i < max; i++)
         {
-            if (i < itunes.Count) merged.Add(itunes[i]);
-            if (i < deezer.Count) merged.Add(deezer[i]);
+            foreach (var source in sources)
+            {
+                if (i < source.Count) merged.Add(source[i]);
+            }
         }
         return merged;
     }
@@ -430,7 +306,7 @@ public partial class CoverArtSearchWindow : FluentWindow
     private static async Task<byte[]> GetImageBytesAsync(string url, CancellationToken token)
     {
         if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) || uri.Scheme != Uri.UriSchemeHttps ||
-            !TrustedImageHosts.Any(host => uri.Host.Equals(host, StringComparison.OrdinalIgnoreCase) ||
+            !CoverArtProviders.TrustedImageHosts.Any(host => uri.Host.Equals(host, StringComparison.OrdinalIgnoreCase) ||
                                            uri.Host.EndsWith("." + host, StringComparison.OrdinalIgnoreCase)))
             throw new InvalidDataException("Источник изображения не входит в список доверенных HTTPS-доменов.");
 
@@ -438,9 +314,9 @@ public partial class CoverArtSearchWindow : FluentWindow
         if (await TryReadCachedArtworkAsync(cachePath, token) is { } cachedBytes)
             return cachedBytes;
 
-        using var response = await Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, token);
+        using var response = await CoverArtProviders.Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, token);
         response.EnsureSuccessStatusCode();
-        var bytes = await ReadBytesWithLimitAsync(response.Content, MaxImageBytes, token);
+        var bytes = await CoverArtProviders.ReadBytesWithLimitAsync(response.Content, MaxImageBytes, token);
         if (!IsDecodableArtwork(bytes))
             throw new InvalidDataException("Сервер вернул данные, которые не являются поддерживаемым изображением.");
 
@@ -622,24 +498,6 @@ public partial class CoverArtSearchWindow : FluentWindow
             // Невозможность удалить устаревший кэш безопасна: следующая запись всё равно
             // использует отдельный временный файл и атомарную замену.
         }
-    }
-
-    private static async Task<byte[]> ReadBytesWithLimitAsync(HttpContent content, int maxBytes, CancellationToken token)
-    {
-        if (content.Headers.ContentLength is long contentLength && contentLength > maxBytes)
-            throw new InvalidDataException("Ответ превышает допустимый размер.");
-
-        await using var stream = await content.ReadAsStreamAsync(token);
-        using var memory = new MemoryStream();
-        var buffer = new byte[81920];
-        int read;
-        while ((read = await stream.ReadAsync(buffer, token)) > 0)
-        {
-            if (memory.Length + read > maxBytes)
-                throw new InvalidDataException("Ответ превышает допустимый размер.");
-            await memory.WriteAsync(buffer.AsMemory(0, read), token);
-        }
-        return memory.ToArray();
     }
 
     private static BitmapImage BytesToBitmap(byte[] bytes)
