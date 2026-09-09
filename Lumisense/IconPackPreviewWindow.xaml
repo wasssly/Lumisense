@@ -21,7 +21,8 @@
             CornerRadius="16"
             Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
             BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
-            BorderThickness="1">
+            BorderThickness="1"
+            MouseLeftButtonDown="RootBorder_MouseLeftButtonDown">
         <Border.Effect>
             <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.32" />
         </Border.Effect>
@@ -31,7 +32,7 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <Grid Grid.Row="0" Margin="0,0,0,16" MouseLeftButtonDown="TitleBar_MouseLeftButtonDown">
+            <Grid Grid.Row="0" Margin="0,0,0,16">
                 <TextBlock x:Name="TitleText" Text="Все иконки — Duotone"
                            FontSize="17" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextFillColorPrimaryBrush}" />

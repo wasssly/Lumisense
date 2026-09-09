@@ -1288,7 +1288,7 @@
                     <ui:Button x:Name="LyricsPanelButton" Appearance="Secondary" Width="136" Height="32"
                                Content="Текст песни" ToolTip="Текст песни" Click="LyricsPanelButton_Click">
                         <ui:Button.Icon>
-                            <local:SvgPathIcon x:Name="LyricsPanelButtonIcon" Icon="IconChangelog" Size="15" />
+                            <local:SvgPathIcon x:Name="LyricsPanelButtonIcon" Icon="IconLyrics" Size="15" />
                         </ui:Button.Icon>
                     </ui:Button>
                 </StackPanel>

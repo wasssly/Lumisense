@@ -103,6 +103,8 @@
         <Border.ContextMenu>
             <ContextMenu x:Name="MiniPlayerContextMenu" Opened="MiniPlayerContextMenu_Opened">
                 <ContextMenu.Resources>
+                    <local:MiniPlayerContextMenuActionVisibilityConverter x:Key="MiniPlayerContextMenuActionVisibilityConverter" />
+                    <local:MiniPlayerContextMenuGroupVisibilityConverter x:Key="MiniPlayerContextMenuGroupVisibilityConverter" />
                     <!-- Локальный шаблон применяется исключительно к двум переключаемым пунктам.
                          Используется тот же размер и геометрия индикатора, что и на странице настроек:
                          размер и геометрия индикатора полностью совпадают. IsChecked принадлежит
@@ -230,25 +232,31 @@
                         </Setter>
                     </Style>
                 </ContextMenu.Resources>
-                <MenuItem Header="Настройки" Click="SettingsMenuItem_Click" />
-                <MenuItem Header="Now Playing (полный экран)" Click="NowPlayingMenuItem_Click" />
-                <Separator />
+                <MenuItem Header="Настройки" Click="SettingsMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Settings}" />
+                <MenuItem Header="Now Playing (полный экран)" Click="NowPlayingMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=NowPlaying}" />
+                <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter='Pin|Topmost|OverlayCompatibility'}" />
                 <MenuItem x:Name="PinnedMenuItem" Header="Закрепить" IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
-                          Click="PinnedMenuItem_Click" />
+                          Click="PinnedMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Pin}" />
                 <MenuItem x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
-                          Click="TopmostMenuItem_Click" />
+                          Click="TopmostMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Topmost}" />
                 <MenuItem x:Name="OverlayCompatibilityMenuItem"
                           Header="Совместимость с играми и оверлеем"
                           IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           ToolTip="Упрощает рендеринг плавающих окон для снижения риска сбоев Steam Overlay"
-                          Click="OverlayCompatibilityMenuItem_Click" />
-                <Separator />
+                          Click="OverlayCompatibilityMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=OverlayCompatibility}" />
+                <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter=SecondaryButton}" />
                 <!-- Выбор единственной второй кнопки управления. Три компактные иконки сохраняют
                      главное меню коротким, а Tooltip раскрывает назначение без постоянного текста. -->
-                <MenuItem StaysOpenOnClick="True" Focusable="False">
+                <MenuItem StaysOpenOnClick="True" Focusable="False"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=SecondaryButton}">
                     <MenuItem.Header>
                         <Grid Width="220">
                             <Grid.ColumnDefinitions>
@@ -276,11 +284,12 @@
                         </Grid>
                     </MenuItem.Header>
                 </MenuItem>
-                <Separator />
+                <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter='PlaybackRate|Pitch'}" />
                 <!-- Скорость и тон используют такие же прозрачные overlay-области, как
                      прозрачность ниже: Slider живёт в Popup ContextMenu, поэтому явный захват
                      мыши надёжнее нативного Thumb. Двойной клик возвращает 1.00× и 0 st. -->
-                <MenuItem StaysOpenOnClick="True" Focusable="False">
+                <MenuItem StaysOpenOnClick="True" Focusable="False"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=PlaybackRate}">
                     <MenuItem.Header>
                         <Grid Width="240">
                             <Grid.ColumnDefinitions>
@@ -303,7 +312,8 @@
                         </Grid>
                     </MenuItem.Header>
                 </MenuItem>
-                <MenuItem StaysOpenOnClick="True" Focusable="False">
+                <MenuItem StaysOpenOnClick="True" Focusable="False"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Pitch}">
                     <MenuItem.Header>
                         <Grid Width="240">
                             <Grid.ColumnDefinitions>
@@ -326,7 +336,7 @@
                         </Grid>
                     </MenuItem.Header>
                 </MenuItem>
-                <Separator />
+                <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter=Opacity}" />
                 <!-- Та же настройка, что и ползунок "Прозрачность мини-плеера" в окне настроек
                      (см. MainWindow.SetMiniPlayerOpacity) — синхронизирована в обе стороны:
                      здесь подставляется актуальное значение при каждом открытии меню, а
@@ -353,7 +363,8 @@
                      не подтягивает значение принудительно при разборе XAML (см. подробный
                      комментарий у MiniOpacityContextSlider_ValueChanged в code-behind — там же
                      объяснено, почему это в принципе важно). -->
-                <MenuItem StaysOpenOnClick="True" Focusable="False">
+                <MenuItem StaysOpenOnClick="True" Focusable="False"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Opacity}">
                     <MenuItem.Header>
                         <Grid Width="220">
                             <Grid.ColumnDefinitions>

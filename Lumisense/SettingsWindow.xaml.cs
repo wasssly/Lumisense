@@ -184,6 +184,7 @@ public partial class SettingsWindow : FluentWindow
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
         MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
         GameOverlayCompatibilityCheckBox.IsChecked = _settings.GameOverlayCompatibilityMode;
+        GameOverlayAutoDetectCheckBox.IsChecked = _settings.GameOverlayCompatibilityAutoDetect;
         MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
         MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
         MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
@@ -215,6 +216,7 @@ public partial class SettingsWindow : FluentWindow
             : _settings.FileNameNormalizationTemplate;
         FileNameNormalizationResultText.Visibility = Visibility.Collapsed;
         InitializeTrackContextMenuActionCheckBoxes();
+        InitializeMiniPlayerContextMenuActionCheckBoxes();
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
@@ -322,6 +324,36 @@ public partial class SettingsWindow : FluentWindow
             if (checkBox.Tag is string actionId)
                 checkBox.IsChecked = !_owner.IsTrackContextMenuActionDisabled(actionId);
         }
+    }
+
+    private void InitializeMiniPlayerContextMenuActionCheckBoxes()
+    {
+        var checkBoxes = new[]
+        {
+            MiniContextSettingsCheckBox,
+            MiniContextNowPlayingCheckBox,
+            MiniContextPinCheckBox,
+            MiniContextTopmostCheckBox,
+            MiniContextOverlayCompatibilityCheckBox,
+            MiniContextSecondaryButtonCheckBox,
+            MiniContextPlaybackRateCheckBox,
+            MiniContextPitchCheckBox,
+            MiniContextOpacityCheckBox
+        };
+
+        foreach (System.Windows.Controls.CheckBox checkBox in checkBoxes)
+        {
+            if (checkBox.Tag is string actionId)
+                checkBox.IsChecked = !_owner.IsMiniPlayerContextMenuActionDisabled(actionId);
+        }
+    }
+
+    private void MiniPlayerContextMenuActionCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        if (sender is not System.Windows.Controls.CheckBox { Tag: string actionId } checkBox) return;
+
+        _owner.SetMiniPlayerContextMenuActionDisabled(actionId, checkBox.IsChecked != true);
     }
 
     // WindowStartupLocation="CenterOwner" не подходит — Owner не выставляется (см. начало
@@ -1227,14 +1259,18 @@ public partial class SettingsWindow : FluentWindow
     }
 
     // ПКМ по карточке пака — открыть окно со всем набором иконок этого пака (не обязательно
-    // выбранного сейчас), см. IconPackPreviewWindow.
+    // выбранного сейчас), см. IconPackPreviewWindow. Show(), не ShowDialog() — это окно
+    // read-only-превью без результата, которого нужно дождаться, и модальность здесь была бы
+    // просто лишним ограничением: блокировала бы не только SettingsWindow (его Owner), но и,
+    // если сама SettingsWindow открыта поверх плеера, опосредованно мешала бы пользоваться
+    // MainWindow, пока превью открыто.
     private void IconPackCard_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not System.Windows.Controls.Border { Tag: string pack } || !IconPacks.IsKnown(pack))
             return;
 
         e.Handled = true;
-        new IconPackPreviewWindow(this, pack).ShowDialog();
+        new IconPackPreviewWindow(this, pack).Show();
     }
 
     // Подсвечивает рамкой карточку пака, совпадающего с _settings.IconPack — по аналогии с
@@ -2117,7 +2153,15 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.GameOverlayCompatibilityMode = GameOverlayCompatibilityCheckBox.IsChecked == true;
-        _owner.ApplyMiniPlayerOverlayCompatibilityLive(_settings.GameOverlayCompatibilityMode);
+        _owner.ApplyMiniPlayerOverlayCompatibilityLive(_owner.EffectiveGameOverlayCompatibilityEnabled);
+    }
+
+    private void GameOverlayAutoDetectCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.GameOverlayCompatibilityAutoDetect = GameOverlayAutoDetectCheckBox.IsChecked == true;
+        _owner.ApplyGameOverlayAutoDetectSettingLive();
     }
 
     private void MiniPinnedCheckBox_Changed(object sender, RoutedEventArgs e)

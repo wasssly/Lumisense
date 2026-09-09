@@ -555,6 +555,16 @@ public partial class MiniPlayerWindow : Window
             _volumeOverlayRestoreTimer = null;
         }
 
+        // В overlay-режиме OnVolumeChanged намеренно пропускает VolumeIndicatorStoryboard (см.
+        // выше) — там и живёт единственная логика, которая прячет индикатор обратно. Без этого
+        // блока Opacity=1, выставленный в OnVolumeChanged, так и оставался навсегда — индикатор
+        // зависал поверх мини-плеера до следующей смены громкости.
+        if (_overlayCompatibilityMode)
+        {
+            VolumeIndicator.BeginAnimation(UIElement.OpacityProperty, null);
+            VolumeIndicator.Opacity = 0;
+        }
+
         if (!_volumeOverlaySuppressedControls || !_buttonsOverlayMode) return;
         _volumeOverlaySuppressedControls = false;
 
@@ -967,9 +977,8 @@ public partial class MiniPlayerWindow : Window
 
     private void OverlayCompatibilityMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        bool enabled = OverlayCompatibilityMenuItem.IsChecked;
-        _mainWindow.Settings.GameOverlayCompatibilityMode = enabled;
-        _mainWindow.ApplyMiniPlayerOverlayCompatibilityLive(enabled);
+        _mainWindow.Settings.GameOverlayCompatibilityMode = OverlayCompatibilityMenuItem.IsChecked;
+        _mainWindow.ApplyMiniPlayerOverlayCompatibilityLive(_mainWindow.EffectiveGameOverlayCompatibilityEnabled);
         SettingsManager.Save(_mainWindow.Settings);
     }
 

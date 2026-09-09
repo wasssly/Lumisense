@@ -344,6 +344,11 @@ public partial class MainWindow : FluentWindow
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
     private readonly TrackChangeToastController _trackChangeToastController = new();
+    // См. GameOverlayDetectionService/GameOverlayDetectionTimer_Tick — независимая от ручной
+    // галочки настроек эвристика, которая может временно поднять эффективное состояние режима
+    // совместимости, не трогая сам AppSettings.GameOverlayCompatibilityMode.
+    private DispatcherTimer? _gameOverlayDetectionTimer;
+    private bool _autoDetectedGameOverlayActive;
     private CoverArtWindow? _coverArtWindow;
     private NowPlayingWindow? _nowPlayingWindow;
 
@@ -544,6 +549,8 @@ public partial class MainWindow : FluentWindow
         FavoritesManager.Initialize(_settings.FavoriteTracks, _settings.PinnedFavoriteTracks);
         PlayCountManager.Initialize(_settings.PlayCounts);
         TrackContextMenuActions.Instance.Initialize(_settings.DisabledTrackContextMenuActions);
+        MiniPlayerContextMenuActions.Instance.Initialize(_settings.DisabledMiniPlayerContextMenuActions);
+        StartGameOverlayDetectionTimer();
 
         if (_settings.SaveQueueBetweenRestarts)
         {
@@ -3006,6 +3013,18 @@ public partial class MainWindow : FluentWindow
     {
         TrackContextMenuActions.Instance.SetDisabled(actionId, disabled);
         _settings.DisabledTrackContextMenuActions = TrackContextMenuActions.Instance.GetDisabledActionIds();
+    }
+
+    public bool IsMiniPlayerContextMenuActionDisabled(string actionId) =>
+        MiniPlayerContextMenuActions.Instance.IsDisabled(actionId);
+
+    // Тот же приём, что и у SetTrackContextMenuActionDisabled: Epoch поднимается сразу, уже
+    // открытое (или следующее открытое) контекстное меню мини-плеера пересчитывает Visibility
+    // без пересборки самого MiniPlayerWindow.
+    public void SetMiniPlayerContextMenuActionDisabled(string actionId, bool disabled)
+    {
+        MiniPlayerContextMenuActions.Instance.SetDisabled(actionId, disabled);
+        _settings.DisabledMiniPlayerContextMenuActions = MiniPlayerContextMenuActions.Instance.GetDisabledActionIds();
     }
 
     private async Task<FileNameNormalizer.RenameResult?> NormalizeTrackFileNamesAsync(
@@ -6120,7 +6139,7 @@ public partial class MainWindow : FluentWindow
         {
             Topmost = _settings.MiniPlayerAlwaysOnTop
         };
-        _miniPlayerWindow.ApplyOverlayCompatibilityLive(_settings.GameOverlayCompatibilityMode);
+        _miniPlayerWindow.ApplyOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
 
         // Возвращаем мини-плеер туда, куда его в прошлый раз поставил пользователь.
         // Если позиция ещё ни разу не задавалась — ставим его в правый нижний угол
@@ -6208,6 +6227,62 @@ public partial class MainWindow : FluentWindow
     {
         _miniPlayerWindow?.ApplyOverlayCompatibilityLive(enabled);
         _trackChangeToastController.ApplyOverlayCompatibilityLive(enabled);
+    }
+
+    // Итоговое состояние — либо пользователь включил вручную (галочка в настройках или в
+    // контекстном меню мини-плеера), либо галочка автоопределения включена и прямо сейчас
+    // эвристика считает, что запущена игра/оверлей (см. GameOverlayDetectionTimer_Tick). Ручная
+    // галочка и автоопределение не переписывают друг друга: выключение автоопределения не
+    // трогает ручной режим, а выключение ручного режима не мешает автоопределению временно
+    // включить эффективное состояние снова, пока игра действительно запущена.
+    public bool EffectiveGameOverlayCompatibilityEnabled =>
+        _settings.GameOverlayCompatibilityMode ||
+        (_settings.GameOverlayCompatibilityAutoDetect && _autoDetectedGameOverlayActive);
+
+    // Запускается один раз при старте (см. конструктор) и работает всё время работы приложения —
+    // сам тик почти ничего не делает, если автоопределение выключено в настройках (см. проверку
+    // внутри), поэтому держать таймер всегда включённым дешевле, чем гонять Start/Stop при каждом
+    // открытии/закрытии мини-плеера.
+    private void StartGameOverlayDetectionTimer()
+    {
+        _gameOverlayDetectionTimer = new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromSeconds(5)
+        };
+        _gameOverlayDetectionTimer.Tick += GameOverlayDetectionTimer_Tick;
+        _gameOverlayDetectionTimer.Start();
+    }
+
+    private void GameOverlayDetectionTimer_Tick(object? sender, EventArgs e)
+    {
+        if (!_settings.GameOverlayCompatibilityAutoDetect)
+        {
+            // Настройку могли выключить, пока эвристика уже держала эффективное состояние
+            // включённым — сбрасываем сам флаг детекции, чтобы EffectiveGameOverlayCompatibilityEnabled
+            // сразу перестал на него опираться (иначе следующее включение автоопределения
+            // мгновенно "вспомнило" бы устаревшее обнаружение без повторной проверки).
+            if (_autoDetectedGameOverlayActive)
+            {
+                _autoDetectedGameOverlayActive = false;
+                ApplyMiniPlayerOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
+            }
+            return;
+        }
+
+        bool detected = GameOverlayDetectionService.IsGameOrOverlayLikelyActive();
+        if (detected == _autoDetectedGameOverlayActive) return;
+
+        _autoDetectedGameOverlayActive = detected;
+        ApplyMiniPlayerOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
+    }
+
+    // Вызывается из SettingsWindow сразу при переключении галочки автоопределения — без этого
+    // пользователь увидел бы эффект только на следующем тике таймера (до 5 секунд).
+    public void ApplyGameOverlayAutoDetectSettingLive()
+    {
+        if (!_settings.GameOverlayCompatibilityAutoDetect)
+            _autoDetectedGameOverlayActive = false;
+        ApplyMiniPlayerOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
     }
 
     // Позволяет окну настроек мгновенно применить смену светлой/тёмной темы к мини-плееру,
@@ -7210,6 +7285,7 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.ApplyArtworkStyle();
         ApplyDiscordRichPresenceSettingsLive();
         TrackContextMenuActions.Instance.Initialize(_settings.DisabledTrackContextMenuActions);
+        MiniPlayerContextMenuActions.Instance.Initialize(_settings.DisabledMiniPlayerContextMenuActions);
         ApplyPlaybackRateLive(_settings.PlaybackSpeed);
         ApplyPlaybackPitchLive(_settings.PlaybackPitchSemitones);
     }

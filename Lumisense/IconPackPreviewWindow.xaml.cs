@@ -14,9 +14,18 @@ public partial class IconPackPreviewWindow : Window
         IconsItemsControl.ItemsSource = IconPacks.IconNames;
     }
 
-    private void TitleBar_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    // Раньше висел на внутреннем Grid строки заголовка — тот начинается только НИЖЕ верхнего
+    // Padding="22" внешнего Border, поэтому у самой верхушки окна (в этом отступе) перетаскивание
+    // не срабатывало, а чуть ниже, на уровне текста заголовка — работало. Теперь обработчик на
+    // самом Border, а порог по Y отсекает область со списком иконок ниже, чтобы клик по пустому
+    // месту между плитками не пытался таскать окно.
+    private void RootBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (e.ButtonState == MouseButtonState.Pressed)
+        if (e.ButtonState != MouseButtonState.Pressed) return;
+        if (sender is not FrameworkElement border) return;
+
+        const double headerZoneHeight = 60;
+        if (e.GetPosition(border).Y <= headerZoneHeight)
             DragMove();
     }
 

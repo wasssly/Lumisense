@@ -1687,12 +1687,19 @@
                                           Checked="MiniAlwaysOnTopCheckBox_Changed" Unchecked="MiniAlwaysOnTopCheckBox_Changed" />
                                 <TextBlock Text="Мини-плеер остаётся видимым, пока вы работаете в других приложениях."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
+                                <CheckBox x:Name="GameOverlayAutoDetectCheckBox"
+                                          Content="Включать автоматически при обнаружении игры или оверлея"
+                                          Checked="GameOverlayAutoDetectCheckBox_Changed"
+                                          Unchecked="GameOverlayAutoDetectCheckBox_Changed"
+                                          Margin="0,0,0,0" />
+                                <TextBlock Text="Lumisense периодически проверяет, не развёрнута ли сейчас игра на весь экран и не запущен ли известный оверлей (RTSS, Xbox Game Bar, NVIDIA/AMD оверлей), и на время включает режим совместимости сам. Определение эвристическое и не гарантирует 100% точности — не задетектит игру в оконном режиме или незнакомый оверлей."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="GameOverlayCompatibilityCheckBox"
-                                          Content="Режим совместимости с играми и overlay"
+                                          Content="Держать включённым всегда"
                                           Checked="GameOverlayCompatibilityCheckBox_Changed"
                                           Unchecked="GameOverlayCompatibilityCheckBox_Changed"
                                           Margin="0,0,0,0" />
-                                <TextBlock Text="Включите перед запуском игры или Steam Overlay. Уменьшает анимации и эффекты плавающих окон, чтобы снизить риск мигания и проблем с WPF-рендерингом."
+                                <TextBlock Text="Держит режим совместимости включённым постоянно, независимо от автоопределения выше — на случай, если игру или оверлей не удалось обнаружить автоматически. Не обязателен, если автоопределение справляется само."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="MiniPinnedCheckBox" Content="Закрепить положение (запретить перетаскивание)"
                                           Checked="MiniPinnedCheckBox_Changed" Unchecked="MiniPinnedCheckBox_Changed" />
@@ -1705,6 +1712,37 @@
                                           Checked="MiniSnapToEdgesCheckBox_Changed" Unchecked="MiniSnapToEdgesCheckBox_Changed" />
                                 <TextBlock Text="При перетаскивании мини-плеер выравнивается по ближайшему краю экрана."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. MiniPlayerContextMenuActions/MiniPlayerContextMenuActionCheckBox_Changed —
+                             тот же механизм, что и у пунктов контекстного меню трека (TrackContextMenuActions),
+                             только для контекстного меню самого мини-плеера (ПКМ по мини-плееру). -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Контекстное меню мини-плеера" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Отключенные пункты не показываются по ПКМ на мини-плеере."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,-4,0,16" />
+                                <UniformGrid Columns="1" Margin="0,2,0,0">
+                                    <CheckBox x:Name="MiniContextSettingsCheckBox" Tag="Settings" Content="Настройки" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextPinCheckBox" Tag="Pin" Content="Закрепить" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextTopmostCheckBox" Tag="Topmost" Content="Поверх окон" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextOverlayCompatibilityCheckBox" Tag="OverlayCompatibility" Content="Совместимость с играми и оверлеем" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextSecondaryButtonCheckBox" Tag="SecondaryButton" Content="Выбор второй кнопки" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextPlaybackRateCheckBox" Tag="PlaybackRate" Content="Скорость" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextPitchCheckBox" Tag="Pitch" Content="Тон" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextOpacityCheckBox" Tag="Opacity" Content="Прозрачность"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                </UniformGrid>
                             </StackPanel>
                         </Border>
 

@@ -202,7 +202,7 @@ public static class IconPacks
         "IconAdd", "IconAddFile", "IconAddFolder", "IconBell", "IconChangelog", "IconCheckmark",
         "IconChevronDown", "IconChevronRight", "IconCopy", "IconDelete", "IconDismiss", "IconEdit",
         "IconExpand", "IconGitHub", "IconHeart", "IconHeartFilled", "IconInfo", "IconKeyboard",
-        "IconMinimizePlayer", "IconMoreHorizontal", "IconMusicNote", "IconNext", "IconPause",
+        "IconLyrics", "IconMinimizePlayer", "IconMoreHorizontal", "IconMusicNote", "IconNext", "IconPause",
         "IconPictureInPicture", "IconPin", "IconPlay", "IconPrevious", "IconRefresh", "IconRepeat",
         "IconRepeatAll", "IconRepeatOne", "IconSearch", "IconSettings", "IconShuffle", "IconSpeaker",
         "IconSpeaker2", "IconSpeakerMute", "IconSpeed", "IconStop", "IconSun", "IconSync",
