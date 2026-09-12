@@ -3,14 +3,9 @@ using System.Collections.Concurrent;
 namespace Lumisense;
 
 // Ищет обложку по артисту/названию через открытые API (см. CoverArtProviders) и отдаёт первую
-// найденную HTTPS-ссылку. Discord умеет показывать внешний URL напрямую в LargeImageKey — не
-// нужно заранее загружать картинку в Developer Portal как отдельный "asset" приложения,
-// достаточно передать https-ссылку на изображение подходящего размера, и Discord сам её
-// подтянет на стороне клиента у зрителей карточки активности.
-//
-// Результаты кэшируются в памяти на время жизни процесса: один и тот же трек может запускать
-// пересчёт Rich Presence много раз за сессию (пауза/возобновление, перемотка, повторное
-// воспроизведение), а сами API не рассчитаны на такую частоту запросов на один и тот же трек.
+// найденную HTTPS-ссылку — Discord показывает внешний URL в LargeImageKey напрямую, без
+// заранее загруженного в Developer Portal asset. Результаты кэшируются в памяти: один трек
+// может пересчитывать Rich Presence много раз за сессию, а сами API на такую частоту не рассчитаны.
 public static class DiscordCoverArtLookupService
 {
     private const int CacheCapacity = 300;
@@ -38,10 +33,8 @@ public static class DiscordCoverArtLookupService
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeoutCts.CancelAfter(LookupTimeout);
 
-            // iTunes — самый быстрый и самый широкий охват мейнстрим-каталога; Deezer — второй
-            // по охвату; MusicBrainz — самый медленный (минимум два последовательных запроса на
-            // кандидата, см. CoverArtProviders.SearchMusicBrainzAsync), поэтому обращаемся к нему
-            // только если первые два ничего не нашли.
+            // iTunes — самый широкий охват и быстрее всех; Deezer — второй; MusicBrainz —
+            // минимум два запроса на кандидата, поэтому только если первые два ничего не нашли.
             var itunesResults = await CoverArtProviders.SearchItunesAsync(query, timeoutCts.Token);
             var found = itunesResults.Count > 0 ? itunesResults[0] : (CoverArtProviders.ArtResult?)null;
 

@@ -116,12 +116,9 @@ public sealed class TrackContextMenuActionVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-// Разделитель между секциями меню отключается вместе со всей секцией, которую он открывает —
-// иначе при отключении в настройках всех действий одной секции (например, все три "Копировать…")
-// разделители по обе стороны от пустой секции остаются на месте и превращаются в два подряд идущих
-// или в висящий в никуда разделитель. ConverterParameter — идентификаторы действий секции через
-// "|" (например "ShowInExplorer|CopyTrackName|CopyPath|CopyFile|ExportProcessedCopy"); видимо, если
-// хотя бы одно из них включено.
+// Разделитель скрывается вместе со всей секцией, которую он открывает — иначе при отключении
+// всех действий секции разделители остаются на месте и слипаются. ConverterParameter —
+// идентификаторы действий секции через "|"; видимо, если хотя бы одно включено.
 public sealed class TrackContextMenuGroupVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)

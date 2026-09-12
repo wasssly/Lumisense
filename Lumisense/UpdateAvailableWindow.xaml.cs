@@ -20,10 +20,8 @@ public partial class UpdateAvailableWindow : FluentWindow
     private DownloadPauseController? _pauseController;
     private bool _isVelopackDownload;
     private bool _isVelopackPaused;
-    // Устанавливается после успешного скачивания+проверки Velopack-обновления, если пользователь
-    // в UpdateReadyDialog выбрал «Позже» вместо немедленного рестарта — см. InstallViaVelopackAsync
-    // и InstallButton_Click. Пока true, повторный клик по кнопке установки не скачивает пакет
-    // заново, а сразу переходит к ApplyAndRestart (пакет уже на диске и проверен).
+    // true, если пользователь в UpdateReadyDialog выбрал "Позже" — повторный клик по кнопке
+    // установки тогда сразу вызывает ApplyAndRestart без повторного скачивания.
     private bool _velopackReadyToApply;
     // Смена источника никогда не смешивает байты разных зеркал: текущий запрос отменяется,
     // его .part удаляется сетевым слоем, а новый полный запрос начинается только после этого.
@@ -543,9 +541,8 @@ public partial class UpdateAvailableWindow : FluentWindow
                 return;
             }
 
-            // Пакет скачан, проверен и настройки зафиксированы — раньше сразу следовал
-            // автоматический рестарт. Теперь спрашиваем: применить сейчас или продолжить
-            // работу и сделать это позже (пользователь сам решает момент, а не приложение).
+            // Пакет скачан и проверен — вместо немедленного автоматического рестарта спрашиваем,
+            // применить сейчас или позже.
             var readyDialog = new UpdateReadyDialog(this);
             bool restartNow = readyDialog.ShowDialog() == true && readyDialog.RestartNow;
 
@@ -578,19 +575,17 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
     }
 
-    // Вынесено из InstallViaVelopackAsync: сам перезапуск и применение уже скачанного пакета —
-    // либо сразу после UpdateReadyDialog, либо позже, вторым кликом по InstallButton, когда
-    // _velopackReadyToApply уже true (см. InstallButton_Click). Повторного скачивания не
-    // происходит в обоих случаях, пакет уже на диске и проверен.
+    // Вынесено из InstallViaVelopackAsync: применяет уже скачанный пакет — либо сразу после
+    // UpdateReadyDialog, либо позже вторым кликом по InstallButton (см. _velopackReadyToApply),
+    // без повторного скачивания в обоих случаях.
     private async Task ApplyVelopackUpdateAndRestartAsync(VelopackUpdateService? service = null)
     {
         if (_result.VelopackUpdate is null) return;
 
         service ??= new VelopackUpdateService();
 
-        // После успешного snapshot это плановый restart, а не аварийное завершение. Ставим
-        // marker до запуска Update.exe, чтобы ProcessExit не пытался второй раз писать JSON
-        // с фонового потока и не выдавал ложное cross-thread предупреждение.
+        // Плановый restart, а не аварийное завершение — marker до запуска Update.exe не даёт
+        // ProcessExit писать JSON повторно с фонового потока.
         App? plannedRestartApp = Application.Current as App;
         plannedRestartApp?.MarkPlannedUpdateRestart();
 

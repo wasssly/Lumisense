@@ -6,19 +6,9 @@ using System.Text.RegularExpressions;
 
 namespace Lumisense;
 
-// Поиск обложки трека по трём открытым API без ключей — общий слой для CoverArtSearchWindow
-// (ручной выбор обложки миниатюрами) и DiscordCoverArtLookupService (автоматический подбор
-// обложки для Discord Rich Presence). Сама логика опроса и разбора ответов одна и та же;
-// решение, что делать с результатами (показать список или взять первый подходящий), остаётся
-// за вызывающей стороной.
-//
-// iTunes Search и Deezer возвращают готовую ссылку на обложку прямо в ответе поиска. У
-// MusicBrainz обложек нет вообще — сама MusicBrainz только сопоставляет трек с релизом
-// (альбомом), а сама картинка приходит отдельным запросом к Cover Art Archive (тот же проект
-// Internet Archive) по MBID релиза. Поэтому SearchMusicBrainzAsync — это всегда минимум два
-// последовательных HTTP-запроса на кандидата и в среднем самый медленный из трёх источников,
-// но покрывает многое, чего нет ни в iTunes, ни в Deezer (редкие и локальные релизы,
-// исполнителей вне основных стриминговых каталогов).
+// Общий поиск обложки для CoverArtSearchWindow и DiscordCoverArtLookupService. У MusicBrainz
+// нет своих обложек — SearchMusicBrainzAsync делает второй запрос на кандидата в Cover Art
+// Archive, поэтому медленнее iTunes/Deezer, но находит то, чего нет у них.
 public static class CoverArtProviders
 {
     public const int MaxApiJsonBytes = 2 * 1024 * 1024;

@@ -15,25 +15,15 @@ using ArtResult = Lumisense.CoverArtProviders.ArtResult;
 
 namespace Lumisense;
 
-// Поиск обложки трека в интернете по исполнителю и названию через три открытых API без ключа:
-// iTunes Search, Deezer и MusicBrainz/Cover Art Archive (см. CoverArtProviders) — запросы
-// параллельно, результаты объединяются в один список. Каждый источник по отдельности нередко
-// не находит обложку (локальные/СНГ-исполнители у iTunes, редкие релизы у Deezer, задержки и
-// отсутствие сканов у Cover Art Archive) — три источника вместе закрывают больше запросов, чем
-// любой один. Если источник недоступен или отключен галочкой, остальные всё равно отвечают.
-//
-// Показывает варианты миниатюрами; при выборе скачивает изображение в повышенном разрешении
-// и возвращает его TrackTagsWindow — та сохраняет так же, как обложку с диска.
-//
-// Genius не подключен: их API отдаёт обложки только вместе с текстами песен и требует
-// личный Client Access Token — без ключа от пользователя не заработает.
+// Поиск обложки по трём открытым API без ключа (см. CoverArtProviders) — источники не всегда
+// находят обложку по отдельности, вместе покрывают больше. Genius не подключен: его API отдаёт
+// обложки только вместе с текстами и требует личный Client Access Token.
 public partial class CoverArtSearchWindow : FluentWindow
 {
     private const int MaxImageBytes = 10 * 1024 * 1024;
 
-    // Обложки из поиска сохраняются в %AppData%\\Lumisense\\cover-cache. URL не попадает
-    // в имя файла: SHA-256 даёт короткий детерминированный ключ и исключает path traversal.
-    // Лимиты не позволяют кэшу незаметно занимать неограниченное место на диске.
+    // SHA-256 URL в имя файла — короткий детерминированный ключ без path traversal. Лимиты
+    // ниже не дают кэшу занимать место на диске бесконтрольно.
     private const int ArtworkCacheMaxFiles = 256;
     private const long ArtworkCacheMaxBytes = 128L * 1024 * 1024;
     private static readonly string ArtworkCacheDirectory = Path.Combine(
@@ -48,10 +38,8 @@ public partial class CoverArtSearchWindow : FluentWindow
     public byte[]? SelectedImageBytes { get; private set; }
     public string? SelectedImageMimeType { get; private set; }
 
-    // Отменяет предыдущий незавершённый поиск (и все ещё летящие по нему запросы миниатюр),
-    // когда пользователь запускает новый поиск или явно нажимает "Отмена". Без него смена
-    // запроса на середине загрузки миниатюр оставляла бы гоняться по сети старые, уже
-    // никому не нужные запросы.
+    // Отменяет предыдущий незавершённый поиск (и его запросы миниатюр) при новом запуске или
+    // явной "Отмене" — иначе смена запроса оставляла бы гоняться по сети старые запросы.
     private CancellationTokenSource? _searchCts;
 
     public CoverArtSearchWindow(string? artist, string? title, AppSettings? settings = null)
@@ -81,9 +69,9 @@ public partial class CoverArtSearchWindow : FluentWindow
 
     private void SearchButton_Click(object sender, RoutedEventArgs e) => _ = RunSearch(QueryBox.Text);
 
-    // Останавливает текущий поиск: отменяет токен (обрывает и основной запрос списка, и уже
-    // запущенные загрузки миниатюр), возвращает интерфейс в состояние "готов к новому поиску".
-    // RunSearch сам аккуратно завершается по OperationCanceledException — здесь только UI.
+    // Отменяет токен (обрывает и основной запрос, и уже запущенные загрузки миниатюр) и
+    // возвращает UI в состояние "готов к новому поиску". RunSearch сам завершается по
+    // OperationCanceledException — здесь только UI.
     private void CancelSearchButton_Click(object sender, RoutedEventArgs e)
     {
         _searchCts?.Cancel();
@@ -118,10 +106,8 @@ public partial class CoverArtSearchWindow : FluentWindow
 
         try
         {
-            // Источники запрашиваются параллельно и независимо друг от друга: если один упал с
-            // ошибкой (сеть, таймаут, блокировка) — CoverArtProviders сам гасит исключение и
-            // возвращает пустой список, чтобы не обрушить остальные. Отключенный галочкой
-            // источник вообще не запрашивается.
+            // Источники запрашиваются параллельно и независимо: упавший с ошибкой (сеть,
+            // таймаут) возвращает пустой список вместо обрушения остальных.
             var searchTasks = new List<Task<List<ArtResult>>>();
             if (ItunesSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchItunesAsync(query, token));
             if (DeezerSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchDeezerAsync(query, token));
@@ -155,8 +141,8 @@ public partial class CoverArtSearchWindow : FluentWindow
         }
         catch (OperationCanceledException)
         {
-            // Отменено явно кнопкой "Отмена" (или перекрыто новым поиском) — CancelSearchButton_Click
-            // уже сам поставил подходящий статус-текст, здесь ничего дополнительно делать не надо.
+            // Отменено кнопкой "Отмена" или перекрыто новым поиском — статус-текст уже
+            // поставлен в CancelSearchButton_Click.
         }
         catch (Exception ex)
         {
@@ -177,12 +163,9 @@ public partial class CoverArtSearchWindow : FluentWindow
 
     // ---------- Объединение результатов включённых источников ----------
 
-    // Простое чередование по кругу (по одному из каждого включённого источника за проход) вместо
-    // "сначала все результаты первого источника, потом все следующего" — так пользователь сразу
-    // видит, что источников несколько и они разные, а не долистывает вниз в поисках второго.
-    // Дубликаты между источниками не схлопываются (адреса обложек у них никогда не совпадают
-    // буквально), но это не страшно — совсем одинаковых на вид миниатюр из разных источников
-    // почти не бывает.
+    // Чередование по кругу (по одному из каждого включённого источника) вместо "все результаты
+    // одного источника подряд" — так сразу видно, что источников несколько. Дубликаты между
+    // источниками не схлопываются: адреса обложек у них не совпадают буквально.
     private static List<ArtResult> MergeAndDedupe(List<List<ArtResult>> sources)
     {
         int total = sources.Sum(s => s.Count);
@@ -351,10 +334,8 @@ public partial class CoverArtSearchWindow : FluentWindow
                 return null;
             }
 
-            // LastAccessTime может быть выключен политикой Windows, поэтому обновляем
-            // LastWriteTime сами и используем его как переносимый LRU-признак при очистке.
-            // Даже если дата недоступна (например, read-only каталог), корректные байты
-            // остаются полезным попаданием кэша и не должны вызывать новую загрузку.
+            // LastAccessTime может быть выключен политикой Windows — обновляем LastWriteTime
+            // сами и используем как переносимый LRU-признак.
             try { File.SetLastWriteTimeUtc(cachePath, DateTime.UtcNow); }
             catch { /* Используем файл без обновления LRU-метки. */ }
             return bytes;
@@ -443,10 +424,8 @@ public partial class CoverArtSearchWindow : FluentWindow
         }
     }
 
-    // Вызывается только по явному действию пользователя из SettingsWindow. Удаляем файлы
-    // непосредственно в известной папке кэша, не используем путь или маску, пришедшие из UI,
-    // и не трогаем вложенные каталоги. Параллельная загрузка может создать новую запись уже
-    // после очистки — это нормальное и безопасное поведение.
+    // Вызывается только по явному действию пользователя из SettingsWindow. Удаляет файлы
+    // напрямую в известной папке кэша, не по пути/маске из UI, без вложенных каталогов.
     public static ArtworkCacheClearResult ClearArtworkCache()
     {
         int deletedFiles = 0;

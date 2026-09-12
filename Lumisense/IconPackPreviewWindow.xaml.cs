@@ -14,11 +14,8 @@ public partial class IconPackPreviewWindow : Window
         IconsItemsControl.ItemsSource = IconPacks.IconNames;
     }
 
-    // Раньше висел на внутреннем Grid строки заголовка — тот начинается только НИЖЕ верхнего
-    // Padding="22" внешнего Border, поэтому у самой верхушки окна (в этом отступе) перетаскивание
-    // не срабатывало, а чуть ниже, на уровне текста заголовка — работало. Теперь обработчик на
-    // самом Border, а порог по Y отсекает область со списком иконок ниже, чтобы клик по пустому
-    // месту между плитками не пытался таскать окно.
+    // Обработчик на Border, а не на внутреннем Grid заголовка — тот начинается ниже верхнего
+    // Padding="22" и не покрывал самую верхушку окна. Порог по Y отсекает список иконок ниже.
     private void RootBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (e.ButtonState != MouseButtonState.Pressed) return;

@@ -4,11 +4,9 @@ using System.Windows.Input;
 
 namespace Lumisense;
 
-// Показывается один раз сразу после того, как Velopack-обновление скачано, проверено и готово
-// к применению (см. UpdateAvailableWindow.InstallViaVelopackAsync) — вместо немедленного
-// автоматического рестарта даёт пользователю выбор: применить сейчас или продолжить работу
-// и сделать это позже (тогда обновление применится при следующем обычном запуске/закрытии
-// приложения, см. UpdateAvailableWindow._velopackReadyToApply).
+// Показывается после того, как Velopack-обновление скачано и готово — вместо немедленного
+// автоматического рестарта даёт выбор: сейчас или при следующем запуске/закрытии
+// (см. UpdateAvailableWindow._velopackReadyToApply).
 public partial class UpdateReadyDialog : Window
 {
     public bool RestartNow { get; private set; }

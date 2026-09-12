@@ -16,12 +16,9 @@
             <!-- Настоящие .svg-файлы лежат в папке Icons/svg/ (рендерятся через SharpVectors,
                  см. SvgPathIcon.cs) и подключать их тут не нужно — они встраиваются в сборку
                  напрямую через <Resource Include="Icons\svg\**\*.svg" /> в Lumisense.csproj.
-                 Иконки разложены по паку: Icons/svg/{Duotone|Outline|Bold|Fill|Thin}/IconXxx.svg —
-                 см. IconPacks в SvgPathIcon.cs. Чтобы поменять иконку в конкретном паке, замени
-                 соответствующий файл и пересобери проект. Сама иконка на экране —
-                 local:SvgPathIcon с обязательным атрибутом Icon="IconXxx" (плюс необязательный
-                 Pack="..." для явного переопределения — используется только в галерее
-                 предпросмотра паков на странице настроек). -->
+                 Иконки разложены по паку: Icons/svg/{Duotone|Outline|Bold|Fill|Thin}/IconXxx.svg,
+                 см. IconPacks в SvgPathIcon.cs. Иконка на экране — local:SvgPathIcon с Icon="IconXxx"
+                 (плюс необязательный Pack="..." для превью в настройках). -->
 
             <local:IsOddIndexConverter x:Key="IsOddIndexConverter" />
 

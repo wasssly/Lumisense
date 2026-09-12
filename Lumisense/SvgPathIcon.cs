@@ -12,18 +12,13 @@ using Wpf.Ui.Controls;
 
 namespace Lumisense;
 
-// Векторная SVG-иконка: рисует .svg из Icons/svg/{Pack} через SharpVectors, а не геометрию,
-// зашитую в код/XAML. Чтобы поменять иконку — заменить файл и пересобрать. Цвет заливки
-// всегда берётся из Foreground, исходный fill в самом .svg не важен, SharpVectors его подменяет.
-// Размер по умолчанию — из атрибута data-default-size на корневом <svg>, но Size можно
-// задать и явно.
+// Векторная SVG-иконка: рисует .svg из Icons/svg/{Pack} через SharpVectors вместо геометрии в
+// XAML. Заливка всегда берётся из Foreground — fill в самом .svg не важен. Размер по умолчанию —
+// из data-default-size на корневом <svg>, если Size не задан явно.
 //
-// Паки иконок (см. IconPacks): активный пак — IconPacks.Current, читается через
-// IconPackContext (INotifyPropertyChanged), поэтому смена пака в настройках (IconPacks.SetCurrent)
-// применяется сразу на всех уже открытых окнах — MultiBinding ниже включает CurrentPack как один
-// из источников, так что WPF пересчитывает UriSource каждой иконки, как только он меняется.
-// Явно заданный Pack на конкретной иконке (используется только в галерее предпросмотра в
-// настройках) имеет приоритет над живым Current и сам не меняется.
+// Активный пак — IconPacks.Current, читается через IconPackContext (INotifyPropertyChanged),
+// поэтому смена пака (IconPacks.SetCurrent) применяется сразу на всех открытых окнах. Явно
+// заданный Pack на конкретной иконке (только в галерее предпросмотра) имеет приоритет над Current.
 public sealed class SvgPathIcon : IconElement
 {
     public static readonly DependencyProperty IconProperty = DependencyProperty.Register(
@@ -84,10 +79,8 @@ public sealed class SvgPathIcon : IconElement
         return icon;
     }
 
-    // ("IconPlay", null, "Bold") → Icons/svg/Bold/IconPlay.svg — явный Pack игнорирует живой Current.
-    // ("IconPlay", null, <live>) → Icons/svg/{IconPacks.Current}/IconPlay.svg — третий параметр здесь
-    // только затем, чтобы MultiBinding пересчитывался при смене пака; сам он не используется, когда
-    // задан явный Pack.
+    // Явный Pack игнорирует живой Current; третий параметр присутствует только чтобы
+    // MultiBinding пересчитывался при смене пака.
     private sealed class IconKeyToUriConverter : IMultiValueConverter
     {
         public static readonly IconKeyToUriConverter Instance = new();
@@ -179,11 +172,9 @@ public sealed class IconPackContext : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-// Реестр доступных паков иконок и текущего активного. IconPacks.Current выставляется при старте
-// (см. App.xaml.cs/MainWindow.xaml.cs) из AppSettings.IconPack, а дальше меняется "вживую" через
-// IconPacks.SetCurrent — см. IconPackContext выше и SettingsWindow.IconPackCard_MouseLeftButtonDown.
-// Именно поэтому уже открытые окна перерисовывают иконки сразу после клика по карточке пака в
-// настройках, без перезапуска приложения.
+// Реестр доступных паков иконок и текущего активного. IconPacks.Current выставляется при
+// старте из AppSettings.IconPack, а дальше меняется вживую через IconPacks.SetCurrent —
+// см. IconPackContext выше и SettingsWindow.IconPackCard_MouseLeftButtonDown.
 public static class IconPacks
 {
     public const string Duotone = "Duotone";
@@ -216,9 +207,8 @@ public static class IconPacks
     public static void Initialize(AppSettings settings) =>
         IconPackContext.Instance.CurrentPack = IsKnown(settings.IconPack) ? settings.IconPack : Duotone;
 
-    // Вызывается из настроек при клике по карточке пака — меняет активный пак немедленно,
-    // на всех уже открытых окнах (см. комментарий класса выше). Сохранение в settings.json —
-    // отдельный шаг на стороне вызывающего кода (см. SettingsWindow), тут только применение.
+    // Меняет активный пак немедленно на всех открытых окнах; сохранение в settings.json —
+    // отдельный шаг на стороне вызывающего кода (см. SettingsWindow).
     public static void SetCurrent(string pack)
     {
         if (IsKnown(pack))

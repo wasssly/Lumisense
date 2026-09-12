@@ -24,14 +24,12 @@ public sealed class DiscordRichPresenceManager : IDisposable
     private DateTime _lastPublishedAtUtc;
     private DateTime _nextConnectionAttemptUtc;
     private bool _disposed;
-    // Ссылка на тот же AppSettings, что и MainWindow передаёт в Update — используется только
-    // RefreshCoverArtAsync, чтобы переотправить presence с уже актуальными на тот момент флагами
-    // приватности, не сохраняя их отдельным моментальным снимком.
+    // Тот же AppSettings, что MainWindow передаёт в Update — нужен только RefreshCoverArtAsync,
+    // чтобы переотправить presence с актуальными флагами приватности.
     private AppSettings? _lastSettings;
 
-    // Версия увеличивается при каждой смене метаданных (см. Update). Асинхронный поиск обложки
-    // (RefreshCoverArtAsync) сверяет свою версию перед тем, как применить результат — если трек
-    // успел смениться ещё раз, пока лукап летал по сети, устаревший URL просто отбрасывается.
+    // Растёт при каждой смене трека. RefreshCoverArtAsync сверяет версию перед применением
+    // результата — если трек сменился ещё раз, пока лукап летал по сети, URL отбрасывается.
     private long _coverLookupVersion;
     private bool _coverLookupStartedForCurrentTrack;
     private string? _currentCoverUrl;
@@ -240,16 +238,8 @@ public sealed class DiscordRichPresenceManager : IDisposable
             }
         };
 
-        // Discord принимает произвольный https-URL прямо в LargeImageKey — не нужен заранее
-        // загруженный в Developer Portal asset. coverUrl приходит от DiscordCoverArtLookupService
-        // (см. RefreshCoverArtAsync); пока лукап ещё не завершился или ничего не нашёл, Assets
-        // просто не выставляется, и Discord показывает иконку приложения по умолчанию.
-        //
-        // LargeImageText — всплывающая подсказка при наведении на саму обложку. Если название и
-        // исполнитель и так уже показаны текстом (Details/State), дублировать их же во всплывашке
-        // не нужно — оставляем LargeImageText пустым, и Discord просто не покажет тултип. Подпись
-        // нужна только как запасной вариант, когда трек скрыт настройками приватности: тогда хотя
-        // бы при наведении будет ясно, что это Lumisense, а не голая картинка без подписи.
+        // LargeImageText дублировал бы Details/State при наведении на обложку, поэтому пустой,
+        // пока трек виден текстом; заполняется только когда трек скрыт настройками приватности.
         if (!string.IsNullOrWhiteSpace(coverUrl))
         {
             presence.Assets = new Assets
@@ -272,10 +262,8 @@ public sealed class DiscordRichPresenceManager : IDisposable
         return presence;
     }
 
-    // Ищет обложку в фоне (см. DiscordCoverArtLookupService — сам может занимать до нескольких
-    // секунд) и, если к моменту завершения трек всё ещё тот же самый (version совпадает),
-    // переотправляет presence уже с найденной картинкой. Не блокирует Update и не мешает
-    // воспроизведению, даже если поиск зависнет или сеть недоступна.
+    // Поиск обложки может занять до нескольких секунд; не блокирует Update. Переотправляет
+    // presence с картинкой, только если трек к этому моменту не сменился (version совпадает).
     private async Task RefreshCoverArtAsync(string artist, string title, long version)
     {
         string? url;
