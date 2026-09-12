@@ -9,7 +9,7 @@ using Wpf.Ui.Controls;
 
 namespace Lumisense;
 
-// Окно редактирования тегов (ID3/Vorbis/MP4 — через TagLib#) — название, исполнитель,
+// Окно редактирования тегов (ID3/Vorbis/MP4 — через ATL.NET) — название, исполнитель,
 // альбом, год, номер трека, жанр, комментарий
 public partial class TrackTagsWindow : FluentWindow
 {
@@ -19,7 +19,6 @@ public partial class TrackTagsWindow : FluentWindow
     // Новая обложка, выбранная в этом окне (в файл ещё не записана — только по "Сохранить").
     // null — обложка не менялась, если только _coverArtChanged не true — тогда null значит "удалили"
     private byte[]? _pendingCoverBytes;
-    private string? _pendingCoverMimeType;
     private bool _coverArtChanged;
 
     // true после успешного сохранения — по этому флагу MainWindow решает, обновлять ли
@@ -38,22 +37,21 @@ public partial class TrackTagsWindow : FluentWindow
 
         try
         {
-            using var tagFile = TagLib.File.Create(filePath);
-            var tag = tagFile.Tag;
+            var tagFile = new ATL.Track(filePath);
 
-            TitleBox.Text = tag.Title ?? "";
-            ArtistBox.Text = tag.FirstPerformer ?? "";
-            AlbumBox.Text = tag.Album ?? "";
-            GenreBox.Text = tag.FirstGenre ?? "";
-            CommentBox.Text = tag.Comment ?? "";
-            YearBox.Text = tag.Year > 0 ? tag.Year.ToString() : "";
-            TrackNumberBox.Text = tag.Track > 0 ? tag.Track.ToString() : "";
+            TitleBox.Text = tagFile.Title ?? "";
+            ArtistBox.Text = tagFile.Artist ?? "";
+            AlbumBox.Text = tagFile.Album ?? "";
+            GenreBox.Text = tagFile.Genre ?? "";
+            CommentBox.Text = tagFile.Comment ?? "";
+            YearBox.Text = tagFile.Year > 0 ? tagFile.Year.ToString() : "";
+            TrackNumberBox.Text = tagFile.TrackNumber > 0 ? tagFile.TrackNumber.ToString() : "";
 
-            if (tag.Pictures.Length > 0)
+            if (tagFile.EmbeddedPictures.Count > 0)
             {
                 try
                 {
-                    var bitmap = BitmapFromBytes(tag.Pictures[0].Data.Data);
+                    var bitmap = BitmapFromBytes(tagFile.EmbeddedPictures[0].PictureData);
                     ApplyCoverPreview(bitmap);
                 }
                 catch
@@ -104,7 +102,6 @@ public partial class TrackTagsWindow : FluentWindow
             var bitmap = BitmapFromBytes(bytes);
 
             _pendingCoverBytes = bytes;
-            _pendingCoverMimeType = searchWindow.SelectedImageMimeType ?? "image/jpeg";
             _coverArtChanged = true;
 
             ApplyCoverPreview(bitmap);
@@ -131,7 +128,6 @@ public partial class TrackTagsWindow : FluentWindow
             var bitmap = BitmapFromBytes(bytes);
 
             _pendingCoverBytes = bytes;
-            _pendingCoverMimeType = GetMimeType(dialog.FileName);
             _coverArtChanged = true;
 
             ApplyCoverPreview(bitmap);
@@ -145,7 +141,6 @@ public partial class TrackTagsWindow : FluentWindow
     private void RemoveCoverButton_Click(object sender, RoutedEventArgs e)
     {
         _pendingCoverBytes = null;
-        _pendingCoverMimeType = null;
         _coverArtChanged = true;
         ResetCoverPreview();
     }
@@ -161,14 +156,6 @@ public partial class TrackTagsWindow : FluentWindow
         bitmap.Freeze();
         return bitmap;
     }
-
-    private static string GetMimeType(string filePath) => Path.GetExtension(filePath).ToLowerInvariant() switch
-    {
-        ".png" => "image/png",
-        ".bmp" => "image/bmp",
-        ".gif" => "image/gif",
-        _ => "image/jpeg",
-    };
 
     private void ApplyCoverPreview(BitmapImage bitmap)
     {
@@ -189,44 +176,33 @@ public partial class TrackTagsWindow : FluentWindow
         ErrorText.Visibility = Visibility.Collapsed;
 
         // Если именно этот файл сейчас играет — NAudio держит его открытым на чтение, а
-        // TagLib может не суметь его переписать, особенно если меняется размер встроенной
+        // ATL может не суметь его переписать, особенно если меняется размер встроенной
         // обложки (ID3/Vorbis-блок может вырасти настолько, что потребуется переписать файл
-        // почти целиком, а не поправить байты на месте) — раньше в этом случае Save молча
-        // ничего не делал: TagLib либо ловил бы исключение уровня ОС при попытке открыть файл
-        // на запись без нужных прав доступа. Коротко освобождаем хендл живого плеера на время
-        // записи и запускаем воспроизведение заново с той же позиции сразу после — сохранение
-        // прошло успешно или нет, плеер не должен остаться "выключенным" из-за неудачной
-        // попытки сохранить теги.
+        // почти целиком, а не поправить байты на месте). Коротко освобождаем хендл живого
+        // плеера на время записи и запускаем воспроизведение заново с той же позиции сразу
+        // после — сохранение прошло успешно или нет, плеер не должен остаться "выключенным"
+        // из-за неудачной попытки сохранить теги.
         var resumeInfo = _owner?.ReleaseFileForExternalWrite(_filePath);
 
         try
         {
-            using var tagFile = TagLib.File.Create(_filePath);
-            var tag = tagFile.Tag;
+            var tagFile = new ATL.Track(_filePath);
 
-            tag.Title = string.IsNullOrWhiteSpace(TitleBox.Text) ? null : TitleBox.Text.Trim();
-            tag.Performers = string.IsNullOrWhiteSpace(ArtistBox.Text) ? [] : [ArtistBox.Text.Trim()];
-            tag.Album = string.IsNullOrWhiteSpace(AlbumBox.Text) ? null : AlbumBox.Text.Trim();
-            tag.Genres = string.IsNullOrWhiteSpace(GenreBox.Text) ? [] : [GenreBox.Text.Trim()];
-            tag.Comment = string.IsNullOrWhiteSpace(CommentBox.Text) ? null : CommentBox.Text.Trim();
-            tag.Year = uint.TryParse(YearBox.Text, out var year) ? year : 0;
-            tag.Track = uint.TryParse(TrackNumberBox.Text, out var trackNumber) ? trackNumber : 0;
+            tagFile.Title = string.IsNullOrWhiteSpace(TitleBox.Text) ? "" : TitleBox.Text.Trim();
+            tagFile.Artist = string.IsNullOrWhiteSpace(ArtistBox.Text) ? "" : ArtistBox.Text.Trim();
+            tagFile.Album = string.IsNullOrWhiteSpace(AlbumBox.Text) ? "" : AlbumBox.Text.Trim();
+            tagFile.Genre = string.IsNullOrWhiteSpace(GenreBox.Text) ? "" : GenreBox.Text.Trim();
+            tagFile.Comment = string.IsNullOrWhiteSpace(CommentBox.Text) ? "" : CommentBox.Text.Trim();
+            tagFile.Year = int.TryParse(YearBox.Text, out var year) ? year : 0;
+            tagFile.TrackNumber = int.TryParse(TrackNumberBox.Text, out var trackNumber) ? trackNumber : 0;
 
             if (_coverArtChanged)
             {
+                tagFile.EmbeddedPictures.Clear();
                 if (_pendingCoverBytes is { } coverBytes)
                 {
-                    var picture = new TagLib.Picture(coverBytes)
-                    {
-                        Type = TagLib.PictureType.FrontCover,
-                        MimeType = _pendingCoverMimeType ?? "image/jpeg",
-                        Description = "Cover"
-                    };
-                    tag.Pictures = new TagLib.IPicture[] { picture };
-                }
-                else
-                {
-                    tag.Pictures = Array.Empty<TagLib.IPicture>();
+                    var picture = ATL.PictureInfo.fromBinaryData(coverBytes, ATL.PictureInfo.PIC_TYPE.Front);
+                    tagFile.EmbeddedPictures.Add(picture);
                 }
             }
 

@@ -84,10 +84,10 @@ public partial class StatisticsWindow : FluentWindow
 
             try
             {
-                using var tagFile = TagLib.File.Create(kv.Key);
-                if (!string.IsNullOrWhiteSpace(tagFile.Tag.Title)) title = tagFile.Tag.Title;
+                var atlTrack = new ATL.Track(kv.Key);
+                if (!string.IsNullOrWhiteSpace(atlTrack.Title)) title = atlTrack.Title;
 
-                var performer = tagFile.Tag.FirstPerformer;
+                var performer = atlTrack.Artist;
                 if (!string.IsNullOrWhiteSpace(performer)) artist = performer;
             }
             catch

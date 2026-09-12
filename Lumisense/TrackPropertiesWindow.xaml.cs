@@ -31,37 +31,34 @@ public partial class TrackPropertiesWindow : FluentWindow
 
         try
         {
-            using var tagFile = TagLib.File.Create(filePath);
+            var tagFile = new ATL.Track(filePath);
 
-            if (!string.IsNullOrWhiteSpace(tagFile.Tag.Title)) title = tagFile.Tag.Title;
-            artist = tagFile.Tag.FirstPerformer ?? "";
+            if (!string.IsNullOrWhiteSpace(tagFile.Title)) title = tagFile.Title;
+            artist = tagFile.Artist ?? "";
 
-            var duration = tagFile.Properties.Duration;
+            var duration = TimeSpan.FromSeconds(tagFile.Duration);
             durationText = duration.TotalHours >= 1
                 ? duration.ToString(@"h\:mm\:ss")
                 : duration.ToString(@"m\:ss");
 
-            if (tagFile.Properties.AudioBitrate > 0)
-                bitrateText = $"{tagFile.Properties.AudioBitrate} кбит/с";
+            if (tagFile.Bitrate > 0)
+                bitrateText = $"{tagFile.Bitrate} кбит/с";
 
-            if (tagFile.Properties.AudioSampleRate > 0)
-                sampleRateText = $"{tagFile.Properties.AudioSampleRate} Гц";
+            if (tagFile.SampleRate > 0)
+                sampleRateText = $"{tagFile.SampleRate} Гц";
 
-            if (tagFile.Properties.AudioChannels > 0)
-                channelsText = tagFile.Properties.AudioChannels switch
+            if (tagFile.ChannelsArrangement?.NbChannels > 0)
+                channelsText = tagFile.ChannelsArrangement.NbChannels switch
                 {
                     1 => "Моно",
                     2 => "Стерео",
                     var n => $"{n}"
                 };
 
-            if (!string.IsNullOrWhiteSpace(tagFile.Properties.Description))
-                formatText = tagFile.Properties.Description;
-
-            var pictures = tagFile.Tag.Pictures;
-            if (pictures.Length > 0)
+            var pictures = tagFile.EmbeddedPictures;
+            if (pictures.Count > 0)
             {
-                using var ms = new MemoryStream(pictures[0].Data.Data);
+                using var ms = new MemoryStream(pictures[0].PictureData);
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
                 bitmap.CacheOption = BitmapCacheOption.OnLoad;

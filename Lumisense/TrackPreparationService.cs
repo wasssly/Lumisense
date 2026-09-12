@@ -17,7 +17,7 @@ internal sealed class PreparedTrack : IDisposable
     public BitmapImage? AlbumArt { get; init; }
     public byte[]? AlbumArtBytes { get; init; }
     public string? AlbumArtMimeType { get; init; }
-    public TagLib.PictureType? AlbumArtPictureType { get; init; }
+    public AlbumArtPictureKind? AlbumArtPictureType { get; init; }
 
     public void Dispose()
     {
@@ -74,7 +74,7 @@ internal sealed class TrackPreparationService
         BitmapImage? albumArt = null;
         byte[]? albumArtBytes = null;
         string? albumArtMimeType = null;
-        TagLib.PictureType? albumArtPictureType = null;
+        AlbumArtPictureKind? albumArtPictureType = null;
         long tagsMilliseconds = 0;
         long embeddedArtworkMilliseconds = 0;
         bool tagsMeasured = false;
@@ -82,24 +82,24 @@ internal sealed class TrackPreparationService
         var tagsTimer = Stopwatch.StartNew();
         try
         {
-            using var tagFile = TagLib.File.Create(filePath);
+            var tagFile = new ATL.Track(filePath);
             if (options.ReplayGainEnabled)
             {
                 var replayGainTimer = Stopwatch.StartNew();
-                replayGain = ReplayGainReader.GetTrackGainLinear(tagFile.Tag);
+                replayGain = ReplayGainReader.GetTrackGainLinear(tagFile);
                 replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
             }
-            title = tagFile.Tag.Title;
-            artist = !string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer)
-                ? tagFile.Tag.FirstPerformer
-                : tagFile.Tag.FirstAlbumArtist;
+            title = tagFile.Title;
+            artist = !string.IsNullOrWhiteSpace(tagFile.Artist)
+                ? tagFile.Artist
+                : tagFile.AlbumArtist;
             tagsMilliseconds = tagsTimer.ElapsedMilliseconds;
             tagsMeasured = true;
-            if (tagFile.Tag.Pictures.Length > 0)
+            if (tagFile.EmbeddedPictures.Count > 0)
             {
                 var artworkTimer = Stopwatch.StartNew();
-                var picture = tagFile.Tag.Pictures[0];
-                albumArtBytes = picture.Data.Data;
+                var picture = tagFile.EmbeddedPictures[0];
+                albumArtBytes = picture.PictureData;
                 using var stream = new MemoryStream(albumArtBytes);
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
@@ -109,10 +109,8 @@ internal sealed class TrackPreparationService
                 bitmap.EndInit();
                 bitmap.Freeze();
                 albumArt = bitmap;
-                albumArtMimeType = string.IsNullOrWhiteSpace(picture.MimeType)
-                    ? "image/jpeg"
-                    : picture.MimeType;
-                albumArtPictureType = picture.Type;
+                albumArtMimeType = AlbumArtPictureKindExtensions.DetectAlbumArtMimeType(albumArtBytes);
+                albumArtPictureType = AlbumArtPictureKindExtensions.FromAtl(picture.PicType);
                 embeddedArtworkMilliseconds = artworkTimer.ElapsedMilliseconds;
             }
         }

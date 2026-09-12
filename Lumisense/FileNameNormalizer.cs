@@ -173,15 +173,15 @@ public static class FileNameNormalizer
         string artist = string.Empty;
         string title = string.Empty;
         string album = string.Empty;
-        uint track = 0;
+        int track = 0;
 
         try
         {
-            using var tagFile = TagLib.File.Create(sourcePath);
-            artist = FirstNonEmpty(tagFile.Tag.FirstPerformer, tagFile.Tag.FirstAlbumArtist);
-            title = tagFile.Tag.Title ?? string.Empty;
-            album = tagFile.Tag.Album ?? string.Empty;
-            track = tagFile.Tag.Track;
+            var atlTrack = new ATL.Track(sourcePath);
+            artist = FirstNonEmpty(atlTrack.Artist, atlTrack.AlbumArtist);
+            title = atlTrack.Title ?? string.Empty;
+            album = atlTrack.Album ?? string.Empty;
+            track = atlTrack.TrackNumber ?? 0;
         }
         catch (Exception)
         {

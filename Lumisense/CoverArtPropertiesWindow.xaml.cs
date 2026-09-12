@@ -7,14 +7,14 @@ namespace Lumisense;
 
 // Своё окно "Свойства" для обложки трека (по образцу TrackPropertiesWindow) — открывается
 // из контекстного меню по правому клику на обложке. Показывает формат, размеры и вес
-// изображения, а также откуда эта обложка (тег TagLib, а не отдельный файл — своего пути у неё нет).
+// изображения, а также откуда эта обложка (тег в аудиофайле, а не отдельный файл — своего пути у неё нет).
 public partial class CoverArtPropertiesWindow : FluentWindow
 {
     public CoverArtPropertiesWindow(
         BitmapImage art,
         byte[] artBytes,
         string? mimeType,
-        TagLib.PictureType? pictureType,
+        AlbumArtPictureKind? pictureType,
         string trackTitle,
         string trackArtist,
         string? trackPath,
@@ -55,17 +55,15 @@ public partial class CoverArtPropertiesWindow : FluentWindow
 
     // Тег может помечать картинку не только как "обложка альбома" (самый частый случай),
     // но и как, например, фото исполнителя или логотип группы — показываем это по-русски,
-    // а не сырым именем значения перечисления TagLib.
-    private static string FormatPictureType(TagLib.PictureType? type) => type switch
+    // а не сырым именем значения перечисления.
+    private static string FormatPictureType(AlbumArtPictureKind? type) => type switch
     {
-        TagLib.PictureType.FrontCover => "Обложка альбома (лицевая)",
-        TagLib.PictureType.BackCover => "Обложка альбома (обратная)",
-        TagLib.PictureType.Artist => "Фото исполнителя",
-        TagLib.PictureType.Media => "Носитель (диск/кассета)",
-        TagLib.PictureType.Illustration => "Иллюстрация",
-        TagLib.PictureType.NotAPicture => "—",
-        null => "—",
-        var other => other.ToString()!
+        AlbumArtPictureKind.FrontCover => "Обложка альбома (лицевая)",
+        AlbumArtPictureKind.BackCover => "Обложка альбома (обратная)",
+        AlbumArtPictureKind.Artist => "Фото исполнителя",
+        AlbumArtPictureKind.Media => "Носитель (диск/кассета)",
+        AlbumArtPictureKind.Illustration => "Иллюстрация",
+        _ => "—"
     };
 
     private static string FormatFileSize(long bytes)

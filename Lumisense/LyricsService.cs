@@ -582,8 +582,8 @@ public static class LyricsService
     {
         try
         {
-            using var file = TagLib.File.Create(audioPath);
-            return file.Tag.Comment;
+            var track = new ATL.Track(audioPath);
+            return track.Comment;
         }
         catch
         {

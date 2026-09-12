@@ -344,9 +344,8 @@ public partial class MainWindow : FluentWindow
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
     private readonly TrackChangeToastController _trackChangeToastController = new();
-    // См. GameOverlayDetectionService/GameOverlayDetectionTimer_Tick — независимая от ручной
-    // галочки настроек эвристика, которая может временно поднять эффективное состояние режима
-    // совместимости, не трогая сам AppSettings.GameOverlayCompatibilityMode.
+    // См. GameOverlayDetectionService — эвристика, независимая от ручной галочки настроек,
+    // может временно поднять эффективное состояние режима совместимости.
     private DispatcherTimer? _gameOverlayDetectionTimer;
     private bool _autoDetectedGameOverlayActive;
     private CoverArtWindow? _coverArtWindow;
@@ -458,10 +457,10 @@ public partial class MainWindow : FluentWindow
     // создаётся один раз при смене трека, а не при каждом запросе текущего состояния.
     public Brush? CurrentArtBrush => _currentArtBrush;
 
-    // Сырые байты текущей обложки (JPEG/PNG прямо из тега) — специально байты, а не сам
-    // Brush/BitmapImage: TrayIconManager живёт в WinForms-стеке (NotifyIcon), и из сырых байт
-    // он сам декодирует System.Drawing.Bitmap для миниатюры в меню трея (см.
-    // TrayIconManager.SetNowPlaying), не завися от WPF-типов вроде BitmapSource/ImageBrush.
+    // Сырые байты текущей обложки (JPEG/PNG прямо из тега) — специально байты, а не готовый
+    // Brush/BitmapImage: TrayIconManager сам декодирует их через BitmapFrame для миниатюры
+    // в меню трея (см. TrayIconManager.SetNowPlaying), без зависимости от того, какой именно
+    // WPF-тип использует под капотом остальной код плеера.
     public byte[]? CurrentAlbumArtBytes => AlbumArtIcon.Visibility == Visibility.Visible ? null : _currentAlbumArtBytes;
     public BitmapImage? CurrentAlbumArt => _currentAlbumArt;
     public double CurrentPlaybackSeconds => _audioFile?.CurrentTime.TotalSeconds ?? 0;
@@ -495,7 +494,7 @@ public partial class MainWindow : FluentWindow
     // как есть (без перекодирования), а "Свойства" показывает реальные формат и размер файла.
     private byte[]? _currentAlbumArtBytes;
     private string? _currentAlbumArtMimeType;
-    private TagLib.PictureType? _currentAlbumArtPictureType;
+    private AlbumArtPictureKind? _currentAlbumArtPictureType;
 
     // Оборачивает fire-and-forget async-вызовы (несколько мест в этом файле: восстановление
     // плейлиста, проверка обновлений при старте, фоновая проверка существования файлов, расчёт
@@ -524,10 +523,8 @@ public partial class MainWindow : FluentWindow
     public MainWindow()
     {
         // Должно случиться до InitializeComponent(): SvgPathIcon читает IconPacks.Current уже
-        // при первом построении визуального дерева этого окна, чтобы понять, из какой подпапки
-        // Icons/svg/{Pack} брать файлы. Дальнейшая смена пака (IconPacks.SetCurrent) применяется
-        // сразу и на этом окне тоже — MultiBinding в SvgPathIcon подписан на IconPackContext,
-        // так что этот вызов задаёт только начальное значение при первом построении.
+        // при первом построении дерева окна. Дальнейшая смена пака применяется сразу и здесь
+        // тоже через IconPackContext, так что это только начальное значение.
         IconPacks.Initialize(_settings);
 
         _audioOutputRecoveryService = new(
@@ -1088,7 +1085,7 @@ public partial class MainWindow : FluentWindow
         // здесь роняло бы всё окно ещё до первого показа.
         try
         {
-            _trayIconManager = new TrayIconManager();
+            _trayIconManager = new TrayIconManager(this);
             _trayIconManager.OpenRequested += RestoreFromTray;
             _trayIconManager.ExitRequested += ExitApplicationCompletely;
             _trayIconManager.PlayPauseRequested += () => Dispatcher.BeginInvoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
@@ -3018,9 +3015,8 @@ public partial class MainWindow : FluentWindow
     public bool IsMiniPlayerContextMenuActionDisabled(string actionId) =>
         MiniPlayerContextMenuActions.Instance.IsDisabled(actionId);
 
-    // Тот же приём, что и у SetTrackContextMenuActionDisabled: Epoch поднимается сразу, уже
-    // открытое (или следующее открытое) контекстное меню мини-плеера пересчитывает Visibility
-    // без пересборки самого MiniPlayerWindow.
+    // Epoch поднимается сразу, уже открытое (или следующее открытое) контекстное меню
+    // мини-плеера пересчитывает Visibility без пересборки MiniPlayerWindow.
     public void SetMiniPlayerContextMenuActionDisabled(string actionId, bool disabled)
     {
         MiniPlayerContextMenuActions.Instance.SetDisabled(actionId, disabled);
@@ -4100,7 +4096,7 @@ public partial class MainWindow : FluentWindow
     }
 
     // Отдельное окно редактирования тегов (название/исполнитель/альбом/год/трек/жанр/
-    // комментарий) — пишет прямо в файл через TagLib#. Если отредактированный файл — это
+    // комментарий) — пишет прямо в файл через ATL.NET. Если отредактированный файл — это
     // как раз сейчас играющий трек, обновляем название/исполнителя/обложку в самом плеере
     // сразу же, не дожидаясь следующего переключения трека.
     private void EditTagsMenuItem_Click(object sender, RoutedEventArgs e)
@@ -4667,12 +4663,12 @@ public partial class MainWindow : FluentWindow
     {
         try
         {
-            using var tagFile = TagLib.File.Create(filePath);
-            var pictures = tagFile.Tag.Pictures;
+            var tagFile = new ATL.Track(filePath);
+            var pictures = tagFile.EmbeddedPictures;
 
-            if (pictures.Length > 0)
+            if (pictures.Count > 0)
             {
-                var bytes = pictures[0].Data.Data;
+                var bytes = pictures[0].PictureData;
                 using var ms = new MemoryStream(bytes);
                 var bitmap = new BitmapImage();
                 bitmap.BeginInit();
@@ -4685,8 +4681,8 @@ public partial class MainWindow : FluentWindow
                 ApplyAlbumArtImage(bitmap, direction);
                 _currentAlbumArt = bitmap;
                 _currentAlbumArtBytes = bytes;
-                _currentAlbumArtMimeType = string.IsNullOrWhiteSpace(pictures[0].MimeType) ? "image/jpeg" : pictures[0].MimeType;
-                _currentAlbumArtPictureType = pictures[0].Type;
+                _currentAlbumArtMimeType = AlbumArtPictureKindExtensions.DetectAlbumArtMimeType(bytes);
+                _currentAlbumArtPictureType = AlbumArtPictureKindExtensions.FromAtl(pictures[0].PicType);
             }
             else
             {
@@ -4694,11 +4690,11 @@ public partial class MainWindow : FluentWindow
             }
 
             // Если в тегах есть название и исполнитель — покажем их вместо имени файла/папки
-            if (!string.IsNullOrWhiteSpace(tagFile.Tag.Title) || !string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer))
+            if (!string.IsNullOrWhiteSpace(tagFile.Title) || !string.IsNullOrWhiteSpace(tagFile.Artist))
             {
                 SetTrackInfoText(
-                    !string.IsNullOrWhiteSpace(tagFile.Tag.Title) ? tagFile.Tag.Title : TrackTitleText.Text,
-                    !string.IsNullOrWhiteSpace(tagFile.Tag.FirstPerformer) ? tagFile.Tag.FirstPerformer : TrackArtistText.Text);
+                    !string.IsNullOrWhiteSpace(tagFile.Title) ? tagFile.Title : TrackTitleText.Text,
+                    !string.IsNullOrWhiteSpace(tagFile.Artist) ? tagFile.Artist : TrackArtistText.Text);
             }
         }
         catch
@@ -6135,6 +6131,19 @@ public partial class MainWindow : FluentWindow
         // при "развернуть" в ExitMiniMode вернуться именно туда, откуда ушли.
         _preMiniViewMode = _viewMode;
 
+        // У мини-плеера ShowInTaskbar="False" (см. MiniPlayerWindow.xaml) — в мини-режиме у
+        // приложения вообще нет никакого присутствия ни в панели задач, ни в трее, кроме самого
+        // окошка мини-плеера. Показываем иконку в трее и здесь, а не только при закрытии
+        // основного окна в трей (см. OnClosing) — иначе, свернув плеер в мини-режим, до него
+        // потом никак не добраться, кроме как найти и кликнуть само окошко мини-плеера.
+        //
+        // Делаем это ДО создания/показа MiniPlayerWindow, а не после: ForceForeground ниже —
+        // не мгновенная операция, и если сначала выводить окно на передний план, а трей
+        // регистрировать последним, значок на старте в мини-режиме заметно отстаёт от уже
+        // видимого окошка. Сама регистрация в трее — почти мгновенный вызов, ей незачем ждать
+        // своей очереди позади более тяжёлой отрисовки окна.
+        _trayIconManager?.Show($"Lumisense — {TrackTitleText.Text}");
+
         _miniPlayerWindow = new MiniPlayerWindow(this)
         {
             Topmost = _settings.MiniPlayerAlwaysOnTop
@@ -6162,13 +6171,6 @@ public partial class MainWindow : FluentWindow
 
         _isMiniMode = true;
         Hide();
-
-        // У мини-плеера ShowInTaskbar="False" (см. MiniPlayerWindow.xaml) — в мини-режиме у
-        // приложения вообще нет никакого присутствия ни в панели задач, ни в трее, кроме самого
-        // окошка мини-плеера. Показываем иконку в трее и здесь, а не только при закрытии
-        // основного окна в трей (см. OnClosing) — иначе, свернув плеер в мини-режим, до него
-        // потом никак не добраться, кроме как найти и кликнуть само окошко мини-плеера.
-        _trayIconManager?.Show($"Lumisense — {TrackTitleText.Text}");
     }
 
     // Вызывается из MiniPlayerWindow при нажатии кнопки "развернуть".
@@ -6229,20 +6231,15 @@ public partial class MainWindow : FluentWindow
         _trackChangeToastController.ApplyOverlayCompatibilityLive(enabled);
     }
 
-    // Итоговое состояние — либо пользователь включил вручную (галочка в настройках или в
-    // контекстном меню мини-плеера), либо галочка автоопределения включена и прямо сейчас
-    // эвристика считает, что запущена игра/оверлей (см. GameOverlayDetectionTimer_Tick). Ручная
-    // галочка и автоопределение не переписывают друг друга: выключение автоопределения не
-    // трогает ручной режим, а выключение ручного режима не мешает автоопределению временно
-    // включить эффективное состояние снова, пока игра действительно запущена.
+    // Либо пользователь включил вручную, либо автоопределение сейчас считает, что запущена
+    // игра/оверлей — одно не переписывает другое: выключение автоопределения не трогает
+    // ручной режим, а выключение ручного не мешает автоопределению включить его снова.
     public bool EffectiveGameOverlayCompatibilityEnabled =>
         _settings.GameOverlayCompatibilityMode ||
         (_settings.GameOverlayCompatibilityAutoDetect && _autoDetectedGameOverlayActive);
 
-    // Запускается один раз при старте (см. конструктор) и работает всё время работы приложения —
-    // сам тик почти ничего не делает, если автоопределение выключено в настройках (см. проверку
-    // внутри), поэтому держать таймер всегда включённым дешевле, чем гонять Start/Stop при каждом
-    // открытии/закрытии мини-плеера.
+    // Работает всё время работы приложения; тик почти ничего не делает, если автоопределение
+    // выключено — дешевле, чем гонять Start/Stop при каждом открытии/закрытии мини-плеера.
     private void StartGameOverlayDetectionTimer()
     {
         _gameOverlayDetectionTimer = new DispatcherTimer(DispatcherPriority.Background)
@@ -6257,10 +6254,8 @@ public partial class MainWindow : FluentWindow
     {
         if (!_settings.GameOverlayCompatibilityAutoDetect)
         {
-            // Настройку могли выключить, пока эвристика уже держала эффективное состояние
-            // включённым — сбрасываем сам флаг детекции, чтобы EffectiveGameOverlayCompatibilityEnabled
-            // сразу перестал на него опираться (иначе следующее включение автоопределения
-            // мгновенно "вспомнило" бы устаревшее обнаружение без повторной проверки).
+            // Настройку выключили, пока эвристика держала состояние включённым — сбрасываем
+            // флаг, иначе следующее включение "вспомнило" бы устаревшее обнаружение.
             if (_autoDetectedGameOverlayActive)
             {
                 _autoDetectedGameOverlayActive = false;
