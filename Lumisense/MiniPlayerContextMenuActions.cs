@@ -20,6 +20,11 @@ public sealed class MiniPlayerContextMenuActions : INotifyPropertyChanged
     public const string PlaybackRate = "PlaybackRate";
     public const string Pitch = "Pitch";
     public const string Opacity = "Opacity";
+    public const string SnapToEdges = "SnapToEdges";
+    public const string ShowProgress = "ShowProgress";
+    public const string ShowArtworkProgress = "ShowArtworkProgress";
+    public const string ArtworkStyle = "ArtworkStyle";
+    public const string ButtonsLayout = "ButtonsLayout";
 
     public static readonly MiniPlayerContextMenuActions Instance = new();
 
@@ -33,7 +38,12 @@ public sealed class MiniPlayerContextMenuActions : INotifyPropertyChanged
         [SecondaryButton] = SecondaryButton,
         [PlaybackRate] = PlaybackRate,
         [Pitch] = Pitch,
-        [Opacity] = Opacity
+        [Opacity] = Opacity,
+        [SnapToEdges] = SnapToEdges,
+        [ShowProgress] = ShowProgress,
+        [ShowArtworkProgress] = ShowArtworkProgress,
+        [ArtworkStyle] = ArtworkStyle,
+        [ButtonsLayout] = ButtonsLayout
     };
 
     private readonly HashSet<string> _disabled = new(StringComparer.Ordinal);
@@ -107,10 +117,9 @@ public sealed class MiniPlayerContextMenuActionVisibilityConverter : IValueConve
         => throw new NotSupportedException();
 }
 
-// Тот же приём, что и TrackContextMenuGroupVisibilityConverter: разделитель между секциями
-// меню скрывается вместе со всей секцией, которую он открывает, — иначе при отключении в
-// настройках всех пунктов одной секции разделители по обе стороны от пустой секции остаются
-// на месте. ConverterParameter — идентификаторы через "|"; видимо, если хотя бы один включён.
+// Тот же приём, что TrackContextMenuGroupVisibilityConverter: разделитель скрывается вместе
+// со всей секцией, которую открывает. ConverterParameter — идентификаторы через "|"; видимо,
+// если хотя бы один включён.
 public sealed class MiniPlayerContextMenuGroupVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)

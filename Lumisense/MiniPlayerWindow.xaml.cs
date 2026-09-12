@@ -555,10 +555,8 @@ public partial class MiniPlayerWindow : Window
             _volumeOverlayRestoreTimer = null;
         }
 
-        // В overlay-режиме OnVolumeChanged намеренно пропускает VolumeIndicatorStoryboard (см.
-        // выше) — там и живёт единственная логика, которая прячет индикатор обратно. Без этого
-        // блока Opacity=1, выставленный в OnVolumeChanged, так и оставался навсегда — индикатор
-        // зависал поверх мини-плеера до следующей смены громкости.
+        // OnVolumeChanged в overlay-режиме пропускает VolumeIndicatorStoryboard, а больше
+        // ничего Opacity=1 обратно не сбрасывало — индикатор зависал навсегда.
         if (_overlayCompatibilityMode)
         {
             VolumeIndicator.BeginAnimation(UIElement.OpacityProperty, null);
@@ -840,6 +838,67 @@ public partial class MiniPlayerWindow : Window
         PinnedMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerPinned;
         TopmostMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerAlwaysOnTop;
         OverlayCompatibilityMenuItem.IsChecked = _mainWindow.Settings.GameOverlayCompatibilityMode;
+
+        MiniContextSnapToEdgesMenuItem.IsCheckable = true;
+        MiniContextShowProgressMenuItem.IsCheckable = true;
+        MiniContextShowArtworkProgressMenuItem.IsCheckable = true;
+        MiniContextSnapToEdgesMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerSnapToEdges;
+        MiniContextShowProgressMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerShowProgress;
+        MiniContextShowArtworkProgressMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerShowArtworkProgress;
+        MiniContextArtworkStyleMenuItem.Header = "Обложка: " + ArtworkStyleLabel(_mainWindow.Settings.MiniPlayerArtworkStyle);
+        MiniContextButtonsLayoutMenuItem.Header = "Кнопки: " +
+            (_mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay" ? "поверх обложки" : "снизу");
+    }
+
+    private static string ArtworkStyleLabel(string style) => style switch
+    {
+        "Vinyl" => "винил",
+        "StaticCircle" => "круг",
+        _ => "обычная"
+    };
+
+    private void SnapToEdgesMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _mainWindow.Settings.MiniPlayerSnapToEdges = MiniContextSnapToEdgesMenuItem.IsChecked;
+        SettingsManager.Save(_mainWindow.Settings);
+    }
+
+    private void ShowProgressMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _mainWindow.Settings.MiniPlayerShowProgress = MiniContextShowProgressMenuItem.IsChecked;
+        _mainWindow.ApplyMiniPlayerProgressBarVisibilityLive();
+        SettingsManager.Save(_mainWindow.Settings);
+    }
+
+    private void ShowArtworkProgressMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _mainWindow.Settings.MiniPlayerShowArtworkProgress = MiniContextShowArtworkProgressMenuItem.IsChecked;
+        _mainWindow.ApplyMiniPlayerArtworkProgressVisibilityLive();
+        SettingsManager.Save(_mainWindow.Settings);
+    }
+
+    // Клик по кругу переключает на следующий из 3 стилей — компактнее вложенного подменю.
+    private void ArtworkStyleMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _mainWindow.Settings.MiniPlayerArtworkStyle = _mainWindow.Settings.MiniPlayerArtworkStyle switch
+        {
+            "Default" => "Vinyl",
+            "Vinyl" => "StaticCircle",
+            _ => "Default"
+        };
+        MiniContextArtworkStyleMenuItem.Header = "Обложка: " + ArtworkStyleLabel(_mainWindow.Settings.MiniPlayerArtworkStyle);
+        _mainWindow.ApplyMiniPlayerArtworkStyleLive();
+        SettingsManager.Save(_mainWindow.Settings);
+    }
+
+    private void ButtonsLayoutMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        _mainWindow.Settings.MiniPlayerButtonsLayout =
+            _mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay" ? "Below" : "Overlay";
+        MiniContextButtonsLayoutMenuItem.Header = "Кнопки: " +
+            (_mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay" ? "поверх обложки" : "снизу");
+        _mainWindow.ApplyMiniPlayerButtonsLayoutLive();
+        SettingsManager.Save(_mainWindow.Settings);
     }
 
     private void MiniSecondaryContextButton_Click(object sender, RoutedEventArgs e)

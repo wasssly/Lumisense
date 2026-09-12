@@ -66,10 +66,8 @@ public class AppSettings
     // "Dark" / "Light" — выбирается в настройках (страница "Оформление").
     public string Theme { get; set; } = "Dark";
 
-    // "Duotone" / "Outline" / "Bold" / "Fill" / "Thin" — набор иконок интерфейса (см. IconPacks
-    // и IconPackContext в SvgPathIcon.cs). Меняется вживую (IconPacks.SetCurrent) сразу на всех
-    // открытых окнах, без перезапуска приложения; это поле — только то, что подхватывается при
-    // следующем запуске.
+    // Меняется вживую (IconPacks.SetCurrent) на всех открытых окнах; это поле — только то,
+    // что подхватывается при следующем запуске.
     public string IconPack { get; set; } = IconPacks.Duotone;
 
     // Язык статического интерфейса: "ru" или "en". На первом запуске установщик может
@@ -152,7 +150,7 @@ public class AppSettings
     public bool UseLogarithmicVolume { get; set; }
 
     // ReplayGain — выравнивание субъективной громкости между треками по тегам REPLAYGAIN_*
-    // (ID3v2 TXXX/Vorbis comments/APE — откуда именно, решает сама TagLibSharp в зависимости
+    // (ID3v2 TXXX/Vorbis comments/APE — откуда именно, решает сама ATL.NET в зависимости
     // от формата файла, см. ReplayGainReader). По умолчанию выключено: у треков без этих тегов
     // ничего не меняется, но включать что-либо, способное менять громкость воспроизведения без
     // явного действия пользователя, по умолчанию — не лучшая идея, пусть будет осознанным выбором.
@@ -165,10 +163,8 @@ public class AppSettings
     public bool DiscordRichPresenceShowTrackInfo { get; set; } = true;
     public bool DiscordRichPresenceShowTimeline { get; set; } = true;
     // Действует только вместе с DiscordRichPresenceShowTrackInfo — обложка сама по себе выдаёт
-    // трек не хуже текста, поэтому показ картинки при скрытых названии/исполнителе не имеет
-    // смысла (см. DiscordRichPresenceManager.BuildPresence). Ищется автоматически по
-    // артисту/названию через открытые API (DiscordCoverArtLookupService), а не берётся из
-    // локального файла — Discord Rich Presence умеет показывать только внешние HTTPS-ссылки.
+    // трек не хуже текста. Ищется автоматически по артисту/названию через открытые API
+    // (DiscordCoverArtLookupService), не берётся из локального файла.
     public bool DiscordRichPresenceShowCoverArt { get; set; } = true;
 
     // Темп воспроизведения без изменения высоты тона. 1.0 — обычная скорость.
@@ -268,10 +264,8 @@ public class AppSettings
     // для плавающих окон: отключает декоративные анимации/тени toast и делает фон мини-плеера
     // плотным. По умолчанию выключен, чтобы не менять обычный внешний вид приложения.
     public bool GameOverlayCompatibilityMode { get; set; }
-    // Включён по умолчанию: периодическая проверка (раз в несколько секунд) на полноэкранное
-    // окно переднего плана и на известные процессы оверлеев (RTSS, Xbox Game Bar и т.п.) —
-    // см. GameOverlayDetectionService. Эвристика может ошибаться, поэтому её можно отключить
-    // совсем, не трогая при этом ручную галочку GameOverlayCompatibilityMode выше.
+    // Периодическая проверка на полноэкранное окно и известные процессы оверлеев (см.
+    // GameOverlayDetectionService); можно отключить, не трогая ручную галочку выше.
     public bool GameOverlayCompatibilityAutoDetect { get; set; } = true;
 
     // Default — обычная скруглённая обложка; Vinyl — круглая «пластинка», медленно
@@ -470,8 +464,8 @@ public class AppSettings
     public List<string> DisabledTrackContextMenuActions { get; set; } = new();
 
     // Идентификаторы скрытых пунктов контекстного меню мини-плеера (см.
-    // MiniPlayerContextMenuActions) — здесь, в отличие от меню трека, отключить можно и
-    // "Настройки": та же страница по-прежнему доступна из основного окна и из трея.
+    // MiniPlayerContextMenuActions). В отличие от меню трека тут можно отключить и
+    // "Настройки" — та же страница доступна из основного окна и трея.
     public List<string> DisabledMiniPlayerContextMenuActions { get; set; } = new();
 
     // Именованные наборы значений эквалайзера, сохранённые пользователем — переключаются

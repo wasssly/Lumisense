@@ -338,7 +338,12 @@ public partial class SettingsWindow : FluentWindow
             MiniContextSecondaryButtonCheckBox,
             MiniContextPlaybackRateCheckBox,
             MiniContextPitchCheckBox,
-            MiniContextOpacityCheckBox
+            MiniContextOpacityCheckBox,
+            MiniContextSnapToEdgesCheckBox,
+            MiniContextShowProgressCheckBox,
+            MiniContextShowArtworkProgressCheckBox,
+            MiniContextArtworkStyleCheckBox,
+            MiniContextButtonsLayoutCheckBox
         };
 
         foreach (System.Windows.Controls.CheckBox checkBox in checkBoxes)
@@ -1258,12 +1263,9 @@ public partial class SettingsWindow : FluentWindow
         _ = SettingsManager.SaveAsync(_settings);
     }
 
-    // ПКМ по карточке пака — открыть окно со всем набором иконок этого пака (не обязательно
-    // выбранного сейчас), см. IconPackPreviewWindow. Show(), не ShowDialog() — это окно
-    // read-only-превью без результата, которого нужно дождаться, и модальность здесь была бы
-    // просто лишним ограничением: блокировала бы не только SettingsWindow (его Owner), но и,
-    // если сама SettingsWindow открыта поверх плеера, опосредованно мешала бы пользоваться
-    // MainWindow, пока превью открыто.
+    // ПКМ — открыть окно со всем набором иконок этого пака (не обязательно выбранного сейчас).
+    // Show(), не ShowDialog(): это read-only превью без результата, а модальность блокировала
+    // бы и SettingsWindow, и опосредованно MainWindow.
     private void IconPackCard_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not System.Windows.Controls.Border { Tag: string pack } || !IconPacks.IsKnown(pack))

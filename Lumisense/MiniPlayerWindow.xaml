@@ -387,6 +387,25 @@
                         </Grid>
                     </MenuItem.Header>
                 </MenuItem>
+                <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter='SnapToEdges|ShowProgress|ShowArtworkProgress|ArtworkStyle|ButtonsLayout'}" />
+                <MenuItem x:Name="MiniContextSnapToEdgesMenuItem" Header="Прилипание к краям экрана" IsCheckable="True"
+                          Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
+                          Click="SnapToEdgesMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=SnapToEdges}" />
+                <MenuItem x:Name="MiniContextShowProgressMenuItem" Header="Показывать полосу прогресса" IsCheckable="True"
+                          Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
+                          Click="ShowProgressMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=ShowProgress}" />
+                <MenuItem x:Name="MiniContextShowArtworkProgressMenuItem" Header="Прогресс вокруг обложки" IsCheckable="True"
+                          Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
+                          Click="ShowArtworkProgressMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=ShowArtworkProgress}" />
+                <!-- 3 и 2 варианта соответственно — компактнее вложенного подменю: клик переключает
+                     на следующее значение по кругу, текущее видно прямо в Header. -->
+                <MenuItem x:Name="MiniContextArtworkStyleMenuItem" Click="ArtworkStyleMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=ArtworkStyle}" />
+                <MenuItem x:Name="MiniContextButtonsLayoutMenuItem" Click="ButtonsLayoutMenuItem_Click"
+                          Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=ButtonsLayout}" />
             </ContextMenu>
         </Border.ContextMenu>
         <Grid>

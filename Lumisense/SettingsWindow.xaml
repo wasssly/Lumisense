@@ -703,13 +703,9 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Набор иконок интерфейса — см. IconPacks/IconPackContext (SvgPathIcon.cs) и
-                             IconPackCard_MouseLeftButtonDown / IconPackCard_MouseRightButtonDown в code-behind.
-                             Каждая карточка — превью нескольких характерных иконок ИМЕННО из своего пака:
-                             SvgPathIcon.Pack переопределяет активный IconPacks.Current только для этой иконки,
-                             поэтому здесь видно все паки сразу, а не только выбранный сейчас. ЛКМ — выбрать пак,
-                             применяется немедленно на всех открытых окнах (IconPacks.SetCurrent, живая привязка
-                             через IconPackContext). ПКМ — открыть IconPackPreviewWindow со всем набором иконок пака. -->
+                        <!-- SvgPathIcon.Pack переопределяет активный IconPacks.Current только для превью в
+                             этой галерее — ЛКМ выбирает пак (применяется сразу, IconPackContext), ПКМ
+                             открывает IconPackPreviewWindow с полным набором иконок пака. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Набор иконок" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -1715,9 +1711,8 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. MiniPlayerContextMenuActions/MiniPlayerContextMenuActionCheckBox_Changed —
-                             тот же механизм, что и у пунктов контекстного меню трека (TrackContextMenuActions),
-                             только для контекстного меню самого мини-плеера (ПКМ по мини-плееру). -->
+                        <!-- Тот же механизм, что у пунктов меню трека (TrackContextMenuActions),
+                             но для контекстного меню мини-плеера (ПКМ по мини-плееру). -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Контекстное меню мини-плеера" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -1740,7 +1735,17 @@
                                               Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
                                     <CheckBox x:Name="MiniContextPitchCheckBox" Tag="Pitch" Content="Тон" Margin="0,0,0,10"
                                               Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextOpacityCheckBox" Tag="Opacity" Content="Прозрачность"
+                                    <CheckBox x:Name="MiniContextOpacityCheckBox" Tag="Opacity" Content="Прозрачность" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextSnapToEdgesCheckBox" Tag="SnapToEdges" Content="Прилипание к краям экрана" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextShowProgressCheckBox" Tag="ShowProgress" Content="Показывать полосу прогресса" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextShowArtworkProgressCheckBox" Tag="ShowArtworkProgress" Content="Прогресс вокруг обложки" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextArtworkStyleCheckBox" Tag="ArtworkStyle" Content="Отображение обложки" Margin="0,0,0,10"
+                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="MiniContextButtonsLayoutCheckBox" Tag="ButtonsLayout" Content="Расположение кнопок"
                                               Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
                                 </UniformGrid>
                             </StackPanel>
