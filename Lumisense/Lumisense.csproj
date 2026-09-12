@@ -35,12 +35,13 @@
 
   <ItemGroup>
     <PackageReference Include="WPF-UI" Version="4.3.0" />
+    <PackageReference Include="WPF-UI.Tray" Version="4.3.0" />
     <!-- NAudio 3 требует net9. Локальный SoundTouchSampleProvider использует public API
          SoundTouch.Net напрямую, потому что SoundTouch.Net.NAudioSupport.Core собран для ABI NAudio 2.x. -->
-    <PackageReference Include="NAudio" Version="3.0.1" />
+    <PackageReference Include="NAudio" Version="3.1.0" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
-    <PackageReference Include="TagLibSharp" Version="2.3.0" />
-    <PackageReference Include="SharpVectors.Wpf" Version="1.8.5" />
+    <PackageReference Include="z440.atl.core" Version="7.16" />
+    <PackageReference Include="SharpVectors.Wpf" Version="1.8.6" />
     <!-- Локальный Discord IPC / Rich Presence; фиксированная версия делает восстановление сборки воспроизводимым. -->
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
     <!-- Прототип delta-обновлений; CLI vpk в workflow закреплён на ту же версию. -->
@@ -59,6 +60,19 @@
     <Resource Include="Icons\app\lumisense-settings.ico" />
     <Resource Include="Icons\app\lumisense-settings.png" />
     <Resource Include="Icons\app\developer-avatar-placeholder.png" />
+  </ItemGroup>
+
+  <!-- Необязательно: собственный MP3-кодировщик (см. LameMp3Encoder.cs), не зависящий от того,
+       установлен ли в Windows системный кодировщик Media Foundation. Файла здесь нет по
+       умолчанию — Condition просто пропускает этот ItemGroup, если его никто не положил, без
+       ошибки сборки. Чтобы включить: положить 64-битную libmp3lame.dll в lib\libmp3lame.dll
+       (например, через `vcpkg install lame:x64-windows`, оттуда скопировать
+       installed\x64-windows\bin\libmp3lame.dll). Без неё экспорт MP3 просто продолжит
+       использовать Media Foundation, как раньше. -->
+  <ItemGroup Condition="Exists('lib\libmp3lame.dll')">
+    <None Include="lib\libmp3lame.dll">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
   <ItemGroup>
