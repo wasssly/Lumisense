@@ -25,6 +25,7 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
     private readonly MenuItem _nextItem;
     private readonly MenuItem _previousItem;
     private readonly MenuItem _exitItem;
+    private readonly MenuItem _settingsItem;
 
     private bool _disposed;
     private bool _isPlaying;
@@ -36,6 +37,7 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
     public event Action? PlayPauseRequested;
     public event Action? NextRequested;
     public event Action? PreviousRequested;
+    public event Action? SettingsRequested;
 
     public TrayIconManager(Window owner)
     {
@@ -59,6 +61,7 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
             FontSize = 12
         };
 
+        _settingsItem = BuildItem(LocalizationService.Translate("Настройки"), "IconSettings", () => SettingsRequested?.Invoke());
         _openItem = BuildItem(LocalizationService.Translate("Открыть Lumisense"), "IconWindow", () => OpenRequested?.Invoke());
         _playPauseItem = BuildItem(LocalizationService.Translate("Пауза"), "IconPause", () => PlayPauseRequested?.Invoke());
         _nextItem = BuildItem(LocalizationService.Translate("Следующий трек"), "IconNext", () => NextRequested?.Invoke());
@@ -69,6 +72,7 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         menu.Items.Add(headerItem);
         menu.Items.Add(_nowPlayingItem);
         menu.Items.Add(new Separator());
+        menu.Items.Add(_settingsItem);
         menu.Items.Add(_openItem);
         menu.Items.Add(new Separator());
         menu.Items.Add(_playPauseItem);
@@ -109,7 +113,19 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
     {
         try
         {
-            return BitmapFrame.Create(new Uri("pack://application:,,,/Icons/app/lumisense.ico", UriKind.Absolute));
+            // BitmapCacheOption.OnLoad — принудительно синхронное декодирование. Icon
+            // выставляется один раз в конструкторе и больше никогда не переустанавливается,
+            // поэтому если бы пиксели догружались лениво (поведение по умолчанию для
+            // BitmapFrame.Create), а Register() внутри NotifyIconService конвертировал бы
+            // ImageSource в нативный HICON сразу же — на самом первом запуске (особенно если
+            // приложение стартует сразу в мини-режиме, то есть очень рано, до того как
+            // Dispatcher начал прокачивать сообщения) значок мог остаться пустым до следующей
+            // полной перерегистрации (Hide+Show), которая как раз и происходит при переключении
+            // между окном и мини-плеером — этим и объясняется, что после такого переключения
+            // всё сразу начинает работать правильно.
+            return BitmapFrame.Create(
+                new Uri("pack://application:,,,/Icons/app/lumisense.ico", UriKind.Absolute),
+                BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
         }
         catch
         {
@@ -190,14 +206,30 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         if (tooltipText != null)
             TooltipText = Truncate(tooltipText, 63); // тот же лимит, что был у Win32 NOTIFYICONDATA.szTip
 
-        if (!IsRegistered) Register();
+        if (IsRegistered)
+        {
+            Logger.Info("TrayIconManager.Show: уже зарегистрирован, Register() не вызывается.");
+            return;
+        }
+
+        bool ok = Register();
+        Logger.Info($"TrayIconManager.Show: Register() вернул {ok}, IsRegistered={IsRegistered}, " +
+                    $"ParentWindow.IsLoaded={ParentWindow?.IsLoaded}, " +
+                    $"Handle={(ParentWindow is null ? "null" : new System.Windows.Interop.WindowInteropHelper(ParentWindow).Handle)}.");
     }
 
     public void UpdateTooltip(string text) => TooltipText = Truncate(text, 63);
 
     public void Hide()
     {
-        if (IsRegistered) Unregister();
+        if (!IsRegistered)
+        {
+            Logger.Info("TrayIconManager.Hide: уже не зарегистрирован, Unregister() не вызывается.");
+            return;
+        }
+
+        bool ok = Unregister();
+        Logger.Info($"TrayIconManager.Hide: Unregister() вернул {ok}, IsRegistered={IsRegistered}.");
     }
 
     private static string Truncate(string value, int maxLength) =>

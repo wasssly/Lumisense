@@ -734,6 +734,22 @@ public partial class MainWindow : FluentWindow
     {
         new WindowInteropHelper(this).EnsureHandle();
 
+        // EnsureHandle() выше создаёт нативный HWND, но не завершает полный проход WPF-загрузки
+        // (Loaded срабатывает только после реального Show()) — а лог показал, что именно от
+        // Window.IsLoaded зависит успешная регистрация иконки в трее через
+        // TrayIconManager/NotifyIconService: при старте сразу в мини-режиме MainWindow.Hide()
+        // вызывается ниже без единого настоящего Show(), IsLoaded остаётся false навсегда, и
+        // Register() внутри EnterMiniMode() молча проваливается. Opacity=0 перед быстрым
+        // Show()+Hide() не даёт увидеть даже случайный кадр отрисовки.
+        if (!IsLoaded)
+        {
+            double originalOpacity = Opacity;
+            Opacity = 0;
+            Show();
+            Hide();
+            Opacity = originalOpacity;
+        }
+
         RestorePlayerViewMode();
 
         if (_settings.StartHiddenInTray)
@@ -1087,6 +1103,7 @@ public partial class MainWindow : FluentWindow
         {
             _trayIconManager = new TrayIconManager(this);
             _trayIconManager.OpenRequested += RestoreFromTray;
+            _trayIconManager.SettingsRequested += () => Dispatcher.BeginInvoke(() => ShowSettingsWindow());
             _trayIconManager.ExitRequested += ExitApplicationCompletely;
             _trayIconManager.PlayPauseRequested += () => Dispatcher.BeginInvoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
             _trayIconManager.NextRequested += () => Dispatcher.BeginInvoke(PlayNextTrack);
@@ -5069,7 +5086,16 @@ public partial class MainWindow : FluentWindow
     private const int TrackChangeDrainSafetyMilliseconds = 8;
     private const int PlayPauseFadeMilliseconds = 18;
     private const int PlayPauseFadeSafetyMilliseconds = 10;
-    private const int WasapiSharedLatencyMilliseconds = 60;
+    // Уменьшено с прежних 60 мс — 30 мс по-прежнему с запасом для обычного shared-mode на
+    // большинстве звуковых карт, но заметно меньше прежних 60. IAudioClient3 (WithLowLatency)
+    // не используется: его "всё или ничего" — либо честный минимум движка (2 мс и меньше,
+    // что для приложения без выделенного real-time аудио-потока чревато щелчками при любой
+    // микрозаминке), либо полный откат на это же число — непредсказуемо зависит от того,
+    // совпадает ли частота дискретизации трека с нативным миксом устройства. Предсказуемая
+    // умеренная задержка через WithLatency безопаснее для плеера с DSP-обработкой в реальном
+    // времени (SoundTouch, эквалайзер). Если после смены появятся щелчки/потрескивание при
+    // переключении треков — стоит вернуть обратно к 60.
+    private const int WasapiSharedLatencyMilliseconds = 30;
 
     private async Task FadeOutBeforeTrackChangeAsync(CancellationToken token)
     {
@@ -6142,6 +6168,7 @@ public partial class MainWindow : FluentWindow
         // регистрировать последним, значок на старте в мини-режиме заметно отстаёт от уже
         // видимого окошка. Сама регистрация в трее — почти мгновенный вызов, ей незачем ждать
         // своей очереди позади более тяжёлой отрисовки окна.
+        Logger.Info($"EnterMiniMode: вызываю _trayIconManager.Show() (стартовый вызов={_isApplyingStartupSettings}).");
         _trayIconManager?.Show($"Lumisense — {TrackTitleText.Text}");
 
         _miniPlayerWindow = new MiniPlayerWindow(this)
