@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:local="clr-namespace:Lumisense"
         Title="Now Playing — Lumisense"
-        Icon="/Icons/app/lumisense.ico"
+        Icon="{Binding Current, Source={x:Static local:AppIconContext.Instance}}"
         WindowStyle="None"
         WindowState="Maximized"
         ResizeMode="NoResize"

@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:local="clr-namespace:Lumisense"
         Title="Поиск обложки"
-        Icon="/Icons/app/lumisense.ico"
+        Icon="{Binding Current, Source={x:Static local:AppIconContext.Instance}}"
         Height="610" Width="560"
         MinHeight="420" MinWidth="360"
         WindowBackdropType="Mica"

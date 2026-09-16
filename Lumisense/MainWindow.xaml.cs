@@ -537,6 +537,9 @@ public partial class MainWindow : FluentWindow
         // тоже через IconPackContext, так что это только начальное значение.
         IconPacks.Initialize(_settings);
 
+        // То же самое для Icon окна (см. AppIconContext, на который биндится Icon в XAML).
+        AppIcons.Initialize(_settings);
+
         _audioOutputRecoveryService = new(
             _audioOutputRecoveryCoordinator, TimeSpan.FromMilliseconds(OutputRecoveryCooldownMilliseconds));
         InitializeComponent();

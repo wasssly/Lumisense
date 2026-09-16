@@ -138,6 +138,7 @@ public partial class SettingsWindow : FluentWindow
         ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault();
 
         RefreshIconPackCardSelection();
+        RefreshAppIconCardSelection();
 
         AccentManualRadio.IsChecked = _settings.AccentColorMode == "Manual";
         AccentCoverRadio.IsChecked = _settings.AccentColorMode == "Cover";
@@ -1291,6 +1292,44 @@ public partial class SettingsWindow : FluentWindow
         foreach (var (card, pack) in cards)
         {
             card.BorderBrush = pack == _settings.IconPack
+                ? (Brush)FindResource("AccentFillColorDefaultBrush")
+                : Brushes.Transparent;
+        }
+    }
+
+    // Клик по карточке значка приложения (см. AppIcons.cs). Применяется сразу на всех открытых
+    // окнах и в трее через AppIconContext, без перезапуска приложения — по аналогии с
+    // IconPackCard_MouseLeftButtonDown выше.
+    private void AppIconCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.Border { Tag: string icon } || !AppIcons.IsKnown(icon))
+            return;
+
+        if (icon == _settings.AppIcon) return;
+
+        _settings.AppIcon = icon;
+        RefreshAppIconCardSelection();
+
+        if (_isInitializing) return;
+
+        AppIcons.SetCurrent(icon);
+        _ = SettingsManager.SaveAsync(_settings);
+    }
+
+    // Подсвечивает рамкой карточку значка, совпадающего с _settings.AppIcon — по аналогии с
+    // RefreshIconPackCardSelection выше.
+    private void RefreshAppIconCardSelection()
+    {
+        (System.Windows.Controls.Border card, string icon)[] cards =
+        {
+            (AppIconCardClassic, AppIcons.Classic),
+            (AppIconCardAurora, AppIcons.Aurora),
+            (AppIconCardLavender, AppIcons.Lavender),
+        };
+
+        foreach (var (card, icon) in cards)
+        {
+            card.BorderBrush = icon == _settings.AppIcon
                 ? (Brush)FindResource("AccentFillColorDefaultBrush")
                 : Brushes.Transparent;
         }

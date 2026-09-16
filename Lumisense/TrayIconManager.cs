@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
@@ -39,7 +40,8 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
     {
         SetParentWindow(owner);
         TooltipText = "Lumisense";
-        Icon = LoadAppIcon();
+        Icon = AppIconContext.Instance.Current;
+        AppIconContext.Instance.PropertyChanged += AppIconContext_PropertyChanged;
 
         var headerItem = new MenuItem
         {
@@ -102,22 +104,12 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         UpdateNowPlayingText();
     }
 
-    // Та же иконка, что у .exe, встроенная как Resource — не зависит от способа публикации,
-    // в отличие от прежнего Icon.ExtractAssociatedIcon из запущенного процесса.
-    private static ImageSource? LoadAppIcon()
+    // Живая смена значка через настройки (см. AppIcons.SetCurrent) — тот же источник, на
+    // который биндится Icon у обычных окон в XAML.
+    private void AppIconContext_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
-        try
-        {
-            // OnLoad — синхронное декодирование. Icon задаётся один раз и больше не
-            // переустанавливается, поэтому ленивая загрузка могла оставить пиксели пустыми.
-            return BitmapFrame.Create(
-                new Uri("pack://application:,,,/Icons/app/lumisense.ico", UriKind.Absolute),
-                BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-        }
-        catch
-        {
-            return null;
-        }
+        if (_disposed) return;
+        Icon = AppIconContext.Instance.Current;
     }
 
     // Вызывается из MainWindow на каждый PlaybackStateChanged, чтобы пункт меню всегда
@@ -226,6 +218,7 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         if (_disposed) return;
         _disposed = true;
         LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
+        AppIconContext.Instance.PropertyChanged -= AppIconContext_PropertyChanged;
         Unregister();
     }
 }

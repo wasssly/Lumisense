@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:local="clr-namespace:Lumisense"
         Title="Изменение тегов"
-        Icon="/Icons/app/lumisense.ico"
+        Icon="{Binding Current, Source={x:Static local:AppIconContext.Instance}}"
         Height="520" Width="420"
         MinHeight="480" MinWidth="360"
         WindowBackdropType="Mica"

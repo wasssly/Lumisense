@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:local="clr-namespace:Lumisense"
         Title="Lumisense"
-        Icon="/Icons/app/lumisense.ico"
+        Icon="{Binding Current, Source={x:Static local:AppIconContext.Instance}}"
         Height="560" Width="600"
         MinHeight="470" MinWidth="560"
         WindowBackdropType="Mica"

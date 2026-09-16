@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:local="clr-namespace:Lumisense"
         Title="Статистика"
-        Icon="/Icons/app/lumisense.ico"
+        Icon="{Binding Current, Source={x:Static local:AppIconContext.Instance}}"
         Height="620" Width="440"
         MinHeight="440" MinWidth="360"
         WindowBackdropType="Mica"

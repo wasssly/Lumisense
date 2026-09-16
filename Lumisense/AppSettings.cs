@@ -67,6 +67,10 @@ public class AppSettings
     // что подхватывается при следующем запуске.
     public string IconPack { get; set; } = IconPacks.Duotone;
 
+    // Значок приложения (окна, трей) — меняется вживую (AppIcons.SetCurrent), см. AppIcons.cs.
+    // Не влияет на иконку самого .exe/ярлыка — та зашита в сборку через ApplicationIcon.
+    public string AppIcon { get; set; } = AppIcons.Aurora;
+
     // Язык статического интерфейса: "ru" или "en". На первом запуске установщик может
     // передать свой выбор через одноразовый marker-файл в папке данных приложения.
     public string Language { get; set; } = "ru";

@@ -806,6 +806,61 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- Значок приложения (окна, трей) — см. AppIcons.cs. Применяется сразу,
+                             как и набор иконок выше; .exe/ярлык при этом не меняются (зашиты в
+                             сборку через ApplicationIcon в .csproj). -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Значок приложения" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Применяется сразу ко всем открытым окнам и значку в трее."
+                                           FontSize="12" Opacity="0.6" Margin="0,-4,0,16" TextWrapping="Wrap" />
+
+                                <WrapPanel>
+                                    <Border x:Name="AppIconCardClassic" Tag="Classic" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
+                                        <StackPanel>
+                                            <Image Source="/Icons/app/lumisense.png" Width="44" Height="44"
+                                                   Margin="0,0,0,12" />
+                                            <TextBlock Text="Классический" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Оригинальный значок Lumisense" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border x:Name="AppIconCardAurora" Tag="Aurora" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
+                                        <StackPanel>
+                                            <Image Source="/Icons/app/lumisense-aurora.png" Width="44" Height="44"
+                                                   Margin="0,0,0,12" />
+                                            <TextBlock Text="Aurora" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Стеклянный, синий" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border x:Name="AppIconCardLavender" Tag="Lavender" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
+                                        <StackPanel>
+                                            <Image Source="/Icons/app/lumisense-lavender.png" Width="44" Height="44"
+                                                   Margin="0,0,0,12" />
+                                            <TextBlock Text="Lavender" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Плоский, сиреневый" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.AccentColorMode/AccentColorHex. Пресеты — просто восемь
                              готовых hex-цветов; "Свой" открывает стандартный системный ColorDialog. У
                              выбранного сейчас цвета (если это один из пресетов) рамка подсвечена белым —
