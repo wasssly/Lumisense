@@ -91,6 +91,10 @@ public partial class MainWindow : FluentWindow
     private bool _playPausePendingToggle;
 
     private readonly DispatcherTimer _progressTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
+
+    // Потолок естественного прироста позиции за тик (250 мс). С запасом на скорость до 2.0x
+    // и задержки планировщика; всё, что больше — перемотка, а не прозвучавший звук.
+    private const double MaxNaturalTickAdvanceSeconds = 1.5;
     private readonly DispatcherTimer _playbackRatePersistenceTimer = new() { Interval = TimeSpan.FromMilliseconds(250) };
     private readonly DispatcherTimer _systemDefaultEndpointDebounceTimer = new()
     {
@@ -151,6 +155,12 @@ public partial class MainWindow : FluentWindow
     // минимум половина композиции — см. ProgressTimer_Tick. Сбрасывается на каждую новую
     // загрузку, включая повтор того же трека (RepeatMode.One).
     private bool _halfPlayCounted;
+
+    // Сумма фактически прозвучавших секунд текущего трека. Считается по приросту позиции между
+    // тиками, скачки от перемотки не учитываются — иначе перетаскивание ползунка в конец сразу
+    // засчитывало бы прослушивание.
+    private double _actuallyPlayedSeconds;
+    private double _lastTickPositionSeconds = -1;
 
     // ObservableCollection, а не List — PlaylistFoldersControl (см. RestoreSavedPlaylistAsync)
     // привязан к ней один раз и получает только реально новые/удалённые папки через
@@ -4424,6 +4434,8 @@ public partial class MainWindow : FluentWindow
                 StartStandardShuffleSession(filePath);
 
             _halfPlayCounted = false;
+            _actuallyPlayedSeconds = 0;
+            _lastTickPositionSeconds = -1;
             ApplyPreparedAlbumArt(loaded, albumArtDirection);
             performance.MarkStage("apply-track-ui");
 
@@ -6867,14 +6879,21 @@ public partial class MainWindow : FluentWindow
 
         _settings.StatsStartedAt ??= DateTime.Now.ToString("O");
 
-        // Прослушивание засчитывается не при старте трека, а только когда реально
-        // воспроизведена как минимум половина композиции — иначе быстрое переключение между
-        // треками (превью, случайный клик не по тому треку и т.п.) накручивало бы счётчик
-        // прослушиваний ровно так же, как и полноценное прослушивание. Флаг на трек
-        // выставляется один раз (см. сброс в LoadAndPlay) — дальнейшая перемотка туда-сюда
-        // после набора половины повторный инкремент не даёт.
+        // Накапливаем только естественный прирост позиции между тиками. Скачок назад или
+        // вперёд больше одного интервала — это перемотка, а не прозвучавший звук.
+        double position = _audioFile.CurrentTime.TotalSeconds;
+        if (_lastTickPositionSeconds >= 0)
+        {
+            double delta = position - _lastTickPositionSeconds;
+            if (delta > 0 && delta <= MaxNaturalTickAdvanceSeconds)
+                _actuallyPlayedSeconds += delta;
+        }
+        _lastTickPositionSeconds = position;
+
+        // Засчитывается, только когда реально прозвучала половина трека. Раньше проверялась
+        // сама позиция, поэтому перетаскивание ползунка в конец сразу давало +1 к статистике.
         if (!_halfPlayCounted && _audioFile.TotalTime.TotalSeconds > 0
-            && _audioFile.CurrentTime.TotalSeconds >= _audioFile.TotalTime.TotalSeconds / 2.0)
+            && _actuallyPlayedSeconds >= _audioFile.TotalTime.TotalSeconds / 2.0)
         {
             _halfPlayCounted = true;
             if (_currentTrackPath != null)
@@ -7428,9 +7447,8 @@ public partial class MainWindow : FluentWindow
 
 
 /// <summary>
-/// Рисует фоновую и акцентную части дорожки главного окна одним DrawingContext.
-/// Это исключает светлые швы, возникающие при наложении двух независимых Border
-/// с полукруглыми углами на дробном DPI.
+/// Рисует фоновую и акцентную части дорожки одним DrawingContext — исключает светлые швы от
+/// двух Border с полукруглыми углами на дробном DPI.
 /// </summary>
 public sealed class MainWindowSliderTrackRenderer : FrameworkElement
 {
