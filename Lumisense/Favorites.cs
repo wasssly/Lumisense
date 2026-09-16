@@ -1,9 +1,7 @@
 namespace Lumisense;
 
-// Глобальный список избранного (сердечко у трека), общий для всего приложения, а не для
-// какой-то одной группы PlaylistFolder. Виртуальная группа "Избранное" (MainWindow._favoritesFolder)
-// собирается на лету из этого списка. Живёт только в памяти сессии, читается/пишется
-// через AppSettings.FavoriteTracks в конструкторе и в OnClosed MainWindow.
+// Глобальный список избранного, общий для всего приложения. Живёт в памяти сессии,
+// читается/пишется через AppSettings.FavoriteTracks.
 public static class FavoritesManager
 {
     // Порядок важен — свежедобавленные треки должны быть внизу списка "Избранное", а не
@@ -126,10 +124,8 @@ public static class FavoritesManager
         .ToList();
 }
 
-// Лёгкий bindable-объект, единственная задача которого — дать сердечку трека (TrackItemTemplate,
-// IsFavoriteMultiConverter) повод перевычислиться, когда где-то поменялось избранное. Путь к файлу
-// в основном Binding не меняется, так что без Epoch WPF не узнал бы, что конвертер надо перевызвать,
-// и единственным способом обновить сердечки был бы пересбор всего ItemsSource на каждый клик.
+// Даёт сердечку трека повод перевычислиться при смене избранного: путь к файлу в Binding
+// не меняется, без Epoch пришлось бы пересобирать весь ItemsSource на каждый клик.
 public sealed class FavoritesChangeNotifier : System.ComponentModel.INotifyPropertyChanged
 {
     public static readonly FavoritesChangeNotifier Instance = new();

@@ -8,11 +8,8 @@ using Wpf.Ui.Controls;
 
 namespace Lumisense;
 
-// Окно "Статистика" — сводка по PlayCountManager (число прослушиваний по пути файла) и
-// AppSettings.TotalListenSeconds (суммарное время реального воспроизведения, копится в
-// MainWindow.ProgressTimer_Tick). Названия/исполнители для топ-списков читаются из тегов
-// файлов асинхронно (см. LoadAsync) — на большой истории прослушиваний это не мгновенно,
-// поэтому окно сначала показывает индикатор загрузки, а не блокирует UI-поток.
+// Окно "Статистика" — сводка по PlayCountManager и AppSettings.TotalListenSeconds. Названия
+// и исполнители читаются из тегов асинхронно (LoadAsync), с индикатором загрузки.
 public partial class StatisticsWindow : FluentWindow
 {
     private readonly AppSettings _settings;

@@ -120,6 +120,8 @@ Do not comment every step of a method.
 
 Prefer one short sentence.
 
+A comment must not exceed 1-2 short lines. If it needs more than that to explain, the explanation belongs in a commit message or design note, not inline in the source file.
+
 Avoid large explanatory paragraphs inside source files.
 
 Do not write comments that explain an entire method line by line.

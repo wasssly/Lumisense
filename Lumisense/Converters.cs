@@ -35,11 +35,8 @@ public class InverseBooleanToVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-// Число прослушиваний трека (values[0] — FilePath строки PlaylistTrackRow) в готовую для
-// показа строку. values[1] — PlayCountChangeNotifier.Instance.Epoch, тот же приём, что и в
-// IsFavoriteMultiConverter: путь к файлу сам по себе не меняется, Epoch даёт WPF повод
-// перевызвать конвертер, когда счётчик где-то обновился. 0 прослушиваний не показываем —
-// пустая строка вместо "0" не загромождает строки ещё не проигранных треков.
+// Число прослушиваний (values[0] — FilePath) в строку для показа. values[1] — Epoch, даёт WPF
+// повод перевызвать конвертер. 0 показываем пустой строкой, чтобы не загромождать список.
 public class PlayCountMultiConverter : IMultiValueConverter
 {
     public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
@@ -64,11 +61,8 @@ public class IsOddIndexConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-// true, если трек (values[0] — FilePath строки PlaylistTrackRow) сейчас в избранном.
-// values[1] — FavoritesChangeNotifier.Instance.Epoch, сам не используется, но даёт WPF повод
-// перевызвать конвертер, когда избранное поменялось (путь к файлу сам по себе не меняется).
-// Раньше при каждом клике по сердечку пересобирался весь ItemsSource плейлиста — тормозило
-// на больших списках. Теперь обновляются только реально показанные строки.
+// true, если трек (values[0] — FilePath) в избранном. values[1] — Epoch, не используется,
+// но даёт WPF повод перевызвать конвертер, обновляя только показанные строки.
 public class IsFavoriteMultiConverter : IMultiValueConverter
 {
     public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
@@ -99,10 +93,8 @@ public class ExpandChevronConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-// Собирает ширину/высоту в Rect(0,0,w,h) — нужен для скругления углов у Image (ChangelogWindow.xaml).
-// Border с ClipToBounds клипует дочерний контент прямоугольником, игнорируя CornerRadius —
-// приходится задавать Image собственный Clip (RectangleGeometry). Geometry не часть визуального
-// дерева, RelativeSource внутри неё не работает, поэтому размер берём через ElementName на Image.
+// Ширина/высота в Rect(0,0,w,h) — для скругления углов у Image: Border с ClipToBounds
+// игнорирует CornerRadius. RelativeSource в Geometry не работает, размер идёт по ElementName.
 public class SizeToRectConverter : IMultiValueConverter
 {
     public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)

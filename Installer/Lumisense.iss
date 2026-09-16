@@ -20,9 +20,6 @@ AppId={{B7D9F8B4-3E36-4B6C-9B7A-2E9B7B7C0B41}
 AppName=Lumisense
 AppVersion={#MyAppVersion}
 AppPublisher=Lumisense
-AppPublisherURL=https://lumisense.ru
-AppSupportURL=https://lumisense.ru
-AppUpdatesURL=https://lumisense.ru
 
 DefaultDirName={autopf}\Lumisense
 DefaultGroupName=Lumisense

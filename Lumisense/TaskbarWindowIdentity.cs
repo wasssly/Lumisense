@@ -5,10 +5,8 @@ using System.Windows.Interop;
 
 namespace Lumisense;
 
-// Windows группирует кнопки панели задач по AppUserModelID. У основного окна и мини-плеера
-// общий идентификатор приложения, но открытые Settings должны сохранять собственный значок
-// lumisense-settings.ico даже когда главное окно скрыто в режиме мини-плеера. Идентификатор
-// задаётся только конкретному HWND Settings — процесс и остальные окна не затрагиваются.
+// Windows группирует кнопки панели задач по AppUserModelID. Settings получают свой ID
+// (ради своего значка) — только конкретному HWND, процесс и другие окна не затрагиваются.
 internal static class TaskbarWindowIdentity
 {
     public const string Settings = "Wasssly.Lumisense.Settings";

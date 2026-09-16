@@ -5,9 +5,8 @@ using System.Windows.Media;
 
 namespace Lumisense;
 
-// Централизованные параметры доступности. Масштаб применяется к корневому visual tree
-// каждого окна, а не только к наследуемому FontSize: большая часть интерфейса Lumisense
-// содержит явно заданные размеры, поэтому один FontSize почти не даёт заметного эффекта.
+// Параметры доступности. Масштаб применяется к корневому visual tree окна, а не к FontSize:
+// в интерфейсе много явно заданных размеров, один FontSize почти не даёт эффекта.
 internal static class AccessibilityPreferences
 {
     public const double MinimumInterfaceScale = 0.85;

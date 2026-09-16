@@ -3,9 +3,8 @@ using System.Collections.Generic;
 
 namespace Lumisense;
 
-// Исторические переводы пунктов changelog хранятся отдельно от коротких UI-строк.
-// Источник changelog остаётся русским (Changelog/changelog.json); для RU он показывается
-// без преобразования, а для EN берётся точный локальный перевод. Сеть не используется.
+// Переводы пунктов changelog отдельно от UI-строк. Источник русский, для EN берётся
+// точный локальный перевод; сеть не используется.
 internal static class ChangelogTranslationCatalog
 {
     private static readonly IReadOnlyDictionary<string, string> EnglishByRussian =

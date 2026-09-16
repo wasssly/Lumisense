@@ -4,9 +4,8 @@ using System.Runtime.CompilerServices;
 
 namespace Lumisense;
 
-// Группа треков в плейлисте — либо папка, добавленная целиком (рекурсивное сканирование),
-// либо набор отдельных файлов ("Отдельные файлы"). Группу можно выключить целиком — треки
-// остаются видны в списке, но пропускаются при "Далее/Назад/Перемешать" и автопереходе.
+// Группа треков — папка целиком или набор отдельных файлов. Выключенная группа остаётся
+// видна, но пропускается при "Далее/Назад/Перемешать" и автопереходе.
 public class PlaylistFolder : INotifyPropertyChanged
 {
     // Стабильный идентификатор — не зависит от порядка, используется только внутри сессии
@@ -130,9 +129,8 @@ public class PlaylistFolder : INotifyPropertyChanged
         => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
 }
 
-// Чтобы код, писавшийся под List<string>.AddRange/.RemoveAll, продолжил работать после
-// перехода Tracks на ObservableCollection<string>. Каждый Add/Remove поднимает своё
-// CollectionChanged — на нём держится реактивность SubtitleText.
+// Чтобы код под List<string>.AddRange/.RemoveAll работал после перехода на
+// ObservableCollection. Каждый Add/Remove поднимает CollectionChanged — на нём SubtitleText.
 public static class ObservableCollectionExtensions
 {
     public static void AddRange<T>(this ObservableCollection<T> collection, IEnumerable<T> items)

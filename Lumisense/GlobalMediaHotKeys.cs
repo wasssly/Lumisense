@@ -5,10 +5,8 @@ using System.Windows.Interop;
 
 namespace Lumisense;
 
-// Регистрирует мультимедийные клавиши (Play/Pause, Next, Previous, Stop) как глобальные
-// хоткеи через WinAPI RegisterHotKey — плеер реагирует, даже когда окно свёрнуто или не
-// в фокусе. Плюс настраиваемые пользователем комбинации (см. ApplyCustomHotkeys),
-// применяются без перезапуска приложения.
+// Мультимедийные клавиши как глобальные хоткеи через RegisterHotKey — работают без фокуса.
+// Плюс пользовательские комбинации (ApplyCustomHotkeys), применяются без перезапуска.
 public sealed class GlobalMediaHotKeys : IDisposable
 {
     private const int WM_HOTKEY = 0x0312;

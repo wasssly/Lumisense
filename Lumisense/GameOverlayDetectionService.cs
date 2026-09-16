@@ -3,10 +3,8 @@ using System.Runtime.InteropServices;
 
 namespace Lumisense;
 
-// Эвристика "похоже, сейчас работает игра или оверлей", без системных хуков: полноэкранное
-// окно переднего плана (не Lumisense/шелл) или известный процесс оверлея (RTSS, Game Bar,
-// NVIDIA/AMD). Может ошибиться в обе стороны, поэтому это только подсказка — см.
-// AppSettings.GameOverlayCompatibilityAutoDetect для отключения.
+// Эвристика "похоже, работает игра или оверлей": полноэкранное окно переднего плана или
+// известный процесс оверлея. Может ошибиться в обе стороны — см. GameOverlayCompatibilityAutoDetect.
 public static class GameOverlayDetectionService
 {
     private static readonly string[] KnownOverlayProcessNames =

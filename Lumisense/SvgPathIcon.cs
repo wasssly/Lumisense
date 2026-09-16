@@ -12,13 +12,8 @@ using Wpf.Ui.Controls;
 
 namespace Lumisense;
 
-// Векторная SVG-иконка: рисует .svg из Icons/svg/{Pack} через SharpVectors вместо геометрии в
-// XAML. Заливка всегда берётся из Foreground — fill в самом .svg не важен. Размер по умолчанию —
-// из data-default-size на корневом <svg>, если Size не задан явно.
-//
-// Активный пак — IconPacks.Current, читается через IconPackContext (INotifyPropertyChanged),
-// поэтому смена пака (IconPacks.SetCurrent) применяется сразу на всех открытых окнах. Явно
-// заданный Pack на конкретной иконке (только в галерее предпросмотра) имеет приоритет над Current.
+// Векторная SVG-иконка из Icons/svg/{Pack} через SharpVectors; заливка берётся из Foreground.
+// Активный пак — IconPacks.Current (IconPackContext), смена применяется сразу на всех окнах.
 public sealed class SvgPathIcon : IconElement
 {
     public static readonly DependencyProperty IconProperty = DependencyProperty.Register(
@@ -96,9 +91,8 @@ public sealed class SvgPathIcon : IconElement
             throw new NotSupportedException();
     }
 
-    // Если Size не задан (NaN) — читает data-default-size из .svg-файла, кэширует результат
-    // (кэш ключуется вместе с паком: у разных паков один и тот же IconXxx может иметь другой
-    // data-default-size, хотя на практике мы стараемся держать его одинаковым везде).
+    // Если Size не задан (NaN) — читает data-default-size из .svg, кэширует по паку (у разных
+    // паков один и тот же IconXxx может иметь другой data-default-size).
     private sealed class IconSizeConverter : IMultiValueConverter
     {
         public static readonly IconSizeConverter Instance = new();
@@ -149,9 +143,8 @@ public sealed class SvgPathIcon : IconElement
     }
 }
 
-// Единственный источник PropertyChanged для активного пака — вынесен из IconPacks в отдельный
-// объект, потому что WPF Binding умеет реагировать на смену значения, только когда её источник
-// реализует INotifyPropertyChanged; статическое свойство само по себе для этого не годится.
+// Единственный источник PropertyChanged для активного пака — WPF Binding реагирует на смену
+// значения только когда источник реализует INotifyPropertyChanged, а статика для этого не годится.
 public sealed class IconPackContext : INotifyPropertyChanged
 {
     public static readonly IconPackContext Instance = new();
@@ -172,9 +165,8 @@ public sealed class IconPackContext : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-// Реестр доступных паков иконок и текущего активного. IconPacks.Current выставляется при
-// старте из AppSettings.IconPack, а дальше меняется вживую через IconPacks.SetCurrent —
-// см. IconPackContext выше и SettingsWindow.IconPackCard_MouseLeftButtonDown.
+// Реестр паков иконок. IconPacks.Current выставляется при старте из AppSettings.IconPack,
+// дальше меняется вживую через IconPacks.SetCurrent (см. IconPackContext выше).
 public static class IconPacks
 {
     public const string Duotone = "Duotone";
@@ -185,9 +177,8 @@ public static class IconPacks
 
     public static readonly string[] All = { Duotone, Outline, Bold, Fill, Thin };
 
-    // Полный список имён иконок, одинаковый для всех паков (см. Icons/svg/{Pack}/) —
-    // используется окном полного превью пака (см. IconPackPreviewWindow), которое
-    // открывается по ПКМ на карточке пака в настройках.
+    // Полный список имён иконок, одинаковый для всех паков — используется окном полного
+    // превью пака (IconPackPreviewWindow), открывается по ПКМ на карточке пака в настройках.
     public static readonly string[] IconNames =
     {
         "IconAdd", "IconAddFile", "IconAddFolder", "IconBell", "IconChangelog", "IconCheckmark",

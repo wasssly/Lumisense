@@ -22,19 +22,16 @@ public class SavedPlaylistFolder
     public bool IsLooseFilesBucket { get; set; }
 }
 
-// Один сохранённый пресет эквалайзера — имя и 10 значений гейна по полосам, тот же
-// набор, что и AppSettings.EqualizerBandGainsDb. Отдельный класс (а не просто
-// Dictionary<string, double[]>), чтобы формат совпадал что при хранении в settings.json,
-// что при экспорте/импорте в отдельный .json-файл для "поделиться пресетом".
+// Один сохранённый пресет эквалайзера — имя и 10 значений гейна по полосам. Отдельный класс,
+// а не Dictionary, чтобы формат совпадал в settings.json и при экспорте/импорте пресета.
 public class EqualizerPreset
 {
     public string Name { get; set; } = "";
     public double[] GainsDb { get; set; } = new double[10];
 }
 
-// Одна настраиваемая глобальная комбинация клавиш (например, Ctrl+Alt+P), через WinAPI
-// RegisterHotKey — срабатывает даже когда окно не в фокусе. Клавиша Win отслеживается
-// отдельно через Keyboard.IsKeyDown, т.к. Keyboard.Modifiers её не учитывает.
+// Одна глобальная комбинация клавиш через WinAPI RegisterHotKey — срабатывает даже без фокуса.
+// Win отслеживается отдельно через Keyboard.IsKeyDown, т.к. Keyboard.Modifiers её не учитывает.
 public class HotkeyBinding
 {
     public bool Ctrl { get; set; }

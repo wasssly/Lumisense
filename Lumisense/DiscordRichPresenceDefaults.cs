@@ -1,8 +1,7 @@
 namespace Lumisense;
 
-// Публичный идентификатор приложения Discord Rich Presence для Lumisense. Он не является
-// токеном или секретом: Discord использует его для выбора зарегистрированного приложения при
-// локальном IPC-подключении. Меняется только владельцем приложения при необходимости миграции.
+// Публичный Application ID для Discord Rich Presence — не токен и не секрет, Discord
+// выбирает по нему зарегистрированное приложение при локальном IPC.
 public static class DiscordRichPresenceDefaults
 {
     public const string ApplicationId = "1539323116508024912";

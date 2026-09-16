@@ -3,19 +3,8 @@ using System.Windows.Media;
 
 namespace Lumisense;
 
-// Полоса воспроизведения в виде формы звука (как у SoundCloud) — альтернатива обычному
-// Slider'у, см. AppSettings.ProgressBarStyle == "Waveform" и MainWindow.ApplyProgressBarStyle.
-// Сам по себе только рисует уже готовый набор пиков (см. WaveformGenerator — там же, откуда
-// они берутся) — ничего не знает ни про воспроизведение, ни про перемотку: клики/перетаскивание
-// по-прежнему обрабатывает тот же самый прозрачный Border поверх (см. MainWindow.xaml,
-// ProgressOverlay_*), что и раньше для обычного Slider'а. IsHitTestVisible="False" в XAML —
-// этот элемент чисто визуальный.
-//
-// Простой FrameworkElement с ручным OnRender, а не Control/ItemsControl с шаблоном — рисовать
-// сотни одинаковых прямоугольников через полноценные визуальные элементы (Rectangle/Border на
-// каждый бар) ощутимо тяжелее для WPF, чем один проход DrawRoundedRectangle в OnRender, а
-// перерисовывать этот элемент нужно часто — на каждый тик таймера прогресса (несколько раз в
-// секунду, см. MainWindow.ProgressTimer_Tick).
+// Полоса воспроизведения в виде формы звука — только рисует готовые пики (WaveformGenerator),
+// клики обрабатывает Border поверх. Ручной OnRender вместо шаблона: сотни баров, частая перерисовка.
 public sealed class WaveformView : FrameworkElement
 {
     public static readonly DependencyProperty PeaksProperty = DependencyProperty.Register(

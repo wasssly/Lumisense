@@ -1,8 +1,7 @@
 namespace Lumisense;
 
-// UpdateChecker возвращает тип ошибки и безопасные параметры, но не локализованный текст.
-// Это отделяет сетевой/JSON-слой от интерфейса и не позволяет техническим сообщениям GitHub
-// случайно остаться на языке реализации в RU или EN окнах.
+// UpdateChecker возвращает тип ошибки, а не готовый текст — отделяет сетевой слой от UI
+// и не даёт техническим сообщениям GitHub протечь в RU/EN окна.
 internal static class UpdateFailureExperience
 {
     public static string Describe(UpdateFailureKind kind, int? httpStatusCode = null) => kind switch

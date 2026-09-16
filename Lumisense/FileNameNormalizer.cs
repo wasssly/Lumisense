@@ -7,9 +7,8 @@ using System.Text.RegularExpressions;
 
 namespace Lumisense;
 
-// Нормализует ИМЕНА уже добавленных аудиофайлов, не меняя папку, расширение или содержимое
-// файла. Процесс намеренно двухэтапный: сначала BuildPreview строит полностью проверяемый план,
-// затем Execute переименовывает только одобренные и всё ещё валидные элементы плана.
+// Нормализует ИМЕНА уже добавленных файлов, не меняя папку/расширение/содержимое. Процесс
+// двухэтапный: BuildPreview строит проверяемый план, Execute переименовывает одобренное.
 public static class FileNameNormalizer
 {
     public const string DefaultTemplate = "{Artist} - {Title}{Extension}";

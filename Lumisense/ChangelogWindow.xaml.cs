@@ -10,9 +10,8 @@ using Wpf.Ui.Controls;
 
 namespace Lumisense;
 
-// Окно "Список изменений": список версий слева (поиск + фильтр + сортировка), детали
-// справа — верстаются декларативно через ElementName-биндинг на VersionsListBox.SelectedItem,
-// так что этому коду остаётся только загрузить записи и пересчитывать видимый список.
+// Окно "Список изменений". Детали справа биндятся декларативно на SelectedItem, коду
+// остаётся только загрузить записи и пересчитывать видимый список.
 public partial class ChangelogWindow : FluentWindow
 {
     private List<ChangelogEntryViewModel> _allEntries = new();

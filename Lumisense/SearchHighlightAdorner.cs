@@ -6,9 +6,8 @@ using System.Windows.Media.Animation;
 
 namespace Lumisense;
 
-// Временная подсветка вокруг элемента настройки, к которому переходят из результатов поиска
-// (SettingsWindow.SearchResultItem_Click). Полупрозрачный скруглённый прямоугольник,
-// рисуется через AdornerLayer, разметку самого элемента не трогает.
+// Временная подсветка элемента настройки при переходе из результатов поиска. Рисуется
+// через AdornerLayer, разметку самого элемента не трогает.
 public sealed class SearchHighlightAdorner : Adorner
 {
     private readonly Border _visual;

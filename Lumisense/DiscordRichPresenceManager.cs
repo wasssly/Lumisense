@@ -2,9 +2,8 @@ using DiscordRPC;
 
 namespace Lumisense;
 
-// Изолирует Discord IPC от аудиопотока и WPF: отсутствие Discord, неверный Application ID
-// или ошибка сторонней библиотеки никогда не должны мешать воспроизведению. Rich Presence
-// обновляется только при смене трека/состояния и при явной перемотке, а не на каждом тике UI.
+// Изолирует Discord IPC от аудиопотока и WPF: сбои Discord/библиотеки не должны мешать
+// воспроизведению. Rich Presence обновляется только при смене трека/состояния или перемотке.
 public sealed class DiscordRichPresenceManager : IDisposable
 {
     private const int DiscordTextMaxLength = 128;

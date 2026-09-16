@@ -2,10 +2,8 @@ using System.Collections.Concurrent;
 
 namespace Lumisense;
 
-// Ищет обложку по артисту/названию через открытые API (см. CoverArtProviders) и отдаёт первую
-// найденную HTTPS-ссылку — Discord показывает внешний URL в LargeImageKey напрямую, без
-// заранее загруженного в Developer Portal asset. Результаты кэшируются в памяти: один трек
-// может пересчитывать Rich Presence много раз за сессию, а сами API на такую частоту не рассчитаны.
+// Ищет обложку по артисту/названию (см. CoverArtProviders) и отдаёт HTTPS-ссылку — Discord
+// показывает внешний URL напрямую. Кэшируется в памяти, чтобы не бить по API на каждый трек.
 public static class DiscordCoverArtLookupService
 {
     private const int CacheCapacity = 300;

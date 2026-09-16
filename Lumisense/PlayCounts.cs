@@ -1,10 +1,7 @@
 namespace Lumisense;
 
-// Глобальный счётчик прослушиваний по пути файла — общий для всего приложения, не привязан
-// к конкретной группе плейлиста: один и тот же трек показывает одинаковый счётчик в любом
-// плейлисте, где встречается. Живёт в памяти сессии, читается/пишется через
-// AppSettings.PlayCounts в конструкторе и в PersistPlaybackAndPlaylistState MainWindow —
-// тот же приём, что и у FavoritesManager (см. Favorites.cs).
+// Глобальный счётчик прослушиваний по пути файла, не привязан к группе плейлиста.
+// Живёт в памяти сессии, читается/пишется через AppSettings.PlayCounts.
 public static class PlayCountManager
 {
     private static readonly Dictionary<string, int> _counts = new();
@@ -47,9 +44,8 @@ public static class PlayCountManager
     }
 }
 
-// Лёгкий bindable-объект по тому же принципу, что и FavoritesChangeNotifier: путь к файлу
-// в основном Binding строки плейлиста не меняется, поэтому без Epoch WPF не узнал бы, что
-// счётчик у конкретной строки нужно перечитать.
+// По тому же принципу, что FavoritesChangeNotifier: путь к файлу в Binding не меняется,
+// без Epoch WPF не узнал бы, что счётчик строки нужно перечитать.
 public sealed class PlayCountChangeNotifier : System.ComponentModel.INotifyPropertyChanged
 {
     public static readonly PlayCountChangeNotifier Instance = new();

@@ -15,9 +15,8 @@ using ArtResult = Lumisense.CoverArtProviders.ArtResult;
 
 namespace Lumisense;
 
-// Поиск обложки по трём открытым API без ключа (см. CoverArtProviders) — источники не всегда
-// находят обложку по отдельности, вместе покрывают больше. Genius не подключен: его API отдаёт
-// обложки только вместе с текстами и требует личный Client Access Token.
+// Поиск по трём открытым API без ключа (см. CoverArtProviders). Genius не подключен: его API
+// отдаёт обложки только вместе с текстами и требует личный Client Access Token.
 public partial class CoverArtSearchWindow : FluentWindow
 {
     private const int MaxImageBytes = 10 * 1024 * 1024;

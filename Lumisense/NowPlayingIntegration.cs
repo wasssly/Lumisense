@@ -4,9 +4,8 @@ using Windows.Media;
 
 namespace Lumisense;
 
-// Интеграция с "Now Playing" в Windows 11 (медиа-виджет на панели задач, блокировка экрана,
-// беспроводные наушники с кнопками) через System Media Transport Controls.
-// Требует Windows-specific TargetFramework вида net10.0-windows10.0.xxxxx.0, чтобы WinRT-типы были доступны.
+// Интеграция с "Now Playing" Windows 11 через System Media Transport Controls.
+// Требует Windows-specific TargetFramework (net10.0-windows10.0.xxxxx.0) ради WinRT-типов.
 public sealed class NowPlayingIntegration : IDisposable
 {
     private readonly SystemMediaTransportControls _controls;

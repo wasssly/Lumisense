@@ -7,12 +7,8 @@ using Wpf.Ui.Tray;
 
 namespace Lumisense;
 
-// Значок в трее при свёрнутом окне поверх Wpf.Ui.Tray.NotifyIconService. Контекстное меню —
-// обычный WPF ContextMenu: App.xaml уже глобально переопределяет ContextMenu/MenuItem/Separator
-// под Fluent-тему (ui:ControlsDictionary), поэтому меню трея выглядит так же, как остальные меню
-// плеера, автоматически и без единой строчки собственной отрисовки — раньше здесь было ~300
-// строк ручного GDI+ поверх System.Windows.Forms.NotifyIcon (скруглённый Region, свой
-// ToolStripProfessionalRenderer, нарисованные вручную иконки под каждую тему).
+// Значок в трее поверх Wpf.Ui.Tray.NotifyIconService. Контекстное меню — обычный WPF
+// ContextMenu, автоматически стилизуемый под тему приложения (см. App.xaml).
 public sealed class TrayIconManager : NotifyIconService, IDisposable
 {
     private const int ArtThumbnailSize = 20;
@@ -106,23 +102,14 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         UpdateNowPlayingText();
     }
 
-    // Иконка самого плеера — та же, что и у .exe/окон, встроенная как Resource (см.
-    // Lumisense.csproj), поэтому не зависит от способа публикации (single-file и т.п.),
+    // Та же иконка, что у .exe, встроенная как Resource — не зависит от способа публикации,
     // в отличие от прежнего Icon.ExtractAssociatedIcon из запущенного процесса.
     private static ImageSource? LoadAppIcon()
     {
         try
         {
-            // BitmapCacheOption.OnLoad — принудительно синхронное декодирование. Icon
-            // выставляется один раз в конструкторе и больше никогда не переустанавливается,
-            // поэтому если бы пиксели догружались лениво (поведение по умолчанию для
-            // BitmapFrame.Create), а Register() внутри NotifyIconService конвертировал бы
-            // ImageSource в нативный HICON сразу же — на самом первом запуске (особенно если
-            // приложение стартует сразу в мини-режиме, то есть очень рано, до того как
-            // Dispatcher начал прокачивать сообщения) значок мог остаться пустым до следующей
-            // полной перерегистрации (Hide+Show), которая как раз и происходит при переключении
-            // между окном и мини-плеером — этим и объясняется, что после такого переключения
-            // всё сразу начинает работать правильно.
+            // OnLoad — синхронное декодирование. Icon задаётся один раз и больше не
+            // переустанавливается, поэтому ленивая загрузка могла оставить пиксели пустыми.
             return BitmapFrame.Create(
                 new Uri("pack://application:,,,/Icons/app/lumisense.ico", UriKind.Absolute),
                 BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
@@ -164,10 +151,7 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         _nowPlayingItem.Header = TruncateWithEllipsis(text, NowPlayingTextLimit);
     }
 
-    // Декодирование могло бы упасть на битых/незнакомых по формату тегах — сам плеер в этом
-    // случае и так показывает плейсхолдер вместо обложки в своём окне, поэтому здесь просто
-    // не показываем миниатюру вовсе, а не роняем меню трея из-за одного плохого файла обложки.
-    // WPF-изображения управляются GC, отдельного Dispose (в отличие от GDI+ Bitmap) не нужно.
+    // Битые/незнакомые теги — просто не показываем миниатюру, а не роняем всё меню.
     private static ImageSource? BuildRoundedThumbnail(byte[]? artBytes)
     {
         if (artBytes is null || artBytes.Length == 0) return null;
@@ -196,9 +180,7 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         }
     }
 
-    // WPF ContextMenu/MenuItem уже сами тонируются под текущую Fluent-тему через DynamicResource
-    // (см. ui:ControlsDictionary в App.xaml) — в отличие от прежнего WinForms-меню, здесь больше
-    // нечего перекрашивать вручную. Метод оставлен пустым, чтобы не трогать вызовы в MainWindow.
+    // Тонируется автоматически через DynamicResource — метод-заглушка ради совместимости вызовов.
     public void ApplyTheme(bool isLight) { }
 
     public void Show(string? tooltipText = null)
@@ -235,9 +217,7 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
     private static string Truncate(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..maxLength];
 
-    // У пункта меню нет безопасного MaxWidth, одинаково работающего при любом масштабировании
-    // Windows. Ограничиваем сами данные: длинное название не растянет выпадающее меню,
-    // а многоточие честно показывает, что строка сокращена.
+    // Нет безопасного MaxWidth при любом масштабировании — ограничиваем сами данные.
     private static string TruncateWithEllipsis(string value, int maxLength) =>
         value.Length <= maxLength ? value : value[..Math.Max(1, maxLength - 1)] + "…";
 

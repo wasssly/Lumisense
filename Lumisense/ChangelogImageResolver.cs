@@ -2,9 +2,8 @@ using System.IO;
 
 namespace Lumisense;
 
-// image: абсолютный URL / полный путь — как есть, иначе относительный путь внутри папки Changelog.
-// Папка Changelog в установленной версии не существует (changelog.json теперь EmbeddedResource),
-// так что на практике везде используются полные ссылки — см. github.com/wasssly/LumisenseImg
+// image: абсолютный URL — как есть, иначе относительный путь внутри папки Changelog. В
+// установленной версии этой папки нет (EmbeddedResource), поэтому на практике везде ссылки.
 public static class ChangelogImageResolver
 {
     public static string? Resolve(string? image)

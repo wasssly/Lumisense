@@ -5,9 +5,8 @@ using System.Windows.Data;
 
 namespace Lumisense;
 
-// Список известных необязательных действий контекстного меню строки трека. «Воспроизвести»
-// намеренно отсутствует: базовое действие всегда доступно, а список настроек не зависит от
-// локализованных подписей MenuItem и остаётся совместим при их изменении.
+// Список необязательных действий контекстного меню строки трека. «Воспроизвести» намеренно
+// отсутствует: базовое действие всегда доступно.
 public sealed class TrackContextMenuActions : INotifyPropertyChanged
 {
     public const string Favorite = "Favorite";
@@ -116,9 +115,8 @@ public sealed class TrackContextMenuActionVisibilityConverter : IValueConverter
         => throw new NotSupportedException();
 }
 
-// Разделитель скрывается вместе со всей секцией, которую он открывает — иначе при отключении
-// всех действий секции разделители остаются на месте и слипаются. ConverterParameter —
-// идентификаторы действий секции через "|"; видимо, если хотя бы одно включено.
+// Разделитель скрывается вместе со всей секцией, которую открывает. ConverterParameter —
+// идентификаторы через "|"; видимо, если хотя бы одно включено.
 public sealed class TrackContextMenuGroupVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)

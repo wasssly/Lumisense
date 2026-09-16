@@ -3,9 +3,8 @@ using System.Linq;
 
 namespace Lumisense;
 
-// Парсит поле "date" из changelog.json (ISO или "12 июля 2026") для сортировки записей.
-// Не дата, а произвольный текст вроде "Первый релиз" — считается DateTime.MinValue,
-// такая запись просто оказывается самой старой при сортировке.
+// Парсит "date" из changelog.json (ISO или "12 июля 2026"). Произвольный текст вроде
+// "Первый релиз" — DateTime.MinValue, такая запись оказывается самой старой.
 public static class ChangelogDateParser
 {
     private static readonly Dictionary<string, int> RussianMonths = new(StringComparer.OrdinalIgnoreCase)

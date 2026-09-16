@@ -12,9 +12,8 @@ namespace Lumisense;
 
 public enum UpdateCheckStatus { UpdateAvailable, MsiMigrationAvailable, UpToDate, Error }
 
-// Способ установки выбран строго по фактической модели установки, а не по версии приложения.
-// Старый Inno Setup продолжает работать с полным EXE и SHA-256; только Velopack-managed
-// установка может скачивать full/delta .nupkg через UpdateManager.
+// Способ установки определяется фактической моделью, а не версией приложения: Inno Setup —
+// полный EXE и SHA-256, Velopack — full/delta .nupkg через UpdateManager.
 public enum UpdateDeliveryKind { LegacyInnoSetup, Velopack }
 
 // Причина ошибки передаётся из сетевого слоя без локализованного текста. UI формирует
@@ -77,9 +76,8 @@ public sealed class DownloadProgressInfo
     public double BytesPerSecond { get; init; }
 }
 
-// Управляет паузой только на уровне чтения следующего сетевого блока. Уже записанные байты
-// остаются во временном файле и продолжают участвовать в той же SHA-256-проверке; отмена
-// по-прежнему немедленно прерывает ожидание через CancellationToken.
+// Пауза только на уровне чтения следующего блока: записанные байты остаются во временном
+// файле и участвуют в той же SHA-256-проверке. Отмена прерывает ожидание сразу.
 public sealed class DownloadPauseController : IDisposable
 {
     private readonly object _sync = new();
@@ -181,14 +179,8 @@ public sealed class ReleaseListItem
     public bool IsPrerelease { get; init; }
 }
 
-// Проверка обновлений через GitHub Releases API без токена — публичных запросов заведомо
-// мало для лимита 60/час на IP. Используется и при тихой проверке на старте, и по кнопке
-// в настройках.
-//
-// Ожидает, что release содержит один versioned .exe-asset Lumisense-<version>-Setup.exe.
-// Для исторических release допускается только явный fallback Lumisense_Setup.exe. Inno Setup
-// сам обнаружит уже установленную копию и обновит её на месте,
-// отдельный "автообновляльщик" не нужен.
+// Проверка обновлений через GitHub Releases API без токена (лимита 60/час на IP хватает).
+// Ожидает asset Lumisense-<version>-Setup.exe, для старых release — fallback Lumisense_Setup.exe.
 //
 // ВАЖНО: RepoOwner/RepoName должны указывать на реальный репозиторий с релизами.
 public static class UpdateChecker

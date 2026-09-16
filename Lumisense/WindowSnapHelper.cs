@@ -2,14 +2,8 @@ using System.Runtime.InteropServices;
 
 namespace Lumisense;
 
-// Общая инфраструктура "прилипания к краям экрана" при перетаскивании окна — используется
-// мини-плеером (MiniPlayerWindow, см. AppSettings.MiniPlayerSnapToEdges и перехват WM_MOVING в
-// нём же). У обычного окна плеера (MainWindow) такой возможности больше нет — перетаскивание
-// там идёт через системный ui:TitleBar (HTCAPTION), и попытка примагничивать его к краям экрана
-// через WM_MOVING/LocationChanged на практике оказалась ненадёжной, поэтому эту возможность для
-// него убрали. WM_ENTERSIZEMOVE/WM_EXITSIZEMOVE/WM_MOVING и RECT/SnapToScreenEdges ниже остаются
-// общей инфраструктурой на случай, если понадобятся другому окну — но сейчас их использует
-// только мини-плеер.
+// Прилипание к краям экрана при перетаскивании — сейчас используется только мини-плеером.
+// У MainWindow убрано: перетаскивание там идёт через ui:TitleBar, примагничивание было ненадёжным.
 internal static class WindowSnapHelper
 {
     public const int WM_ENTERSIZEMOVE = 0x0231;

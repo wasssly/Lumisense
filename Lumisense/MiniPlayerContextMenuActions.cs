@@ -5,10 +5,8 @@ using System.Windows.Data;
 
 namespace Lumisense;
 
-// Список известных необязательных пунктов контекстного меню мини-плеера (см.
-// MiniPlayerWindow.xaml, Border.ContextMenu). В отличие от TrackContextMenuActions здесь нет
-// пункта, который обязан оставаться всегда доступным: даже "Настройки" можно скрыть — они
-// по-прежнему открываются из контекстного меню основного окна и из значка в трее.
+// Список необязательных пунктов контекстного меню мини-плеера. В отличие от
+// TrackContextMenuActions, здесь можно скрыть даже "Настройки" — они доступны и из трея.
 public sealed class MiniPlayerContextMenuActions : INotifyPropertyChanged
 {
     public const string Settings = "Settings";
@@ -118,8 +116,7 @@ public sealed class MiniPlayerContextMenuActionVisibilityConverter : IValueConve
 }
 
 // Тот же приём, что TrackContextMenuGroupVisibilityConverter: разделитель скрывается вместе
-// со всей секцией, которую открывает. ConverterParameter — идентификаторы через "|"; видимо,
-// если хотя бы один включён.
+// со всей секцией. ConverterParameter — идентификаторы через "|"; видимо, если хотя бы один включён.
 public sealed class MiniPlayerContextMenuGroupVisibilityConverter : IValueConverter
 {
     public object Convert(object? value, Type targetType, object parameter, CultureInfo culture)

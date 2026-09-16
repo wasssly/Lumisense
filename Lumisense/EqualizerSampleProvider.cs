@@ -5,9 +5,8 @@ using NAudio.Wave;
 
 namespace Lumisense;
 
-// N-полосный графический эквалайзер поверх ISampleProvider на BiQuadFilter.PeakingEQ.
-// У каждой полосы отдельный фильтр на каждый канал — BiQuadFilter хранит состояние по
-// предыдущим сэмплам, гонять оба канала через один и тот же фильтр нельзя, звук исказится.
+// N-полосный эквалайзер на BiQuadFilter.PeakingEQ. У каждой полосы свой фильтр на канал:
+// BiQuadFilter хранит состояние по предыдущим сэмплам, общий фильтр исказил бы звук.
 public sealed class EqualizerSampleProvider : ISampleProvider
 {
     public static readonly int[] BandFrequencies = { 31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000 };

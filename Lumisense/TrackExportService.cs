@@ -44,14 +44,8 @@ internal sealed class TrackExportService
         {
             int bitRate = NormalizeBitRate(options.BitRate);
 
-            // LAME (см. LameMp3Encoder) не зависит от того, установлен ли в Windows системный
-            // MP3-кодировщик Media Foundation — предпочитаем её, если рядом с приложением есть
-            // libmp3lame.dll. Если её нет (обычная ситуация, пока никто не положил файл рядом,
-            // см. комментарий класса) — TryEncode вернёт false ещё до чтения каких-либо данных
-            // из источника (первым падает сам lame_init через DllNotFoundException), поэтому
-            // откат на Media Foundation ниже начинает читать источник заново, целиком, а не с
-            // середины — BuildExportPipeline пересоздаёт всю цепочку (reader/tempo/resampler) с
-            // нуля, а не пытается перемотать уже частично прочитанную.
+            // LAME (см. LameMp3Encoder) не зависит от Media Foundation. Если недоступна,
+            // TryEncode падает до чтения источника, поэтому откат ниже пересобирает цепочку с нуля.
             bool lameSucceeded;
             using (var pipeline = BuildExportPipeline(sourcePath, options))
             {
@@ -73,15 +67,8 @@ internal sealed class TrackExportService
         catch (Exception ex) when (IsMissingMp3EncoderError(ex))
         {
             TryDelete(temporaryPath);
-            // NAudio.MediaFoundationEncoder делегирует кодирование в MP3 системному Media
-            // Foundation Windows. Его MP3-кодировщик отсутствует по умолчанию на редакциях
-            // N/KN (Европа/Корея) без отдельно поставленного Media Feature Pack — но этот
-            // пункт в "Дополнительных компонентах" в принципе показывается только на N/KN,
-            // на обычных редакциях (Home/Pro и т.п.) его там нет вообще, даже если сама
-            // ошибка всё равно возникает (например, на Windows 11 LTSC или после ручной
-            // чистки системы сторонними "деблоат"-утилитами). Оригинальное сообщение NAudio
-            // ("Was not able to create a sink writer for this file extension") ничего из
-            // этого не объясняет и выглядит как баг плеера, а не системы.
+            // Media Foundation не содержит MP3-кодировщика на этой системе; исходное сообщение
+            // NAudio ничего не объясняет, поэтому даём понятный текст пользователю.
             throw new InvalidOperationException(
                 "В Windows не установлен кодировщик MP3 (компонент Media Foundation). " +
                 "На редакциях Windows N/KN это чинится установкой \"Media Feature Pack\" через " +
@@ -100,11 +87,8 @@ internal sealed class TrackExportService
     private static bool IsMissingMp3EncoderError(Exception ex) =>
         ex.Message.Contains("sink writer", StringComparison.OrdinalIgnoreCase);
 
-    // Общая цепочка source → tempo/pitch → 16-bit PCM → приведение к MP3-совместимому
-    // формату — нужна дважды: для попытки через LAME и, если та не удалась, для отдельной
-    // попытки через Media Foundation (см. ExportMp3Core). Пересоздаётся с нуля при каждом
-    // вызове, а не переиспользуется между попытками — SoundTouchSampleProvider держит
-    // внутреннее буферное состояние, которое нельзя просто "перемотать назад".
+    // Пересоздаётся с нуля на каждый вызов: SoundTouchSampleProvider держит внутреннее
+    // буферное состояние, которое нельзя просто "перемотать назад".
     private static ExportPipeline BuildExportPipeline(string sourcePath, TrackExportOptions options)
     {
         var reader = new AudioFileReader(sourcePath);

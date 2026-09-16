@@ -6,9 +6,8 @@ using System.Text.RegularExpressions;
 
 namespace Lumisense;
 
-// Общий поиск обложки для CoverArtSearchWindow и DiscordCoverArtLookupService. У MusicBrainz
-// нет своих обложек — SearchMusicBrainzAsync делает второй запрос на кандидата в Cover Art
-// Archive, поэтому медленнее iTunes/Deezer, но находит то, чего нет у них.
+// Общий поиск обложки для CoverArtSearchWindow и DiscordCoverArtLookupService. MusicBrainz
+// сам обложек не хранит — SearchMusicBrainzAsync делает второй запрос в Cover Art Archive.
 public static class CoverArtProviders
 {
     public const int MaxApiJsonBytes = 2 * 1024 * 1024;

@@ -4,26 +4,8 @@ using System.Text.Json;
 
 namespace Lumisense;
 
-// Читает список версий из changelog.json — встроен в сборку как EmbeddedResource
-// (Lumisense.csproj), не лежит рядом с .exe отдельным файлом. Редактировать — в исходниках,
-// Changelog/changelog.json.
-//
-// Номер версии не пишется в файле — считается автоматически по SemVer, по смыслу текста
-// изменений, а не по формальному type (классификация — ChangeLevelClassifier, расчёт —
-// BumpForChanges). База отсчёта — "1.0.0".
-//
-// Поле "date" необязательное — старые записи датированы, новые нет (changelog привязан к
-// версии, а не к дате), поэтому сортировка "по хронологии" считается по номеру версии.
-// Порядок: сначала записи с датой (от старой к новой), затем без даты (как в файле). "Текущая
-// версия" — всегда последняя в этом порядке.
-//
-// Формат — JSON-массив, у каждого изменения свой type (added/changed/fixed/removed,
-// неизвестный трактуется как changed), опциональное "image" у версии и у пункта:
-// [
-//   { "date": "12 июля 2026", "image": "release-1.2.png",
-//     "changes": [ { "type": "added", "text": "Что-то добавили", "image": "new-feature.png" } ] },
-//   { "date": "Первый релиз", "changes": [ { "type": "added", "text": "..." } ] }
-// ]
+// Читает версии из встроенного changelog.json (Changelog/changelog.json в исходниках). Номер
+// версии не хранится в файле — считается по SemVer из текста изменений (ChangeLevelClassifier).
 public static class ChangelogLoader
 {
     // Ищем ресурс по суффиксу имени, а не по точному "Lumisense.Changelog.changelog.json" —
