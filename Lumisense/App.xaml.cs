@@ -204,6 +204,9 @@ public partial class App : Application
 
         Logger.Info("Главное окно создано и показано — запуск завершён успешно.");
 
+        // Дешёвая проверка реестра, без влияния на время запуска (см. RepairContextMenuScopeIfBroken).
+        Task.Run(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken);
+
         // Этот вызов возможен лишь после успешного создания MSI-окна. Он одноразово обрабатывает
         // marker Velopack и только при точном обнаружении legacy Inno Setup предлагает cleanup.
         UpdateMigrationGuard.TryShowFirstRunNotice();

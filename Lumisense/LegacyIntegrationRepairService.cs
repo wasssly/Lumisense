@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Microsoft.Win32;
 using Velopack.Windows;
 
@@ -62,8 +63,8 @@ internal static class LegacyIntegrationRepairService
     }
 
     /// <summary>
-    /// Registers a per-user (no admin required) "Open in Lumisense" context menu command
-    /// for the current MSI copy. Safe to call repeatedly.
+    /// Per-user "Open in Lumisense" context menu, scoped to <see cref="SupportedAudioExtensions"/>.
+    /// Safe to call repeatedly.
     /// </summary>
     public static void RegisterOpenInLumisenseContextMenu()
     {
@@ -74,19 +75,44 @@ internal static class LegacyIntegrationRepairService
 
             string label = LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupContextMenuLabel);
 
-            using RegistryKey? menuKey = Registry.CurrentUser.CreateSubKey(
-                $@"Software\Classes\*\shell\{ContextMenuKeyName}", writable: true);
-            menuKey?.SetValue("", label);
+            foreach (string extension in SupportedAudioExtensions)
+            {
+                using RegistryKey? menuKey = Registry.CurrentUser.CreateSubKey(
+                    $@"Software\Classes\{extension}\shell\{ContextMenuKeyName}", writable: true);
+                menuKey?.SetValue("", label);
 
-            using RegistryKey? commandKey = Registry.CurrentUser.CreateSubKey(
-                $@"Software\Classes\*\shell\{ContextMenuKeyName}\command", writable: true);
-            commandKey?.SetValue("", $"\"{currentExePath}\" \"%1\"");
+                using RegistryKey? commandKey = Registry.CurrentUser.CreateSubKey(
+                    $@"Software\Classes\{extension}\shell\{ContextMenuKeyName}\command", writable: true);
+                commandKey?.SetValue("", $"\"{currentExePath}\" \"%1\"");
+            }
 
-            Logger.Info("Восстановлена команда контекстного меню «Открыть в Lumisense» для MSI-копии.");
+            Logger.Info("Восстановлена команда контекстного меню «Открыть в Lumisense» для MSI-копии (только аудиофайлы).");
         }
         catch (Exception ex)
         {
             Logger.Warn($"Не удалось зарегистрировать контекстное меню «Открыть в Lumisense»: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// Self-heal for a past bug that registered the command under the wildcard Classes\*\shell
+    /// key, showing it for every file type. Safe on every startup — a no-op once fixed.
+    /// </summary>
+    public static void RepairContextMenuScopeIfBroken()
+    {
+        try
+        {
+            using RegistryKey? wildcardShellKey = Registry.CurrentUser.OpenSubKey(@"Software\Classes\*\shell", writable: true);
+            if (wildcardShellKey?.GetSubKeyNames().Contains(ContextMenuKeyName) != true) return;
+
+            wildcardShellKey.DeleteSubKeyTree(ContextMenuKeyName);
+            Logger.Info("Удалена ошибочная запись «Открыть в Lumisense» для всех типов файлов (Software\\Classes\\*\\shell).");
+
+            RegisterOpenInLumisenseContextMenu();
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось исправить область действия контекстного меню «Открыть в Lumisense»: {ex.Message}");
         }
     }
 
