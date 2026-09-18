@@ -10,7 +10,7 @@ Lumisense is a Windows desktop audio player. Keep the existing architecture, beh
 
 - Target framework: .NET 10 for Windows.
 - UI: WPF with WPF-UI.
-- Audio: NAudio with WasapiPlayer in shared mode.
+- Audio: NAudio with WasapiPlayer, shared mode by default (exclusive mode selectable in Settings).
 - Tests: xUnit v3 with Microsoft Testing Platform.
 - Updates: Velopack and the existing GitHub release feed.
 
