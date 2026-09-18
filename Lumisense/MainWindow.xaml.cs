@@ -5101,16 +5101,9 @@ public partial class MainWindow : FluentWindow
     private const int TrackChangeDrainSafetyMilliseconds = 8;
     private const int PlayPauseFadeMilliseconds = 18;
     private const int PlayPauseFadeSafetyMilliseconds = 10;
-    // Уменьшено с прежних 60 мс — 30 мс по-прежнему с запасом для обычного shared-mode на
-    // большинстве звуковых карт, но заметно меньше прежних 60. IAudioClient3 (WithLowLatency)
-    // не используется: его "всё или ничего" — либо честный минимум движка (2 мс и меньше,
-    // что для приложения без выделенного real-time аудио-потока чревато щелчками при любой
-    // микрозаминке), либо полный откат на это же число — непредсказуемо зависит от того,
-    // совпадает ли частота дискретизации трека с нативным миксом устройства. Предсказуемая
-    // умеренная задержка через WithLatency безопаснее для плеера с DSP-обработкой в реальном
-    // времени (SoundTouch, эквалайзер). Если после смены появятся щелчки/потрескивание при
-    // переключении треков — стоит вернуть обратно к 60.
-    private const int WasapiSharedLatencyMilliseconds = 30;
+    // 30 мс вызывали щелчки на стыке треков (drain не успевал дождаться реального опустошения
+    // WASAPI-буфера) — 60 мс безопасный минимум для плеера с realtime DSP (SoundTouch, эквалайзер).
+    private const int WasapiSharedLatencyMilliseconds = 60;
 
     private async Task FadeOutBeforeTrackChangeAsync(CancellationToken token)
     {
