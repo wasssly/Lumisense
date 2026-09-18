@@ -301,6 +301,10 @@ public class AppSettings
     // при первой инициализации и мягко мигрируют к endpoint-ID.
     public string OutputDeviceName { get; set; } = "";
 
+    // "Shared" (по умолчанию) или "Exclusive" — при ошибке инициализации EnsureOutputDevice сам
+    // откатывает это значение на "Shared" и просит SettingsWindow обновить ComboBox.
+    public string WasapiMode { get; set; } = "Shared";
+
     // Подробный технический trace этапов загрузки трека выключен по умолчанию. Он не содержит
     // пути или метаданные, но помогает измерять редкое замедление Next/Previous локально.
     public bool TrackLoadTraceEnabled { get; set; }

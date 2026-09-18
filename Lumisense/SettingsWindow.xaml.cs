@@ -25,6 +25,7 @@ public partial class SettingsWindow : FluentWindow
     private bool _isInitializing = true;
     private bool _interfaceScaleRestartNoticeShown;
     private bool _isRefreshingOutputDevices;
+    private bool _isRefreshingWasapiMode;
     private CancellationTokenSource? _sourceProbeCts;
     private IReadOnlyList<UpdateSourceProbeResult>? _sourceProbeResults;
     private CancellationTokenSource? _basePackageCts;
@@ -168,6 +169,7 @@ public partial class SettingsWindow : FluentWindow
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
         InitializeOutputDeviceCombo();
+        InitializeWasapiModeCombo();
         TrackLoadTraceCheckBox.IsChecked = _settings.TrackLoadTraceEnabled;
         NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked = _settings.NeverAutoPlayLastTrackOnStartup;
         TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
@@ -1886,6 +1888,42 @@ public partial class SettingsWindow : FluentWindow
     public void RefreshOutputDeviceSelection() => InitializeOutputDeviceCombo();
 
     public void RefreshOutputDeviceRuntimeStatus() => RefreshOutputDeviceStatus();
+
+    // Список из двух фиксированных пунктов задан прямо в XAML (в отличие от ComboBox устройств
+    // выше) — набор режимов WASAPI не меняется во время работы приложения, перестраивать нечего.
+    private void InitializeWasapiModeCombo()
+    {
+        _isRefreshingWasapiMode = true;
+        try
+        {
+            var selected = WasapiModeCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+                .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.WasapiMode, StringComparison.OrdinalIgnoreCase));
+            WasapiModeCombo.SelectedItem = selected ?? WasapiModeCombo.Items[0];
+        }
+        finally
+        {
+            _isRefreshingWasapiMode = false;
+        }
+    }
+
+    // Вызывается из MainWindow после автоотката с монопольного на общий режим (см.
+    // EnsureOutputDevice) — ComboBox должен сразу показать реальное значение.
+    public void RefreshWasapiModeSelection() => InitializeWasapiModeCombo();
+
+    private void WasapiModeCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing || _isRefreshingWasapiMode) return;
+
+        string selectedMode = WasapiModeCombo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag }
+            ? tag
+            : "Shared";
+        if (string.Equals(_settings.WasapiMode, selectedMode, StringComparison.OrdinalIgnoreCase)) return;
+
+        _settings.WasapiMode = selectedMode;
+        _ = SettingsManager.SaveAsync(_settings);
+        RefreshOutputDeviceStatus();
+        _owner.ApplyOutputDeviceSelection();
+    }
 
     private void RefreshOutputDeviceStatus(bool fellBackToSystemDefault = false)
     {

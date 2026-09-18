@@ -77,6 +77,9 @@ public partial class MainWindow : FluentWindow
     // заставляя пользователя гадать, куда сейчас направлен звук.
     private string _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
     private string? _outputDeviceFallbackFrom;
+    // Реально применённый режим WASAPI ("Shared"/"Exclusive") — может отличаться от
+    // _settings.WasapiMode сразу после автоматического отката в EnsureOutputDevice.
+    private string _activeWasapiMode = "Shared";
 
     // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
     // громкость (AudioFileReader.Volume) применяется ДО эквалайзера, он только красит частоты.
@@ -5103,7 +5106,7 @@ public partial class MainWindow : FluentWindow
     private const int PlayPauseFadeSafetyMilliseconds = 10;
     // 30 мс вызывали щелчки на стыке треков (drain не успевал дождаться реального опустошения
     // WASAPI-буфера) — 60 мс безопасный минимум для плеера с realtime DSP (SoundTouch, эквалайзер).
-    private const int WasapiSharedLatencyMilliseconds = 60;
+    private const int WasapiRequestedLatencyMilliseconds = 60;
 
     private async Task FadeOutBeforeTrackChangeAsync(CancellationToken token)
     {
@@ -5158,12 +5161,12 @@ public partial class MainWindow : FluentWindow
     {
         int drainDelayMilliseconds = GetTrackChangeDrainDelayMilliseconds(outputDevice);
         if (drainDelayMilliseconds == 0)
-            drainDelayMilliseconds = WasapiSharedLatencyMilliseconds + TrackChangeDrainSafetyMilliseconds;
+            drainDelayMilliseconds = WasapiRequestedLatencyMilliseconds + TrackChangeDrainSafetyMilliseconds;
 
         return Math.Clamp(
             drainDelayMilliseconds + TrackChangeFadeOutMilliseconds,
             TrackChangeFadeOutMilliseconds + TrackChangeDrainSafetyMilliseconds,
-            WasapiSharedLatencyMilliseconds * 2 + TrackChangeFadeOutMilliseconds + TrackChangeDrainSafetyMilliseconds);
+            WasapiRequestedLatencyMilliseconds * 2 + TrackChangeFadeOutMilliseconds + TrackChangeDrainSafetyMilliseconds);
     }
 
     private static int GetTrackChangeDrainDelayMilliseconds(IWavePlayer? outputDevice)
@@ -5174,7 +5177,7 @@ public partial class MainWindow : FluentWindow
             {
                 double milliseconds = wasapiPlayer.CurrentLatency.TotalMilliseconds + TrackChangeDrainSafetyMilliseconds;
                 return Math.Clamp((int)Math.Ceiling(milliseconds), TrackChangeDrainSafetyMilliseconds,
-                    WasapiSharedLatencyMilliseconds * 3);
+                    WasapiRequestedLatencyMilliseconds * 3);
             }
         }
         catch (Exception ex)
@@ -5256,14 +5259,23 @@ public partial class MainWindow : FluentWindow
         try
         {
             _outputEndpoint = resolved.Device;
-            _outputDevice = new WasapiPlayerBuilder()
-                .WithDevice(_outputEndpoint)
-                .WithSharedMode()
-                .WithEventSync()
-                .WithLatency(WasapiSharedLatencyMilliseconds)
-                .WithCategory(AudioStreamCategory.Media)
-                .WithMmcssThreadPriority("Audio")
-                .Build();
+            bool wantsExclusiveMode = string.Equals(_settings.WasapiMode, "Exclusive", StringComparison.OrdinalIgnoreCase);
+            try
+            {
+                _outputDevice = BuildWasapiPlayer(_outputEndpoint, wantsExclusiveMode);
+                _activeWasapiMode = wantsExclusiveMode ? "Exclusive" : "Shared";
+            }
+            catch (Exception ex) when (wantsExclusiveMode)
+            {
+                // Не все устройства/форматы поддерживают монопольный режим — откатываемся на
+                // общий, чтобы плеер не остался нерабочим.
+                Logger.Warn($"Не удалось открыть устройство в монопольном режиме WASAPI, переключение на общий: {ex.Message}");
+                _settings.WasapiMode = "Shared";
+                _ = SettingsManager.SaveAsync(_settings);
+                _settingsWindow?.RefreshWasapiModeSelection();
+                _outputDevice = BuildWasapiPlayer(_outputEndpoint, useExclusiveMode: false);
+                _activeWasapiMode = "Shared";
+            }
             _audioOutputSession.Attach(_outputDevice!, _outputEndpoint!);
         }
         catch
@@ -5272,6 +5284,18 @@ public partial class MainWindow : FluentWindow
             _outputEndpoint = null;
             throw;
         }
+    }
+
+    private WasapiPlayer BuildWasapiPlayer(MMDevice device, bool useExclusiveMode)
+    {
+        var builder = new WasapiPlayerBuilder()
+            .WithDevice(device)
+            .WithEventSync()
+            .WithLatency(WasapiRequestedLatencyMilliseconds)
+            .WithCategory(AudioStreamCategory.Media)
+            .WithMmcssThreadPriority("Audio");
+        builder = useExclusiveMode ? builder.WithExclusiveMode() : builder.WithSharedMode();
+        return builder.Build();
     }
 
     // Вызывается из SettingsWindow сразу после выбора устройства. Снимок разделяет
@@ -5285,8 +5309,8 @@ public partial class MainWindow : FluentWindow
             AudioOutputDeviceService.GetDisplayName(activeKey),
             string.IsNullOrWhiteSpace(_outputDeviceFallbackFrom) ? null : AudioOutputDeviceService.GetDisplayName(_outputDeviceFallbackFrom),
             _outputDevice is not null,
-            "WASAPI Shared · WasapiPlayer",
-            WasapiSharedLatencyMilliseconds,
+            $"WASAPI {_activeWasapiMode} · WasapiPlayer",
+            WasapiRequestedLatencyMilliseconds,
             player?.LatencyMilliseconds,
             _activeOutputFormat,
             activeEndpointId,
@@ -5384,7 +5408,7 @@ public partial class MainWindow : FluentWindow
             return;
 
         const string reason = "активное устройство вывода отключено или стало недоступно";
-        Logger.Warn($"{reason}; выполняется восстановление WASAPI Shared.");
+        Logger.Warn($"{reason}; выполняется восстановление WASAPI.");
         RecoverOutputDeviceAfterFailure(new InvalidOperationException(reason), _isPlaying, expectedDeviceEvent: true);
     }
 
@@ -5407,7 +5431,7 @@ public partial class MainWindow : FluentWindow
         _systemDefaultEndpointDebounceTimer.Stop();
         _systemDefaultEndpointDebounceTimer.Interval = TimeSpan.FromMilliseconds(SystemDefaultEndpointDebounceMilliseconds);
         _systemDefaultEndpointDebounceTimer.Start();
-        Logger.Info("Windows изменил системное устройство вывода; endpoint будет подтверждён перед восстановлением WASAPI Shared.");
+        Logger.Info("Windows изменил системное устройство вывода; endpoint будет подтверждён перед восстановлением WASAPI.");
     }
 
     private void SystemDefaultEndpointDebounceTimer_Tick(object? sender, EventArgs e)
@@ -5440,7 +5464,7 @@ public partial class MainWindow : FluentWindow
         }
 
         const string reason = "Windows изменил системное устройство вывода";
-        Logger.Info($"{reason}; выполняется controlled recovery WASAPI Shared.");
+        Logger.Info($"{reason}; выполняется controlled recovery WASAPI.");
         RecoverOutputDeviceAfterFailure(new InvalidOperationException(reason), _isPlaying, expectedDeviceEvent: true);
     }
 
