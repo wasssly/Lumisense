@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using Microsoft.Win32;
@@ -113,6 +114,39 @@ internal static class LegacyIntegrationRepairService
         catch (Exception ex)
         {
             Logger.Warn($"Не удалось исправить область действия контекстного меню «Открыть в Lumisense»: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// An older wildcard leftover can also live under HKLM (pre-dating the installer's own fix);
+    /// deleting it needs elevation, so this asks via UAC once and never retries.
+    /// </summary>
+    public static void TryCleanupLegacyHklmWildcardContextMenu()
+    {
+        AppSettings settings = SettingsManager.Load();
+        if (settings.HklmWildcardContextMenuCleanupAttempted) return;
+
+        settings.HklmWildcardContextMenuCleanupAttempted = true;
+        SettingsManager.Save(settings);
+
+        try
+        {
+            using RegistryKey? wildcardShellKey = Registry.LocalMachine.OpenSubKey(@"Software\Classes\*\shell");
+            if (wildcardShellKey?.GetSubKeyNames().Contains(ContextMenuKeyName) != true) return;
+
+            Logger.Warn("Найден унаследованный HKLM-ключ Software\\Classes\\*\\shell\\LumisenseOpen — запрашивается повышение прав для удаления.");
+            Process.Start(new ProcessStartInfo("reg.exe")
+            {
+                Arguments = $@"delete ""HKLM\Software\Classes\*\shell\{ContextMenuKeyName}"" /f",
+                UseShellExecute = true,
+                Verb = "runas",
+                WindowStyle = ProcessWindowStyle.Hidden,
+            });
+        }
+        catch (Exception ex)
+        {
+            // Пользователь мог отклонить UAC — settings уже помечены, повторов не будет.
+            Logger.Warn($"Не удалось удалить унаследованный HKLM-ключ контекстного меню: {ex.Message}");
         }
     }
 

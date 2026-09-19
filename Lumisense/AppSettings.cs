@@ -305,6 +305,10 @@ public class AppSettings
     // откатывает это значение на "Shared" и просит SettingsWindow обновить ComboBox.
     public string WasapiMode { get; set; } = "Shared";
 
+    // Однократная попытка удалить унаследованный HKLM-ключ контекстного меню уже была — не
+    // повторять, даже если пользователь отклонил UAC (см. TryCleanupLegacyHklmWildcardContextMenu).
+    public bool HklmWildcardContextMenuCleanupAttempted { get; set; }
+
     // Подробный технический trace этапов загрузки трека выключен по умолчанию. Он не содержит
     // пути или метаданные, но помогает измерять редкое замедление Next/Previous локально.
     public bool TrackLoadTraceEnabled { get; set; }
