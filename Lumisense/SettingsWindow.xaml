@@ -1515,6 +1515,32 @@
                                                  Margin="0" VerticalAlignment="Center" />
                                 </WrapPanel>
 
+                                <!-- См. AppSettings.TrackChangeToastArtSide/TrackChangeToastTextAlignment. -->
+                                <TextBlock Text="Обложка" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <WrapPanel Margin="0,0,0,16">
+                                    <RadioButton x:Name="ToastArtLeftRadio" Content="Слева"
+                                                 GroupName="ToastArtSide" Checked="ToastArtSideRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="ToastArtRightRadio" Content="Справа"
+                                                 GroupName="ToastArtSide" Checked="ToastArtSideRadio_Changed"
+                                                 Margin="0" VerticalAlignment="Center" />
+                                </WrapPanel>
+
+                                <TextBlock Text="Выравнивание текста" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <WrapPanel Margin="0,0,0,16">
+                                    <RadioButton x:Name="ToastTextLeftRadio" Content="Слева"
+                                                 GroupName="ToastTextAlignment" Checked="ToastTextAlignmentRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="ToastTextCenterRadio" Content="По центру"
+                                                 GroupName="ToastTextAlignment" Checked="ToastTextAlignmentRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="ToastTextRightRadio" Content="Справа"
+                                                 GroupName="ToastTextAlignment" Checked="ToastTextAlignmentRadio_Changed"
+                                                 Margin="0" VerticalAlignment="Center" />
+                                </WrapPanel>
+                                <TextBlock Text="Выравнивание — в свободном месте карточки рядом с обложкой."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,-10,0,16" TextWrapping="Wrap" />
+
                                 <!-- См. AppSettings.TrackChangeToastWidth — независимо от размера выше,
                                      только ширина карточки (и то, сколько текста влезает в строку). -->
                                 <TextBlock Text="Ширина" Style="{StaticResource SettingsFieldLabelStyle}" />

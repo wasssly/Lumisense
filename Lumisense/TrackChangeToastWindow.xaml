@@ -42,8 +42,12 @@
             <SolidColorBrush x:Name="ToastBackgroundBrush" />
         </Border.Background>
 
-        <StackPanel Orientation="Horizontal">
-            <Border x:Name="ArtBorder" Width="48" Height="48" CornerRadius="8"
+        <!-- DockPanel, а не StackPanel: сторона обложки и выравнивание текста настраиваются
+             (см. AppSettings.TrackChangeToastArtSide/TextAlignment) — DockPanel.Dock у обложки
+             и HorizontalAlignment у ToastTextPanel применяются в коде (см. ApplyLayout),
+             LastChildFill гарантирует, что текстовая колонка получает всё оставшееся место. -->
+        <DockPanel LastChildFill="True">
+            <Border x:Name="ArtBorder" DockPanel.Dock="Left" Width="48" Height="48" CornerRadius="8"
                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
                     SnapsToDevicePixels="True" UseLayoutRounding="True">
                 <!-- ImageBrush в Border.Background удобен, но на маленькой карточке WPF иногда
@@ -67,6 +71,6 @@
                            Foreground="{DynamicResource TextFillColorSecondaryBrush}"
                            TextTrimming="CharacterEllipsis" />
             </StackPanel>
-        </StackPanel>
+        </DockPanel>
     </Border>
 </Window>

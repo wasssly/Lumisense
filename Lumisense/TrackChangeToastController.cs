@@ -14,7 +14,8 @@ internal sealed class TrackChangeToastController : IDisposable
         _window ??= new TrackChangeToastWindow();
         _window.ApplyOverlayCompatibilityLive(settings.GameOverlayCompatibilityMode);
         _window.ShowToast(title, artist, art, isLightTheme, screen,
-            settings.TrackChangeToastPosition, settings.TrackChangeToastSize, settings.TrackChangeToastWidth);
+            settings.TrackChangeToastPosition, settings.TrackChangeToastSize, settings.TrackChangeToastWidth,
+            settings.TrackChangeToastArtSide, settings.TrackChangeToastTextAlignment);
     }
 
     public void ApplyOverlayCompatibilityLive(bool enabled)

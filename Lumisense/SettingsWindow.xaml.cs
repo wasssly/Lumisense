@@ -2062,6 +2062,14 @@ public partial class SettingsWindow : FluentWindow
         ToastSizeMediumRadio.IsChecked = !ToastSizeSmallRadio.IsChecked.GetValueOrDefault()
                                           && !ToastSizeLargeRadio.IsChecked.GetValueOrDefault();
 
+        ToastArtRightRadio.IsChecked = _settings.TrackChangeToastArtSide == "Right";
+        ToastArtLeftRadio.IsChecked = !ToastArtRightRadio.IsChecked.GetValueOrDefault();
+
+        ToastTextCenterRadio.IsChecked = _settings.TrackChangeToastTextAlignment == "Center";
+        ToastTextRightRadio.IsChecked = _settings.TrackChangeToastTextAlignment == "Right";
+        ToastTextLeftRadio.IsChecked = !ToastTextCenterRadio.IsChecked.GetValueOrDefault()
+                                        && !ToastTextRightRadio.IsChecked.GetValueOrDefault();
+
         ToastWidthSlider.Value = Math.Clamp(_settings.TrackChangeToastWidth, ToastWidthSlider.Minimum, ToastWidthSlider.Maximum);
         UpdateToastWidthValueText();
     }
@@ -2126,6 +2134,22 @@ public partial class SettingsWindow : FluentWindow
         _settings.TrackChangeToastSize = ToastSizeSmallRadio.IsChecked == true ? "Small"
             : ToastSizeLargeRadio.IsChecked == true ? "Large"
             : "Medium";
+    }
+
+    private void ToastArtSideRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastArtSide = ToastArtRightRadio.IsChecked == true ? "Right" : "Left";
+    }
+
+    private void ToastTextAlignmentRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastTextAlignment = ToastTextCenterRadio.IsChecked == true ? "Center"
+            : ToastTextRightRadio.IsChecked == true ? "Right"
+            : "Left";
     }
 
     private void ToastMonitorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)

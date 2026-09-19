@@ -350,6 +350,14 @@ public class AppSettings
     // умолчанию до появления этого ползунка.
     public double TrackChangeToastWidth { get; set; } = 300.0;
 
+    // С какой стороны карточки показывать обложку — "Left" (по умолчанию, как было всегда) или
+    // "Right" (см. TrackChangeToastWindow.ApplyLayout).
+    public string TrackChangeToastArtSide { get; set; } = "Left";
+
+    // Как выравнивать название/исполнителя в оставшемся месте карточки относительно обложки —
+    // "Left" (по умолчанию), "Center" или "Right" (см. ApplyLayout).
+    public string TrackChangeToastTextAlignment { get; set; } = "Left";
+
     // Расположение кнопок управления в мини-плеере при наведении курсора. "Below" (по
     // умолчанию) — прежнее поведение: окно подрастает вниз и кнопки появляются отдельной
     // строкой под прогресс-баром. "Overlay" — новый вариант для тех, кому не нужен рост

@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -38,9 +39,11 @@ public partial class TrackChangeToastWindow : Window
     // screen/position/size/width — см. AppSettings.TrackChangeToastMonitor/
     // TrackChangeToastPosition/TrackChangeToastSize/TrackChangeToastWidth; screen уже полностью
     // разрешён вызывающим кодом (см. MainWindow.ResolveToastScreen) — это окно само не решает,
-    // "какой монитор", только "где на нём" и "какого размера".
+    // "какой монитор", только "где на нём" и "какого размера". artSide/textAlignment — см.
+    // AppSettings.TrackChangeToastArtSide/TrackChangeToastTextAlignment.
     public void ShowToast(string title, string artist, Brush? art, bool isLightTheme,
-        System.Windows.Forms.Screen screen, string position, string size, double width)
+        System.Windows.Forms.Screen screen, string position, string size, double width,
+        string artSide, string textAlignment)
     {
         ToastTitleText.Text = title;
 
@@ -50,6 +53,7 @@ public partial class TrackChangeToastWindow : Window
 
         ApplySizePreset(size);
         ApplyWidth(width, size);
+        ApplyLayout(artSide, textAlignment);
 
         if (art is ImageBrush { ImageSource: not null } imageBrush)
         {
@@ -190,6 +194,31 @@ public partial class TrackChangeToastWindow : Window
     {
         Width = width;
         ToastTextPanel.MaxWidth = Math.Max(width - GetSizePreset(size).NonTextWidth, 40.0);
+    }
+
+    // artSide — какой стороне докается обложка; отступ текстовой колонки — на противоположную
+    // сторону. textAlignment — где колонка сидит в оставшемся (LastChildFill) месте.
+    private void ApplyLayout(string artSide, string textAlignment)
+    {
+        bool artOnRight = artSide == "Right";
+        DockPanel.SetDock(ArtBorder, artOnRight ? Dock.Right : Dock.Left);
+        ToastTextPanel.Margin = artOnRight ? new Thickness(0, 0, 12, 0) : new Thickness(12, 0, 0, 0);
+
+        var alignment = textAlignment switch
+        {
+            "Center" => HorizontalAlignment.Center,
+            "Right" => HorizontalAlignment.Right,
+            _ => HorizontalAlignment.Left
+        };
+        ToastTextPanel.HorizontalAlignment = alignment;
+        var textAlign = textAlignment switch
+        {
+            "Center" => TextAlignment.Center,
+            "Right" => TextAlignment.Right,
+            _ => TextAlignment.Left
+        };
+        ToastTitleText.TextAlignment = textAlign;
+        ToastArtistText.TextAlignment = textAlign;
     }
 
     // Рабочая область Screen задаётся физическими пикселями. Получаем DPI именно выбранного
