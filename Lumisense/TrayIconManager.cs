@@ -90,6 +90,10 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         return item;
     }
 
+    // Базовый NotifyIconService сам вызывает MainWindow.Show() на одном клике (FocusOnLeftClick,
+    // недоступен для переопределения) — дублируем OpenRequested, чтобы мини-плеер закрылся следом.
+    protected override void OnLeftClick() => OpenRequested?.Invoke();
+
     protected override void OnLeftDoubleClick() => OpenRequested?.Invoke();
 
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
