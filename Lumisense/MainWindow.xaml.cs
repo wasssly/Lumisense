@@ -5293,7 +5293,9 @@ public partial class MainWindow : FluentWindow
             .WithEventSync()
             .WithLatency(WasapiRequestedLatencyMilliseconds)
             .WithCategory(AudioStreamCategory.Media)
-            .WithMmcssThreadPriority("Audio");
+            // "Pro Audio" — дефолт NAudio для этого параметра (мы сузили до "Audio" без причины);
+            // эта MMCSS-категория защищает поток от щелчков при всплеске нагрузки (запуск игры).
+            .WithMmcssThreadPriority("Pro Audio");
         builder = useExclusiveMode ? builder.WithExclusiveMode() : builder.WithSharedMode();
         return builder.Build();
     }
