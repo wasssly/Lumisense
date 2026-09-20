@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Lumisense;
 using NAudio.Wave;
 using Xunit;
@@ -37,6 +38,26 @@ public sealed class SoundTouchSampleProviderTests
 
         Assert.True(readAfterSeek > 0);
         Assert.Equal(0, readAfterSeek % 2);
+    }
+
+    [Fact]
+    public void Read_FadesOutTheEndOfTheSourceToSilence()
+    {
+        var samples = new float[44100 * 2 * 2];
+        Array.Fill(samples, 1f);
+        var provider = new SoundTouchSampleProvider(new TestSampleProvider(samples, channels: 2));
+        var output = new List<float>();
+        var chunk = new float[2880];
+
+        int read;
+        while ((read = provider.Read(chunk)) > 0)
+            output.AddRange(chunk.AsSpan(0, read).ToArray());
+
+        int lastFiveMilliseconds = 44100 * 5 / 1000 * 2;
+        Assert.InRange(output[output.Count / 2], 0.95f, 1.05f);
+        Assert.True(Math.Abs(output[^1]) < 1e-4f);
+        for (int index = output.Count - lastFiveMilliseconds; index < output.Count; index++)
+            Assert.True(Math.Abs(output[index]) < 0.3f, $"Sample {index} was not faded: {output[index]}");
     }
 
     [Fact]

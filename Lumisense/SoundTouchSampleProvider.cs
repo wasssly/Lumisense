@@ -7,15 +7,20 @@ namespace Lumisense;
 /// <summary>
 /// Применяет изменения tempo, pitch и rate из SoundTouch к IEEE-float sample pipeline NAudio 3.
 /// Хранит собственный FIFO SoundTouch и очищает его при перемотке источника, чтобы данные до seek
-/// не попали в новый участок трека.
+/// не попали в новый участок трека. Последние миллисекунды трека затухают до нуля, чтобы обрыв на
+/// ненулевом sample не давал щелчка.
 /// </summary>
 internal sealed class SoundTouchSampleProvider : ISampleProvider
 {
+    private const int TailFadeMilliseconds = 20;
+
     private readonly ISampleProvider _source;
     private readonly SoundTouchProcessor _processor;
     private readonly float[] _inputBuffer = new float[4096];
     private readonly object _sync = new();
+    private readonly int _standardTailFadeFrames;
     private bool _isFlushed;
+    private int _tailFadeFrames = -1;
 
     public SoundTouchSampleProvider(ISampleProvider source)
     {
@@ -27,6 +32,7 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
                 nameof(source));
         }
 
+        _standardTailFadeFrames = source.WaveFormat.SampleRate * TailFadeMilliseconds / 1000;
         _processor = new SoundTouchProcessor
         {
             SampleRate = source.WaveFormat.SampleRate,
@@ -66,6 +72,28 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
         {
             _processor.Clear();
             _isFlushed = false;
+            _tailFadeFrames = -1;
+        }
+    }
+
+    // После flush в FIFO лежит весь оставшийся хвост трека, поэтому его длина известна точно.
+    // Затухание по нему убирает щелчок от обрыва на ненулевом sample.
+    private void ApplyTailFade(Span<float> buffer, int channels, int framesRead, int framesRemaining)
+    {
+        if (framesRead <= 0)
+            return;
+
+        // Трек короче затухания: часть уже отдана, поэтому затухаем на всём остатке без скачка.
+        if (_tailFadeFrames < 0)
+            _tailFadeFrames = Math.Max(1, Math.Min(_standardTailFadeFrames, framesRead + framesRemaining));
+
+        int firstFadedFrame = Math.Max(0, framesRemaining + framesRead - _tailFadeFrames);
+        for (int frame = firstFadedFrame; frame < framesRead; frame++)
+        {
+            float gain = (framesRemaining + framesRead - 1 - frame) / (float)_tailFadeFrames;
+            int start = frame * channels;
+            for (int channel = 0; channel < channels; channel++)
+                buffer[start + channel] *= gain;
         }
     }
 
@@ -83,7 +111,9 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
         {
             lock (_sync)
             {
-                while (_processor.AvailableSamples < requestedFrames)
+                // До конца файла держим в FIFO запас в длину затухания: иначе к моменту, когда
+                // конец обнаружен, последние кадры уже отданы и затухать будет нечему.
+                while (_processor.AvailableSamples < requestedFrames + (_isFlushed ? 0 : _standardTailFadeFrames))
                 {
                     int samplesRead = _source.Read(_inputBuffer);
                     if (samplesRead <= 0)
@@ -106,6 +136,9 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
 
                 buffer.Clear();
                 int framesRead = _processor.ReceiveSamples(buffer, requestedFrames);
+                if (_isFlushed)
+                    ApplyTailFade(buffer, channels, framesRead, _processor.AvailableSamples);
+
                 return framesRead * channels;
             }
         }
