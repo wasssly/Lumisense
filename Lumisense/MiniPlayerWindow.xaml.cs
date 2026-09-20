@@ -15,10 +15,12 @@ public partial class MiniPlayerWindow : Window
     private readonly MainWindow _mainWindow;
     private bool _isDraggingProgress;
 
-    // Нижний отступ HeaderPanel в XAML — "14,10,14,2" (верхний 10, нижний 2): при видимой
-    // полосе прогресса это осознанная асимметрия, утягивающая заголовок к бару под ним. Без
-    // полосы это выглядит неровно, поэтому нижний отступ увеличивается до 10 при её скрытии —
-    // см. ApplyProgressBarVisibility.
+    // Отступы HeaderPanel в XAML — "10,8,10,2" (боковые 10, верхний 8, нижний 2): при видимой
+    // полосе прогресса нижний отступ намеренно меньше верхнего, утягивая заголовок к бару под
+    // ним. Без полосы это выглядит неровно, поэтому нижний отступ увеличивается до 10 при её
+    // скрытии — см. ApplyProgressBarVisibility.
+    private const double HeaderHorizontalMargin = 10;
+    private const double HeaderTopMargin = 8;
     private const double HeaderBottomMarginWithProgress = 2;
     private const double HeaderBottomMarginWithoutProgress = 10;
 
@@ -467,7 +469,7 @@ public partial class MiniPlayerWindow : Window
     // за расчётную ширину.
     private const double MarqueePixelsPerSecond = 34.0;
     private const double MarqueeEdgePauseSeconds = 1.0;
-    private const double DefaultTitleClipWidth = 140.0;
+    private const double DefaultTitleClipWidth = 120.0;
     private const double MarqueeEndBufferPx = 3.0;
 
     private void UpdateTitleMarquee()
@@ -587,7 +589,7 @@ public partial class MiniPlayerWindow : Window
         if (_isDraggingProgress || totalSeconds <= 0) return;
 
         double ratio = Math.Clamp(currentSeconds / totalSeconds, 0.0, 1.0);
-        double trackWidth = Math.Max(ActualWidth - 28, 0); // 28 = отступы слева/справа (14+14)
+        double trackWidth = Math.Max(ActualWidth - 20, 0); // 20 = отступы слева/справа (10+10)
         ProgressFill.Width = trackWidth * ratio;
         UpdateArtworkProgressOutline(ratio);
     }
@@ -1177,9 +1179,9 @@ public partial class MiniPlayerWindow : Window
 
         // См. комментарий у HeaderBottomMarginWithProgress/WithoutProgress выше — без полосы
         // прогресса под заголовком увеличиваем его нижний отступ до того же значения, что и
-        // верхний (14,10,14,10 вместо 14,10,14,2), чтобы вокруг заголовка стало поровну места,
+        // верхний (10,8,10,10 вместо 10,8,10,2), чтобы вокруг заголовка стало поровну места,
         // а не заметно больше сверху, чем снизу.
-        HeaderPanel.Margin = new Thickness(14, 10, 14,
+        HeaderPanel.Margin = new Thickness(HeaderHorizontalMargin, HeaderTopMargin, HeaderHorizontalMargin,
             _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress);
 
         Height = MeasureContentHeight();
@@ -1202,23 +1204,26 @@ public partial class MiniPlayerWindow : Window
     // обложки без цветных фрагментов в углах.
     public void ApplyArtworkProgressThickness()
     {
+        // Контур должен иметь центр линии ровно на границе обложки.
+        // Поэтому при толщине 4 px: 2 px находятся внутри, 2 px снаружи.
         double thickness = Math.Clamp(_mainWindow.Settings.MiniPlayerArtworkProgressThickness, 1.0, 4.0);
-        // Прямые участки фоновой рамки остаются на полном контуре обложки. Небольшое
-        // уменьшение радиуса касается только углов и убирает артефакты маски изображения.
-        // В сравнительном варианте контур находится внутри artwork-области 42×42.
-        // Внешняя граница штриха совпадает с границей контейнера и не выступает наружу.
-        const double canvasSize = 42.0;
+        const double artworkSize = 42.0;
+        const double canvasSize = 50.0;
+
         ArtworkCanvas.Width = canvasSize;
         ArtworkCanvas.Height = canvasSize;
-        ArtProgressTrack.Width = canvasSize;
-        ArtProgressTrack.Height = canvasSize;
+        ArtProgressTrack.Width = artworkSize;
+        ArtProgressTrack.Height = artworkSize;
+
         bool circle = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal)
                       || string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "StaticCircle", StringComparison.Ordinal);
+
         ArtProgressTrack.CornerRadius = circle
-            ? new CornerRadius(canvasSize / 2.0)
+            ? new CornerRadius(artworkSize / 2.0)
             : new CornerRadius(8.0);
-        ArtProgressTrack.BorderThickness = new Thickness(thickness);
+        ArtProgressTrack.BorderThickness = new Thickness(0);
         ArtProgressOutline.StrokeThickness = thickness;
+
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
     }
 
@@ -1260,126 +1265,110 @@ public partial class MiniPlayerWindow : Window
         if (!_showArtworkProgress || ratio <= 0.0001)
         {
             ArtProgressOutline.Data = null;
+            ArtProgressOutline.StrokeDashArray = null;
+            ArtProgressOutline.StrokeDashOffset = 0;
             return;
         }
+
+        ratio = Math.Clamp(ratio, 0.0, 1.0);
 
         bool circle = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal)
                       || string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "StaticCircle", StringComparison.Ordinal);
+
+        const double artworkSize = 42.0;
+        const double canvasSize = 50.0;
+        const double offset = (canvasSize - artworkSize) / 2.0;
+        const double center = offset + artworkSize / 2.0;
+
         if (circle)
         {
-            // Кольцо находится внутри круглой области и рисуется поверх обложки. Радиус
-            // уменьшается на половину толщины, чтобы внешний край штриха совпадал с границей
-            // 42-px области и не обрезался контейнером.
-            double strokeThickness = ArtProgressOutline.StrokeThickness;
-            double center = 21.0;
-            double radius = Math.Max(0.0, 21.0 - strokeThickness / 2.0);
-            if (ratio >= 0.9999)
-            {
-                ArtProgressOutline.Data = new EllipseGeometry(new Point(center, center), radius, radius);
-                return;
-            }
+            double radius = artworkSize / 2.0;
+            ArtProgressOutline.Data = new EllipseGeometry(
+                new Point(center, center), radius, radius);
 
-            double endAngle = -Math.PI / 2 + 2 * Math.PI * ratio;
-            var vinylFigure = new PathFigure { StartPoint = new Point(center, center - radius) };
-            vinylFigure.Segments.Add(new ArcSegment(
-                new Point(center + radius * Math.Cos(endAngle), center + radius * Math.Sin(endAngle)),
-                new Size(radius, radius), 0, ratio > 0.5, SweepDirection.Clockwise, true));
-            ArtProgressOutline.Data = new PathGeometry(new[] { vinylFigure });
+            double circumference = 2.0 * Math.PI * radius;
+            ApplyArtworkProgressDash(ratio, circumference, startOffset: 0.0);
             return;
         }
 
-        // Отступ равен половине выбранной толщины. Поэтому внешний край штриха
-        // совпадает с границей внутренней 42-px области и не выходит за контейнер.
-        double thickness = ArtProgressOutline.StrokeThickness;
-        double inset = thickness / 2.0;
-        double side = 42.0 - 2.0 * inset;
-        double cornerRadius = Math.Max(0.0, 8.0 - inset);
-        double straightSide = side - 2 * cornerRadius;
-        double perimeter = 4 * straightSide + 2 * Math.PI * cornerRadius;
-        ratio = Math.Clamp(ratio, 0.0, 1.0);
+        const double cornerRadius = 8.0;
+        double left = offset;
+        double top = offset;
+        double right = offset + artworkSize;
+        double bottom = offset + artworkSize;
+        double topCenter = center;
 
-        double left = inset;
-        double top = inset;
-        double right = left + side;
-        double bottom = top + side;
+        // Build the rounded-square path explicitly so its FIRST point is
+        // exactly the center of the top edge. This avoids relying on the
+        // internal start point of RectangleGeometry.
+        var figure = new PathFigure
+        {
+            StartPoint = new Point(topCenter, top),
+            IsClosed = true,
+            IsFilled = false
+        };
 
-        // Path с замыкающей дугой при совпадающих начальной и конечной точках не рисует
-        // полный контур надёжно, поэтому на 100% используем явную RectangleGeometry.
+        figure.Segments.Add(new LineSegment(
+            new Point(right - cornerRadius, top), true));
+        figure.Segments.Add(new ArcSegment(
+            new Point(right, top + cornerRadius),
+            new Size(cornerRadius, cornerRadius),
+            0, false, SweepDirection.Clockwise, true));
+        figure.Segments.Add(new LineSegment(
+            new Point(right, bottom - cornerRadius), true));
+        figure.Segments.Add(new ArcSegment(
+            new Point(right - cornerRadius, bottom),
+            new Size(cornerRadius, cornerRadius),
+            0, false, SweepDirection.Clockwise, true));
+        figure.Segments.Add(new LineSegment(
+            new Point(left + cornerRadius, bottom), true));
+        figure.Segments.Add(new ArcSegment(
+            new Point(left, bottom - cornerRadius),
+            new Size(cornerRadius, cornerRadius),
+            0, false, SweepDirection.Clockwise, true));
+        figure.Segments.Add(new LineSegment(
+            new Point(left, top + cornerRadius), true));
+        figure.Segments.Add(new ArcSegment(
+            new Point(left + cornerRadius, top),
+            new Size(cornerRadius, cornerRadius),
+            0, false, SweepDirection.Clockwise, true));
+        figure.Segments.Add(new LineSegment(
+            new Point(topCenter, top), true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(figure);
+        ArtProgressOutline.Data = geometry;
+
+        double straight = artworkSize - 2.0 * cornerRadius;
+        double perimeter = 4.0 * straight + 2.0 * Math.PI * cornerRadius;
+
+        // The path itself starts at the exact center of the top edge, so no
+        // dash offset is needed.
+        ApplyArtworkProgressDash(ratio, perimeter, startOffset: 0.0);
+    }
+
+    private void ApplyArtworkProgressDash(double ratio, double perimeter, double startOffset)
+    {
         if (ratio >= 0.9999)
         {
-            ArtProgressOutline.Data = new RectangleGeometry(
-                new Rect(left, top, side, side), cornerRadius, cornerRadius);
+            ArtProgressOutline.StrokeDashArray = null;
+            ArtProgressOutline.StrokeDashOffset = 0;
             return;
         }
 
-        double remaining = perimeter * ratio;
+        // DashArray is expressed in multiples of StrokeThickness.
+        // Keep one continuous dash and one continuous gap.
+        double thickness = Math.Max(ArtProgressOutline.StrokeThickness, 0.01);
+        double dashLength = Math.Max(perimeter * ratio, 0.001);
+        double gapLength = Math.Max(perimeter - dashLength, 0.001);
 
-        // Старт в центре верхней грани; дальше контур заполняется по часовой стрелке:
-        // верхняя грань → правый верхний угол → правая грань и так далее.
-        var start = new Point((left + right) / 2, top);
-        var figure = new PathFigure { StartPoint = start };
-
-        bool finished = AppendArtworkProgressLine(figure, start, new Point(right - cornerRadius, top), ref remaining);
-        if (!finished) finished = AppendArtworkProgressArc(figure, new Point(right, top + cornerRadius),
-            new Point(right - cornerRadius, top + cornerRadius), -Math.PI / 2, cornerRadius, ref remaining);
-        if (!finished) finished = AppendArtworkProgressLine(figure, new Point(right, top + cornerRadius),
-            new Point(right, bottom - cornerRadius), ref remaining);
-        if (!finished) finished = AppendArtworkProgressArc(figure, new Point(right - cornerRadius, bottom),
-            new Point(right - cornerRadius, bottom - cornerRadius), 0, cornerRadius, ref remaining);
-        if (!finished) finished = AppendArtworkProgressLine(figure, new Point(right - cornerRadius, bottom),
-            new Point(left + cornerRadius, bottom), ref remaining);
-        if (!finished) finished = AppendArtworkProgressArc(figure, new Point(left, bottom - cornerRadius),
-            new Point(left + cornerRadius, bottom - cornerRadius), Math.PI / 2, cornerRadius, ref remaining);
-        if (!finished) finished = AppendArtworkProgressLine(figure, new Point(left, bottom - cornerRadius),
-            new Point(left, top + cornerRadius), ref remaining);
-        if (!finished) finished = AppendArtworkProgressArc(figure, new Point(left + cornerRadius, top),
-            new Point(left + cornerRadius, top + cornerRadius), Math.PI, cornerRadius, ref remaining);
-        if (!finished) AppendArtworkProgressLine(figure, new Point(left + cornerRadius, top), start, ref remaining);
-
-        ArtProgressOutline.Data = new PathGeometry(new[] { figure });
-    }
-
-    // Добавляет целую или частичную прямую грань. Возвращает true, когда отведённая длина
-    // прогресса исчерпана и построение остальных сторон уже не требуется.
-    private static bool AppendArtworkProgressLine(PathFigure figure, Point start, Point end, ref double remaining)
-    {
-        double length = (end - start).Length;
-        if (remaining >= length)
+        ArtProgressOutline.StrokeDashArray = new DoubleCollection
         {
-            figure.Segments.Add(new LineSegment(end, true));
-            remaining -= length;
-            return remaining <= 0.0001;
-        }
+            dashLength / thickness,
+            gapLength / thickness
+        };
 
-        double fraction = remaining / length;
-        figure.Segments.Add(new LineSegment(
-            new Point(start.X + (end.X - start.X) * fraction, start.Y + (end.Y - start.Y) * fraction), true));
-        remaining = 0;
-        return true;
-    }
-
-    // Добавляет четверть окружности угла. Для частичного угла конец вычисляется по текущей
-    // длине дуги, поэтому прогресс движется равномерно и не "перепрыгивает" через скругления.
-    private static bool AppendArtworkProgressArc(PathFigure figure, Point end, Point center,
-        double startAngle, double radius, ref double remaining)
-    {
-        double length = Math.PI * radius / 2;
-        if (remaining >= length)
-        {
-            figure.Segments.Add(new ArcSegment(end, new Size(radius, radius), 0, false,
-                SweepDirection.Clockwise, true));
-            remaining -= length;
-            return remaining <= 0.0001;
-        }
-
-        double endAngle = startAngle + remaining / radius;
-        var partialEnd = new Point(
-            center.X + radius * Math.Cos(endAngle),
-            center.Y + radius * Math.Sin(endAngle));
-        figure.Segments.Add(new ArcSegment(partialEnd, new Size(radius, radius), 0, false,
-            SweepDirection.Clockwise, true));
-        remaining = 0;
-        return true;
+        ArtProgressOutline.StrokeDashOffset = -startOffset / thickness;
     }
 
     private void RootBorder_MouseEnter(object sender, MouseEventArgs e)
@@ -1441,7 +1430,7 @@ public partial class MiniPlayerWindow : Window
         if (width <= 0) return;
 
         double ratio = Math.Clamp(x / width, 0.0, 1.0);
-        ProgressFill.Width = Math.Max(ActualWidth - 28, 0) * ratio;
+        ProgressFill.Width = Math.Max(ActualWidth - 20, 0) * ratio;
         UpdateArtworkProgressOutline(ratio);
         _mainWindow.ExternalSeekRatio(ratio);
     }

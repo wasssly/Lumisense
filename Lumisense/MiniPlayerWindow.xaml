@@ -4,7 +4,7 @@
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:local="clr-namespace:Lumisense"
         Title="Мини-плеер"
-        Width="220" Height="96"
+        Width="200" Height="88"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -417,12 +417,13 @@
             </Grid.RowDefinitions>
 
             <!-- Обложка + название/исполнитель. Здесь же перетаскиваем окно (своего заголовка нет). -->
-            <StackPanel x:Name="HeaderPanel" Grid.Row="0" Orientation="Horizontal" Margin="14,10,14,2"
+            <StackPanel x:Name="HeaderPanel" Grid.Row="0" Orientation="Horizontal" Margin="10,8,10,2"
                         Background="Transparent"
                         MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <!-- Альтернативный вариант для сравнения: контур находится внутри области
-                     самой обложки 42×42 и рисуется поверх изображения. -->
-                <Grid x:Name="ArtworkCanvas" Width="42" Height="42" ClipToBounds="True"
+                <!-- Контур прогресса проходит ровно по границе обложки: половина толщины линии
+                     находится внутри 42×42, половина — снаружи. ArtworkCanvas не обрезает
+                     внешний участок контура. -->
+                <Grid x:Name="ArtworkCanvas" Width="50" Height="50" ClipToBounds="False"
                       SnapsToDevicePixels="True" UseLayoutRounding="True">
                     <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
                             HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -446,32 +447,36 @@
                             HorizontalAlignment="Center" VerticalAlignment="Center"
                             BorderThickness="1" BorderBrush="Transparent"
                             Visibility="Collapsed" IsHitTestVisible="False" />
-                    <Path x:Name="ArtProgressOutline" StrokeThickness="1.5"
+                    <Path x:Name="ArtProgressOutline" Width="50" Height="50"
+                          Stretch="None"
+                          HorizontalAlignment="Center" VerticalAlignment="Center"
+                          StrokeThickness="1.5"
                           Stroke="{DynamicResource AccentFillColorDefaultBrush}"
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
-                          SnapsToDevicePixels="True" UseLayoutRounding="True"
+                          SnapsToDevicePixels="False" UseLayoutRounding="False"
                           Visibility="Collapsed" IsHitTestVisible="False" />
                 </Grid>
 
                 <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                    <!-- Ширина 140 подобрана под фактически доступное место: 220 (окно) минус
-                         14+14 (отступы StackPanel-заголовка) минус 42 (обложка) минус 10 (отступ
-                         перед текстом) = 140. Окно мини-плеера имеет фиксированный размер
+                    <!-- Ширина 120 подобрана под фактически доступное место: 200 (окно) минус
+                         10+10 (отступы StackPanel-заголовка) минус 50 (ArtworkCanvas, контур
+                         прогресса выступает за пределы 42×42 обложки) минус 10 (отступ перед
+                         текстом) = 120. Окно мини-плеера имеет фиксированный размер
                          (ResizeMode="NoResize"), поэтому число не "поедет" при изменении окна.
 
                          TextBlock лежит внутри Canvas, а не прямо внутри Border: если бы он был
-                         прямым ребёнком Border с фиксированной шириной 140, WPF сам, ещё ДО
-                         применения RenderTransform, обрезал бы его отрисовку до этих 140px —
+                         прямым ребёнком Border с фиксированной шириной 120, WPF сам, ещё ДО
+                         применения RenderTransform, обрезал бы его отрисовку до этих 120px —
                          это автоматическое поведение layout-системы (обрезка элемента по
                          выделенному ему месту у родителя, когда его DesiredSize больше), отдельное
                          от ClipToBounds на самом Border. В результате прокручивать оказывалось
-                         попросту нечего: часть названия за пределами 140px никогда не рисовалась,
+                         попросту нечего: часть названия за пределами 120px никогда не рисовалась,
                          и бегущая строка visually показывала только начало, сколько бы TitleTranslate
                          её ни сдвигал. Canvas же не обрезает детей по своим границам (даёт им
                          столько места, сколько они просят), поэтому TextBlock рисуется на полную
                          естественную ширину — а нужную видимую "рамку" по-прежнему обеспечивает
                          ClipToBounds самого Border снаружи. -->
-                    <Border x:Name="TitleClipBorder" Width="140" ClipToBounds="True" HorizontalAlignment="Left">
+                    <Border x:Name="TitleClipBorder" Width="120" ClipToBounds="True" HorizontalAlignment="Left">
                         <Canvas Height="18">
                             <TextBlock x:Name="TitleText" Text="Файл не выбран"
                                        FontSize="13" FontWeight="SemiBold"
@@ -493,7 +498,7 @@
                  целиком через Visibility, высота строки (Auto) при этом схлопывается сама, окно
                  дополнительно уменьшается на ProgressRowHeight в самом ApplyProgressBarVisibility,
                  чтобы не оставалось пустого места на месте спрятанной полосы. -->
-            <Grid x:Name="ProgressRow" Grid.Row="1" Margin="14,4,14,0" Height="20">
+            <Grid x:Name="ProgressRow" Grid.Row="1" Margin="10,4,10,0" Height="20">
                 <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
                         Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
                 <Border x:Name="ProgressFill" Height="4" CornerRadius="2" Width="0"
