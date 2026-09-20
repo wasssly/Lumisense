@@ -706,10 +706,19 @@ public partial class MainWindow : FluentWindow
     // квадратный — увеличенное окно.
     private void ApplyContentScale(bool big)
     {
-        AlbumArtContainer.Width = big ? 260 : 150;
-        AlbumArtContainer.Height = big ? 260 : 150;
-        AlbumArtBorder.Width = big ? 260 : 150;
-        AlbumArtBorder.Height = big ? 260 : 150;
+        double artSize = big ? 260.0 : 150.0;
+        AlbumArtContainer.Width = artSize;
+        AlbumArtContainer.Height = artSize;
+        AlbumArtBorder.Width = artSize;
+        AlbumArtBorder.Height = artSize;
+        // Image.Clip в XAML — под 150×150 по умолчанию; без пересчёта здесь в крупном виде
+        // (260×260) было бы видно только 150×150 в углу растянутой картинки, а не всю обложку.
+        var artClip = new RectangleGeometry(new Rect(0, 0, artSize, artSize), 16, 16);
+        var artGhostClip = new RectangleGeometry(new Rect(0, 0, artSize, artSize), 16, 16);
+        if (artClip.CanFreeze) artClip.Freeze();
+        if (artGhostClip.CanFreeze) artGhostClip.Freeze();
+        AlbumArtImage.Clip = artClip;
+        AlbumArtGhostImage.Clip = artGhostClip;
         AlbumArtIcon.Size = big ? 64 : 36;
         AlbumArtPanel.Margin = big ? new Thickness(0, 32, 0, 20) : new Thickness(0, 8, 0, 8);
 
