@@ -179,6 +179,9 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
     // Тонируется автоматически через DynamicResource — метод-заглушка ради совместимости вызовов.
     public void ApplyTheme(bool isLight) { }
 
+    // Подсказка статичная ("Lumisense"): NotifyIconService.TooltipText — просто {get;set;}, без
+    // Shell_NotifyIcon(NIM_MODIFY), так что живое обновление на уже показанной иконке потребовало
+    // бы пере-Register() с миганием значка. Название трека — через SetNowPlaying в меню трея.
     public void Show(string? tooltipText = null)
     {
         if (tooltipText != null)
@@ -195,8 +198,6 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
                     $"ParentWindow.IsLoaded={ParentWindow?.IsLoaded}, " +
                     $"Handle={(ParentWindow is null ? "null" : new System.Windows.Interop.WindowInteropHelper(ParentWindow).Handle)}.");
     }
-
-    public void UpdateTooltip(string text) => TooltipText = Truncate(text, 63);
 
     public void Hide()
     {

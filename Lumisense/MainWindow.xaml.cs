@@ -812,8 +812,8 @@ public partial class MainWindow : FluentWindow
             // (EnterMiniMode вызывает Show() безусловно, не зная про эту настройку) — прячем и его.
             _miniPlayerWindow?.Hide();
 
-            // Если стартовый вид — мини-плеер, EnterMiniMode уже показал значок в трее с более
-            // информативной подсказкой ("Lumisense — Название трека"), не перезатираем её.
+            // Если стартовый вид — мини-плеер, EnterMiniMode уже показал значок в трее —
+            // не перезатираем его повторным Show().
             if (!_isMiniMode) _trayIconManager?.Show("Lumisense");
         }
         else if (!_isMiniMode)
@@ -1304,7 +1304,7 @@ public partial class MainWindow : FluentWindow
         {
             e.Cancel = true;
             Hide();
-            _trayIconManager?.Show($"Lumisense — {TrackTitleText.Text}");
+            _trayIconManager?.Show("Lumisense");
 
             // MinimizeToTrayOnClose включён по умолчанию, так что обычное закрытие крестиком
             // почти всегда идёт сюда, а не в OnClosed — без явного сохранения здесь позиция
@@ -6241,7 +6241,7 @@ public partial class MainWindow : FluentWindow
         // видимого окошка. Сама регистрация в трее — почти мгновенный вызов, ей незачем ждать
         // своей очереди позади более тяжёлой отрисовки окна.
         Logger.Info($"EnterMiniMode: вызываю _trayIconManager.Show() (стартовый вызов={_isApplyingStartupSettings}).");
-        _trayIconManager?.Show($"Lumisense — {TrackTitleText.Text}");
+        _trayIconManager?.Show("Lumisense");
 
         _miniPlayerWindow = new MiniPlayerWindow(this)
         {
