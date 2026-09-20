@@ -759,6 +759,9 @@ public partial class MainWindow : FluentWindow
     {
         new WindowInteropHelper(this).EnsureHandle();
 
+        PlayerViewMode startupMode = ResolveStartupViewMode(out bool? legacyPlaylistVisible);
+        bool startsHidden = startupMode == PlayerViewMode.Mini || _settings.StartHiddenInTray;
+
         // EnsureHandle() выше создаёт нативный HWND, но не завершает полный проход WPF-загрузки
         // (Loaded срабатывает только после реального Show()) — а лог показал, что именно от
         // Window.IsLoaded зависит успешная регистрация иконки в трее через
@@ -772,14 +775,14 @@ public partial class MainWindow : FluentWindow
         // WindowBackdropType=None (без Mica/Acrylic DWM не держит backbuffer), Left/Top за
         // пределами всех мониторов, WindowState=Minimized (не мелькает и в панели задач),
         // ShowActivated=false (не ворует фокус), Opacity=0 — последняя страховка. После Hide()
-        // всё возвращается ровно в то, что было.
-        if (!IsLoaded)
+        // возвращается всё, кроме WindowState. Видимому старту эта уловка не нужна: окно и так
+        // сразу показывается по-настоящему.
+        if (!IsLoaded && startsHidden)
         {
             double originalLeft = Left;
             double originalTop = Top;
             double originalOpacity = Opacity;
             WindowStartupLocation originalStartupLocation = WindowStartupLocation;
-            WindowState originalWindowState = WindowState;
             bool originalShowActivated = ShowActivated;
             Wpf.Ui.Controls.WindowBackdropType originalBackdrop = WindowBackdropType;
 
@@ -799,12 +802,13 @@ public partial class MainWindow : FluentWindow
             Left = originalLeft;
             Top = originalTop;
             WindowStartupLocation = originalStartupLocation;
-            WindowState = originalWindowState;
+            // WindowState остаётся Minimized: у скрытого окна WPF не меняет состояние HWND, и Normal
+            // оставил бы его свёрнутым — Show() не вывел бы окно. Разворачивает WindowState = Normal.
             ShowActivated = originalShowActivated;
             WindowBackdropType = originalBackdrop;
         }
 
-        RestorePlayerViewMode();
+        RestorePlayerViewMode(startupMode, legacyPlaylistVisible);
 
         if (_settings.StartHiddenInTray)
         {
@@ -892,16 +896,10 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Восстанавливает режим отображения плеера, в котором он был на момент прошлого
-    // закрытия: скрытую панель плейлиста и/или сам режим мини-плеера. Вызывается из
-    // StartupPresent (см. выше) — уже после того, как EnsureHandle() создал HWND, но ДО
-    // того, как окно вообще может стать видимым пользователю: сам StartupPresent решает,
-    // вызывать ли Show(), уже ПОСЛЕ этого метода. Поэтому если стартовый вид — мини-режим,
-    // окно ни разу не успевает появиться на экране в каком-либо виде.
-    private void RestorePlayerViewMode()
+    private PlayerViewMode ResolveStartupViewMode(out bool? legacyPlaylistVisible)
     {
         PlayerViewMode startupMode;
-        bool? legacyPlaylistVisible = null;
+        legacyPlaylistVisible = null;
 
         if (_settings.PlayerViewMode == nameof(PlayerViewMode.Square))
             startupMode = PlayerViewMode.Square;
@@ -925,6 +923,17 @@ public partial class MainWindow : FluentWindow
             legacyPlaylistVisible = _settings.IsPlaylistVisible;
         }
 
+        return startupMode;
+    }
+
+    // Восстанавливает режим отображения плеера, в котором он был на момент прошлого
+    // закрытия: скрытую панель плейлиста и/или сам режим мини-плеера. Вызывается из
+    // StartupPresent (см. выше) — уже после того, как EnsureHandle() создал HWND, но ДО
+    // того, как окно вообще может стать видимым пользователю: сам StartupPresent решает,
+    // вызывать ли Show(), уже ПОСЛЕ этого метода. Поэтому если стартовый вид — мини-режим,
+    // окно ни разу не успевает появиться на экране в каком-либо виде.
+    private void RestorePlayerViewMode(PlayerViewMode startupMode, bool? legacyPlaylistVisible)
+    {
         if (startupMode == PlayerViewMode.Mini)
         {
             // Сначала приводим "скрытое под мини-плеером" окно к прямоугольному виду (так
