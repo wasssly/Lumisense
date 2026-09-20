@@ -13,4 +13,10 @@ public sealed class AppSettingsDefaultsTests
         Assert.True(settings.RememberVolume);
         Assert.Equal(0.15, settings.SavedVolume, precision: 3);
     }
+
+    [Fact]
+    public void NewProfile_UsesDefaultMiniPlayerArtworkProgressThickness()
+    {
+        Assert.Equal(2.5, new AppSettings().MiniPlayerArtworkProgressThickness, precision: 3);
+    }
 }

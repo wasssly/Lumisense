@@ -1367,7 +1367,7 @@ public partial class MiniPlayerWindow : Window
     {
         // Контур должен иметь центр линии ровно на границе обложки.
         // Поэтому при толщине 4 px: 2 px находятся внутри, 2 px снаружи.
-        double thickness = Math.Clamp(_mainWindow.Settings.MiniPlayerArtworkProgressThickness, 1.0, 4.0);
+        double thickness = Math.Clamp(_mainWindow.Settings.MiniPlayerArtworkProgressThickness, 2.0, 4.0);
         const double artworkSize = 42.0;
         const double canvasSize = 50.0;
 

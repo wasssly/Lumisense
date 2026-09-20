@@ -198,7 +198,8 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     }
 
     [Theory]
-    [InlineData(0.25, 1.0)]
+    [InlineData(0.25, 2.0)]
+    [InlineData(1.5, 2.0)]
     [InlineData(5.0, 4.0)]
     [InlineData(2.5, 2.5)]
     public void TryLoad_MiniArtworkProgressThickness_IsClampedToSafeRange(double input, double expected)

@@ -1921,7 +1921,7 @@
                                      поэтому отметки совпадают с достижимыми позициями по всему диапазону. -->
                                 <Grid Height="28" Margin="0,0,0,0">
                                     <Slider x:Name="MiniArtworkProgressThicknessSlider" Style="{StaticResource SettingsAccentSliderStyle}"
-                                            Minimum="1" Maximum="4" TickFrequency="0.5" SmallChange="0.5" LargeChange="0.5"
+                                            Minimum="2" Maximum="4" TickFrequency="0.5" SmallChange="0.5" LargeChange="0.5"
                                             local:SliderMilestoneMarkers.IsEnabled="True"
                                             IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                             ValueChanged="MiniArtworkProgressThicknessSlider_ValueChanged" />
