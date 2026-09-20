@@ -40,6 +40,50 @@
         <SolidColorBrush x:Key="ControlStrongFillColorDefaultBrush" Color="#4DFFFFFF" />
         <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush" Color="#26FFFFFF" />
 
+        <!-- Поле ручного ввода процента прозрачности (см. MiniOpacityContextValueEditor) — не
+             обычный ui:TextBox: тот рисует свою рамку/иконку/крестик очистки, которые в узкой
+             ячейке 44px просто не помещаются и перекрывают введённое число. Здесь минимальный
+             шаблон обычного TextBox без этих элементов. -->
+        <Style x:Key="MiniOpacityInlineEditorStyle" TargetType="TextBox">
+            <Setter Property="Width" Value="44" />
+            <Setter Property="Height" Value="22" />
+            <Setter Property="Padding" Value="2,0" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="CaretBrush" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="SelectionBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Right" />
+            <Setter Property="VerticalContentAlignment" Value="Center" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="TextBox">
+                        <Border x:Name="Root" CornerRadius="4"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                SnapsToDevicePixels="True">
+                            <ScrollViewer x:Name="PART_ContentHost"
+                                          Margin="{TemplateBinding Padding}"
+                                          HorizontalScrollBarVisibility="Hidden"
+                                          VerticalScrollBarVisibility="Hidden"
+                                          Focusable="False"
+                                          HorizontalAlignment="Stretch"
+                                          VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Root" Property="BorderBrush"
+                                        Value="{DynamicResource AccentFillColorDefaultBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Индикатор громкости (см. VolumeIndicator ниже): плавно появляется и, спустя
              паузу, сам плавно исчезает. Запускается заново с нуля при каждом изменении
              громкости — см. ShowVolumeIndicator() в code-behind, которая останавливает
@@ -101,7 +145,8 @@
              показом MiniPlayerContextMenu_Opened подставляет актуальные значения, поэтому
              галочки, иконки и ползунки не расходятся с реальным состоянием приложения. -->
         <Border.ContextMenu>
-            <ContextMenu x:Name="MiniPlayerContextMenu" Opened="MiniPlayerContextMenu_Opened">
+            <ContextMenu x:Name="MiniPlayerContextMenu" Opened="MiniPlayerContextMenu_Opened"
+                         Closed="MiniPlayerContextMenu_Closed">
                 <ContextMenu.Resources>
                     <local:MiniPlayerContextMenuActionVisibilityConverter x:Key="MiniPlayerContextMenuActionVisibilityConverter" />
                     <local:MiniPlayerContextMenuGroupVisibilityConverter x:Key="MiniPlayerContextMenuGroupVisibilityConverter" />
@@ -380,10 +425,24 @@
                             <Border Grid.Column="1" Background="Transparent" Height="24" VerticalAlignment="Center"
                                     MouseLeftButtonDown="MiniOpacityContextOverlay_MouseLeftButtonDown"
                                     MouseMove="MiniOpacityContextOverlay_MouseMove"
-                                    MouseLeftButtonUp="MiniOpacityContextOverlay_MouseLeftButtonUp" />
+                                    MouseLeftButtonUp="MiniOpacityContextOverlay_MouseLeftButtonUp"
+                                    MouseWheel="MiniOpacityContextOverlay_MouseWheel" />
 
-                            <TextBlock x:Name="MiniOpacityContextValueText" Grid.Column="2" Text="100%"
-                                       Width="34" VerticalAlignment="Center" Margin="8,0,0,0" />
+                            <!-- Клик по числу переключает его на TextBox для ручного ввода точного
+                                 значения (см. BeginOpacityValueEdit в code-behind) — до этого
+                                 значение можно было выставить только "на глаз" слайдером. -->
+                            <Grid Grid.Column="2" Width="44" Margin="8,0,0,0" VerticalAlignment="Center">
+                                <TextBlock x:Name="MiniOpacityContextValueText" Text="100%"
+                                           HorizontalAlignment="Right" VerticalAlignment="Center"
+                                           Background="Transparent" Cursor="IBeam"
+                                           MouseLeftButtonDown="MiniOpacityContextValueText_MouseLeftButtonDown"
+                                           ToolTip="Нажмите, чтобы ввести значение с клавиатуры" />
+                                <TextBox x:Name="MiniOpacityContextValueEditor"
+                                         Style="{StaticResource MiniOpacityInlineEditorStyle}"
+                                         Visibility="Collapsed"
+                                         PreviewKeyDown="MiniOpacityContextValueEditor_PreviewKeyDown"
+                                         LostKeyboardFocus="MiniOpacityContextValueEditor_LostKeyboardFocus" />
+                            </Grid>
                         </Grid>
                     </MenuItem.Header>
                 </MenuItem>

@@ -79,6 +79,10 @@ public partial class MiniPlayerWindow : Window
     private DispatcherTimer? _volumeOverlayRestoreTimer;
     private bool _volumeOverlaySuppressedControls;
 
+    // true, пока MiniOpacityContextValueEditor показан вместо MiniOpacityContextValueText
+    // (см. BeginOpacityValueEdit) — гвардит слайдер/фокус от вмешательства во время ввода.
+    private bool _isEditingOpacityValue;
+
     public MiniPlayerWindow(MainWindow mainWindow)
     {
         InitializeComponent();
@@ -571,7 +575,8 @@ public partial class MiniPlayerWindow : Window
         if (RootBorder.IsMouseOver)
         {
             ControlsPanel.Visibility = Visibility.Visible;
-            HeaderPanel.Visibility = Visibility.Collapsed;
+            HeaderPanel.Visibility = Visibility.Hidden;
+            HeaderPanel.IsHitTestVisible = false;
         }
     }
 
@@ -771,6 +776,10 @@ public partial class MiniPlayerWindow : Window
 
     private void MiniPlayerContextMenu_Opened(object sender, RoutedEventArgs e)
     {
+        // На случай, если меню открывается заново, пока предыдущее редактирование почему-то не
+        // закрылось штатно (см. MiniPlayerContextMenu_Closed) — начинаем с чистого состояния.
+        CancelOpacityValueEdit();
+
         ApplyContextMenuAccent();
         SyncContextMenuToggleStates();
 
@@ -798,6 +807,14 @@ public partial class MiniPlayerWindow : Window
         {
             _isSyncingPlaybackContextSliders = false;
         }
+    }
+
+    // Меню закрылось (клик мимо, выбор пункта, Escape и т.п.) — если пользователь что-то
+    // редактировал, коммитим. До этого момента TextBox держит фокус, и никакое движение мыши
+    // по другим пунктам меню его не сбивает (см. MiniOpacityContextValueEditor_LostKeyboardFocus).
+    private void MiniPlayerContextMenu_Closed(object sender, RoutedEventArgs e)
+    {
+        if (_isEditingOpacityValue) CommitOpacityValueEdit();
     }
 
     // Popup-контекст WPF образует отдельное дерево ресурсов. Локальный toggle в меню получает
@@ -1072,6 +1089,15 @@ public partial class MiniPlayerWindow : Window
         _isDraggingOpacityOverlay = false;
     }
 
+    private void MiniOpacityContextOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        MiniOpacityContextSlider.Value = Math.Clamp(
+            MiniOpacityContextSlider.Value + Math.Sign(e.Delta) * 0.05,
+            MiniOpacityContextSlider.Minimum,
+            MiniOpacityContextSlider.Maximum);
+        e.Handled = true;
+    }
+
     private void UpdateOpacitySliderFromMouse(double positionX, double width)
     {
         if (width <= 0) return;
@@ -1092,8 +1118,124 @@ public partial class MiniPlayerWindow : Window
         if (_mainWindow == null) return;
         if (_isSyncingOpacitySlider) return;
 
-        MiniOpacityContextValueText.Text = $"{(int)Math.Round(e.NewValue * 100)}%";
+        if (!_isEditingOpacityValue)
+            MiniOpacityContextValueText.Text = $"{(int)Math.Round(e.NewValue * 100)}%";
         _mainWindow.SetMiniPlayerOpacity(e.NewValue);
+    }
+
+    // ---------- Редактирование числа прозрачности с клавиатуры ----------
+
+    private void MiniOpacityContextValueText_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (_isEditingOpacityValue)
+        {
+            e.Handled = true;
+            return;
+        }
+
+        BeginOpacityValueEdit();
+        e.Handled = true;
+    }
+
+    private void BeginOpacityValueEdit()
+    {
+        _isEditingOpacityValue = true;
+
+        int percent = (int)Math.Round(MiniOpacityContextSlider.Value * 100);
+        MiniOpacityContextValueEditor.Text = percent.ToString();
+        MiniOpacityContextValueText.Visibility = Visibility.Collapsed;
+        MiniOpacityContextValueEditor.Visibility = Visibility.Visible;
+
+        MiniOpacityContextValueEditor.Focus();
+        Keyboard.Focus(MiniOpacityContextValueEditor);
+        MiniOpacityContextValueEditor.SelectAll();
+    }
+
+    private void MiniOpacityContextValueEditor_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            CommitOpacityValueEdit();
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            CancelOpacityValueEdit();
+            e.Handled = true;
+        }
+    }
+
+    // WPF у MenuItem при наведении мыши штатно забирает фокус (для клавиатурной навигации,
+    // без переписывания шаблона это не отключить) — коммитить в этот момент нельзя, пользователь
+    // ещё ничего не ввёл. Возвращаем фокус на TextBox через Dispatcher (внутри самого
+    // LostKeyboardFocus смена "в полёте" игнорируется). Настоящий коммит — только по Enter,
+    // Escape или закрытии меню (см. MiniPlayerContextMenu_Closed).
+    private void MiniOpacityContextValueEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        if (!_isEditingOpacityValue) return;
+
+        if (e.NewFocus is not DependencyObject newFocus || !IsInsideContextMenu(newFocus))
+        {
+            CommitOpacityValueEdit();
+            return;
+        }
+
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            if (_isEditingOpacityValue && MiniOpacityContextValueEditor.IsVisible)
+            {
+                MiniOpacityContextValueEditor.Focus();
+                Keyboard.Focus(MiniOpacityContextValueEditor);
+            }
+        }), DispatcherPriority.Input);
+    }
+
+    // ContextMenu живёт в отдельном Popup-дереве — идём вверх по Visual/Logical-цепочке, пока не
+    // найдём его или не упрёмся в корень.
+    private bool IsInsideContextMenu(DependencyObject element)
+    {
+        DependencyObject? current = element;
+        while (current is not null)
+        {
+            if (ReferenceEquals(current, MiniPlayerContextMenu)) return true;
+            if (current is ContextMenu) return false;
+
+            current = current switch
+            {
+                Visual or System.Windows.Media.Media3D.Visual3D => VisualTreeHelper.GetParent(current),
+                _ => LogicalTreeHelper.GetParent(current)
+            };
+        }
+
+        return false;
+    }
+
+    private void CommitOpacityValueEdit()
+    {
+        if (!_isEditingOpacityValue) return;
+        _isEditingOpacityValue = false;
+
+        double sliderValue = MiniOpacityContextSlider.Value;
+        string text = MiniOpacityContextValueEditor.Text?.Trim() ?? string.Empty;
+        if (text.Length > 0 && int.TryParse(text, out int percent))
+        {
+            sliderValue = Math.Clamp(percent / 100.0, MiniOpacityContextSlider.Minimum, MiniOpacityContextSlider.Maximum);
+            MiniOpacityContextSlider.Value = sliderValue;
+        }
+
+        MiniOpacityContextValueText.Text = $"{(int)Math.Round(sliderValue * 100)}%";
+        MiniOpacityContextValueEditor.Visibility = Visibility.Collapsed;
+        MiniOpacityContextValueText.Visibility = Visibility.Visible;
+    }
+
+    private void CancelOpacityValueEdit()
+    {
+        if (!_isEditingOpacityValue) return;
+        _isEditingOpacityValue = false;
+
+        MiniOpacityContextValueText.Text = $"{(int)Math.Round(MiniOpacityContextSlider.Value * 100)}%";
+        MiniOpacityContextValueEditor.Visibility = Visibility.Collapsed;
+        MiniOpacityContextValueText.Visibility = Visibility.Visible;
     }
 
     private void Header_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -1144,12 +1286,16 @@ public partial class MiniPlayerWindow : Window
     // место занимают кнопки, без роста окна. В режиме Below верхний отступ уменьшен,
     // чтобы кнопки были ближе к информации о треке.
     private static readonly Thickness ControlsPanelMarginBelow = new(0, 2, 0, 10);
-    private static readonly Thickness ControlsPanelMarginOverlay = new(0, 12, 0, 6);
+    // Не readonly: пересчитывается в UpdateControlsPanelOverlayMargin (см. там) каждый раз,
+    // когда меняется отступ HeaderPanel, — начальное значение здесь просто безопасный дефолт
+    // до первого вызова.
+    private Thickness ControlsPanelMarginOverlay = new(0, 8, 0, 0);
 
     public void ApplyButtonsLayoutMode()
     {
         _buttonsOverlayMode = _mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay";
 
+        UpdateControlsPanelOverlayMargin();
         Grid.SetRow(ControlsPanel, _buttonsOverlayMode ? 0 : 2);
         ControlsPanel.Margin = _buttonsOverlayMode ? ControlsPanelMarginOverlay : ControlsPanelMarginBelow;
 
@@ -1163,6 +1309,7 @@ public partial class MiniPlayerWindow : Window
         _volumeOverlayRestoreTimer = null;
         _volumeOverlaySuppressedControls = false;
         HeaderPanel.Visibility = Visibility.Visible;
+        HeaderPanel.IsHitTestVisible = true;
         ControlsPanel.Visibility = Visibility.Collapsed;
         Height = MeasureContentHeight();
     }
@@ -1183,8 +1330,22 @@ public partial class MiniPlayerWindow : Window
         // а не заметно больше сверху, чем снизу.
         HeaderPanel.Margin = new Thickness(HeaderHorizontalMargin, HeaderTopMargin, HeaderHorizontalMargin,
             _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress);
+        UpdateControlsPanelOverlayMargin();
 
         Height = MeasureContentHeight();
+    }
+
+    // В Overlay-режиме (см. ApplyButtonsLayoutMode) ControlsPanel делит Row 0 с HeaderPanel —
+    // без компенсации кнопки центрировались бы по высоте самого ControlsPanel, а не по факту
+    // занимаемого HeaderPanel места, и съезжали бы при переключении видимости полосы прогресса
+    // (её отсутствие меняет нижний отступ HeaderPanel, а вместе с ним и высоту всей строки).
+    // top − bottom здесь — не сама высота HeaderPanel, а именно та асимметрия отступов, которую
+    // нужно скомпенсировать, чтобы центр ControlsPanel остался на месте центра обложки.
+    private void UpdateControlsPanelOverlayMargin()
+    {
+        double headerBottom = _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress;
+        ControlsPanelMarginOverlay = new Thickness(0, HeaderTopMargin - headerBottom, 0, 0);
+        if (_buttonsOverlayMode) ControlsPanel.Margin = ControlsPanelMarginOverlay;
     }
 
     // Показывает/скрывает тонкий акцентный контур вокруг обложки. В отличие от обычной
@@ -1376,9 +1537,19 @@ public partial class MiniPlayerWindow : Window
         ControlsPanel.Visibility = Visibility.Visible;
 
         if (_buttonsOverlayMode)
-            HeaderPanel.Visibility = Visibility.Collapsed;
+        {
+            // Hidden, а не Collapsed: Collapsed убирает HeaderPanel из расчёта высоты Row 0
+            // (Grid Auto-строка), и она схлопывается до высоты одного ControlsPanel — тот
+            // "прилипал" к верхнему краю окна вместо центра. Hidden сохраняет место в layout,
+            // не рисуя содержимое; IsHitTestVisible=false — чтобы невидимый HeaderPanel не
+            // перехватывал клики у ControlsPanel, который делит с ним ту же строку.
+            HeaderPanel.Visibility = Visibility.Hidden;
+            HeaderPanel.IsHitTestVisible = false;
+        }
         else
+        {
             Height = MeasureContentHeight();
+        }
     }
 
     private void RootBorder_MouseLeave(object sender, MouseEventArgs e)
@@ -1386,9 +1557,14 @@ public partial class MiniPlayerWindow : Window
         ControlsPanel.Visibility = Visibility.Collapsed;
 
         if (_buttonsOverlayMode)
+        {
             HeaderPanel.Visibility = Visibility.Visible;
+            HeaderPanel.IsHitTestVisible = true;
+        }
         else
+        {
             Height = MeasureContentHeight();
+        }
     }
 
     // Прокрутка колесом мыши в любом месте мини-плеера крутит громкость — тот же шаг
