@@ -482,8 +482,18 @@ public class AppSettings
 
     // Идентификаторы скрытых пунктов контекстного меню мини-плеера (см.
     // MiniPlayerContextMenuActions). В отличие от меню трека тут можно отключить и
-    // "Настройки" — та же страница доступна из основного окна и трея.
-    public List<string> DisabledMiniPlayerContextMenuActions { get; set; } = new();
+    // "Настройки" — та же страница доступна из основного окна и трея. Пустой список — всё меню.
+    public List<string> DisabledMiniPlayerContextMenuActions { get; set; } = new()
+    {
+        MiniPlayerContextMenuActions.NowPlaying,
+        MiniPlayerContextMenuActions.OverlayCompatibility,
+        MiniPlayerContextMenuActions.Opacity,
+        MiniPlayerContextMenuActions.SnapToEdges,
+        MiniPlayerContextMenuActions.ShowProgress,
+        MiniPlayerContextMenuActions.ShowArtworkProgress,
+        MiniPlayerContextMenuActions.ArtworkStyle,
+        MiniPlayerContextMenuActions.ButtonsLayout
+    };
 
     // Именованные наборы значений эквалайзера, сохранённые пользователем — переключаются
     // и, при необходимости, экспортируются/импортируются как отдельный .json-файл (см.

@@ -217,6 +217,37 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     }
 
     [Fact]
+    public void TryLoad_MiniPlayerMenuActions_KeepsSavedEmptyListAsFullMenu()
+    {
+        string json = JsonSerializer.Serialize(new
+        {
+            SettingsSchemaVersion = AppSettings.CurrentSettingsSchemaVersion,
+            DisabledMiniPlayerContextMenuActions = Array.Empty<string>()
+        });
+
+        bool result = TryLoad(json, out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Empty(settings!.DisabledMiniPlayerContextMenuActions);
+    }
+
+    [Fact]
+    public void TryLoad_MiniPlayerMenuActions_UsesDefaultsWhenSettingIsAbsent()
+    {
+        string json = JsonSerializer.Serialize(new
+        {
+            SettingsSchemaVersion = AppSettings.CurrentSettingsSchemaVersion
+        });
+
+        bool result = TryLoad(json, out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(
+            new AppSettings().DisabledMiniPlayerContextMenuActions,
+            settings!.DisabledMiniPlayerContextMenuActions);
+    }
+
+    [Fact]
     public void TryLoad_LegacySchemaWithoutVersion_UsesNeutralInterfaceScale()
     {
         bool result = TryLoad("{\"InterfaceScale\": 1.35}", out AppSettings? settings, out _);
