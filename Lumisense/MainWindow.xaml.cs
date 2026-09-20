@@ -764,15 +764,44 @@ public partial class MainWindow : FluentWindow
         // Window.IsLoaded зависит успешная регистрация иконки в трее через
         // TrayIconManager/NotifyIconService: при старте сразу в мини-режиме MainWindow.Hide()
         // вызывается ниже без единого настоящего Show(), IsLoaded остаётся false навсегда, и
-        // Register() внутри EnterMiniMode() молча проваливается. Opacity=0 перед быстрым
-        // Show()+Hide() не даёт увидеть даже случайный кадр отрисовки.
+        // Register() внутри EnterMiniMode() молча проваливается.
+        //
+        // Одного Opacity=0 перед Show()+Hide() оказалось недостаточно: DWM успевал запустить
+        // композицию Mica-подложки и отрисовать первый кадр ещё до Hide() — пользователь видел
+        // мгновенное мелькание окна. Меры ниже не дают DWM вообще начать эту композицию:
+        // WindowBackdropType=None (без Mica/Acrylic DWM не держит backbuffer), Left/Top за
+        // пределами всех мониторов, WindowState=Minimized (не мелькает и в панели задач),
+        // ShowActivated=false (не ворует фокус), Opacity=0 — последняя страховка. После Hide()
+        // всё возвращается ровно в то, что было.
         if (!IsLoaded)
         {
+            double originalLeft = Left;
+            double originalTop = Top;
             double originalOpacity = Opacity;
+            WindowStartupLocation originalStartupLocation = WindowStartupLocation;
+            WindowState originalWindowState = WindowState;
+            bool originalShowActivated = ShowActivated;
+            Wpf.Ui.Controls.WindowBackdropType originalBackdrop = WindowBackdropType;
+
+            // WindowStartupLocation=Manual обязателен до Left/Top: иначе CenterScreen из XAML
+            // перецентрует окно при Show(), проигнорировав координаты ниже.
+            WindowStartupLocation = WindowStartupLocation.Manual;
+            Left = -32000;
+            Top = -32000;
             Opacity = 0;
+            ShowActivated = false;
+            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
+            WindowState = WindowState.Minimized;
             Show();
             Hide();
+
             Opacity = originalOpacity;
+            Left = originalLeft;
+            Top = originalTop;
+            WindowStartupLocation = originalStartupLocation;
+            WindowState = originalWindowState;
+            ShowActivated = originalShowActivated;
+            WindowBackdropType = originalBackdrop;
         }
 
         RestorePlayerViewMode();
