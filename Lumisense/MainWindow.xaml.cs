@@ -1467,13 +1467,27 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Чёрный или белый по яркости акцента (упрощённая формула WCAG без гамма-коррекции); порог 0.6, а не 0.5, чтобы яркие
-    // пограничные акценты (жёлтый/оранжевый) склонялись к тёмному, а не оставляли трудночитаемый белый.
+    // Выбираем по реальному WCAG contrast ratio: яркость BT.601 с порогом расходится с фактическим контрастом
+    // на насыщенных жёлтых/оранжевых акцентах.
     private static Color GetAccentContrastColor(Color accent)
     {
-        double luminance = (0.299 * accent.R + 0.587 * accent.G + 0.114 * accent.B) / 255.0;
-        return luminance > 0.6 ? Colors.Black : Colors.White;
+        double luminance = RelativeLuminance(accent);
+        double contrastWithWhite = 1.05 / (luminance + 0.05);
+        double contrastWithBlack = (luminance + 0.05) / 0.05;
+        return contrastWithBlack >= contrastWithWhite ? Colors.Black : Colors.White;
     }
+
+    // WCAG 2.x relative luminance: https://www.w3.org/TR/WCAG21/#dfn-relative-luminance
+    private static double RelativeLuminance(Color color)
+    {
+        double r = ToLinearChannel(color.R / 255.0);
+        double g = ToLinearChannel(color.G / 255.0);
+        double b = ToLinearChannel(color.B / 255.0);
+        return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+    }
+
+    private static double ToLinearChannel(double sRgbChannel) =>
+        sRgbChannel <= 0.03928 ? sRgbChannel / 12.92 : Math.Pow((sRgbChannel + 0.055) / 1.055, 2.4);
 
     // IconResources.AccentContrastBrush задаёт цвет лишь для новых иконок (IconResources.SetOnAccent): уже показанные на
     // акцентных кнопках иконки (Пуск/Пауза, включённые Шаффл/Повтор) переприсваиваем явно после пересчёта кисти.
