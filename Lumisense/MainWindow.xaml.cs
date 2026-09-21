@@ -4667,7 +4667,10 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    private async void PlayPauseButton_Click(object sender, RoutedEventArgs e)
+    private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
+        => FireAndForget(TogglePlaybackAsync(), nameof(TogglePlaybackAsync));
+
+    private async Task TogglePlaybackAsync()
     {
         // Признак готового источника — _audioFile, а не _outputDevice: WasapiPlayer создаётся для текущего источника и
         // освобождается при StopPlayback, так что наличие output ничего не значит.
@@ -4695,70 +4698,9 @@ public partial class MainWindow : FluentWindow
         {
             audioLease = await _audioPlaybackCoordinator.EnterExclusiveAsync(_lifetimeCts.Token);
             if (_isPlaying)
-            {
-                IWavePlayer? output = _outputDevice;
-                FadeInOutSampleProvider? fade = _activeFade;
-                if (fade is not null)
-                {
-                    fade.BeginFadeOut(PlayPauseFadeMilliseconds);
-                    // Даём audio-thread записать нулевой хвост до Pause. Ожидание короче
-                    // обычной человеческой реакции и не меняет позицию трека.
-                    await Task.Delay(PlayPauseFadeMilliseconds + PlayPauseFadeSafetyMilliseconds);
-                }
-
-                if (!ReferenceEquals(output, _outputDevice) || !_isPlaying) return;
-
-                try
-                {
-                    output?.Pause();
-                }
-                catch (Exception ex)
-                {
-                    // Устройство могло исчезнуть во время работы (отключили наушники, упал драйвер): не выдаём «На паузе» за факт,
-                    // оставляем состояние воспроизведения и показываем ошибку с подсказкой в индикаторе трека.
-                    RecoverOutputDeviceAfterFailure(ex, resumePlayback: true);
-                    return;
-                }
-
-                _isPlaying = false;
-                PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
-                // UI-таймер оставляем активным во время паузы: он продолжает подтверждать
-                // текущую позицию и не оставляет устаревшее время до следующего Play.
-                FlushPlaybackClock();
-                _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
-                RaisePlaybackStateChanged(false);
-                SetTrackUserState(TrackUserState.Paused);
-
-                // На паузе часто и надолго оставляют трек, не закрывая плеер вовсе — сохраняем
-                // позицию сразу же, а не ждём следующего реального закрытия (см. PersistPlaybackAndPlaylistState).
-                PersistPlaybackAndPlaylistState();
-            }
+                await PausePlaybackAsync();
             else
-            {
-                IWavePlayer? output = _outputDevice;
-                FadeInOutSampleProvider? fade = _activeFade;
-                fade?.BeginFadeIn(PlayPauseFadeMilliseconds);
-
-                try
-                {
-                    output?.Play();
-                }
-                catch (Exception ex)
-                {
-                    // См. комментарий у Pause() выше — та же защита от падения из-за проблем с
-                    // самим устройством вывода, а не с плеером как таковым.
-                    RecoverOutputDeviceAfterFailure(ex, resumePlayback: true);
-                    return;
-                }
-
-                _isPlaying = true;
-                PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
-                _progressTimer.Start();
-                _playbackClock.Start();
-                _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
-                RaisePlaybackStateChanged(true);
-                SetTrackUserState(TrackUserState.Playing);
-            }
+                ResumePlayback();
         }
         catch (OperationCanceledException)
         {
@@ -4771,9 +4713,76 @@ public partial class MainWindow : FluentWindow
             if (_playPausePendingToggle)
             {
                 _playPausePendingToggle = false;
-                await Dispatcher.InvokeAsync(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
+                await Dispatcher.InvokeAsync(
+                    () => FireAndForget(TogglePlaybackAsync(), nameof(TogglePlaybackAsync)));
             }
         }
+    }
+
+    private async Task PausePlaybackAsync()
+    {
+        IWavePlayer? output = _outputDevice;
+        FadeInOutSampleProvider? fade = _activeFade;
+        if (fade is not null)
+        {
+            fade.BeginFadeOut(PlayPauseFadeMilliseconds);
+            // Даём audio-thread записать нулевой хвост до Pause. Ожидание короче
+            // обычной человеческой реакции и не меняет позицию трека.
+            await Task.Delay(PlayPauseFadeMilliseconds + PlayPauseFadeSafetyMilliseconds);
+        }
+
+        if (!ReferenceEquals(output, _outputDevice) || !_isPlaying) return;
+
+        try
+        {
+            output?.Pause();
+        }
+        catch (Exception ex)
+        {
+            // Устройство могло исчезнуть во время работы (отключили наушники, упал драйвер): не выдаём «На паузе» за факт,
+            // оставляем состояние воспроизведения и показываем ошибку с подсказкой в индикаторе трека.
+            RecoverOutputDeviceAfterFailure(ex, resumePlayback: true);
+            return;
+        }
+
+        _isPlaying = false;
+        PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
+        // UI-таймер оставляем активным во время паузы: он продолжает подтверждать
+        // текущую позицию и не оставляет устаревшее время до следующего Play.
+        FlushPlaybackClock();
+        _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
+        RaisePlaybackStateChanged(false);
+        SetTrackUserState(TrackUserState.Paused);
+
+        // На паузе часто и надолго оставляют трек, не закрывая плеер вовсе — сохраняем
+        // позицию сразу же, а не ждём следующего реального закрытия (см. PersistPlaybackAndPlaylistState).
+        PersistPlaybackAndPlaylistState();
+    }
+
+    private void ResumePlayback()
+    {
+        IWavePlayer? output = _outputDevice;
+        _activeFade?.BeginFadeIn(PlayPauseFadeMilliseconds);
+
+        try
+        {
+            output?.Play();
+        }
+        catch (Exception ex)
+        {
+            // См. комментарий у Pause() выше — та же защита от падения из-за проблем с
+            // самим устройством вывода, а не с плеером как таковым.
+            RecoverOutputDeviceAfterFailure(ex, resumePlayback: true);
+            return;
+        }
+
+        _isPlaying = true;
+        PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
+        _progressTimer.Start();
+        _playbackClock.Start();
+        _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
+        RaisePlaybackStateChanged(true);
+        SetTrackUserState(TrackUserState.Playing);
     }
 
     private void StopButton_Click(object sender, RoutedEventArgs e) => StopPlayback();
