@@ -121,9 +121,10 @@ public partial class MainWindow : FluentWindow
     private int _albumArtTransitionGeneration;
 
     // Waveform-полоса (AppSettings.ProgressBarStyle): кэш пиков по пути — пересчитывать волну при повторной загрузке трека
-    // незачем; ограничен WaveformCacheLimit и живёт только в сессии.
+    // незачем; ограничен WaveformCacheLimit (LRU) и живёт только в сессии.
     private readonly Dictionary<string, float[]> _waveformCache = new();
-    private readonly Queue<string> _waveformCacheOrder = new();
+    private readonly Dictionary<string, LinkedListNode<string>> _waveformCacheNodes = new();
+    private readonly LinkedList<string> _waveformCacheOrder = new();
     private const int WaveformCacheLimit = 40;
 
     // Главная обложка 150 DIP, мини-плеер и уведомления меньше: ограничиваем декодирование UI-копии, чтобы огромные
@@ -1254,6 +1255,7 @@ public partial class MainWindow : FluentWindow
         if (_waveformCache.TryGetValue(filePath, out var cached))
         {
             ProgressWaveform.Peaks = cached;
+            TouchWaveformCache(filePath);
             return;
         }
 
@@ -1273,9 +1275,14 @@ public partial class MainWindow : FluentWindow
             if (peaks != null)
             {
                 _waveformCache[filePath] = peaks;
-                _waveformCacheOrder.Enqueue(filePath);
+                TouchWaveformCache(filePath);
                 while (_waveformCacheOrder.Count > WaveformCacheLimit)
-                    _waveformCache.Remove(_waveformCacheOrder.Dequeue());
+                {
+                    string evicted = _waveformCacheOrder.First!.Value;
+                    _waveformCacheOrder.RemoveFirst();
+                    _waveformCacheNodes.Remove(evicted);
+                    _waveformCache.Remove(evicted);
+                }
             }
             ProgressWaveform.Peaks = peaks;
         }
@@ -1292,6 +1299,15 @@ public partial class MainWindow : FluentWindow
             if (ReferenceEquals(_waveformCts, cts)) _waveformCts = null;
             cts.Dispose();
         }
+    }
+
+    // Вызывается и при cache hit, иначе часто переслушиваемый трек вытеснялся бы как в FIFO.
+    private void TouchWaveformCache(string filePath)
+    {
+        if (_waveformCacheNodes.TryGetValue(filePath, out var node))
+            _waveformCacheOrder.Remove(node);
+
+        _waveformCacheNodes[filePath] = _waveformCacheOrder.AddLast(filePath);
     }
 
 
