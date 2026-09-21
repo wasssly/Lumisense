@@ -455,6 +455,9 @@ public partial class MainWindow : FluentWindow
     private string? _currentAlbumArtMimeType;
     private AlbumArtPictureKind? _currentAlbumArtPictureType;
 
+    // Пути Windows нечувствительны к регистру: один и тот же файл из разных плейлистов мог не опознаться как текущий трек.
+    private static bool PathEquals(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
+
     // Оборачивает fire-and-forget async-вызовы логированием исключения сразу: TaskScheduler.UnobservedTaskException
     // (App.xaml.cs) сработает лишь после сборки мусора, а иногда и вовсе не успеет до закрытия процесса.
     private static async void FireAndForget(Task task, string operationName)
@@ -1265,7 +1268,7 @@ public partial class MainWindow : FluentWindow
             cts.Token.ThrowIfCancellationRequested();
 
             // Защита от устаревшего результата даже при изменении pipeline в будущем.
-            if (_currentTrackPath != filePath || !ReferenceEquals(_waveformCts, cts)) return;
+            if (!PathEquals(_currentTrackPath, filePath) || !ReferenceEquals(_waveformCts, cts)) return;
 
             if (peaks != null)
             {
@@ -3881,7 +3884,7 @@ public partial class MainWindow : FluentWindow
         var tagsWindow = new TrackTagsWindow(filePath, this) { Owner = this };
         tagsWindow.ShowDialog();
 
-        if (tagsWindow.Saved && filePath == _currentTrackPath)
+        if (tagsWindow.Saved && PathEquals(filePath, _currentTrackPath))
         {
             LoadAlbumArt(filePath);
             _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
@@ -3971,7 +3974,7 @@ public partial class MainWindow : FluentWindow
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
-        bool isCurrentlyLoaded = filePath == _currentTrackPath && _audioFile != null;
+        bool isCurrentlyLoaded = PathEquals(filePath, _currentTrackPath) && _audioFile != null;
         string? nextPath = null;
         bool wasPlaying = false;
         TimeSpan previousPosition = TimeSpan.Zero;
@@ -3984,7 +3987,7 @@ public partial class MainWindow : FluentWindow
             // "Следующий трек" считаем до удаления текущего из плейлиста: иначе ComputeNextTrackPath отсчитал бы позицию без него;
             // если следующий — тот же файл (он один в очереди), играть больше нечего.
             nextPath = ResolveNextTrackPathRespectingQueue(_currentTrackPath);
-            if (nextPath == filePath) nextPath = null;
+            if (PathEquals(nextPath, filePath)) nextPath = null;
 
             // Файл играющего трека открыт NAudio-потоком, и без остановки воспроизведения и освобождения хендла удаление упадёт ("файл занят").
             StopPlayback();
@@ -4015,7 +4018,7 @@ public partial class MainWindow : FluentWindow
 
         // Файла больше нет: убираем его из ВСЕХ плейлистов и избранного, иначе в других группах остались бы битые ссылки.
         foreach (var folder in _folders)
-            folder.Tracks.RemoveAll(t => t == filePath);
+            folder.Tracks.RemoveAll(t => PathEquals(t, filePath));
         FavoritesManager.SetFavorite(filePath, false);
 
         // Действие редкое (подтверждённое удаление файла): полный пересбор обоих списков не проблема, а пропуск одного был бы багом.
@@ -4313,7 +4316,7 @@ public partial class MainWindow : FluentWindow
         PlaylistTrackRow? row = null;
         foreach (var item in listView.Items)
         {
-            if (item is PlaylistTrackRow candidate && ReferenceEquals(candidate.Folder, folder) && candidate.FilePath == trackPath)
+            if (item is PlaylistTrackRow candidate && ReferenceEquals(candidate.Folder, folder) && PathEquals(candidate.FilePath, trackPath))
             {
                 row = candidate;
                 break;
@@ -5250,7 +5253,7 @@ public partial class MainWindow : FluentWindow
     // null, если играет другой трек; иначе освобождает хендл и возвращает точку для ResumeAfterExternalWrite после записи.
     public (TimeSpan Position, bool WasPlaying)? ReleaseFileForExternalWrite(string filePath)
     {
-        if (filePath != _currentTrackPath || _audioFile == null) return null;
+        if (!PathEquals(filePath, _currentTrackPath) || _audioFile == null) return null;
 
         var snapshot = (_audioFile.CurrentTime, _isPlaying);
         StopPlayback(disposeOnly: true);
