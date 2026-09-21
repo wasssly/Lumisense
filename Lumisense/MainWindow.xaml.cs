@@ -4014,10 +4014,19 @@ public partial class MainWindow : FluentWindow
             LoadAndPlay(nextPath, autoPlay: wasPlaying, changeOrigin: TrackChangeOrigin.Automatic);
     }
 
-    private async void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
+    // Запуск через FireAndForget, а не async void: ошибки загрузки должны попадать в лог.
+    private void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
         AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next,
         TrackChangeOrigin changeOrigin = TrackChangeOrigin.User, bool preserveShuffleSession = false,
         bool preservePendingPlaybackState = false)
+        => FireAndForget(
+            LoadAndPlayAsync(filePath, autoPlay, startPosition, albumArtDirection, changeOrigin,
+                preserveShuffleSession, preservePendingPlaybackState),
+            nameof(LoadAndPlayAsync));
+
+    private async Task LoadAndPlayAsync(string filePath, bool autoPlay, TimeSpan? startPosition,
+        AlbumArtTransitionDirection albumArtDirection, TrackChangeOrigin changeOrigin,
+        bool preserveShuffleSession, bool preservePendingPlaybackState)
     {
         if (!File.Exists(filePath))
         {
