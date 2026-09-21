@@ -5927,6 +5927,16 @@ public partial class MainWindow : FluentWindow
         _gameOverlayDetectionTimer.Start();
     }
 
+    // DispatcherTimer держится диспетчером, а не полем: без Stop тик мог сработать уже после закрытия окна.
+    private void StopGameOverlayDetectionTimer()
+    {
+        if (_gameOverlayDetectionTimer is null) return;
+
+        _gameOverlayDetectionTimer.Stop();
+        _gameOverlayDetectionTimer.Tick -= GameOverlayDetectionTimer_Tick;
+        _gameOverlayDetectionTimer = null;
+    }
+
     private void GameOverlayDetectionTimer_Tick(object? sender, EventArgs e)
     {
         if (!_settings.GameOverlayCompatibilityAutoDetect)
@@ -6970,6 +6980,7 @@ public partial class MainWindow : FluentWindow
         _settingsCheckpointTimer.Stop();
         _systemDefaultEndpointDebounceTimer.Stop();
         _playlistSearchDebounceTimer.Stop();
+        StopGameOverlayDetectionTimer();
         StopHotkeyTrackRepeat();
         _playlistSearchCts?.Cancel();
         _settings.PlaybackSpeed = _runtimePlaybackRate;
@@ -6986,12 +6997,12 @@ public partial class MainWindow : FluentWindow
         // PersistPlaybackAndPlaylistState читает текущую позицию именно из него.
         FlushPlaybackClock();
         PersistPlaybackAndPlaylistState();
-                StopPlayback(disposeOnly: true);
+        StopPlayback(disposeOnly: true);
         _audioPlaybackCoordinator.Dispose();
         // StopPlayback уже освобождает WasapiPlayer и endpoint между треками. Повторный вызов
         // остаётся безопасной подстраховкой для частично инициализированного output при ошибке.
         DisposeOutputDeviceSafely();
-                if (_audioOutputEndpointMonitor is not null)
+        if (_audioOutputEndpointMonitor is not null)
         {
             _audioOutputEndpointMonitor.EndpointChanged -= AudioOutputEndpointMonitor_EndpointChanged;
             _audioOutputEndpointMonitor.Dispose();
