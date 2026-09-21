@@ -974,8 +974,17 @@ public partial class MainWindow : FluentWindow
     {
         base.OnSourceInitialized(e);
 
-        // Глобальные медиаклавиши работают без фокуса; в try/catch, потому что RegisterHotKey может отказать, если хоткей занят
-        // другим приложением, и необработанное исключение роняло плеер до первого показа.
+        InitializeMediaHotKeys();
+        InitializeNowPlayingIntegration();
+        InitializeTrayIcon();
+
+        ApplyPlaybackButtonsVisibility();
+    }
+
+    // Глобальные медиаклавиши работают без фокуса; в try/catch, потому что RegisterHotKey может отказать, если хоткей занят
+    // другим приложением, и необработанное исключение роняло плеер до первого показа.
+    private void InitializeMediaHotKeys()
+    {
         try
         {
             _mediaHotKeys = new GlobalMediaHotKeys(this);
@@ -1001,8 +1010,11 @@ public partial class MainWindow : FluentWindow
             Logger.Error("Не удалось зарегистрировать глобальные горячие клавиши — возможно, какая-то из комбинаций уже занята другим приложением", ex);
             _mediaHotKeys = null;
         }
+    }
 
-        // Интеграция с Now Playing Windows 11 (панель задач, блокировка экрана, наушники с кнопками)
+    // Интеграция с Now Playing Windows 11 (панель задач, блокировка экрана, наушники с кнопками)
+    private void InitializeNowPlayingIntegration()
+    {
         try
         {
             _nowPlaying = new NowPlayingIntegration(this);
@@ -1025,8 +1037,11 @@ public partial class MainWindow : FluentWindow
             Logger.Error("Не удалось включить интеграцию с Now Playing (SMTC)", ex);
             _nowPlaying = null;
         }
+    }
 
-        // Трей тоже в try/catch: иконка не критична, а необработанное исключение уронило бы окно до первого показа.
+    // Трей тоже в try/catch: иконка не критична, а необработанное исключение уронило бы окно до первого показа.
+    private void InitializeTrayIcon()
+    {
         try
         {
             _trayIconManager = new TrayIconManager(this);
@@ -1046,8 +1061,6 @@ public partial class MainWindow : FluentWindow
             Logger.Error("Не удалось создать значок в трее", ex);
             _trayIconManager = null;
         }
-
-        ApplyPlaybackButtonsVisibility();
     }
 
     // Кнопки остаются видимыми и кликабельными, но без фона — виден только значок; ховер/нажатие у ui:Button — отдельный
