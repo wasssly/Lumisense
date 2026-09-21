@@ -50,6 +50,19 @@ public partial class SettingsWindow : FluentWindow
     private readonly List<SettingsSearchEntry> _searchIndex = new();
     private readonly ObservableCollection<SettingsSearchEntry> _searchResults = new();
 
+    // Копия MainWindow.FireAndForget: иначе исключение из SaveAsync не попадает в лог до сборки мусора.
+    private static async void FireAndForget(Task task, string operationName)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Ошибка в фоновой операции \"{operationName}\"", ex);
+        }
+    }
+
     // Переключает страницу по ключу: при первом открытии и при повторном открытии уже висящего окна
     // (например, "Настройки" из меню мини-плеера ведут на "Мини-плеер", см. MainWindow.ShowSettingsWindow).
     public void NavigateToPage(string? pageKey)
@@ -1211,7 +1224,7 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         IconPacks.SetCurrent(pack);
-        _ = SettingsManager.SaveAsync(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     // ПКМ открывает окно со всеми иконками пака (не обязательно выбранного); Show(), а не ShowDialog() — это read-only
@@ -1261,7 +1274,7 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         AppIcons.SetCurrent(icon);
-        _ = SettingsManager.SaveAsync(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     // Подсвечивает рамкой карточку значка, совпадающего с _settings.AppIcon — по аналогии с
@@ -1801,7 +1814,7 @@ public partial class SettingsWindow : FluentWindow
                 if (!string.IsNullOrWhiteSpace(migratedKey))
                 {
                     _settings.OutputDeviceName = migratedKey;
-                    _ = SettingsManager.SaveAsync(_settings);
+                    FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
                 }
             }
 
@@ -1855,7 +1868,7 @@ public partial class SettingsWindow : FluentWindow
         if (string.Equals(_settings.WasapiMode, selectedMode, StringComparison.OrdinalIgnoreCase)) return;
 
         _settings.WasapiMode = selectedMode;
-        _ = SettingsManager.SaveAsync(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         RefreshOutputDeviceStatus();
         _owner.ApplyOutputDeviceSelection();
     }
@@ -1950,7 +1963,7 @@ public partial class SettingsWindow : FluentWindow
         if (string.Equals(_settings.OutputDeviceName, selectedDeviceName, StringComparison.OrdinalIgnoreCase)) return;
 
         _settings.OutputDeviceName = selectedDeviceName;
-        _ = SettingsManager.SaveAsync(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         RefreshOutputDeviceStatus();
         _owner.ApplyOutputDeviceSelection();
     }
