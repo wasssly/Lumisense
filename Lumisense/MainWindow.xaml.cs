@@ -2275,7 +2275,7 @@ public partial class MainWindow : FluentWindow
         if (persist)
         {
             _settings.PlayerViewMode = mode.ToString();
-            SettingsManager.Save(_settings);
+            FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         }
 
         UpdateViewModeMenuChecks();
@@ -4756,7 +4756,7 @@ public partial class MainWindow : FluentWindow
 
         // На паузе часто и надолго оставляют трек, не закрывая плеер вовсе — сохраняем
         // позицию сразу же, а не ждём следующего реального закрытия (см. PersistPlaybackAndPlaylistState).
-        PersistPlaybackAndPlaylistState();
+        PersistPlaybackAndPlaylistState(asyncSave: true);
     }
 
     private void ResumePlayback()
@@ -5877,7 +5877,7 @@ public partial class MainWindow : FluentWindow
         // настроек) без повторного SetPlayerViewMode и пересчёта размеров.
         _viewMode = _preMiniViewMode;
         _settings.PlayerViewMode = _viewMode.ToString();
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         UpdateViewModeMenuChecks();
     }
 
@@ -5989,7 +5989,7 @@ public partial class MainWindow : FluentWindow
             "Favorite" => "Favorite",
             _ => "Repeat"
         };
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
 
         ApplyMiniPlayerSecondaryButtonLive();
         _settingsWindow?.RefreshMiniPlayerToggles();
@@ -6126,7 +6126,7 @@ public partial class MainWindow : FluentWindow
         }
 
         if (persist && !_isApplyingStartupSettings && !_isExiting)
-            SettingsManager.Save(_settings);
+            FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     public void ApplyPlaybackRateLive(double speed) => SetPlaybackRate(speed, persist: false);
@@ -6223,7 +6223,7 @@ public partial class MainWindow : FluentWindow
         else
             _settings.EqualizerPresets.Add(new EqualizerPreset { Name = name, GainsDb = gains });
 
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     // Применяет пресет к текущим настройкам эквалайзера — через SetEqualizerBandGain
@@ -6233,13 +6233,13 @@ public partial class MainWindow : FluentWindow
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
             SetEqualizerBandGain(band, band < preset.GainsDb.Length ? preset.GainsDb[band] : 0);
 
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     public void DeleteEqualizerPreset(EqualizerPreset preset)
     {
         _settings.EqualizerPresets.Remove(preset);
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     // Экспорт пресета в .json — тот же формат, что в settings.json (EqualizerPreset), поэтому файл можно переслать и импортировать
@@ -6282,7 +6282,7 @@ public partial class MainWindow : FluentWindow
         preset.Name = name;
 
         _settings.EqualizerPresets.Add(preset);
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         return preset;
     }
 
@@ -6704,7 +6704,7 @@ public partial class MainWindow : FluentWindow
         // Watcher страхует случай, когда визуальный Slider изменился, но ValueChanged не
         // дошёл до setter из-за особенностей Popup/мыши. Источником состояния остаётся setter.
         SetPlaybackRate(sliderValue, persist: false);
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void PersistPlaybackSettingsAfterUserChange()
@@ -6735,7 +6735,7 @@ public partial class MainWindow : FluentWindow
         if (_isExiting || _isApplyingStartupSettings) return;
         SetPlaybackRate(PlaybackRateSlider.Value, persist: true);
         _settings.PlaybackPitchSemitones = Math.Clamp(PlaybackPitchSlider.Value, -12.0, 12.0);
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void PlaybackControlPopup_Opened(object? sender, EventArgs e)
