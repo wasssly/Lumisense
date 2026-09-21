@@ -12,16 +12,8 @@
         WindowStartupLocation="CenterOwner"
         ResizeMode="CanResize">
 
-    <!-- ============================================================================
-         Окно "Статистика": три карточки-сводки сверху (всего прослушиваний, разных
-         треков, суммарное время), затем топ-5 исполнителей и топ-5 треков по числу
-         прослушиваний. Все данные берутся из PlayCountManager (число прослушиваний по
-         пути файла) + AppSettings.TotalListenSeconds (накопленное время реального
-         воспроизведения, см. MainWindow.ProgressTimer_Tick) — исполнитель/название
-         для топ-списков дочитываются из тегов файлов асинхронно в code-behind
-         (см. StatisticsWindow.LoadAsync), поэтому окно сначала показывает индикатор
-         загрузки.
-         ============================================================================ -->
+    <!-- Окно "Статистика": сводки сверху, топ-5 исполнителей и треков из PlayCountManager и AppSettings.TotalListenSeconds;
+         имена читаются из тегов асинхронно (StatisticsWindow.LoadAsync), поэтому сначала виден индикатор загрузки. -->
 
     <ui:FluentWindow.Resources>
         <Style x:Key="StatCardStyle" TargetType="Border">
@@ -47,10 +39,8 @@
             <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
 
-        <!-- Общий вид строки топ-5: круглый бейдж с номером места + содержимое + счётчик
-             прослушиваний справа. У исполнителей и треков разное содержимое в середине
-             (просто имя vs название+исполнитель в две строки), поэтому не один общий
-             DataTemplate на оба ItemsControl, а два похожих, но раздельных. -->
+        <!-- Строка топ-5: бейдж с местом + содержимое + счётчик; содержимое у исполнителей и треков разное, поэтому два
+             раздельных DataTemplate, а не один общий. -->
         <Style x:Key="TopRankBadgeStyle" TargetType="Border">
             <Setter Property="Width" Value="22" />
             <Setter Property="Height" Value="22" />
@@ -163,12 +153,8 @@
                     <TextBlock x:Name="StatsSinceText" FontSize="11" Opacity="0.45" TextWrapping="Wrap"
                                HorizontalAlignment="Center" TextAlignment="Center" Visibility="Collapsed" />
 
-                    <!-- Две раздельные, самостоятельные кнопки сброса — не одна на всё сразу:
-                         "Сбросить прослушивания" трогает только счётчики по трекам (то, что
-                         строит топ-5 и "прослушиваний всего"/"разных треков"), не обнуляя
-                         суммарное накопленное время; "Сбросить всё" обнуляет вообще всё, включая
-                         время и дату начала отсчёта. У каждой — свой MessageBox-подтверждение
-                         (см. соответствующие обработчики). -->
+                    <!-- Две независимые кнопки сброса: "Сбросить прослушивания" трогает только счётчики по трекам, "Сбросить всё" — ещё и
+                         суммарное время и дату начала отсчёта; у каждой свой MessageBox-подтверждение. -->
                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,16,0,0">
                         <ui:Button x:Name="ResetPlayCountsButton" Appearance="Secondary" Content="Сбросить прослушивания"
                                    Padding="14,8" Margin="0,0,10,0" Click="ResetPlayCountsButton_Click">
@@ -187,10 +173,8 @@
                 </StackPanel>
             </ScrollViewer>
 
-            <!-- Пока в фоне читаются теги прослушанных треков (см. StatisticsWindow.LoadAsync) —
-                 сами счётчики прослушиваний уже есть мгновенно (это просто числа в памяти), но
-                 топ-5 исполнителей/треков строится по названиям из тегов, а на большой истории
-                 прослушиваний это может занять заметное время, если делать это на UI-потоке. -->
+            <!-- Пока в фоне читаются теги (StatisticsWindow.LoadAsync): счётчики уже готовы, но топ-5 строится по названиям из тегов,
+                 и на большой истории делать это на UI-потоке было бы заметно долго. -->
             <StackPanel x:Name="LoadingState" HorizontalAlignment="Center" VerticalAlignment="Center">
                 <ProgressBar IsIndeterminate="True" Width="140" Height="3" />
                 <TextBlock Text="Считаем статистику…" Opacity="0.6" FontSize="13" Margin="0,12,0,0"

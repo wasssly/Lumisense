@@ -9,22 +9,14 @@ using Velopack.Sources;
 
 namespace Lumisense;
 
-/// <summary>
-/// Транспорт обновлений для установки, управляемой Velopack.
-///
-/// Пользователи legacy Inno Setup-установки не имеют Velopack package store и не могут
-/// безопасно применить delta. Поэтому окно обновления использует этот сервис только тогда,
-/// когда <see cref="IsManagedInstall"/> возвращает true; для EXE/MSI сохранён отдельный
-/// проверенный путь с SHA-256.
-/// </summary>
+/// <summary>Транспорт обновлений для установки под Velopack (<see cref="IsManagedInstall"/> == true); у legacy Inno Setup
+/// нет package store для delta, для EXE/MSI сохранён отдельный путь с SHA-256.</summary>
 internal sealed class VelopackUpdateService
 {
     internal const string PackId = "Wasssly.Lumisense";
     internal const string ReleaseChannel = "win";
-    // Публичный latest/download всегда перенаправляет на releases.win.json последнего
-    // опубликованного GitHub Release. SimpleWebSource читает сам feed, поэтому не перебирает
-    // исторические releases без этого файла и не зависит от GitHub Releases API rate limit.
-    // Workflow публикует feed рядом с full/delta package в каждом tag release.
+    // Публичный latest/download ведёт на releases.win.json последнего релиза: SimpleWebSource читает feed напрямую,
+    // без GitHub Releases API и его rate limit; workflow публикует feed рядом с full/delta в каждом tag release.
     internal const string PublicReleaseFeedUrl = "https://github.com/wasssly/Lumisense/releases/latest/download/";
 
 #if VELOPACK_LOCAL_FEED_TEST
@@ -67,10 +59,8 @@ internal sealed class VelopackUpdateService
         return new UpdateManager(source, options);
     }
 
-    /// <summary>
-    /// Не обращается к GitHub для обычных Inno Setup, portable и debug-запусков.
-    /// Это исключает ошибочный переход на новую систему до миграционного релиза.
-    /// </summary>
+    /// <summary>Не обращается к GitHub для Inno Setup, portable и debug-запусков, чтобы не перейти на новую систему
+    /// до миграционного релиза.</summary>
     public async Task<VelopackProbeResult> CheckAsync(CancellationToken cancellationToken = default)
     {
         if (!IsManagedInstall)
@@ -100,11 +90,8 @@ internal sealed class VelopackUpdateService
         await _manager.DownloadUpdatesAsync(update, progress is null ? null : progress.Report, cancellationToken);
     }
 
-    /// <summary>
-    /// Возвращает состояние добровольной подготовки full package текущей установленной версии.
-    /// Такой package нужен Velopack как локальная база для последующих delta-обновлений, но
-    /// метод не ищет и не скачивает более новую версию приложения.
-    /// </summary>
+    /// <summary>Состояние подготовки full package текущей версии: он нужен Velopack как локальная база для delta,
+    /// но метод не ищет и не скачивает более новую версию.</summary>
     public async Task<VelopackBasePackagePlan> GetBasePackagePlanAsync(CancellationToken cancellationToken = default)
     {
         Velopack.SemanticVersion? currentVersion = _manager.CurrentVersion;
@@ -137,11 +124,8 @@ internal sealed class VelopackUpdateService
         return VelopackBasePackagePlan.Available(currentVersion, remotePackage, requiredBytes);
     }
 
-    /// <summary>
-    /// Скачивает и проверяет full package текущей установленной версии в штатную папку Velopack.
-    /// Обновление не применяется: TargetFullRelease совпадает с CurrentVersion, поэтому при
-    /// следующем запуске не возникает pending newer update.
-    /// </summary>
+    /// <summary>Скачивает и проверяет full package текущей версии в папку Velopack без применения обновления:
+    /// TargetFullRelease == CurrentVersion, поэтому pending newer update не возникает.</summary>
     public async Task PrepareBasePackageAsync(
         VelopackBasePackagePlan plan,
         IProgress<int>? progress = null,
@@ -254,11 +238,8 @@ internal sealed class VelopackBasePackagePlan
         => assets.FirstOrDefault(asset => asset.Type == VelopackAssetType.Full && asset.Version.Equals(currentVersion));
 }
 
-/// <summary>
-/// Центральная граница миграции: пока приложение запущено из старого Inno Setup, остаётся
-/// действующей существующая проверка SHA-256 и Inno Setup. Delta включаются лишь после
-/// осознанной установки Velopack MSI в переходном релизе.
-/// </summary>
+/// <summary>Граница миграции: пока приложение запущено из Inno Setup, действует прежняя проверка SHA-256;
+/// delta включаются лишь после осознанной установки Velopack MSI в переходном релизе.</summary>
 internal static class UpdateMigrationGuard
 {
     public static bool IsVelopackManagedInstall()
@@ -295,20 +276,15 @@ internal static class UpdateMigrationGuard
         Logger.Info("Режим обновлений: legacy Inno Setup (сохраняется проверенный SHA-256 установщик).");
     }
 
-    /// <summary>
-    /// Вызывается после успешного создания главного окна ровно один раз при первом запуске
-    /// MSI/Velopack. Удаление legacy EXE не запускается отсюда: пользователь может вернуться
-    /// к постоянной карточке Settings → Updates в любой момент, когда новая установка уже
-    /// проверена. Это исключает потерю одного единственного шанса на cleanup.
-    /// </summary>
+    /// <summary>Вызывается один раз при первом запуске MSI/Velopack после создания главного окна. Cleanup legacy EXE
+    /// отсюда не запускается: карточка Settings → Updates остаётся доступной, единственный шанс не теряется.</summary>
     public static void TryShowFirstRunNotice()
     {
         if (!IsVelopackManagedInstall())
             return;
 
-        // Выбор ярлыка сохраняется до MSI/Velopack-перезапуска и применяется до уведомления.
-        // Этот вызов выполняется также после обычного Velopack-обновления, когда first-run marker
-        // уже отсутствует, поэтому предпочтение пользователя не теряется между версиями.
+        // Выбор ярлыка сохраняется до MSI/Velopack-перезапуска и применяется до уведомления; вызывается и после
+        // обычного обновления, когда first-run marker уже нет, чтобы предпочтение не терялось между версиями.
         VelopackMigrationLifecycle.TryApplyPendingDesktopShortcutPreference();
         if (!VelopackMigrationLifecycle.TryConsumeFirstRunMarker())
             return;

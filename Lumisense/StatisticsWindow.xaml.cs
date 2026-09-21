@@ -49,9 +49,7 @@ public partial class StatisticsWindow : FluentWindow
 
     private async Task LoadAsync()
     {
-        // На повторный вызов (см. ResetStatsButton_Click) состояние с прошлой загрузки могло
-        // остаться "показан контент" или "показано пустое состояние" — приводим к единому
-        // стартовому виду, как при самом первом открытии окна.
+        // При повторном вызове (ResetStatsButton_Click) возвращаем единый стартовый вид, как при первом открытии окна.
         LoadingState.Visibility = Visibility.Visible;
         EmptyState.Visibility = Visibility.Collapsed;
         ContentScroll.Visibility = Visibility.Collapsed;
@@ -69,11 +67,8 @@ public partial class StatisticsWindow : FluentWindow
         int totalPlays = played.Sum(kv => kv.Value);
         int distinctTracks = played.Count;
 
-        // Чтение тегов десятков-сотен файлов — заметная по времени операция ввода-вывода,
-        // поэтому в фоновом потоке, а не прямо здесь на UI-потоке: тот же класс проблемы
-        // (тяжёлая операция на каждый трек, вызванная в цикле), что и раньше с зажатой
-        // клавишей "следующий трек" (см. MainWindow.HandleHotkeyTrackStep) — там лечили
-        // дебаунсом, здесь лечим переносом самой работы с UI-потока.
+        // Чтение тегов сотен файлов — заметный ввод-вывод, поэтому в фоновом потоке, а не на UI-потоке (та же проблема,
+        // что с зажатой клавишей "следующий трек": MainWindow.HandleHotkeyTrackStep лечит её дебаунсом).
         var trackInfos = await Task.Run(() => played.Select(kv =>
         {
             string title = Path.GetFileNameWithoutExtension(kv.Key);
@@ -89,10 +84,8 @@ public partial class StatisticsWindow : FluentWindow
             }
             catch
             {
-                // Трек мог быть удалён, перемещён или повреждён уже после того, как его
-                // прослушали в прошлый раз — просто показываем то, что осталось (имя файла,
-                // "неизвестный исполнитель"), без падения всего окна статистики из-за одного
-                // проблемного файла.
+                // Файл мог быть удалён, перемещён или повреждён после прошлого прослушивания: показываем то, что осталось,
+                // чтобы один проблемный файл не ронял окно статистики.
             }
 
             return (Path: kv.Key, Count: kv.Value, Title: title, Artist: artist);
@@ -144,13 +137,8 @@ public partial class StatisticsWindow : FluentWindow
         ContentScroll.Visibility = Visibility.Visible;
     }
 
-    // Секунды видны на всех масштабах, вплоть до "0 сек" — чтобы пара секунд прослушивания
-    // была видна в статистике сразу же, а не терялась за обобщённым "меньше минуты": сумма
-    // копится в MainWindow.ProgressTimer_Tick на каждый тик таймера прогресса (250 мс), а не
-    // только после какого-то порога прослушанности трека — в отличие от PlayCountManager
-    // (который считает "прослушивания" только при достижении половины трека, чтобы не
-    // накручивать счётчик от короткого предпросмотра), суммарное время должно отражать
-    // ровно то время, что реально играло, вплоть до пары секунд.
+    // Секунды видны на всех масштабах (вплоть до "0 сек"): сумма копится на каждом тике таймера прогресса (250 мс)
+    // в MainWindow.ProgressTimer_Tick и отражает реально игравшее время, а не порог в полтрека, как PlayCountManager.
     private static string FormatListenDuration(double totalSeconds)
     {
         var span = TimeSpan.FromSeconds(totalSeconds);
@@ -172,18 +160,13 @@ public partial class StatisticsWindow : FluentWindow
             : $"{(int)span.TotalSeconds} сек";
     }
 
-    // Формы прослушиваний определяются централизованно в LocalizationService: для русского
-    // это one/few/many, для английского — one/other. Окно статистики не хранит собственную
-    // лингвистическую логику и использует тот же ключевой механизм, что новые динамические UI.
+    // Формы прослушиваний определяются в LocalizationService (ru: one/few/many, en: one/other) — окно
+    // статистики своей лингвистической логики не хранит.
     private static string PluralizeListens(int count) =>
         LocalizationService.FormatPlural(LocalizationKey.StatisticsListens, count);
 
-    // Сброс необратим (счётчики прослушиваний по трекам теряются безвозвратно), поэтому —
-    // MessageBox с YesNo и предупреждающей иконкой, тот же паттерн подтверждения, что и у
-    // MainWindow.ClearPlaylistButton_Click/DeleteTrackFromDiskMenuItem_Click, с той же
-    // осторожностью: результат по умолчанию — No, чтобы случайный Enter не сработал как
-    // согласие. В отличие от ResetStatsButton_Click ниже — трогает только счётчики
-    // прослушиваний (PlayCountManager), не суммарное время и не дату начала отсчёта.
+    // Сброс необратим: MessageBox YesNo с предупреждающей иконкой и результатом по умолчанию No (как в
+    // MainWindow.ClearPlaylistButton_Click); в отличие от ResetStatsButton_Click трогает только счётчики прослушиваний.
     private void ResetPlayCountsButton_Click(object sender, RoutedEventArgs e)
     {
         var confirm = LocalizedMessageBox.Show(
@@ -205,11 +188,8 @@ public partial class StatisticsWindow : FluentWindow
         _ = LoadAsync();
     }
 
-    // Сброс необратим (счётчики прослушиваний по трекам и суммарное время теряются
-    // безвозвратно), поэтому — MessageBox с YesNo и предупреждающей иконкой, тот же паттерн
-    // подтверждения, что и у MainWindow.ClearPlaylistButton_Click/DeleteTrackFromDiskMenuItem_Click,
-    // с той же осторожностью: результат по умолчанию — No, чтобы случайный Enter не сработал
-    // как согласие.
+    // Сброс необратим: MessageBox YesNo с предупреждающей иконкой и результатом по умолчанию No, чтобы
+    // случайный Enter не сработал как согласие (тот же паттерн, что у MainWindow.ClearPlaylistButton_Click).
     private void ResetStatsButton_Click(object sender, RoutedEventArgs e)
     {
         var confirm = LocalizedMessageBox.Show(

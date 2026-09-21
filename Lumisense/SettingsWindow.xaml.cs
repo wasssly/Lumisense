@@ -43,20 +43,15 @@ public partial class SettingsWindow : FluentWindow
     // Пока не None — окно "слушает" следующее нажатие клавиш и запишет его как новую комбинацию
     private HotkeyTarget _recordingTarget = HotkeyTarget.None;
 
-    // ---------- Поиск настроек ----------
-    // Индекс не читает разметку, а просто перечисляет каждую настраиваемую опцию вручную:
-    // подпись, к какой странице она относится, ссылку на сам элемент управления (чтобы потом
-    // прокрутить к нему и подсветить) и ключевые слова для поиска.
+    // Индекс поиска — ручной перечень опций: подпись, страница, ссылка на элемент (для прокрутки и подсветки)
+    // и ключевые слова; разметка не читается.
     private sealed record SettingsSearchEntry(string Label, string PageTitle, string PageKey, string Keywords, FrameworkElement Target);
 
     private readonly List<SettingsSearchEntry> _searchIndex = new();
     private readonly ObservableCollection<SettingsSearchEntry> _searchResults = new();
 
-    // Переключает страницу настроек по строковому ключу — используется и при первом открытии
-    // окна (initialPage в конструкторе), и когда окно настроек открывают повторно, пока оно
-    // уже висит открытым на какой-то другой странице (см. MainWindow.ShowSettingsWindow) —
-    // например, кнопка "Настройки" в контекстном меню мини-плеера должна вести на страницу
-    // "Мини-плеер", даже если окно настроек уже было открыто на другой вкладке.
+    // Переключает страницу по ключу: при первом открытии и при повторном открытии уже висящего окна
+    // (например, "Настройки" из меню мини-плеера ведут на "Мини-плеер", см. MainWindow.ShowSettingsWindow).
     public void NavigateToPage(string? pageKey)
     {
         (pageKey switch
@@ -75,17 +70,14 @@ public partial class SettingsWindow : FluentWindow
         }).IsChecked = true;
     }
 
-    // То же самое, что и MainWindow.ApplyWindowBackdrop — этому окну нужна собственная копия,
-    // а не вызов чужого метода, потому что применяется к его СОБСТВЕННОМУ HWND, а не к HWND
-    // главного окна.
+    // Своя копия MainWindow.ApplyWindowBackdrop: применяется к собственному HWND этого окна.
     private void ApplyWindowBackdrop(AppSettings settings, bool forceReapply = false)
     {
         var desiredBackdrop = settings.WindowBackdropType == "Acrylic"
             ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
             : Wpf.Ui.Controls.WindowBackdropType.Mica;
 
-        // См. MainWindow.ApplyWindowBackdrop: при смене темы WPF-UI может оставить
-        // dependency property равной Acrylic, но повторно наложить нативный Mica.
+        // См. MainWindow.ApplyWindowBackdrop: при смене темы WPF-UI может оставить Acrylic в свойстве, но наложить Mica;
         // None → desired заставляет FluentWindow заново применить нужный backdrop.
         if (forceReapply && WindowBackdropType == desiredBackdrop)
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
@@ -111,23 +103,16 @@ public partial class SettingsWindow : FluentWindow
 
         ApplyWindowBackdrop(settings);
 
-        // Выбираем стартовую страницу здесь, а не через IsChecked="True" в XAML — на этот
-        // момент все страницы уже гарантированно созданы, обработчик NavItem_Checked
-        // отработает без NullReferenceException.
+        // Стартовую страницу выбираем здесь, а не IsChecked="True" в XAML: все страницы уже созданы, и NavItem_Checked
+        // не падает с NullReferenceException.
         NavigateToPage(initialPage);
 
         _settings = settings;
         _owner = owner;
         AccessibilityPreferences.ApplyToWindow(this, _settings);
 
-        // WPF-свойство Owner намеренно НЕ выставляется: Windows не даёт окну-владельцу
-        // оказаться в z-порядке выше своего owned-окна, пока то открыто (это на уровне
-        // диспетчера окон, обойти нельзя) — клик по перекрытому главному окну не мог поднять
-        // его поверх настроек. Без Owner оба окна независимы, обычное поведение Windows
-        // работает само. Позиционирование при первом открытии — RestoreOrCenterPosition ниже;
-        // закрытие вместе с главным окном — явный вызов в MainWindow.OnClosed; ShowInTaskbar
-        // ниже — своя иконка на панели задач вместо ShowInTaskbar = false, что раньше стояло
-        // здесь.
+        // Owner намеренно не выставляется: Windows не позволяет owner оказаться выше owned-окна, и клик по главному окну
+        // не поднимал бы его над настройками. Позиция — RestoreOrCenterPosition, закрытие — MainWindow.OnClosed.
         ShowInTaskbar = true;
         TaskbarWindowIdentity.AssignWhenSourceReady(this, TaskbarWindowIdentity.Settings);
         RestoreOrCenterPosition(owner);
@@ -364,11 +349,8 @@ public partial class SettingsWindow : FluentWindow
         _owner.SetMiniPlayerContextMenuActionDisabled(actionId, checkBox.IsChecked != true);
     }
 
-    // WindowStartupLocation="CenterOwner" не подходит — Owner не выставляется (см. начало
-    // конструктора), поэтому центрируем вручную. Если пользователь уже передвигал окно сам —
-    // открываем на том же месте (AppSettings.SettingsWindowLeft/Top) вместо центрирования; см.
-    // также ShowInTaskbar в конструкторе — вместе с этим чинит случай, когда окно оказывалось
-    // унесённым за пределы экрана (отключённый монитор) и было невозможно вернуть.
+    // CenterOwner не подходит (Owner не выставляется), центрируем вручную; двигавшееся окно открываем на прежнем месте
+    // (SettingsWindowLeft/Top). Вместе с ShowInTaskbar это чинит окно, унесённое отключённым монитором за экран.
     private void RestoreOrCenterPosition(Window owner)
     {
         if (_settings.SettingsWindowLeft is double savedLeft && _settings.SettingsWindowTop is double savedTop
@@ -395,9 +377,8 @@ public partial class SettingsWindow : FluentWindow
         SetPositionProgrammatically(left, top);
     }
 
-    // Сохранённая позиция может больше не попадать ни на один подключённый монитор (например,
-    // если её запомнили на мониторе, который с тех пор отключили) — проверяем пересечение с
-    // рабочей областью любого из них, а не просто "Screen.FromRectangle нашёл ближайший".
+    // Сохранённая позиция может не попадать ни на один подключённый монитор — проверяем пересечение с рабочей областью
+    // любого из них, а не ближайший Screen.FromRectangle.
     private bool IsPositionOnAnyScreen(double left, double top)
     {
         var bounds = new System.Drawing.Rectangle((int)left, (int)top,
@@ -405,9 +386,7 @@ public partial class SettingsWindow : FluentWindow
         return System.Windows.Forms.Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(bounds));
     }
 
-    // Признак того, что Left/Top сейчас правятся кодом (центрирование/восстановление), а не
-    // пользователем — см. OnLocationChanged ниже: запоминать в настройки нужно только реальное
-    // перетаскивание окна пользователем, а не эти программные перестановки при каждом открытии.
+    // Left/Top правятся кодом, а не пользователем: в настройки (OnLocationChanged) пишем только реальное перетаскивание.
     private bool _isApplyingProgrammaticPosition;
 
     private void SetPositionProgrammatically(double left, double top)
@@ -424,11 +403,8 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    // Запоминаем позицию в AppSettings при любом перемещении окна пользователем (перетаскивание
-    // за заголовок) — как и MiniPlayerLeft/Top у мини-плеера, само значение пишется только в
-    // память; на диск оно попадёт вместе со всеми остальными настройками при следующем
-    // SettingsManager.Save (в частности — гарантированно при закрытии приложения, см.
-    // MainWindow.PersistPlaybackAndPlaylistState).
+    // Позиция запоминается при перемещении пользователем (как MiniPlayerLeft/Top) только в памяти; на диск уйдёт со
+    // следующим SettingsManager.Save (гарантированно при закрытии, MainWindow.PersistPlaybackAndPlaylistState).
     protected override void OnLocationChanged(EventArgs e)
     {
         base.OnLocationChanged(e);
@@ -439,10 +415,8 @@ public partial class SettingsWindow : FluentWindow
         _settings.SettingsWindowTop = Top;
     }
 
-    // Вызывается извне (из контекстного меню мини-плеера), когда закрепление, "поверх окон"
-    // или прозрачность переключили не через это окно, а прямо на мини-плеере. Флаг
-    // _isInitializing глушит Changed-обработчики чекбоксов/слайдера, чтобы не вызвать
-    // повторное, уже ненужное применение настройки и не уйти в цикл обновлений.
+    // Вызывается извне, когда закрепление, "поверх окон" или прозрачность переключили прямо на мини-плеере;
+    // _isInitializing глушит Changed-обработчики, чтобы не применять настройку повторно и не зациклить обновления.
     public void RefreshMiniPlayerToggles()
     {
         _isInitializing = true;
@@ -458,10 +432,8 @@ public partial class SettingsWindow : FluentWindow
         _isInitializing = false;
     }
 
-    // Ставит галочку на миниатюре, соответствующей текущему виду плеера — вызывается и при
-    // открытии окна настроек, и извне (из MainWindow), когда вид сменили другим способом:
-    // контекстным меню по заголовку или кнопкой мини-плеера, — чтобы страница настроек не
-    // "отставала" от реального состояния, если уже открыта.
+    // Отмечает миниатюру текущего вида плеера — при открытии окна и извне (MainWindow), когда вид сменили меню заголовка
+    // или кнопкой мини-плеера, чтобы страница не отставала от состояния.
     public void RefreshViewModeRadios()
     {
         _isInitializing = true;
@@ -481,9 +453,7 @@ public partial class SettingsWindow : FluentWindow
         _owner.SetPlayerViewModeByName(modeName);
     }
 
-    // Номер версии в карточке «О плеере» берётся из assembly metadata — того же источника,
-    // который использует UpdateChecker и который release workflow сверяет с тегом релиза.
-    // Changelog по-прежнему отвечает за историю изменений, но не за runtime-версию сборки.
+    // Версия в карточке «О плеере» — из assembly metadata (как у UpdateChecker и в release workflow), а не из changelog.
     private void RefreshAppVersionText()
     {
         AppVersionText.Text = LocalizationService.FormatKey(
@@ -745,12 +715,8 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    // Ручная проверка обновлений (кнопка на странице "О плеере"). В отличие от тихой
-    // проверки на старте (см. MainWindow.CheckForUpdatesOnStartupAsync) всегда показывает
-    // результат — в том числе "версия уже последняя" и текст ошибки, если GitHub недоступен —
-    // и не учитывает AppSettings.SkippedUpdateVersion: раз пользователь сам нажал кнопку,
-    // значит явно хочет узнать актуальный статус, а не увидеть тишину из-за ранее нажатого
-    // "Позже".
+    // Ручная проверка (кнопка на странице "О плеере"), в отличие от тихой на старте (MainWindow.CheckForUpdatesOnStartupAsync),
+    // всегда показывает результат и не учитывает SkippedUpdateVersion: пользователь явно хочет знать статус.
     private async void CheckUpdatesButton_Click(object sender, RoutedEventArgs e)
     {
         CheckUpdatesButton.IsEnabled = false;
@@ -798,9 +764,8 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-        // Переключатель источника применяется сразу: UpdateAvailableWindow использует ту же
-    // in-memory модель _settings при следующем скачивании. Сразу сохраняем выбор, чтобы он
-    // пережил закрытие/перезапуск без ожидания общего сохранения настроек приложения.
+        // Источник применяется сразу: UpdateAvailableWindow использует ту же in-memory модель _settings; выбор сохраняем
+        // сразу, чтобы он пережил перезапуск без ожидания общего сохранения.
     private void UpdateSourceRadio_Checked(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -937,20 +902,15 @@ public partial class SettingsWindow : FluentWindow
     }
 
 
-    // ---------- "Все версии" (страница "О плеере") ----------
-    // Один элемент списка версий (см. AllVersionsList в XAML) — обёртка над ReleaseListItem
-    // с уже готовыми под UI строками, чтобы DataTemplate был просто набором биндингов без
-    // конвертеров.
+    // Элемент списка версий (AllVersionsList в XAML): обёртка над ReleaseListItem с готовыми строками, чтобы DataTemplate
+    // был набором биндингов без конвертеров.
     private sealed record VersionListItemViewModel(
         string TitleText, string SubtitleText, string ActionText, bool CanInstall, ReleaseListItem Release);
 
     private bool _allVersionsLoaded;
     private IReadOnlyList<ReleaseListItem>? _loadedReleases;
 
-    // Список подгружается лениво — только при первом реальном раскрытии аккордеона (а не сразу
-    // при каждом открытии окна настроек, где эта страница даже не обязательно будет открыта) —
-    // и только один раз за время жизни окна: повторные раскрытия/схлопывания уже не бьют по сети
-    // заново.
+    // Список грузится лениво — при первом раскрытии аккордеона и один раз за жизнь окна, чтобы не бить по сети зря.
     private async void AllVersionsExpander_Expanded(object sender, RoutedEventArgs e)
     {
         if (_allVersionsLoaded) return;
@@ -1012,10 +972,8 @@ public partial class SettingsWindow : FluentWindow
             .ToList();
     }
 
-    // Тот же диалог, что и при обычном обнаружении обновления — не проверяет, новее ли
-    // выбранная версия текущей, поэтому подходит и для отката. CurrentVersion — настоящая
-    // текущая версия, а не версия из списка: диалог сам покажет обе рядом, это и есть
-    // предупреждение об откате, отдельный диалог подтверждения не нужен.
+    // Тот же диалог, что при обычном обнаружении обновления; не проверяет, что версия новее, поэтому подходит и для отката:
+    // CurrentVersion — реальная текущая, диалог показывает обе рядом (это и есть предупреждение об откате).
     private void VersionListItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: VersionListItemViewModel item }) return;
@@ -1043,8 +1001,6 @@ public partial class SettingsWindow : FluentWindow
                 "Ошибка обновления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }
     }
-
-    // ---------- Поиск настроек ----------
 
     private void BuildSearchIndex()
     {
@@ -1181,17 +1137,12 @@ public partial class SettingsWindow : FluentWindow
         // прокручиваем к нужному элементу и подсвечиваем его
         Dispatcher.InvokeAsync(() =>
         {
-            // Некоторые результаты поиска (см. "Источник загрузки обновлений" и "Все версии")
-            // лежат внутри Expander (см. FluentExpanderStyle в App.xaml), свёрнутого по
-            // умолчанию — BringIntoView и подсветка элемента, который сейчас физически скрыт
-            // (Visibility=Collapsed у содержимого свёрнутого аккордеона), ничего не покажут
-            // пользователю. Разворачиваем все Expander-предки найденного элемента заранее.
+            // Часть результатов поиска лежит в свёрнутых Expander (FluentExpanderStyle в App.xaml): BringIntoView и подсветка
+            // скрытого элемента ничего не покажут, поэтому заранее разворачиваем все Expander-предки.
             ExpandAncestorExpanders(entry.Target);
 
-            // Раскрытие аккордеона меняет раскладку страницы (появляется скрытое раньше
-            // содержимое) — ждём ещё один цикл, пока это отразится на макете, и только потом
-            // считаем прокрутку/позицию для подсветки, иначе используем ещё не обновлённые
-            // координаты.
+            // Раскрытие аккордеона меняет раскладку: ждём ещё один цикл, иначе прокрутка и подсветка считались бы
+            // по устаревшим координатам.
             Dispatcher.InvokeAsync(() =>
             {
                 entry.Target.BringIntoView();
@@ -1231,10 +1182,8 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyMiniPlayerThemeLive();
     }
 
-    // WPF-UI 4 ставит собственное обновление FluentWindow в очередь Dispatcher после
-    // ApplicationThemeManager.Apply. Синхронного присваивания WindowBackdropType недостаточно:
-    // оно могло быть перезаписано дефолтным Mica в конце того же UI-прохода. Повторяем выбранный
-    // backdrop на ContextIdle, не меняя сохранённое значение AppSettings.
+    // WPF-UI 4 ставит собственное обновление FluentWindow в очередь Dispatcher после ApplicationThemeManager.Apply и может
+    // перезаписать backdrop дефолтным Mica, поэтому повторяем выбранный backdrop на ContextIdle (AppSettings не меняем).
     private void ReapplyWindowBackdropsAfterThemeChange()
     {
         _owner.ApplyWindowBackdrop(forceReapply: true);
@@ -1247,9 +1196,8 @@ public partial class SettingsWindow : FluentWindow
         }), DispatcherPriority.ContextIdle);
     }
 
-    // Клик по карточке пака в галерее превью (см. Icons/svg/{Pack} и IconPacks в SvgPathIcon.cs).
-    // Применяется сразу на всех уже открытых окнах через IconPacks.SetCurrent (живой источник —
-    // IconPackContext), без перезапуска приложения.
+    // Клик по карточке пака (Icons/svg/{Pack}, IconPacks в SvgPathIcon.cs) применяется сразу ко всем открытым окнам
+    // через IconPacks.SetCurrent (IconPackContext) без перезапуска.
     private void IconPackCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not System.Windows.Controls.Border { Tag: string pack } || !IconPacks.IsKnown(pack))
@@ -1266,9 +1214,8 @@ public partial class SettingsWindow : FluentWindow
         _ = SettingsManager.SaveAsync(_settings);
     }
 
-    // ПКМ — открыть окно со всем набором иконок этого пака (не обязательно выбранного сейчас).
-    // Show(), не ShowDialog(): это read-only превью без результата, а модальность блокировала
-    // бы и SettingsWindow, и опосредованно MainWindow.
+    // ПКМ открывает окно со всеми иконками пака (не обязательно выбранного); Show(), а не ShowDialog() — это read-only
+    // превью, и модальность заблокировала бы SettingsWindow и косвенно MainWindow.
     private void IconPackCard_MouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not System.Windows.Controls.Border { Tag: string pack } || !IconPacks.IsKnown(pack))
@@ -1299,9 +1246,8 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    // Клик по карточке значка приложения (см. AppIcons.cs). Применяется сразу на всех открытых
-    // окнах и в трее через AppIconContext, без перезапуска приложения — по аналогии с
-    // IconPackCard_MouseLeftButtonDown выше.
+    // Клик по карточке значка приложения (AppIcons.cs) применяется сразу во всех окнах и в трее через AppIconContext,
+    // без перезапуска, как IconPackCard_MouseLeftButtonDown.
     private void AppIconCard_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (sender is not System.Windows.Controls.Border { Tag: string icon } || !AppIcons.IsKnown(icon))
@@ -1358,11 +1304,8 @@ public partial class SettingsWindow : FluentWindow
     {
         if (sender is not System.Windows.Controls.Border { Background: SolidColorBrush brush }) return;
 
-        // brush.Color.ToString() дал бы 8-значный "#AARRGGBB" (WPF всегда включает альфа-канал
-        // в ToString()), а пресеты в AccentPresetHexes и формат из ColorDialog ниже — 6-значные
-        // "#RRGGBB". Несовпадение форматов не сломало бы применение цвета (ColorConverter
-        // одинаково понимает оба), но тихо сломало бы подсветку выбранного пресета в
-        // RefreshAccentSwatchSelection — она сравнивает строки как есть.
+        // brush.Color.ToString() даёт 8-значный "#AARRGGBB", а пресеты и ColorDialog — 6-значный "#RRGGBB": цвет применился бы,
+        // но RefreshAccentSwatchSelection сравнивает строки как есть и потеряла бы подсветку пресета.
         var c = brush.Color;
         ApplyAccentHex($"#{c.R:X2}{c.G:X2}{c.B:X2}");
     }
@@ -1393,9 +1336,7 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyAccentColor();
     }
 
-    // Подсвечивает рамкой тот пресет-квадратик, который совпадает с текущим AccentColorHex —
-    // если сейчас выбран цвет через палитру (не совпадающий ни с одним пресетом), рамки не
-    // будет ни у одного квадратика, это ожидаемо.
+    // Рамка у пресета, совпадающего с AccentColorHex; при цвете из палитры (не из пресетов) рамки нет — это ожидаемо.
     private void RefreshAccentSwatchSelection()
     {
         System.Windows.Controls.Border[] swatches = { AccentSwatch0, AccentSwatch1, AccentSwatch2, AccentSwatch3,
@@ -1533,9 +1474,8 @@ public partial class SettingsWindow : FluentWindow
         {
             if (current is T match) return match;
 
-            // TextBlock.Text часто отдаёт Run как OriginalSource. Run является
-            // FrameworkContentElement, а не Visual, поэтому VisualTreeHelper.GetParent
-            // для него выбрасывает InvalidOperationException.
+            // TextBlock.Text часто отдаёт Run как OriginalSource, а он FrameworkContentElement, не Visual:
+            // VisualTreeHelper.GetParent для него бросает InvalidOperationException.
             current = current switch
             {
                 System.Windows.Media.Visual visual =>
@@ -1553,9 +1493,8 @@ public partial class SettingsWindow : FluentWindow
 
     private void InterfaceScaleSlider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // Клик по дорожке обрабатывается самим Slider через IsMoveToPointEnabled.
-        // Если событие пришло от Thumb, блокируем только захват бегунка и тем самым
-        // оставляем изменение масштаба по точечному клику без перетаскивания.
+        // Клик по дорожке обрабатывает сам Slider (IsMoveToPointEnabled); для Thumb блокируем только захват бегунка,
+        // чтобы точечный клик менял масштаб без перетаскивания.
         if (e.OriginalSource is Thumb)
             e.Handled = true;
     }
@@ -1579,10 +1518,8 @@ public partial class SettingsWindow : FluentWindow
         _settings.InterfaceScale = AccessibilityPreferences.NormalizeScale(e.NewValue / 100d);
         InterfaceScaleValueText.Text = $"{_settings.InterfaceScale * 100:0}%";
 
-        // Масштаб WPF применяется безопасно при создании окон. Попытка перестроить уже
-        // открытые окна на лету может оставить mini-player в смешанном DPI/layout-состоянии,
-        // особенно после последовательности 100% → 135% → 100%. Значение сохраняем, но
-        // применяем его после перезапуска приложения.
+        // Масштаб WPF безопасно применяется при создании окон; перестройка открытых окон на лету может оставить мини-плеер
+        // в смешанном DPI/layout (например, 100% → 135% → 100%), поэтому значение сохраняем и применяем после перезапуска.
         if (!_interfaceScaleRestartNoticeShown)
         {
             _interfaceScaleRestartNoticeShown = true;
@@ -1604,9 +1541,8 @@ public partial class SettingsWindow : FluentWindow
 
     private void SyncedLyricsFontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        // Slider вызывает ValueChanged ещё во время загрузки XAML: в этот момент сам Slider
-        // уже создан, но следующий за ним SyncedLyricsFontSizeValueText может ещё не попасть
-        // в namescope. Не трогаем элементы/настройки до завершения InitializeComponent.
+        // Slider вызывает ValueChanged во время загрузки XAML, когда SyncedLyricsFontSizeValueText ещё может не быть в namescope;
+        // до конца InitializeComponent ничего не трогаем.
         if (_isInitializing || SyncedLyricsFontSizeValueText is null) return;
 
         SyncedLyricsFontSizeValueText.Text = $"{e.NewValue:0} px";
@@ -1856,9 +1792,8 @@ public partial class SettingsWindow : FluentWindow
                 });
             }
 
-            // Старые profiles сохраняли имя/порядковый номер WaveOut. До первого playback
-            // преобразуем его к endpoint-ID, иначе ComboBox не найдёт literal Tag и ошибочно
-            // сбросит рабочий выбор на системное устройство.
+            // Старые профили хранили имя/номер WaveOut: до первого playback приводим его к endpoint-ID, иначе ComboBox не найдёт
+            // Tag и сбросит рабочий выбор на системное устройство.
             if (!string.IsNullOrWhiteSpace(_settings.OutputDeviceName) &&
                 !AudioOutputDeviceService.IsEndpointPersistedKey(_settings.OutputDeviceName))
             {
@@ -2074,15 +2009,12 @@ public partial class SettingsWindow : FluentWindow
         UpdateToastWidthValueText();
     }
 
-    // Список мониторов собирается заново при каждом открытии окна настроек — состав/порядок
-    // экранов мог измениться с прошлого раза (подключили/отключили монитор), а окно настроек
-    // всё равно создаётся заново при каждом показе (см. MainWindow.ShowSettingsWindow), так
-    // что кэшировать список между открытиями смысла нет.
+    // Мониторы собираем при каждом открытии: состав экранов мог измениться, а окно всё равно создаётся заново
+    // (MainWindow.ShowSettingsWindow), так что кэш не нужен.
     private void InitializeToastMonitorCombo()
     {
-        // Items.Clear и назначение SelectedItem вызывают SelectionChanged. При смене языка
-        // список создаётся заново, но выбранный DeviceName остаётся настройкой, а не должен
-        // временно превратиться в пустое значение «Автоматически».
+        // Items.Clear и SelectedItem вызывают SelectionChanged: при смене языка выбранный DeviceName должен остаться
+        // настройкой, а не временно стать пустым «Автоматически».
         bool wasInitializing = _isInitializing;
         _isInitializing = true;
         try
@@ -2196,9 +2128,8 @@ public partial class SettingsWindow : FluentWindow
         _settings.StartHiddenInTray = StartHiddenInTrayCheckBox.IsChecked == true;
     }
 
-    // ---------- Прозрачность мини-плеера — тот же приём, что и громкость в главном окне:
-    // сам Slider не ловит мышь (IsHitTestVisible="False" в XAML), поверх него прозрачный
-    // Border обрабатывает клик и перетаскивание в любой точке полосы целиком. ----------
+    // Прозрачность мини-плеера — как громкость в главном окне: Slider не ловит мышь (IsHitTestVisible="False"),
+    // клик и перетаскивание по всей полосе обрабатывает прозрачный Border поверх него.
 
     private bool _isDraggingOpacityOverlay;
 
@@ -2428,8 +2359,6 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyMiniPlayerInfoModeLive();
     }
 
-    // ---------- Эквалайзер ----------
-
     private void EqualizerEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -2456,10 +2385,8 @@ public partial class SettingsWindow : FluentWindow
         _owner.SetEqualizerBandGain(band, slider.Value);
     }
 
-    // Прокрутка колесом над полосой эквалайзера — на SmallChange за деление, WPF не делает
-    // этого сам для Slider. Value ниже сама поднимет EqualizerBandSlider_ValueChanged, тем же
-    // путём обновляя текст и звук, что и обычное перетаскивание. e.Handled — чтобы прокрутка
-    // не листала страницу настроек дальше.
+    // WPF не прокручивает Slider колесом сам: шаг — SmallChange за деление; Value поднимет EqualizerBandSlider_ValueChanged
+    // (текст и звук, как при перетаскивании), а e.Handled не даёт листать страницу настроек.
     private void EqualizerBandSlider_MouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (sender is not System.Windows.Controls.Slider slider) return;
@@ -2475,9 +2402,8 @@ public partial class SettingsWindow : FluentWindow
     {
         _owner.ResetEqualizer();
 
-        // _isInitializing глушит ValueChanged на время, пока слайдеры переставляются в 0 —
-        // иначе каждый из десяти сбросов по отдельности снова вызвал бы SetEqualizerBandGain,
-        // хотя ResetEqualizer выше уже сделал это разом одним махом.
+        // _isInitializing глушит ValueChanged при сбросе слайдеров в 0: ResetEqualizer уже применил всё разом,
+        // а десять отдельных SetEqualizerBandGain были бы лишними.
         _isInitializing = true;
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
         {
@@ -2494,8 +2420,6 @@ public partial class SettingsWindow : FluentWindow
         string unit = LocalizationService.IsEnglish ? "dB" : "дБ";
         return $"{(gainDb > 0 ? "+" : "")}{gainDb.ToString("0.#", culture)} {unit}";
     }
-
-    // ---------- Пресеты эквалайзера ----------
 
     private void RefreshEqualizerPresetsList()
     {
@@ -2752,9 +2676,7 @@ public partial class SettingsWindow : FluentWindow
         _settings.AlbumArtGesturesEnabled = AlbumArtGesturesCheckBox.IsChecked == true;
     }
 
-    // ---------- Экспорт/импорт настроек (.lumi) ----------
-    // См. LumiProfile.cs — формат файла. Плейлист и избранное сюда не входят, переносятся
-    // только настройки (тема, акцент, эквалайзер, хоткеи и т.п.) — см. LumiProfileIO.
+    // Экспорт/импорт .lumi (см. LumiProfile.cs): только настройки (тема, акцент, EQ, хоткеи), без плейлиста и избранного.
 
     private void ExportProfileButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2802,19 +2724,14 @@ public partial class SettingsWindow : FluentWindow
             "Настройки импортированы.\n\nЧасть из них (хоткеи, эквалайзер, поведение трея и мини-плеера) применится полностью после перезапуска плеера.",
             "Импорт завершён", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
 
-        // Поля этого окна настроек читаются из _settings только один раз, в конструкторе —
-        // после импорта они не переприменяются сами. Проще переоткрыть окно (переиспользует
-        // уже готовый MainWindow.ShowSettingsWindow), чем гоняться за каждым изменившимся
-        // полем формы по отдельности.
+        // Поля окна читаются из _settings один раз в конструкторе и после импорта не переприменяются — проще переоткрыть
+        // окно (MainWindow.ShowSettingsWindow), чем обновлять каждое поле формы.
         Close();
         _owner.ShowSettingsWindow("Profile");
     }
 
-    // См. AppSettings/LumiProfileIO.ResetToDefaults и кнопку ResetPlayerButton в
-    // SettingsWindow.xaml (страница "Профиль"). Того же типа необратимое массовое изменение
-    // настроек, что и импорт чужого профиля выше — поэтому и обработчик устроен так же:
-    // подтверждение, сброс, сохранение, частичное живое применение с предупреждением о
-    // перезапуске для остального, переоткрытие этого окна.
+    // Необратимый массовый сброс (AppSettings/LumiProfileIO.ResetToDefaults, ResetPlayerButton), устроенный как импорт
+    // профиля: подтверждение, сброс, сохранение, живое применение части, предупреждение о перезапуске, переоткрытие окна.
     private void ResetPlayerButton_Click(object sender, RoutedEventArgs e)
     {
         var confirm = LocalizedMessageBox.Show(this,
@@ -2894,10 +2811,8 @@ public partial class SettingsWindow : FluentWindow
         _owner.ShowSettingsWindow("Profile");
     }
 
-    // ---------- Навигация по страницам настроек ----------
-    // Каждый пункт слева — RadioButton с Tag = ключ страницы; Checked-обработчик прячет
-    // все страницы и показывает ту, что соответствует выбранному пункту. Патчноуты и
-    // информация о программе — это просто ещё одна страница ("About"), а не отдельное окно.
+    // Навигация: каждый пункт слева — RadioButton с Tag = ключ страницы; Checked прячет все страницы и показывает выбранную
+    // ("О плеере" — тоже просто страница, а не отдельное окно).
 
     private void NavItem_Checked(object sender, RoutedEventArgs e)
     {
@@ -2905,9 +2820,7 @@ public partial class SettingsWindow : FluentWindow
         // с Wpf.Ui.Controls.Button, который в этом файле используется как просто "Button".
         if (sender is not System.Windows.Controls.RadioButton { Tag: string key }) return;
 
-        // На всякий случай: если обработчик почему-то сработает раньше, чем InitializeComponent
-        // успеет присвоить поля страниц (например, из-за IsChecked, выставленного в XAML),
-        // просто ничего не делаем вместо падения с NullReferenceException.
+        // Защита от раннего вызова до присвоения полей страниц в InitializeComponent (например, из-за IsChecked в XAML).
         if (PageAppearance is null) return;
 
         PageAppearance.Visibility = key == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
@@ -2924,11 +2837,8 @@ public partial class SettingsWindow : FluentWindow
         if (key == "Updates" && IsLoaded && _basePackagePlan is null)
             _ = RefreshVelopackBasePackagePlanAsync();
 
-        // Один и тот же ScrollViewer используется для всех страниц (см. комментарий в
-        // SettingsWindow.xaml) — без явного сброса он "помнил" бы прокрутку с предыдущей
-        // вкладки. Клик по результату поиска (см. SearchResultItem_Click) следом ещё раз
-        // прокрутит к конкретному найденному элементу через отложенный Dispatcher.InvokeAsync —
-        // тот вызов случится позже этого и просто переопределит позицию, никакого конфликта.
+        // Один ScrollViewer на все страницы (см. SettingsWindow.xaml) без сброса помнил бы прокрутку прошлой вкладки;
+        // SearchResultItem_Click позже отложенно прокрутит к найденному элементу и просто переопределит позицию.
         PART_ContentScroll.ScrollToTop();
 
         FrameworkElement? activePage = key switch
@@ -2973,18 +2883,12 @@ public partial class SettingsWindow : FluentWindow
             });
     }
 
-    // ---------- Список изменений ----------
-
-    // По просьбе: список изменений и настройки не должны быть открыты одновременно.
-    // Само открытие/закрытие и переключение окон централизовано в MainWindow.ShowChangelogWindow
-    // (симметрично ShowSettingsWindow) — оно же закроет это окно настроек.
+    // Список изменений и настройки не должны быть открыты одновременно: MainWindow.ShowChangelogWindow (симметрично
+    // ShowSettingsWindow) централизует переключение окон и закроет это окно.
     private void ChangelogButton_Click(object sender, RoutedEventArgs e) => _owner.ShowChangelogWindow();
 
-    // ---------- Карточка разработчика (страница "О плеере") ----------
-    // Тот же приём, что и у "Подробнее" в UpdateAvailableWindow.MoreButton_Click:
-    // Process.Start с UseShellExecute=true — с .NET Core Process.Start больше не открывает
-    // URL напрямую без этого флага. try/catch на случай отсутствия браузера по умолчанию —
-    // не критично, просто ничего не откроется.
+    // Process.Start с UseShellExecute=true: в .NET Core без этого флага URL напрямую не открывается (как у MoreButton_Click
+    // в UpdateAvailableWindow); try/catch на случай отсутствия браузера по умолчанию.
     private void DeveloperGitHubButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly");
 
     private void OpenRepositoryButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly/Lumisense");
@@ -3059,10 +2963,8 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    // ---------- Горячие клавиши: запись пользовательской комбинации ----------
-    // Клик по кнопке комбинации переводит окно в режим "записи": следующее нажатие
-    // клавиши (вместе с зажатыми Ctrl/Alt/Shift) сохраняется как новая глобальная
-    // комбинация и сразу же перерегистрируется в GlobalMediaHotKeys — без перезапуска.
+    // Запись хоткея: клик по кнопке включает режим записи, следующее нажатие (с Ctrl/Alt/Shift) сохраняется как
+    // глобальная комбинация и сразу перерегистрируется в GlobalMediaHotKeys без перезапуска.
 
     private void HotkeyPlayPauseButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.PlayPause);
     private void HotkeyNextButton_Click(object sender, RoutedEventArgs e) => BeginRecording(HotkeyTarget.Next);
@@ -3132,12 +3034,8 @@ public partial class SettingsWindow : FluentWindow
         // Одни только модификаторы не считаем нажатием — ждём клавишу вместе с ними
         if (IsModifierKey(key)) return;
 
-        // ВАЖНО: не используем Keyboard.Modifiers напрямую. Это агрегированное
-        // свойство в WPF ненадёжно определяет ПРАВЫЕ варианты модификаторов
-        // (правый Ctrl/Alt/Shift) в обработчике PreviewKeyDown — на некоторых
-        // клавиатурах/раскладках оно корректно видит только левую клавишу.
-        // Опрашиваем состояние каждой клавиши (лево+право) напрямую через
-        // Keyboard.IsKeyDown — это надёжный, не зависящий от стороны способ.
+        // Не используем Keyboard.Modifiers: в PreviewKeyDown он ненадёжно определяет правые Ctrl/Alt/Shift
+        // (на некоторых клавиатурах/раскладках видит только левые), поэтому опрашиваем Keyboard.IsKeyDown для обеих сторон.
         var isCtrl = Keyboard.IsKeyDown(Key.LeftCtrl) || Keyboard.IsKeyDown(Key.RightCtrl);
         var isAlt = Keyboard.IsKeyDown(Key.LeftAlt) || Keyboard.IsKeyDown(Key.RightAlt);
         var isShift = Keyboard.IsKeyDown(Key.LeftShift) || Keyboard.IsKeyDown(Key.RightShift);

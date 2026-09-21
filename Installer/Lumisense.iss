@@ -1,21 +1,13 @@
-; ============================================
-; Lumisense Audio Player - Установщик
-; ============================================
 
-; Версия передаётся снаружи через /DMyAppVersion=X.Y.Z (так и делает workflow
-; .github/workflows/release.yml — берёт её из тега релиза, например тег "v1.5.0" → "1.5.0").
-; Значение по умолчанию — только для локальной сборки без параметра, чтобы iscc не падал с
-; ошибкой "неизвестный символ" при ручном запуске.
+; Версия приходит через /DMyAppVersion (из тега релиза в release.yml); значение по умолчанию — для локальной
+; сборки без параметра, чтобы iscc не падал на неизвестном символе.
 #ifndef MyAppVersion
   #define MyAppVersion "1.0.0"
 #endif
 
 [Setup]
-; Фиксированный AppId — по нему Inno Setup узнаёт "это та же программа" при повторном
-; запуске установщика с новой версией и обновляет её на месте (в ту же папку, поверх старых
-; файлов), а не ставит рядом вторую копию. Через AppId (а не AppName) — так это работает
-; надёжно даже если название программы когда-нибудь сменится. Значение сгенерировано один
-; раз и дальше меняться не должно.
+; Фиксированный AppId: по нему Inno Setup обновляет установку на месте, а не ставит вторую копию,
+; и это не зависит от смены AppName; значение сгенерировано один раз и меняться не должно.
 AppId={{B7D9F8B4-3E36-4B6C-9B7A-2E9B7B7C0B41}
 AppName=Lumisense
 AppVersion={#MyAppVersion}
@@ -25,37 +17,28 @@ DefaultDirName={autopf}\Lumisense
 DefaultGroupName=Lumisense
 AllowNoIcons=yes
 
-; Автообновление из уже запущенного плеера (см. UpdateChecker.LaunchInstallerAndExit в самом
-; приложении): плеер сам завершается перед запуском установщика, но CloseApplications здесь —
-; страховка на случай, если что-то (например, запуск установщика вручную поверх работающей
-; копии) оставило Lumisense.exe висеть в процессах. RestartApplications возвращает его обратно
-; после установки, если CloseApplications пришлось его закрыть.
+; Автообновление завершает плеер само (UpdateChecker.LaunchInstallerAndExit); CloseApplications — страховка на
+; случай зависшего Lumisense.exe, RestartApplications возвращает его после установки.
 CloseApplications=yes
 RestartApplications=yes
 
-; Выходной файл
 OutputDir=..\
 OutputBaseFilename=Lumisense_Setup
 
-; Сжатие
 Compression=lzma2/ultra64
 SolidCompression=yes
 InternalCompressLevel=ultra64
 
-; Системные требования
 MinVersion=0,6.1.7600
 PrivilegesRequired=admin
 
-; Иконка
 SetupIconFile=..\Lumisense\Icons\app\lumisense.ico
 UninstallDisplayIcon={app}\Lumisense.exe
 
-; Внешний вид
 WizardStyle=modern
 DisableWelcomePage=no
 DisableProgramGroupPage=no
 
-; Языки
 LanguageDetectionMethod=uilanguage
 ; Пользователь всегда видит русский и английский варианты, а не только автоматический выбор по Windows.
 ShowLanguageDialog=yes
@@ -64,44 +47,23 @@ ShowLanguageDialog=yes
 Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
-; ============================================
-; ФАЙЛЫ ДЛЯ УСТАНОВКИ
-; ============================================
-
 [Files]
-; Путь — относительно этого .iss-файла (папка Installer), к стандартной выходной папке
-; "dotnet publish -c Release -r win-x64 --self-contained true" для проекта Lumisense (см.
-; TargetFramework/RuntimeIdentifier в Lumisense.csproj). Раньше здесь был захардкожен
-; конкретный путь на диске одного компьютера ("C:\Users\Administrator\..."), из-за чего
-; сборка ломалась на любой другой машине, включая CI (см. .github/workflows/release.yml).
+; Путь — от папки Installer к выходу "dotnet publish -c Release -r win-x64 --self-contained true"; абсолютный
+; путь ломал сборку на других машинах и в CI (release.yml).
 Source: "..\Lumisense\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Иконка отдельно (если не попала в publish)
 Source: "..\Lumisense\Icons\app\lumisense.ico"; DestDir: "{app}"; Flags: ignoreversion
 
-; ============================================
-; ДОПОЛНИТЕЛЬНЫЕ ЗАДАЧИ (флажки на странице мастера)
-; ============================================
-
 [Tasks]
-; Флажок на отдельной странице мастера ("Выберите дополнительные задачи") — отмечен по
-; умолчанию (Flags: unchecked отсутствует), но пользователь может снять галочку и не получить
-; ярлык на рабочем столе. Сам ярлык в [Icons] ниже ставится только если эта задача выбрана
-; (Tasks: desktopicon).
+; Флажок отмечен по умолчанию, но пользователь может его снять; ярлык в [Icons]
+; ставится только при выбранной задаче desktopicon.
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
-
-; ============================================
-; ЯРЛЫКИ
-; ============================================
 
 [Icons]
 Name: "{group}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"
 Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"; Tasks: desktopicon
 Name: "{group}\{cm:UninstallLumisense}"; Filename: "{uninstallexe}"
-
-; ============================================
-; АССОЦИАЦИЯ ФАЙЛОВ
-; ============================================
 
 [Registry]
 Root: HKCR; Subkey: ".mp3"; ValueType: string; ValueName: ""; ValueData: "Lumisense.AudioFile"; Flags: uninsdeletevalue
@@ -131,23 +93,11 @@ Root: HKCR; Subkey: "SystemFileAssociations\.ogg\shell\LumisenseOpen\command"; V
 Root: HKCR; Subkey: "SystemFileAssociations\.wma\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "SystemFileAssociations\.wma\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
 
-; ============================================
-; ЗАПУСК ПОСЛЕ УСТАНОВКИ
-; ============================================
-
 [Run]
 Filename: "{app}\Lumisense.exe"; Description: "{cm:LaunchLumisense}"; Flags: postinstall nowait skipifsilent
 
-; ============================================
-; УДАЛЕНИЕ
-; ============================================
-
 [UninstallDelete]
 Type: filesandordirs; Name: "{app}"
-
-; ============================================
-; УДАЛЕНИЕ ДАННЫХ НАСТРОЕК (%AppData%\Lumisense)
-; ============================================
 
 [CustomMessages]
 english.CreateDesktopIcon=Create a desktop shortcut
@@ -162,27 +112,15 @@ russian.OpenInLumisense=Открыть в Lumisense
 russian.LaunchLumisense=Запустить Lumisense
 
 [Code]
-// [UninstallDelete] выше уже безусловно удаляет {app} (саму программу в Program Files) —
-// это просто файлы плеера, отслеживаемые самим Inno Setup, спрашивать тут нечего.
-//
-// А вот %AppData%\Lumisense (settings.json — настройки, плейлисты, избранное, все
-// пользовательские данные, см. SettingsManager в AppSettings.cs) Inno Setup сам по себе
-// никогда не трогает: не он их туда клал, это делает уже сам плеер во время работы,
-// и его штатный механизм удаления файлов про эту папку просто не знает.
-//
-// Спрашиваем явно, до начала удаления (InitializeUninstall — самая ранняя точка, до которой
-// процесс ещё можно отменить), а не удаляем её тихо и безусловно: пользователь может
-// деинсталлировать плеер, чтобы переустановить его заново (например, при обновлении вручную
-// или переносе на другой диск), и в этом случае удалять его настройки, плейлисты и избранное
-// заодно — было бы неожиданным и необратимым сюрпризом.
+// %AppData%\Lumisense (настройки, плейлисты, избранное) Inno Setup сам не удаляет — файлы туда кладёт плеер.
+// Спрашиваем в InitializeUninstall (последняя точка отмены), а не удаляем молча: при переустановке это была бы потеря.
 var
   ShouldDeleteSettings: Boolean;
 
 procedure RemoveLegacyWildcardContextMenu;
 begin
-  // До этой версии пункт регистрировался в *\\shell и отображался для любого файла.
-  // Удаляем старый ключ при установке/обновлении, иначе он останется в реестре даже
-  // после перехода на SystemFileAssociations.<extension>.
+  // До этой версии пункт регистрировался в *\shell и показывался для любого файла; старый ключ удаляем при
+  // установке/обновлении, иначе он остаётся в реестре после перехода на SystemFileAssociations.<extension>.
   RegDeleteKeyIncludingSubkeys(HKEY_CLASSES_ROOT, '*\\shell\\LumisenseOpen');
 end;
 

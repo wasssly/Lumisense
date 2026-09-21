@@ -78,9 +78,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         RefreshDownloadControlLabels();
     }
 
-    // В migration-only режиме текущая EXE-копия уже совпадает с последним release. Поэтому
-    // не называем его «обновлением» и не предлагаем повторно скачать тот же EXE — оставляем
-    // только добровольный, явно обозначенный переход на проверенный MSI.
+    // В migration-only режиме EXE уже совпадает с последним release: не называем это «обновлением» и не
+    // предлагаем скачать тот же EXE — только добровольный переход на проверенный MSI.
     private void ApplyMigrationPresentation()
     {
         if (_isMsiMigrationOnly)
@@ -167,9 +166,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         RefreshVelopackRuntimePresentation();
     }
 
-    // В отличие от legacy EXE, Velopack SDK публично сообщает только этап и нормализованный
-    // процент. Показываем их вместе с планом и временем, но не вычисляем фиктивные байты,
-    // скорость или фактически выбранный delta/full package.
+    // Velopack SDK публично сообщает лишь этап и нормализованный процент: показываем их с планом и временем,
+    // без вымышленных байтов, скорости или выбранного delta/full package.
     private void RefreshVelopackRuntimePresentation()
     {
         if (_velopackDiagnostics is null) return;
@@ -220,10 +218,8 @@ public partial class UpdateAvailableWindow : FluentWindow
     private void OpenVelopackLogsButton_Click(object sender, RoutedEventArgs e) =>
         VelopackUpdateDiagnostics.OpenVelopackLogsFolder();
 
-    // GitHub Release body приходит в Markdown, но TextBlock не умеет его рендерить и показывал
-    // пользователю служебные символы (#, **, [ссылка](url)). Для компактного диалога обновления
-    // нужен не полноценный HTML/Markdown-движок, а безопасное плоское представление: заголовки,
-    // маркеры и callout-блоки становятся обычным читаемым текстом, а ссылки отображаются подписью.
+    // Markdown из GitHub Release TextBlock не рендерит и показал бы служебные символы (#, **, [ссылка](url));
+    // нужно безопасное плоское представление, а не HTML/Markdown-движок: ссылки — подписью.
     private static string FormatReleaseNotes(string? markdown)
     {
         if (string.IsNullOrWhiteSpace(markdown)) return string.Empty;
@@ -497,9 +493,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         await DownloadAndLaunchLegacyAssetAsync(isMsi: true);
     }
 
-    // Velopack сам выбирает delta или full package, скачивает его с верификацией и только
-    // после успешной подготовки получает разрешение закрыть приложение и перезапустить его.
-    // Этот путь недоступен legacy Inno Setup-установкам: проверка DeliveryKind происходит выше.
+    // Velopack сам выбирает delta или full, скачивает с верификацией и лишь после подготовки разрешает закрыть
+    // приложение; legacy Inno Setup сюда не попадает — DeliveryKind проверяется выше.
     private async Task InstallViaVelopackAsync(bool isResuming = false)
     {
         if (_result.VelopackUpdate is null)
@@ -528,9 +523,8 @@ public partial class UpdateAvailableWindow : FluentWindow
             SetPreparing(isVelopack: true);
             RefreshVelopackRuntimePresentation();
 
-            // До ApplyAndRestart синхронно фиксируем уже существующие настройки на UI-потоке.
-            // Если запись не подтверждена, намеренно не закрываем приложение: пользователь не
-            // должен выбирать между применением обновления и сохранностью плейлиста/настроек.
+            // Перед ApplyAndRestart синхронно сохраняем настройки на UI-потоке; без подтверждённой записи приложение не
+            // закрываем, чтобы пользователь не выбирал между обновлением и сохранностью плейлиста/настроек.
             if (_settings is null || !SettingsManager.Save(_settings))
             {
                 _velopackDiagnostics?.Failed(new InvalidOperationException("Settings save before planned update restart was not confirmed."));
@@ -574,9 +568,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
     }
 
-    // Вынесено из InstallViaVelopackAsync: применяет уже скачанный пакет — либо сразу после
-    // UpdateReadyDialog, либо позже вторым кликом по InstallButton (см. _velopackReadyToApply),
-    // без повторного скачивания в обоих случаях.
+    // Применяет уже скачанный пакет (сразу после UpdateReadyDialog или вторым кликом, см. _velopackReadyToApply).
     private async Task ApplyVelopackUpdateAndRestartAsync(VelopackUpdateService? service = null)
     {
         if (_result.VelopackUpdate is null) return;
@@ -588,9 +580,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         App? plannedRestartApp = Application.Current as App;
         plannedRestartApp?.MarkPlannedUpdateRestart();
 
-        // При успехе Update.exe завершит этот процесс, применит уже проверенный package
-        // и запустит Lumisense заново. Если сам запуск updater бросит исключение, UI
-        // останется живым, а аварийное сохранение снова будет доступно.
+        // При успехе Update.exe завершит процесс и перезапустит Lumisense; если запуск updater бросит исключение,
+        // UI остаётся живым, а аварийное сохранение снова доступно.
         try
         {
             service.ApplyAndRestart(_result.VelopackUpdate);
@@ -606,9 +597,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
     }
 
-    // Обновление скачано и подтверждено, но пользователь отложил рестарт (см. UpdateReadyDialog).
-    // Окно остаётся открытым: кнопка установки меняет подпись и по клику сразу вызывает
-    // ApplyVelopackUpdateAndRestartAsync, без повторного скачивания.
+    // Обновление скачано, но рестарт отложен (UpdateReadyDialog): окно остаётся, кнопка меняет подпись и по клику
+    // сразу вызывает ApplyVelopackUpdateAndRestartAsync без повторного скачивания.
     private void SetVelopackReadyToApplyUi()
     {
         _isDownloading = false;
@@ -646,9 +636,8 @@ public partial class UpdateAvailableWindow : FluentWindow
         await DownloadAndLaunchLegacyAssetAsync(isMsi: false);
     }
 
-    // EXE и MSI получают одинаковую проверку SHA-256 и один жизненный цикл. При выборе нового
-    // источника CancellationToken останавливает старый поток; после его завершения сетевой слой
-    // удаляет .part, и здесь начинается независимая полная загрузка с новым URL.
+    // EXE и MSI проходят одну проверку SHA-256 и один жизненный цикл; при смене источника CancellationToken
+    // останавливает старый поток, сетевой слой удаляет .part, и здесь стартует полная загрузка с новым URL.
     private async Task DownloadAndLaunchLegacyAssetAsync(bool isMsi)
     {
         string? originalUrl = isMsi ? _result.MsiDownloadUrl : _result.DownloadUrl;
@@ -747,9 +736,8 @@ public partial class UpdateAvailableWindow : FluentWindow
             : Visibility.Collapsed;
         MigrateToMsiButton.IsEnabled = !isDownloading;
         DownloadProgressBar.Visibility = isDownloading ? Visibility.Visible : Visibility.Collapsed;
-        // Неопределённый — пока не пришёл первый отчёт о прогрессе с известным общим размером
-        // (см. UpdateDownloadProgressUi); пустая полоса на 0% в первые доли секунды скачивания
-        // выглядела как зависание сильнее, чем честная "думающая" анимация.
+        // Неопределённый режим, пока нет первого отчёта с известным размером (UpdateDownloadProgressUi): пустая
+        // полоса на 0% выглядела бы как зависание сильнее, чем анимация ожидания.
         DownloadProgressBar.IsIndeterminate = isDownloading;
         DownloadProgressBar.Value = 0;
         PhaseText.Text = isDownloading

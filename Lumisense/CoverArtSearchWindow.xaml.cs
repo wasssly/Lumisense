@@ -68,9 +68,8 @@ public partial class CoverArtSearchWindow : FluentWindow
 
     private void SearchButton_Click(object sender, RoutedEventArgs e) => _ = RunSearch(QueryBox.Text);
 
-    // Отменяет токен (обрывает и основной запрос, и уже запущенные загрузки миниатюр) и
-    // возвращает UI в состояние "готов к новому поиску". RunSearch сам завершается по
-    // OperationCanceledException — здесь только UI.
+    // Отменяет токен (запрос и загрузки миниатюр) и возвращает UI в состояние "готов к поиску".
+    // RunSearch завершается сам по OperationCanceledException.
     private void CancelSearchButton_Click(object sender, RoutedEventArgs e)
     {
         _searchCts?.Cancel();
@@ -160,11 +159,8 @@ public partial class CoverArtSearchWindow : FluentWindow
         }
     }
 
-    // ---------- Объединение результатов включённых источников ----------
-
-    // Чередование по кругу (по одному из каждого включённого источника) вместо "все результаты
-    // одного источника подряд" — так сразу видно, что источников несколько. Дубликаты между
-    // источниками не схлопываются: адреса обложек у них не совпадают буквально.
+    // Чередование по одному результату из каждого источника, чтобы сразу было видно несколько источников;
+    // дубликаты не схлопываются — адреса обложек у источников не совпадают буквально.
     private static List<ArtResult> MergeAndDedupe(List<List<ArtResult>> sources)
     {
         int total = sources.Sum(s => s.Count);
@@ -179,8 +175,6 @@ public partial class CoverArtSearchWindow : FluentWindow
         }
         return merged;
     }
-
-    // ---------- Отображение результатов ----------
 
     private async Task AddResultTile(ArtResult entry, CancellationToken token)
     {

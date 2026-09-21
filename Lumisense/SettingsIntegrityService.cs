@@ -113,9 +113,8 @@ internal static class SettingsIntegrityService
             int sourceSchemaVersion = ReadSchemaVersion(document.RootElement);
             if (sourceSchemaVersion > AppSettings.CurrentSettingsSchemaVersion)
             {
-                // Нельзя подменять весь профиль дефолтами только из-за additive-полей более
-                // новой версии. System.Text.Json прочитает известную часть, а extension data
-                // в AppSettings сохранит неизвестные поля при следующей записи.
+                // Профиль не подменяется дефолтами из-за additive-полей новой версии: System.Text.Json читает известную часть,
+                // а extension data в AppSettings сохранит неизвестные поля при следующей записи.
                 Logger.Warn($"settings.json имеет более новую schema {sourceSchemaVersion}; загружается совместимая часть профиля.");
             }
 
@@ -264,9 +263,8 @@ internal static class SettingsIntegrityService
             "GitHub", "GhProxy", "GhProxyV4", "GhProxyV6", "GhProxyCdn", "GhProxyCom", "GhFast");
 
         settings.SavedPlaylistFolders = NormalizeFolders(settings.SavedPlaylistFolders);
-        // Legacy-поле заполняется только при чтении schema 0 и очищается сразу после переноса.
-        // Не заменяем null пустым списком: это позволило бы снова записать в settings.json
-        // уже неиспользуемое свойство SavedPlaylist.
+        // Legacy-поле заполняется только при чтении schema 0 и очищается после переноса; null не заменяем
+        // пустым списком, иначе свойство SavedPlaylist снова попало бы в settings.json.
         if (settings.SavedPlaylist != null)
             settings.SavedPlaylist = NormalizePaths(settings.SavedPlaylist);
         settings.FavoriteTracks = NormalizePaths(settings.FavoriteTracks);
@@ -373,15 +371,13 @@ internal static class SettingsIntegrityService
             });
         }
 
-        // Это свойство существовало лишь как временный источник данных миграции. Очищаем
-        // его даже у пустого/дублирующего значения, чтобы следующее сохранение не оставляло
-        // две независимые версии одного плейлиста в settings.json.
+        // Свойство — лишь источник данных миграции: очищаем даже при пустом/дублирующем значении, чтобы
+        // settings.json не хранил две независимые версии одного плейлиста.
         settings.SavedPlaylist = null;
     }
 
-    // Ранние версии миграции плоского плейлиста сохраняли эту группу без специального
-    // флага. Исправляем только точное системное имя старого формата: вручную созданные
-    // папки с произвольными именами не переименовываются и не меняют семантику.
+    // Ранние версии миграции сохраняли эту группу без флага; исправляем только точное системное имя старого
+    // формата, вручную созданные папки не переименовываются.
     private static void MarkLegacyLooseFilesBucket(AppSettings settings)
     {
         foreach (SavedPlaylistFolder folder in settings.SavedPlaylistFolders ?? Enumerable.Empty<SavedPlaylistFolder>())

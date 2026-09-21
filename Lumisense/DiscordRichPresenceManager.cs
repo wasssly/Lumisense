@@ -227,9 +227,7 @@ public sealed class DiscordRichPresenceManager : IDisposable
                 ? artist
                 : activityState,
             Type = ActivityType.Listening,
-            // Discord поддерживает до двух пользовательских кнопок: репозиторий и актуальный
-            // релиз. Обе ссылки отправляются вместе с Presence и доступны другим зрителям
-            // карточки активности.
+            // Две пользовательские кнопки (репозиторий и актуальный релиз) уходят вместе с Presence и видны зрителям.
             Buttons = new[]
             {
                 new Button { Label = "GitHub", Url = DiscordRichPresenceDefaults.GitHubRepositoryUrl },

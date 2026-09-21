@@ -4,11 +4,7 @@ using Velopack;
 
 namespace Lumisense;
 
-/// <summary>
-/// Явная точка входа WPF для Velopack. Run() должен выполняться до создания App и любого UI:
-/// при install/update/uninstall hook Velopack выполняет fast-exit callback и завершает процесс,
-/// поэтому обычная инициализация плеера ниже не запускается.
-/// </summary>
+/// <summary>Точка входа для Velopack: Run() должен выполниться до создания App и любого UI.</summary>
 internal static class Program
 {
     [STAThread]
@@ -30,9 +26,8 @@ internal static class Program
         }
         catch (Exception ex)
         {
-            // При запуске из IDE, старой Inno Setup-установки или обычной portable-папки
-            // Velopack не должен блокировать запуск. Логгер ещё не инициализирован, поэтому
-            // не показываем UI и продолжаем старый путь запуска.
+            // Запуск из IDE, старой Inno Setup-установки или portable-папки не должен блокироваться Velopack;
+            // логгер ещё не инициализирован, поэтому без UI продолжаем прежний путь запуска.
             System.Diagnostics.Debug.WriteLine($"Velopack bootstrap skipped: {ex.Message}");
         }
 

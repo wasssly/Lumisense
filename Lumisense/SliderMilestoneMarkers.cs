@@ -6,11 +6,8 @@ using System.Windows.Media;
 
 namespace Lumisense;
 
-/// <summary>
-/// Включает точки дискретных значений только у Slider, которые явно помечены в XAML.
-/// Координаты берутся из фактического PART_Track и Thumb, поэтому первая и последняя
-/// точки совпадают с реальными достижимыми положениями бегунка, а не с шириной контейнера.
-/// </summary>
+/// <summary>Рисует точки дискретных значений у Slider, помеченных в XAML; координаты берутся из PART_Track и Thumb,
+/// поэтому крайние точки совпадают с достижимыми положениями бегунка, а не с шириной контейнера.</summary>
 public static class SliderMilestoneMarkers
 {
     public static readonly DependencyProperty IsEnabledProperty =
@@ -20,11 +17,8 @@ public static class SliderMilestoneMarkers
             typeof(SliderMilestoneMarkers),
             new PropertyMetadata(false, OnIsEnabledChanged));
 
-    /// <summary>
-    /// Интервал только для визуальных ориентиров. Значение 0 использует TickFrequency Slider.
-    /// Это позволяет, например, оставить точность выбора ширины в 10 px, но рисовать точки
-    /// лишь через 50 px.
-    /// </summary>
+    /// <summary>Интервал только для визуальных ориентиров; 0 — использовать TickFrequency Slider
+    /// (например, шаг выбора 10 px, но точки через 50 px).</summary>
     public static readonly DependencyProperty MarkerFrequencyProperty =
         DependencyProperty.RegisterAttached(
             "MarkerFrequency",
@@ -87,9 +81,7 @@ public static class SliderMilestoneMarkers
     }
 }
 
-/// <summary>
-/// Лёгкий template-элемент: рисует мягкие точки поверх дорожки, не участвуя в hit testing.
-/// </summary>
+/// <summary>Лёгкий template-элемент: рисует мягкие точки поверх дорожки, не участвуя в hit testing.</summary>
 public sealed class SliderMilestoneOverlay : FrameworkElement
 {
     public static readonly DependencyProperty MarkerBrushProperty =
@@ -143,9 +135,8 @@ public sealed class SliderMilestoneOverlay : FrameworkElement
         double availableTrackLength = track.ActualWidth - thumb.ActualWidth;
         if (availableTrackLength < 0) return;
 
-        // Track включает область Thumb и может быть выше самой дорожки. Для SettingsAccentSliderStyle
-        // берём центр именованной 5-DIP дорожки: точки лежат непосредственно на полосе при любом
-        // DPI и UI-масштабе. Старые/другие шаблоны сохраняют безопасный fallback на центр Track.
+        // Track включает область Thumb и выше дорожки: для SettingsAccentSliderStyle берём центр именованной 5-DIP
+        // дорожки (точки на полосе при любом DPI), для других шаблонов — запасной центр Track.
         double centerY = trackOrigin.Y + track.ActualHeight / 2.0;
         if (slider.Template?.FindName("PART_MilestoneRail", slider) is FrameworkElement rail && rail.ActualHeight > 0)
         {

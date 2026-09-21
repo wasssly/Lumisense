@@ -66,13 +66,8 @@
     <Resource Include="Icons\app\developer-avatar-placeholder.png" />
   </ItemGroup>
 
-  <!-- Необязательно: собственный MP3-кодировщик (см. LameMp3Encoder.cs), не зависящий от того,
-       установлен ли в Windows системный кодировщик Media Foundation. Файла здесь нет по
-       умолчанию — Condition просто пропускает этот ItemGroup, если его никто не положил, без
-       ошибки сборки. Чтобы включить: положить 64-битную libmp3lame.dll в lib\libmp3lame.dll
-       (например, через `vcpkg install lame:x64-windows`, оттуда скопировать
-       installed\x64-windows\bin\libmp3lame.dll). Без неё экспорт MP3 просто продолжит
-       использовать Media Foundation, как раньше. -->
+  <!-- Необязательный MP3-кодировщик (LameMp3Encoder.cs): без lib\libmp3lame.dll (64-бит) ItemGroup пропускается, экспорт
+       MP3 идёт через Media Foundation. Чтобы включить, положите DLL, например, из vcpkg (lame:x64-windows). -->
   <ItemGroup Condition="Exists('lib\libmp3lame.dll')">
     <None Include="lib\libmp3lame.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -80,11 +75,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- changelog.json встроен В САМУ сборку (EmbeddedResource), а не лежит рядом с .exe как
-         обычный файл — раньше он копировался в папку установки как есть (CopyToOutputDirectory),
-         и любой желающий мог открыть его в блокноте и подправить историю изменений или номер
-         версии. Embedded resource запекается прямо в exe при сборке (см. ChangelogLoader.Load) —
-         в установленной программе отдельного Changelog/changelog.json на диске больше нет. -->
+    <!-- changelog.json встроен в сборку, а не копируется рядом с .exe, чтобы историю и номер версии нельзя было
+         подправить в блокноте (см. ChangelogLoader.Load). -->
     <EmbeddedResource Include="Changelog\changelog.json" />
   </ItemGroup>
 

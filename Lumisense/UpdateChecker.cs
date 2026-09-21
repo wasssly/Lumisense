@@ -179,10 +179,8 @@ public sealed class ReleaseListItem
     public bool IsPrerelease { get; init; }
 }
 
-// Проверка обновлений через GitHub Releases API без токена (лимита 60/час на IP хватает).
-// Ожидает asset Lumisense-<version>-Setup.exe, для старых release — fallback Lumisense_Setup.exe.
-//
-// ВАЖНО: RepoOwner/RepoName должны указывать на реальный репозиторий с релизами.
+// Проверка через GitHub Releases API без токена (хватает лимита 60/час); ждёт asset Lumisense-<version>-Setup.exe
+// (для старых release — Lumisense_Setup.exe). ВАЖНО: RepoOwner/RepoName должны указывать на реальный репозиторий.
 public static class UpdateChecker
 {
     private const string RepoOwner = "wasssly";
@@ -190,15 +188,11 @@ public static class UpdateChecker
 
     private const long MaxInstallerBytes = 250L * 1024 * 1024;
     private const int SourceProbeBytes = 256 * 1024;
-    // Если в текущей сессии ещё не было проверки обновления, URL для замера source нельзя
-    // собрать как /releases/latest/download/{asset}: имя EXE теперь содержит версию. В этом
-    // случае ResolveProbeAssetUrlAsync сначала получает latest release через API и выбирает
-    // только ожидаемый versioned asset. Raw-файл из репозитория здесь намеренно не используется:
-    // он не измеряет реальный путь release-asset/redirect/CDN.
+    // Без проверки в этой сессии URL замера нельзя собрать как /releases/latest/download/{asset}: имя EXE
+    // содержит версию, поэтому ResolveProbeAssetUrlAsync берёт latest release через API (raw-файл не измеряет CDN).
     private const int DownloadAttemptCount = 3;
-    // Медленное зеркало допустимо, пока оно продолжает передавать данные. Ограничиваем не общую
-    // длительность скачивания, а только период полного отсутствия байтов, чтобы не обрывать
-    // рабочую загрузку на медленном соединении и всё же выходить из реально зависшего запроса.
+    // Медленное зеркало допустимо, пока передаёт данные: ограничиваем только период полного отсутствия байтов,
+    // чтобы не обрывать рабочую загрузку на медленном соединении, но выходить из зависшего запроса.
     private static readonly System.TimeSpan DownloadReadIdleTimeout = System.TimeSpan.FromSeconds(90);
     private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -325,9 +319,8 @@ public static class UpdateChecker
         }
         catch (System.Exception ex)
         {
-            // Нет сети, таймаут, репозиторий/релиз ещё не существует и т.п. — не критично.
-            // Техническая подробность нужна для диагностики, но в UI показывается локализованная
-            // причина UpdateFailureKind, а не текст исключения.
+            // Нет сети, таймаут, релиза ещё нет и т.п. — не критично; в UI показывается локализованная причина
+            // UpdateFailureKind, а текст исключения нужен только для диагностики.
             Logger.Warn($"Не удалось проверить обновление: {ex.Message}");
             return new UpdateCheckResult
             {
@@ -397,9 +390,8 @@ public static class UpdateChecker
         }
     }
 
-    // Выбор всегда привязан к версии именно того release, который вернул GitHub API. Это
-    // исключает выбор произвольного EXE/MSI и одновременно позволяет переименовать публичные
-    // файлы без изменения Inno AppId или внутреннего Velopack package identity.
+    // Выбор привязан к версии release, который вернул GitHub API: исключает произвольный EXE/MSI и позволяет
+    // переименовать публичные файлы без изменения Inno AppId и Velopack package identity.
     internal static (string? DownloadUrl, string? Sha256) FindInstallerAsset(JsonElement releaseRoot, string releaseVersion) =>
         FindAssetByPreferredExactNames(
             releaseRoot,
@@ -498,9 +490,8 @@ public static class UpdateChecker
         return latestVersion.CompareTo(currentVersion) > 0;
     }
 
-    // gh-proxy — сторонний прокси для github.com/githubusercontent.com на случай, если сам
-    // GitHub недоступен напрямую или скачивается медленно. Домены — разные точки входа одного
-    // сервиса, какая быстрее зависит от провайдера и региона, поэтому даём выбрать самому.
+    // gh-proxy — сторонний прокси github.com/githubusercontent.com на случай недоступности или медленной загрузки
+    // напрямую; домены — разные точки входа одного сервиса, какая быстрее — зависит от провайдера и региона.
     public static readonly (string Key, string DisplayName)[] DownloadSources =
     {
         ("GitHub", "GitHub (напрямую)"),
@@ -525,9 +516,8 @@ public static class UpdateChecker
         _ => githubUrl
     };
 
-    // Диагностика не загружает и не запускает установщик: у каждого source запрашиваются
-    // только первые 256 KiB публичного release-asset. Ответ принимается лишь при HTTP 206 и
-    // бинарном Content-Type; HTML/error-page не может ошибочно стать «работающим зеркалом».
+    // Установщик не загружается и не запускается: у каждого source запрашиваются первые 256 KiB release-asset;
+    // принимается только HTTP 206 и бинарный Content-Type, чтобы HTML/error-page не стал «работающим зеркалом».
     public static async Task<IReadOnlyList<UpdateSourceProbeResult>> ProbeDownloadSourcesAsync(
         string? legacyInstallerAssetUrl = null, CancellationToken ct = default)
     {
@@ -540,9 +530,8 @@ public static class UpdateChecker
 
     private static async Task<string> ResolveProbeAssetUrlAsync(string? legacyInstallerAssetUrl, CancellationToken ct)
     {
-        // Legacy Inno Setup скачивает полный EXE. Если ручная проверка уже получила
-        // browser_download_url актуального EXE, используем его. Иначе versioned имя нельзя
-        // вычислить без API, поэтому выбираем точный asset из latest release.
+        // Legacy Inno Setup качает полный EXE: берём browser_download_url из ручной проверки, иначе (versioned имя
+        // без API не вычислить) выбираем точный asset из latest release.
         if (!UpdateMigrationGuard.IsVelopackManagedInstall())
         {
             if (!string.IsNullOrWhiteSpace(legacyInstallerAssetUrl))
@@ -554,9 +543,8 @@ public static class UpdateChecker
                 ct).ConfigureAwait(false);
         }
 
-        // Velopack после первоначальной MSI-установки получает обновления через feed и .nupkg,
-        // а не через следующий MSI. Берём full package последнего release через GitHub API,
-        // потому что его имя содержит версию и не имеет постоянного latest-download URL.
+        // Velopack обновляется через feed и .nupkg, а не через MSI: берём full package последнего release через API,
+        // т.к. его имя содержит версию и постоянного latest-download URL нет.
         return await ResolveLatestReleaseAssetUrlAsync(
             "Velopack full package",
             FindVelopackFullPackageAsset,
@@ -696,10 +684,8 @@ public static class UpdateChecker
         if (!TryParseSha256(expectedSha256, out var expectedHash))
             throw new InvalidDataException("Контрольная сумма SHA-256 установщика отсутствует или имеет недопустимый формат.");
 
-        // GitHub CDN или промежуточный proxy могут оборвать большой ответ после того, как уже
-        // отдали заголовок Content-Length. Не используем частичный файл: удаляем его и начинаем
-        // ограниченное число полных попыток заново; только полностью скачанный asset проходит
-        // сверку SHA-256 и может быть запущен.
+        // CDN или proxy могут оборвать ответ после заголовка Content-Length: частичный файл удаляем и повторяем
+        // полную загрузку ограниченное число раз; только целиком скачанный asset проходит SHA-256 и запускается.
         Exception? lastRetryableFailure = null;
         for (int attempt = 1; attempt <= DownloadAttemptCount; attempt++)
         {
@@ -888,9 +874,8 @@ public static class UpdateChecker
         catch { /* cleanup is best-effort after cancellation/failure */ }
     }
 
-    // Запускает установщик через оболочку (Inno Setup сам запросит права администратора)
-    // и завершает текущий процесс, чтобы установщик мог перезаписать используемые им файлы.
-    // Перед запуском файл проверяется повторно: путь мог быть изменён между скачиванием и стартом.
+    // Запускает установщик через оболочку (Inno Setup сам запросит права администратора) и завершает процесс,
+    // чтобы установщик мог перезаписать файлы; файл перепроверяется — путь мог измениться после скачивания.
     public static void LaunchInstallerAndExit(string installerPath, string expectedSha256)
     {
         VerifyDownloadedAssetHash(installerPath, expectedSha256);

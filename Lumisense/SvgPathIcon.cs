@@ -24,9 +24,7 @@ public sealed class SvgPathIcon : IconElement
         nameof(Size), typeof(double), typeof(SvgPathIcon),
         new FrameworkPropertyMetadata(double.NaN, FrameworkPropertyMetadataOptions.AffectsMeasure));
 
-    // Необязательное переопределение пака только для этой иконки — используется в галерее
-    // предпросмотра паков на странице настроек, чтобы показать превью пака, который сейчас
-    // не является активным (IconPacks.Current). В остальных местах приложения не задаётся.
+    // Переопределение пака только для этой иконки — для превью неактивных паков в галерее настроек.
     public static readonly DependencyProperty PackProperty = DependencyProperty.Register(
         nameof(Pack), typeof(string), typeof(SvgPathIcon),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));

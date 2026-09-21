@@ -13,9 +13,8 @@
         ResizeMode="NoResize"
         ShowInTaskbar="False">
 
-    <!-- Диалог «доступно обновление» обслуживает два безопасных пути: legacy Inno Setup
-         скачивает проверенный EXE/MSI, а Velopack-managed установка применяет full/delta
-         packages и показывает расчётный план до начала загрузки. -->
+    <!-- Диалог обслуживает два пути: legacy Inno Setup качает проверенный EXE/MSI, Velopack-установка применяет full/delta
+         packages и показывает расчётный план до загрузки. -->
 
     <Grid>
         <Grid.RowDefinitions>
@@ -79,9 +78,7 @@
                 </StackPanel>
             </Border>
 
-            <!-- Диагностика нужна для разбора обновлений, но не должна занимать место в
-                 обычном сценарии. FluentExpander свёрнут по умолчанию, а его заголовок
-                 остаётся явной кликабельной точкой входа к плану пакетов и журналам. -->
+            <!-- Диагностика не нужна в обычном сценарии: FluentExpander свёрнут, заголовок остаётся точкой входа к плану пакетов и журналам. -->
             <Expander x:Name="VelopackDiagnosticsPanel" Grid.Row="4"
                       Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch"
                       Margin="0,12,0,0" Visibility="Collapsed" IsExpanded="False">
@@ -125,17 +122,14 @@
                        Foreground="{DynamicResource SystemFillColorCriticalBrush}"
                        TextWrapping="Wrap" Visibility="Collapsed" />
 
-            <!-- Смена mirror всегда перезапускает EXE/MSI с нуля: partial-файл от прошлого
-                 URL не используется. Кнопка отдельной строкой, чтобы две главные кнопки
-                 Pause/Cancel оставались широкими и не теснились. -->
+            <!-- Смена mirror всегда перезапускает EXE/MSI с нуля (partial от прошлого URL не используется); кнопка отдельной строкой,
+                 чтобы Pause/Cancel оставались широкими. -->
             <ui:Button x:Name="ChangeDownloadSourceButton" Grid.Row="8" Margin="0,10,0,0"
                        Appearance="Secondary" HorizontalAlignment="Left" Visibility="Collapsed"
                        Click="ChangeDownloadSourceButton_Click" />
 
-            <!-- Основной EXE-путь сохранён без изменений; отдельная длинная MSI-кнопка выше
-                 показывается только для legacy-копии с опубликованным проверенным MSI.
-                 При загрузке InstallButton скрывается, а CancelDownloadButton занимает его
-                 место: отмена видна явно и не требует повторного клика по другой кнопке. -->
+            <!-- EXE-путь без изменений; длинная MSI-кнопка выше — только для legacy-копии с проверенным MSI. При загрузке InstallButton
+                 скрывается, а CancelDownloadButton занимает его место — отмена видна явно. -->
             <Grid Grid.Row="9" Margin="0,16,0,0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

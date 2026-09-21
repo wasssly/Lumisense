@@ -12,9 +12,8 @@ public sealed class PlaylistTrackRow
     // 1-based номер трека внутри своей папки, считается заранее при построении списка
     public required int IndexInFolder { get; init; }
 
-    // Статус вычисляется при построении снимка списка, поэтому не попадает в settings.json и
-    // автоматически обновляется после RefreshPlaylistView. Сам путь не удаляется молча: UI
-    // показывает предупреждение и предлагает заменить запись или убрать только её из плейлиста.
+    // Статус считается при построении снимка списка и не попадает в settings.json.
+    // Путь не удаляется молча: UI предупреждает и предлагает заменить запись или убрать её.
     public bool IsFileAvailable => File.Exists(FilePath);
     public string MissingStatus => IsFileAvailable ? string.Empty : LocalizationService.Translate("Файл недоступен");
 }

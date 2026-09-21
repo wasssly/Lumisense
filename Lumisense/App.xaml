@@ -12,13 +12,8 @@
 
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- ===== SVG-иконки ===== -->
-            <!-- Настоящие .svg-файлы лежат в папке Icons/svg/ (рендерятся через SharpVectors,
-                 см. SvgPathIcon.cs) и подключать их тут не нужно — они встраиваются в сборку
-                 напрямую через <Resource Include="Icons\svg\**\*.svg" /> в Lumisense.csproj.
-                 Иконки разложены по паку: Icons/svg/{Duotone|Outline|Bold|Fill|Thin}/IconXxx.svg,
-                 см. IconPacks в SvgPathIcon.cs. Иконка на экране — local:SvgPathIcon с Icon="IconXxx"
-                 (плюс необязательный Pack="..." для превью в настройках). -->
+            <!-- SVG-иконки лежат в Icons/svg/{Pack}/IconXxx.svg (рендер через SharpVectors, SvgPathIcon.cs) и встраиваются через
+                 <Resource Include="Icons\svg\**\*.svg" /> в csproj; на экране — local:SvgPathIcon Icon="IconXxx" (Pack — для превью в настройках). -->
 
             <local:IsOddIndexConverter x:Key="IsOddIndexConverter" />
 
@@ -31,8 +26,7 @@
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             </Style>
 
-            <!-- Скруглённая focus-рамка для маленьких иконок-кнопок (TrackFavoriteButton/
-                 TrackPinButton) — штатная прямоугольная рамка смотрелась как визуальный баг
+            <!-- Скруглённая focus-рамка для маленьких иконок-кнопок (TrackFavoriteButton/TrackPinButton): штатная прямоугольная выглядела как баг
                  поверх скруглённого выделения строки. -->
             <Style x:Key="RoundedIconButtonFocusVisualStyle">
                 <Setter Property="Control.Template">
@@ -53,34 +47,16 @@
                 <!-- Ключевая настройка: клик по треку сразу переносит ползунок в точку клика,
                      а не сдвигает его пошагово на LargeChange -->
                 <Setter Property="IsMoveToPointEnabled" Value="True" />
-                <!-- Настоящие деления используются только там, где Slider явно задаёт
-                     TickPlacement. TickBar резервирует половину Thumb с обоих краёв, поэтому
-                     его крайние точки совпадают с достижимыми позициями бегунка. -->
+                <!-- Деления рисуются только там, где Slider задаёт TickPlacement; TickBar резервирует половину Thumb с краёв,
+                     поэтому крайние точки совпадают с достижимыми позициями бегунка. -->
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
-                            <!-- И Grid, и Track — ВСЕГДА Stretch по обеим осям (никакого
-                                 VerticalAlignment/HorizontalAlignment="Center" на них самих).
-                                 Это принципиально: у вертикальных слайдеров эквалайзера
-                                 (Height="140") Track обязан реально ЗАНИМАТЬ все 140px по
-                                 высоте, чтобы у него было где считать позицию бегунка при
-                                 перетаскивании — если центрировать Track по своему "естественному"
-                                 (сжатому) размеру вместо растягивания на всё доступное
-                                 пространство, диапазон перетаскивания схлопывается почти до
-                                 нуля, и слайдер визуально почти не двигается. Тонкая полоса
-                                 (4px) — это НЕ про сжатие Track/Grid, а только про декоративные
-                                 Border ниже, у которых размер вдоль поперечной оси зафиксирован
-                                 явно (Height/Width=4), а выравнивание по ней — Center, но не
-                                 локальным атрибутом на самом элементе (WPF отдаёт локальным
-                                 значениям приоритет строго ВЫШЕ, чем сеттерам стиля, включая
-                                 триггерные — задать и то, и другое на одном элементе означает,
-                                 что триггер не сможет переопределить локальное значение и
-                                 останется мёртвым кодом), а исключительно через Style ниже —
-                                 это и есть та ошибка, которая была здесь минуту назад. -->
+                            <!-- Grid и Track всегда Stretch по обеим осям: иначе у вертикальных слайдеров EQ (Height="140") диапазон перетаскивания схлопнется.
+                                 Тонкость полосы (4px) и выравнивание задаёт только Style, не локальные атрибуты: они приоритетнее сеттеров и триггеров стиля. -->
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent">
-                                <!-- Фоновая полоса (весь трек) — тонкая поперёк оси движения,
-                                     на всю длину вдоль неё. Какая ось "поперёк", а какая
-                                     "вдоль" — зависит от Slider.Orientation, отсюда триггер. -->
+                                <!-- Фоновая полоса трека: тонкая поперёк оси движения, на всю длину вдоль неё;
+                                     оси зависят от Slider.Orientation, отсюда триггер. -->
                                 <Border CornerRadius="2.5" Background="{DynamicResource ControlStrongFillColorDefaultBrush}">
                                     <Border.Style>
                                         <Style TargetType="Border">
@@ -99,24 +75,15 @@
                                     </Border.Style>
                                 </Border>
 
-                                <!-- Orientation="{TemplateBinding Orientation}" — Track это
-                                     отдельный класс со своим СОБСТВЕННЫМ свойством Orientation
-                                     (Horizontal по умолчанию), которое WPF не подхватывает из
-                                     Slider автоматически просто по факту родства в шаблоне: без
-                                     этой привязки Track всегда считал себя горизонтальным и
-                                     мапил перетаскивание мышью на X, а не на Y — то есть на
-                                     вертикальных слайдерах эквалайзера вертикальное движение
-                                     мыши в принципе ни на что не влияло. -->
+                                <!-- Orientation="{TemplateBinding Orientation}": у Track своё свойство Orientation (Horizontal по умолчанию), из Slider оно не наследуется —
+                                     без привязки на вертикальных слайдерах EQ перетаскивание мапилось на X, а не на Y. -->
                                 <Track x:Name="PART_Track" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                        Orientation="{TemplateBinding Orientation}">
                                     <Track.DecreaseRepeatButton>
                                         <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
-                                                    <!-- Тот же приём, что и у фоновой полосы выше: заполненная
-                                                         акцентом часть трека "от начала до текущего значения"
-                                                         должна быть тонкой поперёк оси движения и растянутой
-                                                         вдоль неё. -->
+                                                    <!-- Как у фоновой полосы: заполненная часть трека тонкая поперёк оси движения и растянута вдоль неё. -->
                                                     <!-- Скругляется только внешний старт заполнения; край у Thumb
                                                          остаётся прямым, чтобы не образовывать вторую капсулу. -->
                                                     <Border Background="{DynamicResource AccentFillColorDefaultBrush}">
@@ -147,12 +114,8 @@
                                         <RepeatButton Command="Slider.IncreaseLarge" Background="Transparent" BorderThickness="0">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
-                                                    <!-- Растягивается на всю выделенную Track'ом
-                                                         область в обе стороны (Height/Width не
-                                                         заданы — дефолт Stretch), поэтому для
-                                                         этой, "прозрачной для глаза" половины
-                                                         трека триггер по Orientation не нужен —
-                                                         она только ловит клики мимо бегунка. -->
+                                                    <!-- Растягивается на всю область Track (Height/Width не заданы), триггер по Orientation не нужен:
+                                                         эта прозрачная половина только ловит клики мимо бегунка. -->
                                                     <Border Background="Transparent" />
                                                 </ControlTemplate>
                                             </RepeatButton.Template>
@@ -171,9 +134,7 @@
                                         </Thumb>
                                     </Track.Thumb>
                                 </Track>
-                                <!-- Точки рисуются только у Slider с local:SliderMilestoneMarkers.IsEnabled.
-                                     Overlay расположен после Track, поэтому одинаково виден на
-                                     заполненной и незаполненной частях дорожки. -->
+                                <!-- Точки рисуются только у Slider с SliderMilestoneMarkers.IsEnabled; Overlay после Track, поэтому виден на заполненной и незаполненной частях. -->
                                 <local:SliderMilestoneOverlay x:Name="PART_MilestoneOverlay"
                                                               MarkerBrush="{DynamicResource TextFillColorSecondaryBrush}"
                                                               Opacity="0.88" IsHitTestVisible="False"
@@ -185,21 +146,8 @@
             </Style>
 
 
-            <!-- Стилизация строк плейлиста: скруглённые карточки, ховер, акцентная подсветка выбранного трека.
-
-                 Разделение треков между собой: раньше — линия снизу каждой строки, потом —
-                 только нумерация без какого-либо фона (визуально пропадало на глаз). Теперь —
-                 zebra striping: у каждой нечётной по счёту строки (AlternationIndex) свой
-                 лёгкий фон-подложка (ControlFillColorDefaultBrush), у чётных — прозрачный.
-                 Это задаётся триггером ниже (Style.Triggers), а не прямо в Background, потому
-                 что AlternationIndex — это отдельное свойство самого ListViewItem, доступное
-                 только когда ListView.AlternationCount > 0 (см. MainWindow.xaml).
-
-                 Порядок важен: DataTrigger в Style.Triggers красит фон полосой ДО применения
-                 шаблона, а ховер/выбор (ControlTemplate.Triggers ниже) красят именованный
-                 элемент ItemBorder уже ПОСЛЕ — у триггеров шаблона приоритет выше, чем у
-                 триггеров стиля, поэтому при наведении/выборе полоса всегда корректно
-                 перекрывается акцентом, а не спорит с ним. -->
+            <!-- Строки плейлиста: скруглённые карточки, ховер, акцентное выделение; zebra striping — триггер по AlternationIndex (нужен
+                 ListView.AlternationCount > 0, см. MainWindow.xaml); триггеры шаблона приоритетнее стиля, поэтому ховер/выбор перекрывают полосу. -->
             <Style TargetType="ListViewItem">
                 <Setter Property="Padding" Value="10,9" />
                 <Setter Property="Margin" Value="2,3" />
@@ -210,14 +158,8 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="ListViewItem">
-                            <!-- ClipToBounds="True" — без него, если по каким-то причинам
-                                 измеренная ширина содержимого (ContentPresenter) хоть немного
-                                 разойдётся с шириной самой карточки (например, из-за
-                                 округления при виртуализации), содержимое у правого края —
-                                 в частности, кнопка "избранное" — может отрисоваться ЗА
-                                 пределами скруглённого фона карточки, будто повиснув в
-                                 воздухе рядом с ней, а не внутри неё. С ClipToBounds такое
-                                 просто обрезается по границе карточки, а не торчит наружу. -->
+                            <!-- ClipToBounds: при малом расхождении измеренной ширины содержимого и карточки (округление при виртуализации) кнопка "избранное"
+                                 у правого края могла бы отрисоваться за скруглённым фоном; с клипом обрезается по границе карточки. -->
                             <Border x:Name="ItemBorder" CornerRadius="8" ClipToBounds="True"
                                     Background="{TemplateBinding Background}"
                                     Padding="{TemplateBinding Padding}">
@@ -250,20 +192,8 @@
                 </Style.Triggers>
             </Style>
 
-            <!-- Fluent-аккордеон для сворачиваемых секций (см. "Разработчик" и "Источник
-                 загрузки обновлений" на странице "О плеере" в SettingsWindow.xaml) — по клику
-                 на заголовок раскрывает/скрывает содержимое, шеврон плавно поворачивается на
-                 180°. Построен на штатном WPF Expander (а не на чём-то из WPF-UI) с полностью
-                 своим ControlTemplate — так надёжнее: не завязано на конкретный набор свойств
-                 стороннего Fluent-контрола, который здесь негде проверить компиляцией.
-
-                 Раскрытие/скрытие содержимого — мгновенное (обычная Visibility, как и у
-                 стандартного Expander), а не через анимацию высоты: WPF не умеет анимировать
-                 GridLength/Auto-высоту напрямую, а трюки с этим (ScaleTransform по Y,
-                 покадровый пересчёт естественной высоты через Measure) — то самое место, где
-                 несложно словить тонкий, трудноотловимый без сборки на Windows баг. Плавный тут
-                 только сам поворот шеврона (Angle 0→180 через DoubleAnimation) — этого обычно
-                 достаточно, чтобы раскрытие ощущалось отзывчивым, а не "рычажным". -->
+            <!-- Fluent-аккордеон на штатном Expander с собственным ControlTemplate (не зависит от WPF-UI, который тут негде проверить сборкой);
+                 раскрытие мгновенное (WPF не анимирует Auto-высоту без хрупких трюков), плавно только поворот шеврона на 180°. -->
             <Style x:Key="FluentExpanderStyle" TargetType="Expander">
                 <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
@@ -273,11 +203,8 @@
                         <ControlTemplate TargetType="Expander">
                             <Border CornerRadius="10" Background="{TemplateBinding Background}">
                                 <StackPanel>
-                                    <!-- Сам заголовок — ToggleButton, а не что-то с ручной обработкой
-                                         клика: IsChecked двусторонне привязан к Expander.IsExpanded,
-                                         поэтому клик по заголовку и программное изменение IsExpanded
-                                         (если понадобится где-то ещё) всегда остаются согласованы
-                                         сами по себе, без лишнего кода в code-behind. -->
+                                    <!-- Заголовок — ToggleButton с двусторонней привязкой IsChecked к Expander.IsExpanded, поэтому клик и программное изменение
+                                         согласованы без кода в code-behind. -->
                                     <ToggleButton x:Name="HeaderToggle"
                                                   IsChecked="{Binding IsExpanded, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}"
                                                   Content="{TemplateBinding Header}"

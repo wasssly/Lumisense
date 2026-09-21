@@ -9,10 +9,8 @@ using Velopack.Logging;
 
 namespace Lumisense;
 
-/// <summary>
-/// Данные, которые UpdateManager уже вычислил до загрузки. Это план, а не подтверждение
-/// фактически переданного файла: DownloadUpdatesAsync сообщает приложению только процент.
-/// </summary>
+/// <summary>Данные, которые UpdateManager вычислил до загрузки: это план, а не подтверждение переданного
+/// файла — DownloadUpdatesAsync сообщает только процент.</summary>
 public sealed class VelopackUpdatePlan
 {
     internal VelopackUpdatePlan(VelopackAsset fullPackage, IReadOnlyList<VelopackAsset> deltaPackages)
@@ -27,11 +25,6 @@ public sealed class VelopackUpdatePlan
     public long DeltaBytes => DeltaPackages.Sum(asset => Math.Max(0, asset.Size));
 }
 
-/// <summary>
-/// Сохраняет безопасные диагностические сведения в общий журнал Lumisense и готовит отчёт,
-/// который пользователь может скопировать. Модуль намеренно не угадывает fallback: SDK 1.2.0
-/// не передаёт выбранный asset, его байты либо причину переключения на full package.
-/// </summary>
 public enum VelopackUpdateStage
 {
     Ready,
@@ -42,6 +35,8 @@ public enum VelopackUpdateStage
     Failed,
 }
 
+/// <summary>Пишет безопасные диагностические сведения в журнал Lumisense и готовит отчёт для копирования; fallback
+/// не угадывается — SDK 1.2.0 не сообщает выбранный asset, его байты и причину перехода на full package.</summary>
 public sealed class VelopackUpdateDiagnostics : IDisposable
 {
     private readonly string _currentVersion;
@@ -83,9 +78,8 @@ public sealed class VelopackUpdateDiagnostics : IDisposable
     public void Start(bool resumed)
     {
         EnsureActive();
-        // Pause в публичном API реализована отменой. При нажатии «Продолжить» SDK заново
-        // проверяет операцию и не гарантирует сохранение прежней позиции, поэтому не переносим
-        // старый процент как подтверждённый прогресс новой попытки.
+        // Pause в публичном API реализована отменой: при «Продолжить» SDK заново проверяет операцию и не гарантирует
+        // прежнюю позицию, поэтому старый процент не переносим как прогресс новой попытки.
         _timer.Restart();
         _progressPercentage = 0;
         _lastLoggedProgress = -1;

@@ -10,11 +10,8 @@ public class LumiProfile
     public int FormatVersion { get; set; } = 1;
     public DateTime ExportedAtUtc { get; set; } = DateTime.UtcNow;
 
-    // Только "предпочтения" — тема, акцент, эквалайзер, хоткеи, мини-плеер и т.п. Плейлист и
-    // избранное сюда намеренно не входят (перенос профиля ограничен только настройками),
-    // сессионные/локальные для конкретного компьютера поля (последний трек и позиция,
-    // статистика прослушиваний, состояние окна на момент закрытия) — тоже не входят, см.
-    // LumiProfileIO.CloneSettingsForExport.
+    // Только предпочтения (тема, акцент, эквалайзер, хоткеи, мини-плеер): плейлист, избранное и локальные
+    // для компьютера поля (последний трек, статистика, состояние окна) не входят, см. CloneSettingsForExport.
     public AppSettings Settings { get; set; } = new();
 }
 
@@ -37,9 +34,7 @@ public static class LumiProfileIO
         File.WriteAllText(filePath, JsonSerializer.Serialize(profile, JsonOptions));
     }
 
-    // JSON-рандтрип, а не ручное копирование полей — простой и надёжный способ полного клона
-    // без риска случайно расшарить те же самые вложенные списки/объекты с живими настройками
-    // приложения.
+    // JSON-круг вместо ручного копирования: полный клон без риска расшарить вложенные списки с живыми настройками.
     private static AppSettings CloneSettingsForExport(AppSettings source)
     {
         var clone = JsonSerializer.Deserialize<AppSettings>(

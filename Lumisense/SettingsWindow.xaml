@@ -135,9 +135,8 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
-                        <!-- Прозрачный Border формирует единую hit-test область. Внутренние
-                             декоративные элементы не перехватывают PointerDown, поэтому клик
-                             по кругу и по подписи гарантированно доходит до RadioButton. -->
+                        <!-- Прозрачный Border — единая hit-test область: декоративные элементы не перехватывают PointerDown,
+                             поэтому клик по кругу и подписи доходит до RadioButton. -->
                         <Border Background="Transparent">
                             <Grid SnapsToDevicePixels="True" IsHitTestVisible="False">
                                 <Grid.ColumnDefinitions>
@@ -147,9 +146,7 @@
                                 <Grid Width="20" Height="20" VerticalAlignment="Center">
                                     <Ellipse x:Name="Ring" StrokeThickness="1"
                                              Stroke="{DynamicResource ControlStrokeColorDefaultBrush}" />
-                                    <!-- Почти замкнутая дуга: длина штриха равна окружности,
-                                         поэтому сдвиг StrokeDashOffset визуально дорисовывает
-                                         акцентную обводку по кругу. -->
+                                    <!-- Почти замкнутая дуга: длина штриха равна окружности, поэтому сдвиг StrokeDashOffset дорисовывает акцентную обводку по кругу. -->
                                     <Path x:Name="DrawRing" Data="M 10,1 A 9,9 0 1 1 9.99,1"
                                           Stroke="{DynamicResource AccentFillColorDefaultBrush}"
                                           Opacity="0" StrokeThickness="2" StrokeDashArray="28.3,100"
@@ -380,9 +377,7 @@
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
         </Style>
 
-        <!-- Карточка-превью вида плеера в настройках: RadioButton с картинкой-миниатюрой
-             внутри, подсвечивается акцентной рамкой, когда выбран (см. PageWindow /
-             PlayerViewModeCard). -->
+        <!-- Карточка-превью вида плеера: RadioButton с миниатюрой, выбранный подсвечивается акцентной рамкой (PlayerViewModeCard). -->
         <Style x:Key="ViewModeThumbStyle" TargetType="RadioButton">
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Template">
@@ -492,9 +487,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Заголовок окна (Fluent TitleBar) — та же стандартная раскладка кнопок
-             свернуть/развернуть/закрыть, что и в главном окне (см. MainWindow.xaml,
-             AppTitleBar): ShowMaximize="True", раз окно и так уже CanResize. -->
+        <!-- Fluent TitleBar с той же раскладкой кнопок, что в главном окне (AppTitleBar); ShowMaximize="True", раз окно CanResize. -->
         <ui:TitleBar Grid.Row="0" Title="Настройки" ShowMaximize="True" />
 
         <Grid Grid.Row="1" Background="{DynamicResource LayerFillColorDefaultBrush}">
@@ -503,7 +496,6 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- ===== Навигация: отдельная скруглённая поверхность ===== -->
             <Border Grid.Column="0" Margin="14,14,0,16" Padding="10"
                     Background="{DynamicResource ControlFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
@@ -636,7 +628,6 @@
                         </StackPanel>
                         </ScrollViewer>
 
-                        <!-- ===== Результаты поиска настроек (заменяют список категорий, пока идёт поиск) ===== -->
                         <Grid x:Name="SearchResultsHost" Visibility="Collapsed">
                             <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,12,0">
                                 <ItemsControl x:Name="SearchResultsList" Margin="0,0,2,12">
@@ -662,13 +653,8 @@
                 </Grid>
             </Border>
 
-            <!-- ===== Содержимое выбранной страницы =====
-                 Один и тот же ScrollViewer используется для ВСЕХ страниц — переключение вкладки
-                 (см. NavItem_Checked) просто скрывает один StackPanel и показывает другой, сам
-                 ScrollViewer при этом не пересоздаётся. Из-за этого его VerticalOffset раньше
-                 сохранялся между вкладками: если долистать вниз на одной странице и переключиться
-                 на другую, та открывалась не сверху, а с той же прокруткой, что осталась от
-                 предыдущей — см. явный сброс в PART_ContentScroll.ScrollToTop() в NavItem_Checked. -->
+            <!-- Один ScrollViewer на все страницы (NavItem_Checked лишь переключает StackPanel): без явного PART_ContentScroll.ScrollToTop()
+                 новая вкладка открывалась бы с прокруткой прошлой. -->
             <Border Grid.Column="1" Margin="18,14,18,16" Padding="0"
                     Background="{DynamicResource ControlFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
@@ -676,7 +662,6 @@
                 <ScrollViewer x:Name="PART_ContentScroll" VerticalScrollBarVisibility="Auto">
                     <Grid Margin="46,40,46,44" HorizontalAlignment="Stretch">
 
-                    <!-- Оформление -->
                     <StackPanel x:Name="PageAppearance">
                         <TextBlock Text="Оформление" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Внешний вид, акцент и взаимодействие с текстом." Style="{StaticResource PageDescriptionStyle}" />
@@ -703,9 +688,8 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- SvgPathIcon.Pack переопределяет активный IconPacks.Current только для превью в
-                             этой галерее — ЛКМ выбирает пак (применяется сразу, IconPackContext), ПКМ
-                             открывает IconPackPreviewWindow с полным набором иконок пака. -->
+                        <!-- SvgPathIcon.Pack переопределяет IconPacks.Current только для превью в галерее; ЛКМ выбирает пак (применяется сразу, IconPackContext),
+                             ПКМ открывает IconPackPreviewWindow с полным набором. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Набор иконок" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -806,9 +790,7 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Значок приложения (окна, трей) — см. AppIcons.cs. Применяется сразу,
-                             как и набор иконок выше; .exe/ярлык при этом не меняются (зашиты в
-                             сборку через ApplicationIcon в .csproj). -->
+                        <!-- Значок приложения (окна, трей; AppIcons.cs) применяется сразу, как набор иконок; .exe и ярлык не меняются — зашиты через ApplicationIcon в csproj. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Значок приложения" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -861,10 +843,8 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.AccentColorMode/AccentColorHex. Пресеты — просто восемь
-                             готовых hex-цветов; "Свой" открывает стандартный системный ColorDialog. У
-                             выбранного сейчас цвета (если это один из пресетов) рамка подсвечена белым —
-                             см. RefreshAccentSwatchSelection. -->
+                        <!-- Пресеты — восемь готовых hex-цветов, "Свой" открывает системный ColorDialog (AccentColorMode/AccentColorHex); рамка у выбранного пресета
+                             белая (RefreshAccentSwatchSelection). -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Акцентный цвет" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -1052,7 +1032,6 @@
 
                     </StackPanel>
 
-                    <!-- Окно и запуск -->
                     <StackPanel x:Name="PageWindow" Visibility="Collapsed">
                         <TextBlock Text="Окно и запуск" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Режим окна и поведение приложения при запуске." Style="{StaticResource PageDescriptionStyle}" />
@@ -1195,7 +1174,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Воспроизведение -->
                     <StackPanel x:Name="PagePlayback" Visibility="Collapsed">
                         <TextBlock Text="Воспроизведение" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Громкость, продолжение воспроизведения и поведение плейлиста." Style="{StaticResource PageDescriptionStyle}" />
@@ -1349,10 +1327,8 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Раньше называлась "Улучшенный шаффл" и жила на странице "Экспериментальное" —
-                             имя настройки в AppSettings (UseImprovedShuffle) осталось прежним, чтобы не
-                             сбрасывать выбор тем, у кого он уже был включён, изменилось только то, как
-                             это называется в интерфейсе. -->
+                        <!-- Раньше "Улучшенный шаффл" на странице "Экспериментальное": имя настройки UseImprovedShuffle сохранено, чтобы не сбросить выбор,
+                             изменилась только подпись в интерфейсе. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
@@ -1395,7 +1371,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Интеграции -->
                     <StackPanel x:Name="PageIntegrations" Visibility="Collapsed">
                         <TextBlock Text="Интеграции" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Внешние сервисы, приватность и диагностика подключений." Style="{StaticResource PageDescriptionStyle}" />
@@ -1443,9 +1418,7 @@
 
                     </StackPanel>
 
-                    <!-- Уведомления — раньше жили на странице "Воспроизведение", вынесены на
-                         отдельную страницу: набралось три карточки только про всплывающее
-                         уведомление о смене трека (вкл/выкл, расположение, размер, монитор). -->
+                    <!-- Уведомления вынесены со страницы "Воспроизведение": набралось три карточки только про уведомление о смене трека. -->
                     <StackPanel x:Name="PageNotifications" Visibility="Collapsed">
                         <TextBlock Text="Уведомления" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Всплывающие карточки о смене трека." Style="{StaticResource PageDescriptionStyle}" />
@@ -1473,9 +1446,8 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.TrackChangeToastPosition/TrackChangeToastMonitor/TrackChangeToastWidth.
-                             Список мониторов в ToastMonitorCombo заполняется в code-behind (InitializeSettings) —
-                             в разметке заранее известен только первый пункт "Автоматически". -->
+                        <!-- См. AppSettings.TrackChangeToastPosition/Monitor/Width. ToastMonitorCombo заполняется в code-behind (InitializeSettings) —
+                             в разметке известен только первый пункт "Автоматически". -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Расположение уведомления" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -1568,7 +1540,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Эквалайзер -->
                     <StackPanel x:Name="PageEqualizer" Visibility="Collapsed">
                         <TextBlock Text="Эквалайзер" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Точная настройка звучания и сохранённые пресеты." Style="{StaticResource PageDescriptionStyle}" />
@@ -1603,19 +1574,10 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <!-- 10 одинаковых колонок: значение в дБ сверху, вертикальный слайдер
-                                         посередине, частота полосы снизу. Все десять слайдеров используют
-                                         ОДИН общий обработчик (EqualizerBandSlider_ValueChanged) — номер
-                                         полосы передаётся через Tag, а не десятью отдельными методами. -->
-                                    <!-- Width="46" TextAlignment="Center" на EqBandXValueText (а не просто
-                                         HorizontalAlignment="Center" на тексте переменной длины) — иначе
-                                         во время перетаскивания слайдера, пока текст скачет между "0 дБ",
-                                         "-3.5 дБ", "+12 дБ" и т.п. (разная длина строки), StackPanel без
-                                         фиксированной ширины пересчитывал свою auto-ширину под самый
-                                         широкий момент — и слайдер, центрированный внутри той же StackPanel,
-                                         визуально дёргался влево-вправо вслед за этим пересчётом на каждом
-                                         кадре перетаскивания. Фиксированная ширина текста делает ширину
-                                         StackPanel постоянной, и дёргание пропадает. -->
+                                    <!-- 10 одинаковых колонок (дБ сверху, вертикальный слайдер, частота снизу) с одним обработчиком EqualizerBandSlider_ValueChanged;
+                                         номер полосы — в Tag, а не десять отдельных методов. -->
+                                    <!-- Width="46" TextAlignment="Center" у EqBandXValueText: без фиксированной ширины StackPanel пересчитывала бы auto-ширину под текст
+                                         разной длины ("0 дБ", "-3.5 дБ"), и слайдер дёргался бы вбок во время перетаскивания. -->
                                     <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand0ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
                                         <Slider x:Name="EqBand0Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="0" Orientation="Vertical" Height="140"
@@ -1737,7 +1699,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Мини-плеер -->
                     <StackPanel x:Name="PageMiniPlayer" Visibility="Collapsed">
                         <TextBlock Text="Мини-плеер" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Компактный режим, оформление и поведение мини-плеера." Style="{StaticResource PageDescriptionStyle}" />
@@ -1754,10 +1715,7 @@
                                                Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
 
-                                <!-- Тот же приём, что и у ползунка громкости в главном окне: сам Slider не
-                                     ловит мышь, поверх него прозрачный Border обрабатывает клик/перетаскивание
-                                     в любой точке трека целиком, без зависимости от того, куда именно попали
-                                     (в шарик или в любую другую точку полосы). -->
+                                <!-- Как у громкости в главном окне: Slider не ловит мышь, клик/перетаскивание по всей полосе обрабатывает прозрачный Border поверх него. -->
                                 <Grid Margin="0,0,0,16">
                                     <Slider x:Name="MiniOpacitySlider" Style="{StaticResource SettingsAccentSliderStyle}" IsHitTestVisible="False"
                                             Minimum="0.3" Maximum="1.0" Value="1.0"
@@ -1791,9 +1749,8 @@
                                           Checked="MiniPinnedCheckBox_Changed" Unchecked="MiniPinnedCheckBox_Changed" />
                                 <TextBlock Text="Защищает выбранную позицию мини-плеера при изменении режима экрана или запуске игры."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
-                                <!-- См. AppSettings.MiniPlayerSnapToEdges / WindowSnapHelper. Действует, только
-                                     пока положение НЕ закреплено чекбоксом выше — если перетаскивания нет
-                                     вообще, прилипать уже нечему. -->
+                                <!-- См. AppSettings.MiniPlayerSnapToEdges/WindowSnapHelper; действует, только пока положение не закреплено чекбоксом выше
+                                     (нет перетаскивания — нечему прилипать). -->
                                 <CheckBox x:Name="MiniSnapToEdgesCheckBox" Content="Прилипание к краям экрана"
                                           Checked="MiniSnapToEdgesCheckBox_Changed" Unchecked="MiniSnapToEdgesCheckBox_Changed" />
                                 <TextBlock Text="При перетаскивании мини-плеер выравнивается по ближайшему краю экрана."
@@ -1841,10 +1798,8 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- В компактном окне мини-плеера, в отличие от основного, место есть только
-                             под одну "вторую" кнопку рядом с play/pause и next/prev — выбираем здесь,
-                             какую из трёх функций она выполняет (см. AppSettings.MiniPlayerSecondaryButton
-                             и MiniPlayerWindow.UpdateSecondaryButton). -->
+                        <!-- В компактном мини-плеере места хватает лишь на одну "вторую" кнопку: здесь выбираем её функцию из трёх
+                             (AppSettings.MiniPlayerSecondaryButton, MiniPlayerWindow.UpdateSecondaryButton). -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Вторая кнопка в мини-плеере" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -1983,9 +1938,7 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.MiniPlayerInfoMode и MiniPlayerWindow.UpdateSecondaryLine.
-                             Название трека видно всегда, вне зависимости от этого выбора — тут только
-                             про вторую строку под ним. -->
+                        <!-- См. AppSettings.MiniPlayerInfoMode/MiniPlayerWindow.UpdateSecondaryLine; название трека видно всегда, выбор — только для второй строки. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Вторая строка в мини-плеере" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -2001,7 +1954,6 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Горячие клавиши -->
                     <StackPanel x:Name="PageHotkeys" Visibility="Collapsed">
                         <TextBlock Text="Горячие клавиши" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Управляйте воспроизведением из любого приложения." Style="{StaticResource PageDescriptionStyle}" />
@@ -2270,12 +2222,8 @@
                         </Border>
                     </StackPanel>
 
-                    <!-- Профиль — раньше жила на странице "Экспериментальное" вместе со
-                         случайным набором мелких переключателей: перенос настроек на другой
-                         компьютер в один .lumi-файл (обычный JSON, см. LumiProfile.cs) — это
-                         обычная, завершённая функция, а не что-то экспериментальное, ей
-                         просто не хватало собственного места. Плейлист и избранное в профиль
-                         не входят — только тема, акцент, эквалайзер, хоткеи и т.п. -->
+                    <!-- Профиль: перенос настроек на другой компьютер одним .lumi-файлом (JSON, LumiProfile.cs) — завершённая функция, а не экспериментальная;
+                         плейлист и избранное не входят, только тема, акцент, эквалайзер, хоткеи и т.п. -->
                     <StackPanel x:Name="PageProfile" Visibility="Collapsed">
                         <TextBlock Text="Профиль" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Перенос параметров и безопасный сброс настроек." Style="{StaticResource PageDescriptionStyle}" />
@@ -2417,9 +2365,7 @@
                         </ui:Button>
                     </StackPanel>
 
-                    <!-- Обновления — вынесены в отдельную страницу из "О плеере": проверка
-                         обновлений, выбор источника загрузки и полный список версий разрослись
-                         до трёх самостоятельных блоков. -->
+                    <!-- Обновления вынесены со страницы "О плеере": проверка, источник загрузки и полный список версий разрослись до трёх блоков. -->
                     <StackPanel x:Name="PageUpdates" Visibility="Collapsed">
                         <TextBlock Text="Обновления" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Проверка версий и выбор источника загрузки." Style="{StaticResource PageDescriptionStyle}" />
@@ -2487,9 +2433,7 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- "Источник загрузки обновлений" — аккордеон, свёрнут по умолчанию
-                             (IsExpanded не задан → false): выбор зеркала — не то, что нужно
-                             видеть/трогать большинству, кому GitHub и так доступен напрямую. -->
+                        <!-- "Источник загрузки обновлений" — аккордеон, свёрнут по умолчанию (IsExpanded не задан): выбор зеркала нужен не всем — GitHub обычно доступен напрямую. -->
                         <Expander Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch" Margin="0,20,0,0">
                             <Expander.Header>
                                 <TextBlock Text="Источник загрузки обновлений" Style="{StaticResource SettingsSectionTitleStyle}" Margin="0" />
@@ -2564,13 +2508,8 @@
                             </StackPanel>
                         </Expander>
 
-                        <!-- "Все версии" — список всех релизов с GitHub, каждый со своей кнопкой
-                             "Установить": можно поставить не только последнюю версию, но и любую
-                             предыдущую (откатиться) или любую вышедшую (например, пропущенный
-                             пререлиз). Раскрыт по умолчанию (IsExpanded="True") — список всё
-                             равно подгружается по тому же самому событию Expanded, что и раньше
-                             при ручном раскрытии, но раз аккордеон открыт сразу, загрузка
-                             стартует сразу при открытии страницы "Обновления", а не по клику. -->
+                        <!-- "Все версии" — список релизов GitHub с кнопкой "Установить" (откат или пропущенный пререлиз); раскрыт по умолчанию, поэтому
+                             загрузка по событию Expanded стартует сразу при открытии страницы "Обновления", а не по клику. -->
                         <Expander x:Name="AllVersionsExpanderControl" Style="{StaticResource FluentExpanderStyle}" HorizontalAlignment="Stretch"
                                   Margin="0,14,0,0" IsExpanded="True" Expanded="AllVersionsExpander_Expanded">
                             <Expander.Header>
@@ -2645,9 +2584,7 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- 2. Разработчик — компактная карточка (аватар, ник, иконки-ссылки),
-                             раньше был аккордеон с двумя большими кнопками-строками; см.
-                             SettingsWindow.LoadDeveloperAvatar/DeveloperGitHubButton_Click. -->
+                        <!-- Разработчик — компактная карточка (аватар, ник, иконки-ссылки) вместо прежнего аккордеона; см. SettingsWindow.LoadDeveloperAvatar/DeveloperGitHubButton_Click. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -2656,12 +2593,8 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
 
-                                <!-- ImageBrush на Background, а не дочерний Image — у Border с
-                                     CornerRadius скругляются края только СОБСТВЕННОЙ заливки
-                                     (Background/BorderBrush), ClipToBounds на дочерних элементах
-                                     клипует лишь по прямоугольным границам, а не по скруглённой
-                                     геометрии. Дочерний Image поверх такого Border выглядел
-                                     обычным квадратом, торчащим из-под скруглённых углов. -->
+                                <!-- ImageBrush на Background, а не дочерний Image: Border с CornerRadius скругляет только собственную заливку, а ClipToBounds
+                                     клипует по прямоугольнику — дочерний Image торчал бы квадратом из-под скруглённых углов. -->
                                 <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24" Margin="0,0,12,0">
                                     <Border.Background>
                                         <ImageBrush x:Name="DeveloperAvatarBrush" Stretch="UniformToFill"
@@ -2675,12 +2608,8 @@
                                 </StackPanel>
 
                                 <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <!-- Padding="0" обязателен — без него внутренний отступ
-                                         кнопки (рассчитанный на кнопки с текстом) съедал часть
-                                         площади под иконку при таком небольшом фиксированном
-                                         размере кнопки, и иконка визуально обрезалась о край.
-                                         Тот же приём уже используется у TrackFavoriteButton/
-                                         TrackPinButton в MainWindow.xaml. -->
+                                    <!-- Padding="0" обязателен: внутренний отступ кнопки (под текст) съедал площадь под иконку при малом фиксированном размере;
+                                         тот же приём у TrackFavoriteButton/TrackPinButton в MainWindow.xaml. -->
                                     <ui:Button x:Name="DeveloperGitHubButton" Appearance="Secondary"
                                                Width="40" Height="40" Padding="0" Margin="0,0,8,0"
                                                Click="DeveloperGitHubButton_Click" ToolTip="github.com/wasssly">
@@ -2699,10 +2628,7 @@
                             </Grid>
                         </Border>
 
-                        <!-- Логи — см. Logger.cs. Диагностика на случай сбоев/падений: файл на
-                             сессию в %AppData%\Lumisense\logs, кнопка ниже просто открывает эту
-                             папку в Проводнике, чтобы её было легко найти и приложить куда-нибудь
-                             при сообщении о проблеме. -->
+                        <!-- Логи (Logger.cs): файл на сессию в %AppData%\Lumisense\logs, кнопка открывает папку в Проводнике, чтобы приложить логи к сообщению о проблеме. -->
                         <ui:Button x:Name="OpenLogsButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                    Padding="16,14" Margin="0,14,0,0" Click="OpenLogsButton_Click">

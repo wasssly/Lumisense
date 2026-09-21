@@ -48,9 +48,8 @@ internal static class SettingsResetRecoveryService
         }
     }
 
-    // Возвращает наиболее свежий корректный снимок. Проверка проходит через тот же сервис
-    // миграции/валидации, что и обычный settings.json, поэтому повреждённый backup не попадёт
-    // в живое состояние приложения.
+    // Возвращает самый свежий корректный снимок; проверка идёт через тот же сервис валидации, что и
+    // settings.json, поэтому повреждённый backup не попадёт в приложение.
     public static bool TryRestoreLatest(AppSettings target)
     {
         foreach (string path in EnumerateSnapshots())
@@ -91,9 +90,8 @@ internal static class SettingsResetRecoveryService
             TryDelete(obsoletePath);
     }
 
-    // Снимок и target — разные объекты. Рефлексия здесь намеренно ограничена редкой операцией
-    // восстановления полного settings.json: она сохраняет новые поля AppSettings без опасного
-    // ручного списка, в отличие от переносимого .lumi-профиля с его явным allowlist.
+    // Рефлексия ограничена редкой операцией восстановления полного settings.json: сохраняет новые поля
+    // AppSettings без ручного списка (в отличие от .lumi-профиля с явным allowlist).
     private static void CopyCompleteSettings(AppSettings source, AppSettings target)
     {
         foreach (PropertyInfo property in typeof(AppSettings).GetProperties(BindingFlags.Public | BindingFlags.Instance))

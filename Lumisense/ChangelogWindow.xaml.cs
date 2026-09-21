@@ -27,9 +27,8 @@ public partial class ChangelogWindow : FluentWindow
     private DateTime _detailsScrollAnimationStartedUtc;
     private const double DetailsScrollAnimationDurationMs = 360;
 
-    // RadioButton.IsChecked="True" в XAML (у SortByVersionToggle) вызывает Checked ещё во время
-    // InitializeComponent(), до того как _allEntries вообще загружен — этот флаг не даёт
-    // обработчикам сортировки/фильтра дёрнуть RefreshVisible раньше времени.
+    // IsChecked="True" у SortByVersionToggle вызывает Checked ещё в InitializeComponent(), до загрузки _allEntries:
+    // флаг не даёт обработчикам сортировки/фильтра дёрнуть RefreshVisible раньше времени.
     private readonly bool _isInitializing;
     private readonly AppSettings _settings;
 
@@ -130,15 +129,8 @@ public partial class ChangelogWindow : FluentWindow
             entry.Matches(query) &&
             (selectedTypes.Count == 0 || selectedTypes.Any(entry.HasType)));
 
-        // Версия всегда идёт в том же порядке, что и дата у уже выпущенных (датированных)
-        // записей — номер версии как раз и вычисляется по хронологии дат в
-        // ChangelogLoader.AssignComputedFields. Но у НОВЫХ записей даты вообще нет (changelog
-        // теперь привязан к версии, а не к дате, см. ChangelogLoader) — поэтому сортируем по
-        // ParsedVersion, а не по SortDate: для старых записей результат тот же самый, а для
-        // новых, у которых date пустая, только version и даёт правильный порядок (пустая дата
-        // сортировалась бы как "самая старая", отправляя свежедобавленные записи в самый конец
-        // вместо начала). Отдельная сортировка "по версии" была бы дублем — вместо неё сортировка
-        // по количеству изменений в версии, которая действительно может дать другой порядок.
+        // Сортируем по ParsedVersion, а не по SortDate: у новых записей даты нет и они ушли бы в конец списка,
+        // а у датированных порядок версий совпадает с хронологией (ChangelogLoader.AssignComputedFields).
         filtered = SortByCountToggle.IsChecked == true
             ? (_sortDescending ? filtered.OrderByDescending(e => e.Items.Count) : filtered.OrderBy(e => e.Items.Count))
             : (_sortDescending ? filtered.OrderByDescending(e => e.ParsedVersion) : filtered.OrderBy(e => e.ParsedVersion));
@@ -155,9 +147,8 @@ public partial class ChangelogWindow : FluentWindow
             ? LocalizationService.Format("Найдено: {0} из {1}", _visibleEntries.Count, _allEntries.Count)
             : LocalizationService.Format("Версий в истории: {0}", _allEntries.Count);
 
-        // Если версия, выбранная до этого, всё ещё видна — оставляем её выбранной, чтобы
-        // деталей на правой панели не "прыгали" без необходимости; иначе выбираем первую
-        // подходящую, а если совпадений нет вовсе — снимаем выбор.
+        // Если ранее выбранная версия всё ещё видна — оставляем её (панель деталей не "прыгает"), иначе первую подходящую,
+        // а при отсутствии совпадений снимаем выбор.
         if (previouslySelected != null && _visibleEntries.Contains(previouslySelected))
             VersionsListBox.SelectedItem = previouslySelected;
         else
@@ -170,9 +161,7 @@ public partial class ChangelogWindow : FluentWindow
         DetailsScroll.Visibility = hasSelection ? Visibility.Visible : Visibility.Collapsed;
         NoSelectionState.Visibility = hasSelection ? Visibility.Collapsed : Visibility.Visible;
 
-        // При переключении версии правая панель раньше сохраняла позицию прокрутки
-        // от предыдущей выбранной версии (например, "внизу"), из-за чего новая версия
-        // открывалась не с начала. Сбрасываем скролл наверх при каждой смене выбора.
+        // Сбрасываем скролл наверх при смене выбора: иначе правая панель сохраняла позицию прошлой версии.
         if (hasSelection)
             DetailsScroll.ScrollToHome();
     }
@@ -295,19 +284,14 @@ public partial class ChangelogWindow : FluentWindow
         base.OnClosed(e);
     }
 
-    // ---------- Свой скроллбар списка версий (с нуля, без ScrollBar/Track) ----------
-    // Тот же приём, что и у плейлиста в главном окне (см. MainWindow.xaml.cs): ScrollViewer
-    // со скрытым системным скроллбаром + отдельная дорожка (VersionsScrollTrack) и ползунок
-    // (VersionsScrollThumb) в своей собственной колонке, которую скроллбар WPF-UI никогда не
-    // перекрывает, потому что физически в ней и находится, а не рисуется поверх содержимого.
+    // Свой скроллбар списка версий (как у плейлиста в MainWindow): ScrollViewer со скрытым системным скроллбаром и
+    // отдельной дорожкой/ползунком в своей колонке, которую скроллбар WPF-UI не перекрывает.
     private bool _isDraggingVersionsThumb;
     private double _versionsThumbDragStartMouseY;
     private double _versionsThumbDragStartOffset;
 
-    // Мышиное колесо по умолчанию гоняло список слишком далеко и рывками — та же причина,
-    // что и раньше была у плейлиста (см. PlaylistTrackList_PreviewMouseWheel): переводим
-    // e.Delta (~120 за одно деление) в небольшой фиксированный шаг в пикселях вручную, чтобы
-    // прокрутка ощущалась мягкой, а не скачками через карточку.
+    // Колесо по умолчанию гоняло список слишком далеко и рывками (как у плейлиста, PlaylistTrackList_PreviewMouseWheel):
+    // переводим e.Delta в небольшой фиксированный шаг в пикселях.
     private void VersionsScrollViewer_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
         e.Handled = true;
@@ -418,33 +402,22 @@ public partial class ChangelogWindow : FluentWindow
         return false;
     }
 
-    // ---------- Просмотр картинки версии/изменения крупно ----------
-    //
-    // То же самое окно (CoverArtWindow), что открывается по клику на обложку трека в главном
-    // окне: приближение по клику, панорамирование зажатой левой кнопкой, сброс правой кнопкой.
-    // Единственная разница с MainWindow.AlbumArtBorder_MouseLeftButtonDown — там источник уже
-    // хранится готовым BitmapImage-полем, а здесь Image.Source достаём прямо из элемента,
-    // который кликнули: WPF сам, через встроенный конвертер типов, превратил строковый путь
-    // (ChangelogEntryViewModel.ImageSource) в BitmapSource при биндинге — доставать и
-    // перезагружать картинку заново не нужно.
+    // Крупный просмотр картинки в CoverArtWindow, как у обложки трека в главном окне (зум, панорама, сброс).
+    // Source берём из кликнутого Image: WPF уже сконвертировал путь при биндинге, перезагружать не нужно.
     private CoverArtWindow? _coverArtWindow;
 
     private void ChangelogImage_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
-        // WPF конвертирует строку в Image.Source через ImageSourceConverter, который отдаёт
-        // BitmapFrame, а не BitmapImage — сравнение строго на BitmapImage здесь никогда не
-        // срабатывало, поэтому клик по картинке ничего не делал. BitmapSource — общий
-        // базовый класс для обоих, CoverArtWindow принимает именно его.
+        // ImageSourceConverter отдаёт BitmapFrame, а не BitmapImage — проверка на BitmapImage не срабатывала;
+        // BitmapSource — общий базовый класс, его и принимает CoverArtWindow.
         if (sender is not System.Windows.Controls.Image { Source: System.Windows.Media.Imaging.BitmapSource bitmap }) return;
 
         if (_coverArtWindow == null)
         {
             _coverArtWindow = new CoverArtWindow(bitmap, Title, _settings) { Owner = this };
 
-            // Та же причина, что и в MainWindow.AlbumArtBorder_MouseLeftButtonDown: явные
-            // координаты под рабочую область монитора вместо WindowState.Maximized — у окон
-            // с Mica-фоном и ExtendsContentIntoTitleBar нативный Maximize нередко даёт лишние
-            // отступы по краям.
+            // Как в MainWindow.AlbumArtBorder_MouseLeftButtonDown: явные координаты рабочей области вместо Maximized —
+            // у окон с Mica и ExtendsContentIntoTitleBar нативный Maximize нередко даёт лишние отступы.
             var screen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(this).Handle);
             var workArea = screen.WorkingArea;
 

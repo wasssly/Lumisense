@@ -199,10 +199,8 @@ public static class FileNameNormalizer
         };
     }
 
-    // Единое правило для нормализации и экрана плеера: корректные теги имеют приоритет, но
-    // пустой Artist или склеенный Title вида «Исполнитель - Название» дополняются из имени.
-    // Пустая строка unknownArtistFallback нужна MainWindow: он сохранит привычное «—» только
-    // для файлов, где в имени действительно нечего разобрать, а не подставит имя папки.
+    // Единое правило для нормализации и экрана плеера: теги приоритетны, но пустой Artist или склеенный
+    // "Исполнитель - Название" дополняются из имени; пустой unknownArtistFallback сохраняет "—" в MainWindow.
     public static (string Artist, string Title) ResolveArtistAndTitle(
         string filePath, string? taggedArtist, string? taggedTitle, string unknownArtistFallback)
     {

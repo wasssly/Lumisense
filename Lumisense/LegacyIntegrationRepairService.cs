@@ -7,11 +7,8 @@ using Velopack.Windows;
 
 namespace Lumisense;
 
-/// <summary>
-/// Repairs autostart and the "Open in Lumisense" context menu before the legacy Inno Setup
-/// uninstaller removes the old EXE install and its registry entries.
-/// Does not touch the default file association — only the custom context menu command.
-/// </summary>
+/// <summary>Repairs autostart and the "Open in Lumisense" context menu before the legacy Inno Setup uninstaller
+/// removes the old EXE install and its registry entries; leaves the default file association alone.</summary>
 internal static class LegacyIntegrationRepairService
 {
     // Same key name the legacy Inno Setup installer used, to avoid a duplicate menu entry.
@@ -21,11 +18,8 @@ internal static class LegacyIntegrationRepairService
     private const string RunValueName = "Lumisense";
     private static readonly string[] SupportedAudioExtensions = [".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".wma"];
 
-    /// <summary>
-    /// Выполняет только после подтверждённого удаления legacy Inno Setup-копии. Очерёдность
-    /// важна: старый uninstaller может удалить собственные ярлыки и registry values, поэтому
-    /// восстанавливать их до его завершения недостаточно.
-    /// </summary>
+    /// <summary>Выполняется только после подтверждённого удаления legacy-копии; порядок важен: старый uninstaller
+    /// может удалить ярлыки и registry values, поэтому восстановление до его завершения недостаточно.</summary>
     public static void RepairAfterLegacyCleanup(string legacyInstallDir)
     {
         RepairAutostartIfPointingToLegacyInstall(legacyInstallDir);
@@ -34,10 +28,7 @@ internal static class LegacyIntegrationRepairService
         RestoreVelopackShortcuts();
     }
 
-    /// <summary>
-    /// Repoints autostart to the current MSI copy if it currently points inside the legacy
-    /// EXE install directory; otherwise does nothing.
-    /// </summary>
+    /// <summary>Repoints autostart to the current MSI copy if it points into the legacy EXE install directory.</summary>
     public static void RepairAutostartIfPointingToLegacyInstall(string legacyInstallDir)
     {
         try
@@ -63,10 +54,7 @@ internal static class LegacyIntegrationRepairService
         }
     }
 
-    /// <summary>
-    /// Per-user "Open in Lumisense" context menu, scoped to <see cref="SupportedAudioExtensions"/>.
-    /// Safe to call repeatedly.
-    /// </summary>
+    /// <summary>Per-user "Open in Lumisense" context menu limited to <see cref="SupportedAudioExtensions"/>; safe to call repeatedly.</summary>
     public static void RegisterOpenInLumisenseContextMenu()
     {
         try
@@ -95,10 +83,8 @@ internal static class LegacyIntegrationRepairService
         }
     }
 
-    /// <summary>
-    /// Self-heal for a past bug that registered the command under the wildcard Classes\*\shell
-    /// key, showing it for every file type. Safe on every startup — a no-op once fixed.
-    /// </summary>
+    /// <summary>Self-heal for a past bug that registered the command under Classes\*\shell (every file type);
+    /// safe on every startup, a no-op once fixed.</summary>
     public static void RepairContextMenuScopeIfBroken()
     {
         try
@@ -117,10 +103,8 @@ internal static class LegacyIntegrationRepairService
         }
     }
 
-    /// <summary>
-    /// An older wildcard leftover can also live under HKLM (pre-dating the installer's own fix);
-    /// deleting it needs elevation, so this asks via UAC once and never retries.
-    /// </summary>
+    /// <summary>A wildcard leftover under HKLM (pre-dating the installer's fix) needs elevation, so this asks
+    /// via UAC once and never retries.</summary>
     public static void TryCleanupLegacyHklmWildcardContextMenu()
     {
         AppSettings settings = SettingsManager.Load();
@@ -150,11 +134,8 @@ internal static class LegacyIntegrationRepairService
         }
     }
 
-    /// <summary>
-    /// Возвращает Lumisense в список «Открыть с помощью» для форматов, чьи Inno Setup registry
-    /// values может удалить старый uninstaller. Не записывает default value расширения и потому
-    /// не меняет приложение по умолчанию, выбранное пользователем в Windows.
-    /// </summary>
+    /// <summary>Возвращает Lumisense в «Открыть с помощью» для форматов, чьи Inno Setup registry values мог удалить
+    /// старый uninstaller; default value расширения не пишет, поэтому приложение по умолчанию не меняется.</summary>
     private static void RegisterLumisenseAsOpenWithHandler()
     {
         try
@@ -198,9 +179,7 @@ internal static class LegacyIntegrationRepairService
         }
         catch (Exception ex)
         {
-            // Отсутствие ярлыка не должно отменять уже завершённое удаление: программа, settings
-            // и обновления остаются рабочими, а пользователь может запустить Lumisense через
-            // поиск Windows или из установленной MSI-копии.
+            // Отсутствие ярлыка не отменяет завершённое удаление: Lumisense запускается через поиск Windows или из MSI-копии.
             Logger.Warn($"Не удалось восстановить ярлыки MSI/Velopack после legacy cleanup: {ex.Message}");
         }
     }

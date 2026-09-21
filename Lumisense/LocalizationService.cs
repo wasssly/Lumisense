@@ -918,16 +918,14 @@ public static class LocalizationService
         ["Сбросить всю статистику прослушивания?\n\nСчётчики прослушиваний по всем трекам и суммарное время обнулятся. Сами файлы и плейлист не затрагиваются. Отменить это действие нельзя."] = "Reset all listening statistics?\n\nPlay counts for all tracks and total listening time will be reset. The files and playlists themselves are not affected. This action cannot be undone.",
     };
 
-    // Несколько разных русских формулировок могут корректно переводиться одной английской
-    // фразой. Для обратного переключения берём первую из таких исходных формулировок вместо
-    // использования ToDictionary напрямую, которое выбросило бы исключение на дубликате.
+    // Несколько русских формулировок могут переводиться одной английской фразой: для обратного переключения берём первую,
+    // а не ToDictionary, который бросил бы исключение на дубликате.
     private static readonly Dictionary<string, string> RussianByEnglish = EnglishByRussian
         .GroupBy(pair => pair.Value, StringComparer.Ordinal)
         .ToDictionary(group => group.Key, group => group.First().Key, StringComparer.Ordinal);
 
-    // Статические словарные записи покрывают XAML напрямую. Этот набор дополнительно
-    // обслуживает программно собранные строки с подстановками (версии, пути, ошибки),
-    // чтобы их не приходилось локализовать вручную в каждом обработчике.
+    // Словарные записи покрывают XAML; этот набор обслуживает программно собранные строки с подстановками
+    // (версии, пути, ошибки), чтобы не локализовать их вручную в каждом обработчике.
     private static readonly IReadOnlyList<TemplateTranslation> EnglishTemplates = BuildTemplateTranslations(EnglishByRussian);
     private static readonly IReadOnlyList<TemplateTranslation> RussianTemplates = BuildTemplateTranslations(RussianByEnglish);
 
@@ -1077,9 +1075,8 @@ public static class LocalizationService
 
     private static void ApplyRecursive(DependencyObject element, HashSet<DependencyObject> visited)
     {
-        // WPF обычно содержит одни и те же элементы и в visual, и в logical tree. Без
-        // множества посещённых объектов такой обход повторялся экспоненциально на длинных
-        // списках, особенно в Changelog, что и давало заметную паузу при открытии окна.
+        // Одни и те же элементы есть и в visual, и в logical tree: без множества посещённых обход повторялся экспоненциально
+        // на длинных списках (особенно в Changelog) и давал паузу при открытии окна.
         if (!visited.Add(element)) return;
 
         ApplyElement(element);
@@ -1109,9 +1106,8 @@ public static class LocalizationService
         if (element is Window window && !string.IsNullOrWhiteSpace(window.Title))
             window.Title = Translate(window.Title);
 
-        // У TextBlock с Inlines (Run/Span) присваивание свойству Text очищает всю коллекцию
-        // Inlines, включая Run с Binding. Это удаляло номера версий в англоязычном Changelog.
-        // Такие дочерние Run обрабатываются отдельно ниже при обходе logical tree.
+        // У TextBlock с Inlines присваивание Text очищает Inlines, включая Run с Binding (пропадали номера версий в англоязычном
+        // Changelog); такие Run обрабатываются ниже при обходе logical tree.
         if (element is TextBlock textBlock)
         {
             if (textBlock.Inlines.Count == 0 && !BindingOperations.IsDataBound(textBlock, TextBlock.TextProperty))
@@ -1144,18 +1140,16 @@ public static class LocalizationService
         if (element is FrameworkElement frameworkElement && frameworkElement.ToolTip is string toolTip)
             frameworkElement.ToolTip = Translate(toolTip);
 
-        // WPF-UI использует собственные строковые DependencyProperty (например, Title у
-        // TitleBar и PlaceholderText у TextBox). Через reflection обрабатываем их без
-        // жёсткой привязки к конкретной версии библиотеки и без изменения XAML-разметки.
+        // У WPF-UI свои строковые DependencyProperty (Title у TitleBar, PlaceholderText у TextBox): обрабатываем через reflection
+        // без жёсткой привязки к версии библиотеки и без правок XAML.
         TranslateStringProperty(element, "Title");
         TranslateStringProperty(element, "PlaceholderText");
     }
 
     private static void TranslateInlines(InlineCollection inlines)
     {
-        // Изменение Text у Run повышает версию InlineCollection. Поэтому нельзя менять Run
-        // внутри прямого foreach: WPF прерывает перечисление с InvalidOperationException.
-        // Снимок сохраняет состав коллекции на момент обхода и безопасен для вложенных Span.
+        // Изменение Text у Run повышает версию InlineCollection, и прямой foreach падает с InvalidOperationException:
+        // ToArray() — снимок, безопасный и для вложенных Span.
         foreach (Inline inline in inlines.ToArray())
         {
             if (inline is Run inlineRun && !BindingOperations.IsDataBound(inlineRun, Run.TextProperty))

@@ -11,9 +11,8 @@ public sealed class WaveformView : FrameworkElement
         nameof(Peaks), typeof(float[]), typeof(WaveformView),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    // Нормализованные (0..1) пики амплитуды — см. WaveformGenerator.GenerateAsync. null или
-    // пустой массив — данные ещё не посчитаны (трек только что загрузился) или их не удалось
-    // получить (см. комментарий в OnRender про "заглушку").
+    // Нормализованные (0..1) пики, см. WaveformGenerator.GenerateAsync; null/пусто — данные ещё не посчитаны
+    // или не получены (см. "заглушку" в OnRender).
     public float[]? Peaks
     {
         get => (float[]?)GetValue(PeaksProperty);
@@ -36,10 +35,8 @@ public sealed class WaveformView : FrameworkElement
         nameof(PlayedBrush), typeof(Brush), typeof(WaveformView),
         new FrameworkPropertyMetadata(Brushes.White, FrameworkPropertyMetadataOptions.AffectsRender));
 
-    // Цвет уже проигранной части — акцентный цвет приложения, задаётся из кода (см.
-    // MainWindow.RefreshAccentDependentIcons), а не через DynamicResource на системный акцент:
-    // приложение поддерживает свой собственный акцент (AppSettings.AccentColorMode == "Manual"),
-    // который системными ресурсами темы не покрывается.
+    // Цвет проигранной части задаётся из кода (MainWindow.RefreshAccentDependentIcons): собственный акцент
+    // (AccentColorMode == "Manual") не покрывается системными ресурсами темы.
     public Brush PlayedBrush
     {
         get => (Brush)GetValue(PlayedBrushProperty);
@@ -58,15 +55,10 @@ public sealed class WaveformView : FrameworkElement
         set => SetValue(UnplayedBrushProperty, value);
     }
 
-    // Доля ширины "ведра" (одного деления пиков), уходящая на зазор между барами — то, что
-    // визуально отличает форму волны от сплошной заливки. 0.35 подобрано на глаз: зазор заметен
-    // на обычных значениях WaveformGenerator.BucketCount, но бары не превращаются в тонкие
-    // редкие палочки.
+    // Доля ширины деления под зазор между барами; 0.35 подобрано на глаз, чтобы бары не стали тонкими палочками.
     private const double GapRatio = 0.35;
 
-    // Минимальная высота бара даже у полностью тихого места в треке (тишина/фейд) — без этого
-    // такие участки исчезали бы совсем, и полоса выглядела бы визуально "прерванной", как будто
-    // сломалась отрисовка, а не просто передаёт настоящую тишину в записи.
+    // Минимальная высота бара, чтобы тихие участки не исчезали и полоса не выглядела прерванной.
     private const double MinBarHeight = 2.0;
 
     protected override void OnRender(DrawingContext dc)
@@ -81,9 +73,7 @@ public sealed class WaveformView : FrameworkElement
 
         if (peaks == null || peaks.Length == 0)
         {
-            // Пики ещё не посчитаны (или не удалось) — тонкая плоская линия по центру вместо
-            // пустоты: так область не "прыгает" в размере/виде, когда данные всё же подгрузятся,
-            // и сразу видно, что это ещё не готовая, а не сломанная полоса.
+            // Пока пиков нет — тонкая линия по центру: область не "прыгает" при подгрузке данных.
             dc.DrawRectangle(UnplayedBrush, null, new Rect(0, height / 2 - 0.75, width, 1.5));
             return;
         }
@@ -100,9 +90,7 @@ public sealed class WaveformView : FrameworkElement
             double x = i * bucketWidth + (bucketWidth - barWidth) / 2;
             double y = (height - barHeight) / 2;
 
-            // Бар может лежать точно на границе "проиграно/не проиграно" — красим по его
-            // центру, а не левому краю, чтобы переход выглядел ровно посередине бара, ближе к
-            // тому, где на глаз должна проходить граница прогресса.
+            // Бар на границе проиграно/нет красим по центру, а не по левому краю, чтобы переход выглядел ровно.
             Brush brush = (x + barWidth / 2) <= progressX ? PlayedBrush : UnplayedBrush;
 
             dc.DrawRoundedRectangle(brush, null, new Rect(x, y, barWidth, barHeight), cornerRadius, cornerRadius);

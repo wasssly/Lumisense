@@ -1,24 +1,5 @@
-# Автосборка и публикация релиза.
-#
-# Срабатывает на пуш тега вида "v1.5.0" (можно также запустить вручную из вкладки Actions на
-# GitHub — см. workflow_dispatch ниже, удобно для проверки без реального релиза).
-#
-# Что делает:
-#   1. Собирает Lumisense (dotnet publish, self-contained win-x64 — см. Lumisense.csproj).
-#   2. Собирает установщик Installer/Lumisense.iss (Inno Setup), передавая ему номер версии
-#      из тега через /DMyAppVersion — см. #ifndef MyAppVersion в самом .iss.
-#   3. Проверяет Changelog/changelog.json до сборки: JSON, обязательные поля, типы и текст
-#      изменений. Затем берёт последнюю запись в том же порядке, что и приложение
-#      (ChangelogLoader.AssignComputedFields), и формирует Markdown с разделами
-#      «Добавлено», «Изменено», «Исправлено» и «Удалено».
-#   4. Собирает Velopack full/delta packages и MSI PerMachine для установок, которые уже
-#      прошли осознанный переход на новый updater. Legacy-копии остаются на Inno Setup.
-#   5. Публикует релиз на GitHub с versioned Inno EXE и Velopack assets: legacy UpdateChecker
-#      выбирает Inno EXE по номеру release, а Velopack-managed копия читает releases.win.json.
-#
-# ВАЖНО перед тем как поставить тег: добавьте в Changelog/changelog.json новую запись со
-# списком изменений. Дату указывать больше не обязательно: новые записи привязаны к версии,
-# а не к дате. Некорректный changelog остановит workflow до сборки и публикации релиза.
+# Автосборка и публикация релиза по тегу vX.Y.Z (или вручную через workflow_dispatch). ВАЖНО: перед тегом добавьте
+# запись в Changelog/changelog.json — некорректный changelog остановит workflow до сборки и публикации.
 
 name: Release
 
@@ -116,9 +97,8 @@ jobs:
           }
           Write-Host "Verified assembly version $productVersion"
 
-      # Получаем прошлый Velopack release feed до упаковки: это позволяет автоматически
-      # создать delta между уже установленной Velopack-версией и новым release. На самом первом
-      # migration-релизе Velo assets ещё отсутствуют — это ожидаемо, поэтому шаг не фатален.
+      # Получаем прошлый Velopack feed до упаковки, чтобы создать delta к установленной версии; на первом
+      # migration-релизе assets ещё нет — это ожидаемо, шаг не фатален.
       - name: Install Velopack CLI and restore prior Windows feed
         shell: pwsh
         env:
@@ -200,10 +180,8 @@ jobs:
             --tag "v${{ steps.ver.outputs.version }}"
           if ($LASTEXITCODE -ne 0) { throw "Velopack asset upload failed." }
 
-      # vpk upload reads the assets manifest written by vpk pack, which includes its Setup
-      # bootstrapper. The file must therefore stay in VelopackReleases until the upload finishes.
-      # Lumisense publishes the legacy Lumisense_Setup.exe and the MSI migration asset instead,
-      # so remove only the extra Velopack bootstrapper from GitHub after the feed is uploaded.
+      # vpk upload reads the manifest written by vpk pack (incl. its Setup bootstrapper), so the file must stay until
+      # the upload finishes; we publish Lumisense_Setup.exe and the MSI instead, so remove only the extra bootstrapper after.
       - name: Remove non-public Velopack Setup bootstrapper from GitHub Release
         if: github.event_name != 'workflow_dispatch'
         shell: pwsh
@@ -229,11 +207,8 @@ jobs:
             throw "Velopack Setup bootstrapper must not remain in published release assets."
           }
 
-      # Internal Velopack package IDs remain Wasssly.Lumisense to preserve the update identity
-      # of existing MSI installs. Only the names exposed on the GitHub Release are made product-facing.
-      # Original packages remain published until their renamed copies and the replacement feed succeed.
-      # GitHub cannot atomically replace an asset with the same name, so clients can briefly see either
-      # the old feed/assets or no feed, but never a feed that names deleted package files.
+      # Internal package IDs stay Wasssly.Lumisense to keep the update identity of existing MSI installs; only public names change.
+      # Originals stay until the renamed copies and the new feed succeed, so clients never see a feed naming deleted packages.
       - name: Rename public Velopack assets and rewrite Windows feed
         if: github.event_name != 'workflow_dispatch'
         shell: pwsh

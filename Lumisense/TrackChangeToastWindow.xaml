@@ -13,19 +13,8 @@
         Topmost="True"
         WindowStartupLocation="Manual">
 
-    <!-- ============================================================================
-         Всплывающее уведомление о смене трека (по образцу Spotify) — маленькая карточка
-         в углу экрана с обложкой и названием, которая сама появляется и пропадает через
-         пару секунд. ShowActivated="False" — принципиально: уведомление не должно
-         перехватывать фокус у того, чем человек занят в данный момент, оно просто
-         показывается поверх (Topmost) и не мешает. Окно переиспользуется на каждую смену
-         трека (Show/Hide, а не создание нового), см. TrackChangeToastWindow.ShowToast.
-
-         Ресурсы темы (TextFillColorPrimaryBrush и т.д.) переопределены тут же, как и у
-         MiniPlayerWindow — по той же причине: фон карточки не берётся из Mica/Acrylic
-         подложки FluentWindow, а рисуется сам (см. ToastBackgroundBrush в code-behind),
-         поэтому и контраст текста задаётся вручную, а не берётся из системной темы.
-         ============================================================================ -->
+    <!-- Уведомление о смене трека (как у Spotify): ShowActivated="False", чтобы не забирать фокус; окно переиспользуется (ShowToast).
+         Ресурсы темы заданы здесь, как в MiniPlayerWindow: фон рисуется вручную (не Mica/Acrylic), контраст текста — тоже. -->
 
     <Window.Resources>
         <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#FFFFFFFF" />
@@ -42,17 +31,14 @@
             <SolidColorBrush x:Name="ToastBackgroundBrush" />
         </Border.Background>
 
-        <!-- DockPanel, а не StackPanel: сторона обложки и выравнивание текста настраиваются
-             (см. AppSettings.TrackChangeToastArtSide/TextAlignment) — DockPanel.Dock у обложки
-             и HorizontalAlignment у ToastTextPanel применяются в коде (см. ApplyLayout),
-             LastChildFill гарантирует, что текстовая колонка получает всё оставшееся место. -->
+        <!-- DockPanel, а не StackPanel: сторона обложки и выравнивание текста настраиваются (AppSettings.TrackChangeToast*) в ApplyLayout;
+             LastChildFill отдаёт текстовой колонке всё оставшееся место. -->
         <DockPanel LastChildFill="True">
             <Border x:Name="ArtBorder" DockPanel.Dock="Left" Width="48" Height="48" CornerRadius="8"
                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
                     SnapsToDevicePixels="True" UseLayoutRounding="True">
-                <!-- ImageBrush в Border.Background удобен, но на маленькой карточке WPF иногда
-                     масштабирует его с заметной потерей качества. Отдельный Image повторяет
-                     проверенный паттерн мини-плеера и всегда использует HighQuality scaling. -->
+                <!-- Отдельный Image вместо ImageBrush в Border.Background: на маленькой карточке WPF может терять качество при масштабировании,
+                     а Image (как в мини-плеере) всегда использует HighQuality. -->
                 <Grid ClipToBounds="True">
                     <Image x:Name="ArtImage" Stretch="UniformToFill" Visibility="Collapsed"
                            RenderOptions.BitmapScalingMode="HighQuality"

@@ -14,14 +14,8 @@
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
 
-    <!-- ============================================================================
-         Окно "Список изменений": слева — поиск, фильтр по типу изменений (цветные чипы),
-         переключатель сортировки (версия/кол-во изменений + направление) и сам список версий; справа —
-         подробности выбранной версии, где каждая строка изменения показывает свой тип
-         иконкой и цветом (см. ChangeTypeCatalog). Поиск ищет по номеру версии, дате, тексту
-         изменений и названию их типа. Правая панель — ElementName-биндинг на
-         VersionsListBox.SelectedItem, код-behind версткой деталей не занимается.
-         ============================================================================ -->
+    <!-- Окно "Список изменений": слева поиск, фильтр по типу (чипы), сортировка и список версий, справа — подробности выбранной
+         версии (ElementName-биндинг на VersionsListBox.SelectedItem, тип — иконкой и цветом, ChangeTypeCatalog); code-behind верстку не трогает. -->
 
     <ui:FluentWindow.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
@@ -67,9 +61,7 @@
             </Setter>
         </Style>
 
-        <!-- Цветная кнопка-чип фильтра по типу изменений: рамка/фон подсвечиваются, когда чип
-             выбран, а иконка внутри всегда сохраняет свой цвет типа (задаётся прямо в разметке
-             конкретного чипа, не в стиле — у каждого типа свой цвет) -->
+        <!-- Цветной чип-фильтр по типу: рамка/фон подсвечиваются при выборе, цвет иконки задаётся в разметке чипа, а не в стиле. -->
         <Style x:Key="TypeChipStyle" TargetType="ToggleButton">
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Margin" Value="0,0,6,6" />
@@ -127,9 +119,8 @@
             </Setter>
         </Style>
 
-        <!-- Кнопка-иконка в собственном контейнере (переключатель направления сортировки) —
-             рамка/фон видны всегда, чтобы стрелка не "висела в воздухе" рядом с сегментом
-             Дата/Версия, а читалась как отдельный, но однородный с ним элемент управления -->
+        <!-- Кнопка-иконка в своём контейнере (направление сортировки): рамка/фон видны всегда, чтобы стрелка выглядела
+             отдельным элементом управления, однородным с сегментом Дата/Версия. -->
         <Style x:Key="IconOnlyButtonStyle" TargetType="Button">
             <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
             <Setter Property="BorderBrush" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
@@ -170,7 +161,6 @@
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
-            <!-- ===== Слева: поиск, фильтр по типу, сортировка, список версий ===== -->
             <Border Grid.Column="0" Background="{DynamicResource LayerFillColorDefaultBrush}"
                     BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,1,0">
                 <Grid Margin="16,16,16,16">
@@ -274,17 +264,8 @@
                             <ColumnDefinition Width="14" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Свой скроллбар с нуля (тот же приём, что и у плейлиста в главном окне):
-                             никакого встроенного скроллбара ListBox/ScrollViewer — он у WPF-UI рисуется
-                             ПОВЕРХ содержимого и на такой узкой панели налезал на точку "текущая версия"
-                             и счётчик изменений у правого края карточек. Вместо этого — обычный
-                             ScrollViewer с полностью скрытым скроллбаром (VerticalScrollBarVisibility
-                             Hidden) слева и отдельная дорожка с ползунком (VersionsScrollTrack/Thumb)
-                             в своей собственной колонке справа, которая никогда не перекрывает контент,
-                             потому что физически занимает отдельное место, а не лежит поверх. У самого
-                             ListBox встроенная прокрутка отключена (ScrollViewer.VerticalScrollBarVisibility
-                             = Disabled), чтобы не скроллилось сразу в двух местах — вся прокрутка отдана
-                             внешнему VersionsScrollViewer. -->
+                        <!-- Свой скроллбар (как у плейлиста): встроенный скроллбар WPF-UI рисуется поверх содержимого и налезал на узкой панели на
+                             точку и счётчик; ScrollViewer со скрытым скроллбаром + дорожка/ползунок в отдельной колонке, у ListBox прокрутка отключена. -->
                         <ScrollViewer x:Name="VersionsScrollViewer" Grid.Column="0"
                                       VerticalScrollBarVisibility="Hidden"
                                       HorizontalScrollBarVisibility="Disabled"
@@ -362,7 +343,6 @@
                 </Grid>
             </Border>
 
-            <!-- ===== Справа: детали выбранной версии ===== -->
             <Grid Grid.Column="1">
                 <ScrollViewer x:Name="DetailsScroll" VerticalScrollBarVisibility="Auto"
                               ScrollChanged="DetailsScroll_ScrollChanged">
@@ -460,20 +440,15 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Необязательная картинка версии (поле "image" в changelog.json) — скриншот,
-                             баннер релиза и т.п. Показывается только если она реально задана.
-                             Клик открывает её крупно в CoverArtWindow — то же самое окно (с
-                             приближением по клику, панорамированием и сбросом ПКМ), что и у
-                             обложки трека в главном окне, см. ChangelogImage_MouseLeftButtonDown. -->
+                        <!-- Необязательная картинка версии (поле "image" в changelog.json); клик открывает её крупно в CoverArtWindow, как обложку
+                             трека (см. ChangelogImage_MouseLeftButtonDown). -->
                         <Border Margin="24,18,24,0" CornerRadius="16"
                                 Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}">
                             <Image x:Name="ChangelogEntryImage" Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="320"
                                    HorizontalAlignment="Left" RenderOptions.BitmapScalingMode="HighQuality"
                                    Cursor="Hand" MouseLeftButtonDown="ChangelogImage_MouseLeftButtonDown">
-                                <!-- ClipToBounds="True" на родительском Border выше клипует дочерний
-                                     контент ПРЯМОУГОЛЬНИКОМ и полностью игнорирует CornerRadius — это
-                                     касается только того, как Border красит свой Background/BorderBrush.
-                                     Скругляем углы именно у Image через её собственный Clip. -->
+                                <!-- ClipToBounds на родительском Border клипует прямоугольником и игнорирует CornerRadius, поэтому углы скругляем
+                                     собственным Clip у Image. -->
                                 <Image.Clip>
                                     <RectangleGeometry RadiusX="12" RadiusY="12">
                                         <RectangleGeometry.Rect>
@@ -507,9 +482,7 @@
                                                        VerticalAlignment="Center" Margin="6,0,0,0" />
                                         </StackPanel>
 
-                                        <!-- Каждое изменение — отдельная карточка, слегка подсвеченная цветом своего типа,
-                                             вместо плоского списка или тонких разделительных линий: так пункты явно
-                                             отделены друг от друга и сразу видно, к какой секции относится каждый -->
+                                        <!-- Каждое изменение — отдельная карточка, слегка окрашенная цветом типа: пункты явно отделены и видна их секция. -->
                                         <ItemsControl ItemsSource="{Binding Items}" Margin="0,2,0,0">
                                             <ItemsControl.ItemTemplate>
                                                 <DataTemplate>
@@ -533,10 +506,7 @@
                                                             <StackPanel Grid.Column="1" Margin="15,13,15,14">
                                                                 <TextBlock Text="{Binding Text}" TextWrapping="Wrap" FontSize="14" LineHeight="21" />
 
-                                                            <!-- Необязательная картинка ИМЕННО этого пункта (поле "image" внутри
-                                                                 конкретного изменения в changelog.json), отдельно от общей картинки
-                                                                 версии сверху — показывается только если реально задана. Клик
-                                                                 открывает крупно, см. комментарий у общей картинки версии выше. -->
+                                                            <!-- Необязательная картинка именно этого пункта (поле "image" в изменении), отдельно от картинки версии; клик — как у неё. -->
                                                             <Border CornerRadius="8" Margin="0,10,0,0"
                                                                     Visibility="{Binding HasImage, Converter={StaticResource BoolToVisibilityConverter}}">
                                                                 <Image x:Name="ChangelogItemImage" Source="{Binding ImageSource}" Stretch="Uniform" MaxHeight="260"

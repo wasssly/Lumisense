@@ -2,20 +2,12 @@ namespace Lumisense;
 
 internal static class IconResources
 {
-    // Обновляется MainWindow.ApplyAccentColor() при каждом применении акцента (на старте и
-    // при каждой смене в настройках) — белый по умолчанию (исторически так и было, пока
-    // акцент был жёстко системным), но пересчитывается на чёрный/белый по формуле яркости,
-    // когда акцент выбран вручную (см. AppSettings.AccentColorMode/AccentColorHex): среди
-    // пресетов есть и светлые (жёлтый #FFB900, светлый бирюзовый #00B7C3), на которых жёстко
-    // белая иконка была бы плохо видна. Раньше пробовали решить это через встроенный
-    // DynamicResource TextOnAccentFillColorPrimaryBrush от WPF-UI, но его собственный выбор
-    // чёрного/белого не всегда совпадал с ожидаемым на исходном системном акценте — поэтому
-    // считаем сами, явно, и полностью управляем результатом.
+    // Пересчитывается MainWindow.ApplyAccentColor() при каждой смене акцента: белый по умолчанию, но
+    // чёрный/белый по яркости при ручном акценте — на светлых пресетах белая иконка плохо видна.
     public static System.Windows.Media.Brush AccentContrastBrush { get; set; } = System.Windows.Media.Brushes.White;
 
-    // Ключ — имя файла в Icons/ без расширения. Всегда новый экземпляр SvgPathIcon:
-    // FrameworkElement не может одновременно висеть в двух местах визуального дерева.
-    // Размер, если не задан, SvgPathIcon возьмёт из ресурса "{resourceKey}DefaultSize".
+    // Ключ — имя файла в Icons/ без расширения; каждый раз новый экземпляр, т.к. FrameworkElement
+    // не может быть в двух местах дерева. Размер по умолчанию — из ресурса "{resourceKey}DefaultSize".
     public static SvgPathIcon Make(string resourceKey, double size = double.NaN) => new()
     {
         Icon = resourceKey,

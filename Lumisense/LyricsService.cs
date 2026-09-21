@@ -94,9 +94,8 @@ public static class LyricsService
         // безопасно захватывается фоновой задачей чтения тегов без nullable-предупреждения.
         string confirmedAudioPath = audioPath;
 
-        // Сначала используем LRC, который Lumisense сохранил в собственной папке. Так
-        // автоматический онлайн-поиск не создаёт .lrc рядом с аудиофайлом. Затем сохраняем
-        // совместимость с LRC, который пользователь положил рядом с треком вручную.
+        // Сначала LRC из собственной папки Lumisense (онлайн-поиск не создаёт .lrc рядом с аудио), затем
+        // LRC, положенный пользователем рядом с треком вручную.
         LyricsDocument managedLrc = await LoadSyncedLrcAsync(GetManagedLrcPath(confirmedAudioPath), cancellationToken)
             .ConfigureAwait(false);
         if (managedLrc.Kind == LyricsKind.Synced) return managedLrc;
@@ -450,9 +449,8 @@ public static class LyricsService
         }
     }
 
-    // Ручной поиск может столкнуться с неточными тегами: «исполнитель» и «название» часто
-    // записаны по-разному. Пробуем не более трёх последовательных вариантов и прекращаемся
-    // сразу после первого непустого набора, не создавая лишнюю нагрузку на публичный сервис.
+    // Теги исполнителя и названия часто записаны по-разному: пробуем до трёх вариантов и останавливаемся
+    // на первом непустом результате, чтобы не нагружать публичный сервис.
     public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineVariantsAsync(
         string trackName,
         string artistName,

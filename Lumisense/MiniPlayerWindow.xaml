@@ -13,26 +13,8 @@
         WindowStartupLocation="Manual">
 
     <Window.Resources>
-        <!-- Мини-плеер теперь следует ТЕКУЩЕЙ теме приложения (светлая/тёмная), а не всегда
-             тёмный, как было раньше. Текст, иконки и системные кнопки WPF-UI (ui:Button) внутри
-             этого окна по умолчанию расшарены на DynamicResource-ресурсы ТЕКУЩЕЙ темы приложения
-             — этого было бы достаточно самого по себе, НО фон окна (RootBorder) у нас не берётся
-             из темы приложения, а всегда полупрозрачный (см. ApplyBackground) — поэтому светлый
-             текст на светлом полупрозрачном фоне в светлой теме был бы плохо читаем без подгонки
-             контраста под альфу фона.
-
-             Переопределяем здесь, на уровне Window.Resources, те же самые ключи ресурсов, что
-             использует и остальное приложение (TextFillColorPrimaryBrush и т.д.) — WPF ищет
-             ресурс снизу вверх по дереву и найдёт ЭТИ значения раньше глобальных ресурсов темы
-             приложения, поэтому автоматически подхватятся везде внутри окна: и в наших
-             TextBlock/Border с DynamicResource, и во ВСТРОЕННЫХ шаблонах ui:Button — без
-             необходимости лезть и переопределять их шаблоны вручную.
-
-             Ресурсы намеренно получаются в code-behind через FindResource(...) по x:Key (см.
-             ApplyTheme), а не через x:Name: WPF markup-компилятор не генерирует поле в
-             code-behind для элемента внутри ResourceDictionary, если у него уже задан x:Key —
-             x:Name в этом случае просто регистрируется в NameScope, но не создаёт поле класса,
-             из-за чего сборка падает с CS0103 "имя не существует в текущем контексте". -->
+        <!-- Ресурсы темы (TextFillColorPrimaryBrush и т.д.) переопределены здесь: фон окна всегда полупрозрачный, и WPF найдёт их раньше глобальных,
+             в т.ч. во встроенных шаблонах ui:Button. В code-behind — через FindResource по x:Key: x:Name у элемента с x:Key поля не создаёт (CS0103). -->
         <SolidColorBrush x:Key="TextFillColorPrimaryBrush" Color="#FFFFFFFF" />
         <SolidColorBrush x:Key="TextFillColorSecondaryBrush" Color="#C5FFFFFF" />
         <SolidColorBrush x:Key="ControlFillColorDefaultBrush" Color="#14FFFFFF" />
@@ -40,10 +22,8 @@
         <SolidColorBrush x:Key="ControlStrongFillColorDefaultBrush" Color="#4DFFFFFF" />
         <SolidColorBrush x:Key="ControlStrokeColorDefaultBrush" Color="#26FFFFFF" />
 
-        <!-- Поле ручного ввода процента прозрачности (см. MiniOpacityContextValueEditor) — не
-             обычный ui:TextBox: тот рисует свою рамку/иконку/крестик очистки, которые в узкой
-             ячейке 44px просто не помещаются и перекрывают введённое число. Здесь минимальный
-             шаблон обычного TextBox без этих элементов. -->
+        <!-- Поле ручного ввода процента прозрачности (MiniOpacityContextValueEditor): ui:TextBox не годится — его рамка/иконка/крестик
+             не помещаются в ячейке 44px и перекрывают число, поэтому минимальный шаблон обычного TextBox. -->
         <Style x:Key="MiniOpacityInlineEditorStyle" TargetType="TextBox">
             <Setter Property="Width" Value="44" />
             <Setter Property="Height" Value="22" />
@@ -84,15 +64,8 @@
             </Setter>
         </Style>
 
-        <!-- Индикатор громкости (см. VolumeIndicator ниже): плавно появляется и, спустя
-             паузу, сам плавно исчезает. Запускается заново с нуля при каждом изменении
-             громкости — см. ShowVolumeIndicator() в code-behind, которая останавливает
-             предыдущий прогон анимации перед стартом нового, чтобы быстрые повторные
-             нажатия хоткея не давали резких скачков прозрачности.
-
-             Синхронно с ним (те же тайминги, тот же Storyboard) обложка+название+исполнитель
-             (HeaderPanel) гаснут в ноль и появляются обратно — пока крутится громкость, в
-             мини-плеере видно ТОЛЬКО процент громкости, а не обе надписи разом друг на друге. -->
+        <!-- Индикатор громкости (VolumeIndicator): плавно появляется и исчезает, перезапускаясь при каждом изменении (ShowVolumeIndicator
+             останавливает прошлый прогон); тем же Storyboard HeaderPanel гаснет, чтобы надписи не накладывались на процент. -->
         <Storyboard x:Key="VolumeIndicatorStoryboard">
             <DoubleAnimation Storyboard.TargetName="VolumeIndicator" Storyboard.TargetProperty="Opacity"
                               From="0" To="1" Duration="0:0:0.12" />
@@ -106,54 +79,27 @@
         </Storyboard>
     </Window.Resources>
 
-    <!-- Фон мини-плеера прошёл через несколько неудачных попыток, прежде чем осесть на нынешнем
-         виде (см. git-историю, если интересны подробности): сначала Mica через ui:FluentWindow —
-         не подошла именно этому маленькому окну без рамки (WindowStyle="None", 220×82/140):
-         падала при входе в мини-режим, а после починки давала совсем не тот размер окна на
-         экране. Затем — блюр через SetWindowCompositionAttribute (ACCENT_ENABLE_ACRYLICBLURBEHIND)
-         — тоже отказались: это Win32-эффект композиции DWM, рассчитанный на обычные окна, а наше
-         окно уже само по себе AllowsTransparency="True" (layered window, композитится через
-         собственный, отдельный от DWM механизм альфа-смешивания WPF). Комбинация двух разных
-         механизмов прозрачности на одном HWND ведёт себя непредсказуемо в зависимости от системы:
-         на части машин итоговая видимая прозрачность переставала зависеть от нашего слайдера
-         вообще (DWM просто держал свой собственный альфа-канал тонировки блюра поверх того, что
-         выставляли мы), на части — эффект отключался тихо, если у пользователя в Параметрах
-         Windows выключены эффекты прозрачности, и никакой ошибки за этим не следовало.
-
-         Теперь фон — это ЕДИНСТВЕННЫЙ и полностью надёжный слой: RootBorder заливается сплошным
-         цветом темы (см. ApplyTheme) с альфа-каналом из настройки "прозрачность мини-плеера" (см.
-         ApplyBackground в code-behind). Поскольку окно уже AllowsTransparency="True", WPF сам,
-         без всякого Win32-API, честно смешивает этот полупрозрачный цвет с тем, что реально
-         находится на экране позади окна — рабочий стол или окна под мини-плеером становятся
-         видны сквозь него тем отчётливее, чем ниже прозрачность в настройках. Это не блюр
-         (то, что видно позади, не размывается), зато работает одинаково на любой системе и
-         честно откликается на каждое движение слайдера — что и было целью. -->
+    <!-- Фон — один слой: RootBorder заливается цветом темы (ApplyTheme) с альфой из настройки (ApplyBackground); окно уже AllowsTransparency="True",
+         и WPF сам смешивает его с содержимым за окном. Mica и Win32-блюр (ACCENT_ENABLE_ACRYLICBLURBEHIND) отвергнуты: конфликтуют с layered window. -->
     <Grid>
     <Border x:Name="RootBorder" CornerRadius="14"
             MouseEnter="RootBorder_MouseEnter" MouseLeave="RootBorder_MouseLeave"
             MouseWheel="RootBorder_MouseWheel"
             MouseLeftButtonDown="RootBorder_MouseLeftButtonDown">
         <Border.Background>
-            <!-- Цвет и альфа-канал полностью выставляются в code-behind: базовый цвет — из
-                 ApplyTheme (тёмный графит либо светло-серый, под тему приложения), альфа —
-                 из ApplyBackground (настройка "прозрачность мини-плеера"). Значение ниже —
-                 просто дефолт на первый кадр. -->
+            <!-- Цвет и альфа выставляются в code-behind (ApplyTheme — тема, ApplyBackground — прозрачность); значение здесь — дефолт на первый кадр. -->
             <SolidColorBrush x:Name="MiniBackgroundBrush" Color="#F51C1C1E" />
         </Border.Background>
-        <!-- ПКМ по любому месту мини-плеера: закрепление, «поверх окон», вторая кнопка,
-             скорость, тон и прозрачность — быстрый доступ к связанным настройкам. Перед каждым
-             показом MiniPlayerContextMenu_Opened подставляет актуальные значения, поэтому
-             галочки, иконки и ползунки не расходятся с реальным состоянием приложения. -->
+        <!-- ПКМ по мини-плееру: быстрый доступ к закреплению, «поверх окон», второй кнопке, скорости, тону и прозрачности;
+             MiniPlayerContextMenu_Opened подставляет актуальные значения перед показом. -->
         <Border.ContextMenu>
             <ContextMenu x:Name="MiniPlayerContextMenu" Opened="MiniPlayerContextMenu_Opened"
                          Closed="MiniPlayerContextMenu_Closed">
                 <ContextMenu.Resources>
                     <local:MiniPlayerContextMenuActionVisibilityConverter x:Key="MiniPlayerContextMenuActionVisibilityConverter" />
                     <local:MiniPlayerContextMenuGroupVisibilityConverter x:Key="MiniPlayerContextMenuGroupVisibilityConverter" />
-                    <!-- Локальный шаблон применяется исключительно к двум переключаемым пунктам.
-                         Используется тот же размер и геометрия индикатора, что и на странице настроек:
-                         размер и геометрия индикатора полностью совпадают. IsChecked принадлежит
-                         самому MenuItem, а CheckBox служит только некликабельным отображением. -->
+                    <!-- Локальный шаблон только для двух переключаемых пунктов, с тем же размером и геометрией индикатора, что на странице настроек;
+                         IsChecked принадлежит MenuItem, а CheckBox — только некликабельное отображение. -->
                     <Style x:Key="MiniPlayerToggleMenuItemStyle" TargetType="{x:Type MenuItem}">
                         <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                         <Setter Property="Background" Value="Transparent" />
@@ -165,9 +111,7 @@
                                             Padding="{TemplateBinding Padding}" SnapsToDevicePixels="True">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
-                                                <!-- WPF-UI 4 CheckBox имеет более широкую visual geometry,
-                                                     чем прежняя 3.x; 32 DIP предотвращает обрезание glyph
-                                                     у левой границы popup. -->
+                                                <!-- У CheckBox в WPF-UI 4 более широкая геометрия, чем в 3.x: 32 DIP не даёт обрезать glyph у левой границы popup. -->
                                                 <ColumnDefinition Width="32" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
@@ -221,9 +165,8 @@
                             </Setter.Value>
                         </Setter>
                     </Style>
-                    <!-- Popup должен быть компактным, но indicator обязан совпадать с
-                         CheckBox в Settings. Поэтому воспроизводим штатную 20-DIP геометрию
-                         и палитру WPF-UI 4, не наследуя его 120-DIP minimum для пункта с text. -->
+                    <!-- Popup компактный, но индикатор должен совпадать с CheckBox в Settings: воспроизводим 20-DIP геометрию и палитру WPF-UI 4,
+                         не наследуя его 120-DIP minimum для пункта с текстом. -->
                     <Style x:Key="MiniPlayerSettingsCheckBoxStyle" TargetType="{x:Type CheckBox}">
                         <Setter Property="Width" Value="20" />
                         <Setter Property="Height" Value="20" />
@@ -330,9 +273,8 @@
                     </MenuItem.Header>
                 </MenuItem>
                 <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter='PlaybackRate|Pitch'}" />
-                <!-- Скорость и тон используют такие же прозрачные overlay-области, как
-                     прозрачность ниже: Slider живёт в Popup ContextMenu, поэтому явный захват
-                     мыши надёжнее нативного Thumb. Двойной клик возвращает 1.00× и 0 st. -->
+                <!-- Скорость и тон — такие же прозрачные overlay-области, как прозрачность ниже (Slider в Popup ContextMenu: явный захват мыши
+                     надёжнее нативного Thumb); двойной клик возвращает 1.00× и 0 st. -->
                 <MenuItem StaysOpenOnClick="True" Focusable="False"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=PlaybackRate}">
                     <MenuItem.Header>
@@ -382,32 +324,8 @@
                     </MenuItem.Header>
                 </MenuItem>
                 <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter=Opacity}" />
-                <!-- Та же настройка, что и ползунок "Прозрачность мини-плеера" в окне настроек
-                     (см. MainWindow.SetMiniPlayerOpacity) — синхронизирована в обе стороны:
-                     здесь подставляется актуальное значение при каждом открытии меню, а
-                     перетаскивание сразу же обновляет и сам мини-плеер, и слайдер в окне
-                     настроек, если оно сейчас открыто (см. SettingsWindow.RefreshMiniPlayerToggles).
-
-                     Перетаскивание сделано ТЕМ ЖЕ приёмом, что и у MiniOpacitySlider в
-                     SettingsWindow.xaml, а не нативным Thumb'ом слайдера: сам Slider —
-                     IsHitTestVisible="False", поверх него отдельный прозрачный Border ловит
-                     мышь и сам вычисляет значение по X-координате клика (см.
-                     MiniOpacityContextOverlay_* в code-behind). Нативное перетаскивание Thumb'а
-                     здесь не подошло бы — Slider живёт внутри ContextMenu (это отдельный Popup),
-                     где перехват и последующее удержание мыши самим Thumb'ом при разворачивании
-                     из MenuItem ведёт себя нестабильно; overlay-Border, захватывающий мышь сам
-                     явным CaptureMouse(), от этого не зависит и работает предсказуемо в любом
-                     контейнере, включая всплывающее меню.
-
-                     StaysOpenOnClick="True" — иначе меню закрылось бы от самого первого клика
-                     по слайдеру, не дав его толком перетащить. Focusable="False" — чтобы пункт
-                     не вёл себя как обычный кликабельный пункт меню с рамкой выделения: у него
-                     нет осмысленного "клика" самого по себе, только перетаскивание слайдера
-                     внутри. Диапазон 0.3–1.0 — тот же, что и у слайдера в окне настроек;
-                     Value="1.0" — совпадает с Minimum по умолчанию не может, поэтому WPF никогда
-                     не подтягивает значение принудительно при разборе XAML (см. подробный
-                     комментарий у MiniOpacityContextSlider_ValueChanged в code-behind — там же
-                     объяснено, почему это в принципе важно). -->
+                <!-- Та же настройка, что в окне настроек (MainWindow.SetMiniPlayerOpacity), синхронизируется в обе стороны; перетаскивание — overlay-Border
+                     с CaptureMouse (Thumb в Popup нестабилен). StaysOpenOnClick — иначе меню закроется от первого клика; Focusable="False" — у пункта нет своего клика. -->
                 <MenuItem StaysOpenOnClick="True" Focusable="False"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Opacity}">
                     <MenuItem.Header>
@@ -428,9 +346,7 @@
                                     MouseLeftButtonUp="MiniOpacityContextOverlay_MouseLeftButtonUp"
                                     MouseWheel="MiniOpacityContextOverlay_MouseWheel" />
 
-                            <!-- Клик по числу переключает его на TextBox для ручного ввода точного
-                                 значения (см. BeginOpacityValueEdit в code-behind) — до этого
-                                 значение можно было выставить только "на глаз" слайдером. -->
+                            <!-- Клик по числу переключает его на TextBox для ввода точного значения (BeginOpacityValueEdit). -->
                             <Grid Grid.Column="2" Width="44" Margin="8,0,0,0" VerticalAlignment="Center">
                                 <TextBlock x:Name="MiniOpacityContextValueText" Text="100%"
                                            HorizontalAlignment="Right" VerticalAlignment="Center"
@@ -479,9 +395,7 @@
             <StackPanel x:Name="HeaderPanel" Grid.Row="0" Orientation="Horizontal" Margin="10,8,10,2"
                         Background="Transparent"
                         MouseLeftButtonDown="Header_MouseLeftButtonDown">
-                <!-- Контур прогресса проходит ровно по границе обложки: половина толщины линии
-                     находится внутри 42×42, половина — снаружи. ArtworkCanvas не обрезает
-                     внешний участок контура. -->
+                <!-- Контур прогресса идёт по границе обложки: половина толщины внутри 42×42, половина снаружи; ArtworkCanvas не обрезает внешнюю часть. -->
                 <Grid x:Name="ArtworkCanvas" Width="50" Height="50" ClipToBounds="False"
                       SnapsToDevicePixels="True" UseLayoutRounding="True">
                     <Border x:Name="ArtBorder" Width="42" Height="42" CornerRadius="8"
@@ -517,24 +431,8 @@
                 </Grid>
 
                 <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                    <!-- Ширина 120 подобрана под фактически доступное место: 200 (окно) минус
-                         10+10 (отступы StackPanel-заголовка) минус 50 (ArtworkCanvas, контур
-                         прогресса выступает за пределы 42×42 обложки) минус 10 (отступ перед
-                         текстом) = 120. Окно мини-плеера имеет фиксированный размер
-                         (ResizeMode="NoResize"), поэтому число не "поедет" при изменении окна.
-
-                         TextBlock лежит внутри Canvas, а не прямо внутри Border: если бы он был
-                         прямым ребёнком Border с фиксированной шириной 120, WPF сам, ещё ДО
-                         применения RenderTransform, обрезал бы его отрисовку до этих 120px —
-                         это автоматическое поведение layout-системы (обрезка элемента по
-                         выделенному ему месту у родителя, когда его DesiredSize больше), отдельное
-                         от ClipToBounds на самом Border. В результате прокручивать оказывалось
-                         попросту нечего: часть названия за пределами 120px никогда не рисовалась,
-                         и бегущая строка visually показывала только начало, сколько бы TitleTranslate
-                         её ни сдвигал. Canvas же не обрезает детей по своим границам (даёт им
-                         столько места, сколько они просят), поэтому TextBlock рисуется на полную
-                         естественную ширину — а нужную видимую "рамку" по-прежнему обеспечивает
-                         ClipToBounds самого Border снаружи. -->
+                    <!-- Ширина 120 = 200 (окно) − 20 (отступы) − 50 (ArtworkCanvas) − 10 (отступ до текста); размер окна фиксирован (NoResize).
+                         TextBlock в Canvas, а не в Border: иначе layout обрезал бы его до 120px до RenderTransform, и бегущей строке нечего прокручивать. -->
                     <Border x:Name="TitleClipBorder" Width="120" ClipToBounds="True" HorizontalAlignment="Left">
                         <Canvas Height="18">
                             <TextBlock x:Name="TitleText" Text="Файл не выбран"
@@ -552,11 +450,8 @@
                 </StackPanel>
             </StackPanel>
 
-            <!-- Прогресс (простая полоса + прозрачный слой для перемотки кликом/перетаскиванием).
-                 См. AppSettings.MiniPlayerShowProgress/ApplyProgressBarVisibility — скрывается
-                 целиком через Visibility, высота строки (Auto) при этом схлопывается сама, окно
-                 дополнительно уменьшается на ProgressRowHeight в самом ApplyProgressBarVisibility,
-                 чтобы не оставалось пустого места на месте спрятанной полосы. -->
+            <!-- Прогресс: полоса + прозрачный слой для перемотки; скрывается через Visibility (строка Auto схлопывается), а окно
+                 уменьшается на ProgressRowHeight в ApplyProgressBarVisibility (AppSettings.MiniPlayerShowProgress). -->
             <Grid x:Name="ProgressRow" Grid.Row="1" Margin="10,4,10,0" Height="20">
                 <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
                         Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
@@ -569,11 +464,8 @@
                         MouseLeftButtonUp="Progress_MouseLeftButtonUp" />
             </Grid>
 
-            <!-- Кнопки — показываются только при наведении курсора на окно. Margin здесь —
-                 дефолт для режима "снизу" (Below), тот же, что и был всегда (8+10=18 суммарно).
-                 Для overlay-режима ApplyButtonsLayoutMode в code-behind подменяет его на другой,
-                 сдвинутый чуть ниже (но с той же суммой отступов 18, чтобы общая высота строки
-                 не поехала — см. подробности там же). -->
+            <!-- Кнопки видны только при наведении. Margin — дефолт режима "Below" (8+10=18); ApplyButtonsLayoutMode подменяет его для Overlay
+                 со смещением вниз, но с той же суммой 18, чтобы высота строки не поехала. -->
             <StackPanel x:Name="ControlsPanel" Grid.Row="2" Orientation="Horizontal"
                         HorizontalAlignment="Center" Margin="0,8,0,10" Visibility="Collapsed">
                 <ui:Button x:Name="SecondaryButton" Appearance="Secondary"
@@ -590,9 +482,8 @@
                         <local:SvgPathIcon Icon="IconPrevious" />
                     </ui:Button.Icon>
                 </ui:Button>
-                <!-- Appearance="Secondary" — фон красится вручную в коде под текущий акцент
-                     (см. RefreshAccentButtons), а не через ControlAppearance.Primary: у него
-                     подтверждённый баг WPF-UI, фон не обновляется вживую при смене акцента. -->
+                <!-- Appearance="Secondary": фон красится вручную под акцент (RefreshAccentButtons), а не через ControlAppearance.Primary —
+                     баг WPF-UI: фон не обновляется вживую при смене акцента. -->
                 <ui:Button x:Name="PlayPauseButton" Appearance="Secondary"
                            Width="36" Height="36" Padding="0" Margin="3,0"
                            Click="PlayPauseButton_Click">
@@ -617,11 +508,8 @@
             </StackPanel>
         </Grid>
 
-        <!-- Отдельный overlay-слой: индикатор не участвует в измерении auto-строк ContentGrid,
-             поэтому VerticalAlignment="Center" рассчитывается относительно всей видимой площади
-             мини-плеера, включая высоту панели управления. IsHitTestVisible=False сохраняет
-             прокрутку и перетаскивание окна. В Overlay-режиме ControlsPanel скрывается на время
-             показа индикатора из code-behind, поэтому слои не перекрываются. -->
+        <!-- Отдельный overlay-слой: индикатор не участвует в измерении auto-строк ContentGrid, поэтому Center считается от всей площади
+             мини-плеера; IsHitTestVisible=False сохраняет прокрутку и перетаскивание; в Overlay-режиме ControlsPanel скрывается на время показа. -->
         <Border x:Name="VolumeIndicator" Panel.ZIndex="10"
                 CornerRadius="10" Padding="12,6"
                 Background="{DynamicResource ControlFillColorDefaultBrush}"

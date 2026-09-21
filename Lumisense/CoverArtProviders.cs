@@ -27,8 +27,6 @@ public static class CoverArtProviders
     // в галерее результатов), на логику поиска не влияет.
     public readonly record struct ArtResult(string ThumbUrl, string FullUrl, string Label, string Source);
 
-    // ---------- iTunes Search API ----------
-
     public static async Task<List<ArtResult>> SearchItunesAsync(string query, CancellationToken token)
     {
         try
@@ -45,9 +43,7 @@ public static class CoverArtProviders
         }
         catch
         {
-            // Сеть недоступна, iTunes вернул ошибку, JSON не распарсился, истёк таймаут и т.п. —
-            // во всех этих случаях остальные источники всё ещё могут найти результат, поэтому
-            // просто отдаём пустой список вместо того, чтобы обрушить весь поиск целиком.
+            // Любой сбой источника (сеть, JSON, таймаут) не роняет поиск: остальные источники ещё могут найти обложку.
             return new List<ArtResult>();
         }
     }
@@ -82,8 +78,6 @@ public static class CoverArtProviders
     // подставляя своё значение вместо 100, можно получить то же изображение в нужном разрешении.
     private static string WithItunesArtworkSize(string artworkUrl, int size) =>
         Regex.Replace(artworkUrl, @"\d+x\d+bb(?=\.\w+$)", $"{size}x{size}bb");
-
-    // ---------- Deezer Search API ----------
 
     public static async Task<List<ArtResult>> SearchDeezerAsync(string query, CancellationToken token)
     {
@@ -141,8 +135,6 @@ public static class CoverArtProviders
         return entries;
     }
 
-    // ---------- MusicBrainz (сопоставление) + Cover Art Archive (сама картинка) ----------
-
     public static async Task<List<ArtResult>> SearchMusicBrainzAsync(string query, CancellationToken token)
     {
         query = query.Trim();
@@ -160,9 +152,7 @@ public static class CoverArtProviders
             var candidates = ParseMusicBrainzReleaseCandidates(json);
             if (candidates.Count == 0) return new List<ArtResult>();
 
-            // На каждый найденный релиз — отдельный запрос к Cover Art Archive: у MusicBrainz
-            // самой обложки нет. Ограничиваем число кандидатов, чтобы не устраивать десятки
-            // последовательных запросов на один поиск — Cover Art Archive не резиновый.
+            // Обложку MusicBrainz отдаёт Cover Art Archive отдельным запросом на релиз, поэтому число кандидатов ограничено.
             var results = new List<ArtResult>();
             var seenReleaseIds = new HashSet<string>();
             foreach (var (releaseId, label) in candidates)
@@ -186,10 +176,8 @@ public static class CoverArtProviders
         }
     }
 
-    // Разбирает ответ MusicBrainz recording-поиска: у каждой найденной записи (recording) сразу
-    // приходит список связанных релизов (альбом/сингл/переиздание), без отдельного запроса.
-    // Берём не больше двух релизов на запись — иначе один популярный трек с полусотней
-    // переизданий полностью забьёт лимит кандидатов для Cover Art Archive.
+    // Релизы приходят вместе с записью; берём не больше двух на запись, иначе популярный трек с полусотней
+    // переизданий забьёт лимит кандидатов для Cover Art Archive.
     private static List<(string ReleaseId, string Label)> ParseMusicBrainzReleaseCandidates(string json)
     {
         var candidates = new List<(string, string)>();
@@ -278,8 +266,6 @@ public static class CoverArtProviders
             return null;
         }
     }
-
-    // ---------- Общее ----------
 
     public static async Task<byte[]> ReadBytesWithLimitAsync(HttpContent content, int maxBytes, CancellationToken token)
     {

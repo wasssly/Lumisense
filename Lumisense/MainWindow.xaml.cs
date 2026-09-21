@@ -30,15 +30,12 @@ public partial class MainWindow : FluentWindow
 {
     private enum RepeatMode { Off, All, One }
 
-    // Три вида плеера, переключаемые через контекстное меню по клику на заголовок
-    // "Lumisense" (см. TitleClickArea в XAML): обычный/квадратный (без плейлиста,
-    // Width == Height), прямоугольный (с плейлистом — прежнее поведение по умолчанию)
-    // и мини-плеер (отдельное окно MiniPlayerWindow).
+    // Три вида плеера (контекстное меню заголовка, TitleClickArea): квадратный (без плейлиста, Width == Height), прямоугольный
+    // (с плейлистом, по умолчанию) и мини-плеер (отдельное окно MiniPlayerWindow).
     private enum PlayerViewMode { Square, Rectangular, Mini }
 
-    // Направление анимации смены обложки (см. AnimateAlbumArtTransition): Next — старая
-    // обложка "улетает" влево, новая "влетает" справа; Previous — наоборот. None — без
-    // анимации (например, самая первая загрузка обложки при старте приложения).
+    // Направление анимации смены обложки (AnimateAlbumArtTransition): Next — старая улетает влево, новая приходит справа,
+    // Previous — наоборот, None — без анимации (например, первая загрузка при старте).
     private enum AlbumArtTransitionDirection { None, Next, Previous }
 
     // Поддерживаемые расширения — используются при сканировании папок
@@ -48,10 +45,8 @@ public partial class MainWindow : FluentWindow
     private AudioFileReader? _audioFile;
     private SoundTouchSampleProvider? _tempoProvider;
 
-    // WasapiPlayer открывает поток для конкретного IWaveProvider один раз, поэтому устройство
-    // создаётся заново при загрузке другого трека. Короткий fade-out/fade-in сохраняет плавность
-    // перехода, а endpoint освобождается сразу после Stop. Lumisense использует только Shared:
-    // системные звуки и другие приложения всегда могут пользоваться тем же устройством.
+    // WasapiPlayer открывает поток для одного IWaveProvider, поэтому устройство создаётся заново на каждый трек; fade-out/fade-in
+    // сглаживает переход, endpoint освобождается после Stop. Только Shared: системные звуки и другие приложения не блокируются.
     private IWavePlayer? _outputDevice;
     private MMDevice? _outputEndpoint;
     private readonly AudioOutputSession _audioOutputSession = new();
@@ -72,9 +67,8 @@ public partial class MainWindow : FluentWindow
     private const int OutputRecoveryCooldownMilliseconds = 1500;
     private const int SystemDefaultEndpointDebounceMilliseconds = 180;
 
-    // Отдельно от выбранного в settings.json значения храним то, что реально открыл WASAPI.
-    // Это позволяет Settings объяснить fallback после отключения USB/Bluetooth-устройства, не
-    // заставляя пользователя гадать, куда сейчас направлен звук.
+    // Отдельно от settings.json храним то, что реально открыл WASAPI: так Settings объяснит fallback после отключения
+    // USB/Bluetooth-устройства, и пользователь не гадает, куда идёт звук.
     private string _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
     private string? _outputDeviceFallbackFrom;
     // Реально применённый режим WASAPI ("Shared"/"Exclusive") — может отличаться от
@@ -104,23 +98,19 @@ public partial class MainWindow : FluentWindow
         Interval = TimeSpan.FromMilliseconds(SystemDefaultEndpointDebounceMilliseconds)
     };
 
-    // Большинство UI-настроек меняются сразу в памяти, а не по отдельному Save на каждое
-    // движение слайдера. Короткий checkpoint делает их устойчивыми к закрытию консоли, но
-    // SettingsManager пропускает полностью неизменившийся JSON и не создаёт лишних записей.
+    // UI-настройки меняются в памяти без Save на каждое движение слайдера; checkpoint делает их устойчивыми к закрытию
+    // консоли, SettingsManager пропускает неизменившийся JSON.
     private readonly DispatcherTimer _settingsCheckpointTimer = new() { Interval = TimeSpan.FromSeconds(1) };
 
-    // Поиск не меняет UI на каждый символ: небольшая пауза объединяет быстрый ввод в один
-    // запрос, а фильтрация снимка списка выполняется вне Dispatcher. Это предотвращает длинную
-    // перестройку раскладки тысяч ListViewItem при каждом нажатии клавиши.
+    // Пауза объединяет быстрый ввод поиска в один запрос, фильтрация снимка идёт вне Dispatcher — иначе каждое нажатие
+    // перестраивало бы раскладку тысяч ListViewItem.
     private readonly DispatcherTimer _playlistSearchDebounceTimer = new() { Interval = TimeSpan.FromMilliseconds(180) };
     private CancellationTokenSource? _playlistSearchCts;
     private int _playlistSearchGeneration;
     private readonly Stopwatch _playbackClock = new();
 
-    // Множитель громкости из ReplayGain-тегов текущего трека (см. ReplayGainReader,
-    // AppSettings.ReplayGainEnabled), 1.0 если выключено/тегов нет. Домножается на обычную
-    // громкость в ComputeAudioFileVolume — то же место конвейера (AudioFileReader.Volume, до
-    // эквалайзера), отдельный ISampleProvider не нужен.
+    // Множитель громкости из ReplayGain-тегов трека (ReplayGainReader), 1.0 при выключенной настройке/нет тегов; домножается
+    // на громкость в ComputeAudioFileVolume (AudioFileReader.Volume, до эквалайзера) — отдельный ISampleProvider не нужен.
     private double _replayGainFactor = 1.0;
     private Color? _coverAccentColor;
     // Смена обложки может происходить, пока WPF ещё распространяет DynamicResource по Popup
@@ -130,21 +120,17 @@ public partial class MainWindow : FluentWindow
         new(TimeSpan.FromMilliseconds(240));
     private int _albumArtTransitionGeneration;
 
-    // ---------- Waveform-полоса воспроизведения (см. AppSettings.ProgressBarStyle) ----------
-    // Кэш пиков по пути файла — трек может грузиться повторно, пересчитывать форму волны заново
-    // незачем. Ограничен WaveformCacheLimit, это кэш сессии, не постоянное хранилище.
+    // Waveform-полоса (AppSettings.ProgressBarStyle): кэш пиков по пути — пересчитывать волну при повторной загрузке трека
+    // незачем; ограничен WaveformCacheLimit и живёт только в сессии.
     private readonly Dictionary<string, float[]> _waveformCache = new();
     private readonly Queue<string> _waveformCacheOrder = new();
     private const int WaveformCacheLimit = 40;
 
-    // Главная обложка занимает 150 DIP, а мини-плеер/уведомления — ещё меньше. Ограничиваем
-    // декодирование UI-копии: HighQuality остаётся резким, но огромные embedded 4K-обложки
-    // не занимают лишнюю память и не требуют дорогого масштабирования при анимации.
+    // Главная обложка 150 DIP, мини-плеер и уведомления меньше: ограничиваем декодирование UI-копии, чтобы огромные
+    // embedded 4K-обложки не занимали память и не тормозили масштабирование при анимации.
     private const int ArtworkDisplayDecodePixelWidth = 512;
 
-    // Отменяет расчёт формы волны для ПРЕДЫДУЩЕГО трека при переключении на следующий раньше,
-    // чем расчёт закончился — иначе устаревший результат может перезаписать уже показанную
-    // форму волны нового трека.
+    // Отменяет расчёт формы волны предыдущего трека при быстром переключении: иначе устаревший результат перезапишет волну нового.
     private CancellationTokenSource? _waveformCts;
     private readonly AudioPlaybackCoordinator _audioPlaybackCoordinator = new();
     private readonly TrackPreparationService _trackPreparationService = new();
@@ -154,51 +140,40 @@ public partial class MainWindow : FluentWindow
     private bool _pendingNavigationAutoPlay;
     private readonly CancellationTokenSource _lifetimeCts = new();
 
-    // Прослушивание засчитывается только когда реально воспроизведена (не перемотана) как
-    // минимум половина композиции — см. ProgressTimer_Tick. Сбрасывается на каждую новую
-    // загрузку, включая повтор того же трека (RepeatMode.One).
+    // Прослушивание засчитывается, когда реально сыграна (не перемотана) половина трека (ProgressTimer_Tick); сбрасывается
+    // на каждую загрузку, включая повтор того же трека (RepeatMode.One).
     private bool _halfPlayCounted;
 
-    // Сумма фактически прозвучавших секунд текущего трека. Считается по приросту позиции между
-    // тиками, скачки от перемотки не учитываются — иначе перетаскивание ползунка в конец сразу
-    // засчитывало бы прослушивание.
+    // Фактически прозвучавшие секунды трека: считаются по приросту позиции между тиками, скачки от перемотки не
+    // учитываются, иначе перетаскивание ползунка в конец сразу засчитывало бы прослушивание.
     private double _actuallyPlayedSeconds;
     private double _lastTickPositionSeconds = -1;
 
-    // ObservableCollection, а не List — PlaylistFoldersControl (см. RestoreSavedPlaylistAsync)
-    // привязан к ней один раз и получает только реально новые/удалённые папки через
-    // CollectionChanged, без пересоздания контейнеров всех папок при каждом добавлении.
+    // ObservableCollection: PlaylistFoldersControl (RestoreSavedPlaylistAsync) привязан один раз и получает через
+    // CollectionChanged только реально новые/удалённые папки, без пересоздания контейнеров всех папок.
     private readonly ObservableCollection<PlaylistFolder> _folders = new();
 
-    // Отслеживание добавлений в дисковые папки плейлиста. FileSystemWatcher сообщает о
-    // нескольких промежуточных событиях при копировании файла, поэтому объединяем их в один
-    // повторный скан после короткой паузы, а не пересобираем список при каждом уведомлении.
+    // FileSystemWatcher шлёт несколько событий на копирование файла, поэтому объединяем их в один повторный скан после
+    // короткой паузы, а не пересобираем список на каждое уведомление.
     private readonly List<FileSystemWatcher> _folderWatchers = new();
     private readonly HashSet<string> _pendingFolderRefreshPaths = new(StringComparer.OrdinalIgnoreCase);
     private readonly DispatcherTimer _folderRefreshDebounceTimer = new() { Interval = TimeSpan.FromSeconds(2) };
     private bool _isFolderRefreshInProgress;
 
-    // Пока конструктор не завершил перенос SavedPlaylistFolders в _folders, любое сохранение
-    // пустой коллекции опасно: при исключении в ранней инициализации оно могло затереть
-    // реальный плейлист пользователя в settings.json. Флаг становится true только после
-    // успешного восстановления либо подтверждённого отсутствия сохранённых групп.
+    // Пока конструктор не перенёс SavedPlaylistFolders в _folders, сохранение пустой коллекции затёрло бы плейлист в
+    // settings.json при исключении в ранней инициализации; флаг true — после восстановления или подтверждённого отсутствия групп.
     private bool _playlistRestoreCompleted;
 
-    // Виртуальная группа "Избранное" — не входит в _folders (это не настоящая группа плейлиста,
-    // её незачем сохранять в SavedPlaylistFolders), а собирается на лету из FavoritesManager
-    // каждый раз перед показом (см. RefreshPlaylistView). Единственный экземпляр переиспользуется,
-    // чтобы не пересоздавать PlaylistFolder (и, как следствие, не терять IsExpanded) при каждом
-    // обновлении списка избранного.
+    // Виртуальная группа "Избранное" не входит в _folders и не сохраняется: собирается из FavoritesManager перед показом
+    // (RefreshPlaylistView); один экземпляр переиспользуется, чтобы не терять IsExpanded при обновлении.
     private readonly PlaylistFolder _favoritesFolder = new()
     {
         DisplayName = "Избранное",
         IsFavoritesGroup = true
     };
 
-    // true, пока на месте основного плейлиста показан виртуальный плейлист "Избранное"
-    // (см. FavoritesButton_Click/SetFavoritesViewActive) — влияет и на то, что показывает
-    // PlaylistFoldersControl, и на то, какой список треков используют "Далее"/"Назад"/шафл
-    // (см. FlattenAll/FlattenActive).
+    // true, пока вместо плейлиста показано "Избранное" (FavoritesButton_Click/SetFavoritesViewActive): влияет на PlaylistFoldersControl
+    // и на список для "Далее"/"Назад"/шафла (FlattenAll/FlattenActive).
     private bool _isFavoritesView;
 
     // Панель текста занимает место плейлиста, не создавая второго окна. Отдельный CTS
@@ -209,9 +184,8 @@ public partial class MainWindow : FluentWindow
     private LyricsDocument _mainWindowLyrics = LyricsDocument.Empty;
     private readonly ObservableCollection<MainWindowLyricLine> _mainWindowSyncedLyrics = new();
 
-    // ScrollViewer не имеет анимируемого DependencyProperty для VerticalOffset. Небольшое
-    // attached-свойство проксирует значение анимации в ScrollToVerticalOffset, поэтому активная
-    // LRC-строка перемещается плавно, а не перескакивает при каждом timestamp.
+    // У ScrollViewer нет анимируемого DependencyProperty для VerticalOffset: attached-свойство проксирует анимацию в
+    // ScrollToVerticalOffset, чтобы LRC-строка двигалась плавно, а не перескакивала.
     private static readonly DependencyProperty AnimatedScrollOffsetProperty = DependencyProperty.RegisterAttached(
         "AnimatedScrollOffset", typeof(double), typeof(MainWindow),
         new PropertyMetadata(0.0, OnAnimatedScrollOffsetChanged));
@@ -266,9 +240,8 @@ public partial class MainWindow : FluentWindow
     private List<string>? _allTracksCache;
     private List<string>? _activeTracksCache;
     private bool _trackCachesAreFavoritesView;
-    // Обычный FlattenActive кэширует состав плейлиста, но навигация дополнительно проверяет
-    // File.Exists. Короткий cache ниже объединяет эти проверки только для серийных Next/Previous;
-    // LoadAndPlay всё равно проверяет выбранный финальный путь перед открытием.
+    // FlattenActive кэширует состав плейлиста, но навигация проверяет File.Exists: короткий cache объединяет проверки для
+    // серийных Next/Previous; LoadAndPlay всё равно проверяет итоговый путь перед открытием.
     private List<string>? _availableTracksNavigationCache;
     private bool _availableTracksNavigationCacheIsFavoritesView;
     private DateTime _availableTracksNavigationCacheCreatedUtc;
@@ -281,10 +254,8 @@ public partial class MainWindow : FluentWindow
 
     private readonly Random _random = new();
 
-    // Проверяется ДО загрузки настроек (сама загрузка ничего не создаёт на диске, поэтому
-    // порядок не важен) — true, если settings.json ещё ни разу не сохранялся, то есть это
-    // самый первый запуск плеера. Используется, чтобы решить, каким видом плеера открыться
-    // (см. RestorePlayerViewMode).
+    // true, если settings.json ещё ни разу не сохранялся (самый первый запуск) — от этого зависит стартовый вид плеера
+    // (ResolveStartupViewMode); проверяется до загрузки настроек, порядок не важен.
     private readonly bool _isFirstLaunch = !SettingsManager.HasSavedSettingsFile;
     private readonly AppSettings _settings = SettingsManager.Load();
 
@@ -304,11 +275,8 @@ public partial class MainWindow : FluentWindow
     private readonly PlaybackStateMachine _playbackStateMachine = new();
     private bool _isShuffleEnabled;
 
-    // История треков, сыгранных в режиме шафла: "Вперёд" на новом месте генерирует
-    // случайный трек и дописывает его в конец, а "Назад" не генерирует ничего нового,
-    // а просто возвращается на шаг назад по этому списку (как в браузере) — иначе
-    // "назад" в шафле оказывалось таким же случайным выбором, как и "вперёд", и не давало
-    // вернуться к реально предыдущему треку.
+    // История треков в режиме шафла: "Вперёд" дописывает новый случайный трек, а "Назад" идёт по списку назад, как в браузере,
+    // иначе "назад" был бы таким же случайным, как "вперёд".
     private readonly List<string> _shuffleHistory = new();
     private int _shuffleHistoryIndex = -1;
     private const int MaxPersistedShuffleHistory = 512;
@@ -317,21 +285,18 @@ public partial class MainWindow : FluentWindow
     // продолжением плейлиста/шаффла, см. ResolveNextTrackPathRespectingQueue.
     private readonly PlaybackQueue _playbackQueue = new();
 
-    // Popup для очереди не привязан биндингом к MainWindow — Popup рендерится в отдельном
-    // визуальном дереве, и RelativeSource/DataContext-биндинги через его границу ненадёжны в
-    // WPF (тот же приём уже используется для PlaybackControlPopup: код-behind, а не биндинг).
+    // Popup рендерится в отдельном визуальном дереве, где RelativeSource/DataContext-биндинги ненадёжны, поэтому очередь
+    // заполняется из code-behind (как PlaybackControlPopup).
     private readonly ObservableCollection<QueueDisplayItem> _queueDisplayItems = new();
     private readonly ObservableCollection<PlaylistTrackRow> _unavailableFileRows = new();
 
-    // Общая колода history-aware shuffle. Она используется и обычным shuffle, и
-    // режимом UseImprovedShuffle; разница между режимами сохраняется в настройках/UI,
-    // а выбор следующего трека теперь не допускает раздражающих повторов.
+    // Общая колода history-aware shuffle для обычного режима и UseImprovedShuffle: разница сохраняется в настройках/UI,
+    // а выбор следующего трека не допускает раздражающих повторов.
     private List<string> _shuffleBag = new();
     private bool _isMiniMode;
 
-    // Отличает обычное свёрнутое окно от главного окна, только что открытого внешней
-    // активацией из мини-плеера. Нужен, чтобы следующий клик по его кнопке в панели задач
-    // вернул мини-плеер, не меняя поведение обычной кнопки «Свернуть».
+    // Отличает обычное свёрнутое окно от главного окна, только что открытого из мини-плеера внешней активацией: следующий клик
+    // по кнопке в панели задач вернёт мини-плеер, не меняя обычное поведение «Свернуть».
     private bool _returnToMiniOnNextTaskbarMinimize;
 
     // Устанавливается строго на время синхронной обработки системной кнопки «Свернуть»
@@ -339,9 +304,8 @@ public partial class MainWindow : FluentWindow
     private bool _isSystemTitleBarMinimize;
     private RepeatMode _repeatMode = RepeatMode.Off;
 
-    // Текущий вид плеера (см. PlayerViewMode) и вид, в котором плеер был непосредственно
-    // перед переходом в мини-режим — нужен, чтобы при "развернуть" из мини-плеера вернуть
-    // не какой-то один вид по умолчанию, а именно тот, из которого в мини-плеер и ушли.
+    // Текущий вид (PlayerViewMode) и вид перед переходом в мини-режим — чтобы "развернуть" возвращал именно его,
+    // а не вид по умолчанию.
     private PlayerViewMode _viewMode = PlayerViewMode.Square;
     private PlayerViewMode _preMiniViewMode = PlayerViewMode.Square;
 
@@ -372,9 +336,8 @@ public partial class MainWindow : FluentWindow
     private const double AlbumArtGestureThreshold = 28.0;
 
     private bool _isExiting;
-    // Не сохраняем стартовые значения Slider из XAML до того, как ApplySettingsOnStartup
-    // восстановит значения из settings.json. После запуска изменения пользователя сохраняются
-    // асинхронно, чтобы движение ползунка не блокировало UI.
+    // Стартовые значения Slider из XAML не сохраняем, пока ApplySettingsOnStartup не восстановит settings.json; потом
+    // изменения пользователя сохраняются асинхронно, чтобы движение ползунка не блокировало UI.
     private bool _isApplyingStartupSettings = true;
     private bool _isOpeningPlaybackControlPopup;
     // Единственный runtime-источник скорости. До завершения InitializeComponent Slider не
@@ -383,15 +346,12 @@ public partial class MainWindow : FluentWindow
     private bool _playbackRateIsReady;
     private bool _isUpdatingPlaybackRateControl;
 
-    // ---------- Полноэкранный режим ----------
-    // Обычная (не полноэкранная) ширина ContentHost — совпадает со стартовой шириной окна,
-    // чтобы в исходном размере интерфейс выглядел ровно так же, как и раньше.
+    // Обычная ширина ContentHost совпадает со стартовой шириной окна, чтобы в исходном размере интерфейс выглядел как раньше.
     private const double NormalContentMaxWidth = 440;
     private bool _isFullscreenLayout;
 
-    // Фиксированная ширина рабочей области для квадратного вида плеера (PlayerViewMode.Square)
-    // — в отличие от настоящего полноэкранного режима, где она подстраивается под ширину
-    // монитора, здесь окно хоть и увеличенное, но обычное, поэтому и предел ширины фиксирован.
+    // Фиксированная ширина рабочей области квадратного вида (Square): в отличие от полноэкранного режима, где она
+    // подстраивается под монитор, окно здесь обычное, поэтому предел ширины фиксирован.
     private const double SquareContentMaxWidth = 560;
 
     // События для внешнего окна мини-плеера (MiniPlayerWindow), которое не является частью
@@ -404,21 +364,16 @@ public partial class MainWindow : FluentWindow
     // узкие события ниже сохраняются как совместимый фасад для уже существующих подписчиков.
     public PlaybackStateStore PlaybackState { get; } = new();
 
-    // Тоже только для мини-плеера — у него теперь своя кнопка повтора (см.
-    // MiniPlayerWindow.RepeatButton_Click), и её вид должен оставаться в синхроне с основным
-    // окном, чем бы режим ни переключили: этой кнопкой, кнопкой в основном окне или хоткеем.
+    // Только для мини-плеера: у него своя кнопка повтора (MiniPlayerWindow.RepeatButton_Click), её вид должен
+    // синхронно следовать режиму, как бы его ни переключили — кнопкой, в основном окне или хоткеем.
     public event Action<string>? RepeatModeChanged;
 
-    // Зеркальный аналог RepeatModeChanged для кнопки "Перемешать" — тоже нужен мини-плееру
-    // (см. AppSettings.MiniPlayerSecondaryButton: он может показывать либо повтор, либо
-    // перемешать), и по той же причине: состояние может поменяться откуда угодно — кнопкой
-    // в основном окне, кнопкой в мини-плеере или хоткеем.
+    // Аналог RepeatModeChanged для "Перемешать" (MiniPlayerSecondaryButton показывает либо повтор, либо перемешать):
+    // состояние меняется откуда угодно — из основного окна, мини-плеера или хоткеем.
     public event Action<bool>? ShuffleStateChanged;
 
-    // Отдельно от VolumeSlider_ValueChanged (который дёргается и при загрузке сохранённой
-    // громкости на старте) — только для мини-плеера, который показывает всплывающий
-    // индикатор процентов при изменении громкости хоткеями/скроллом. Аргумент — итоговая
-    // громкость 0..1, как в VolumeSlider.Value.
+    // Отдельно от VolumeSlider_ValueChanged (тот срабатывает и при загрузке сохранённой громкости): для индикатора процентов
+    // мини-плеера при изменении хоткеями/скроллом; аргумент — итоговая громкость 0..1, как VolumeSlider.Value.
     public event Action<double>? VolumeChanged;
 
     private void PublishPlaybackSnapshot()
@@ -465,15 +420,12 @@ public partial class MainWindow : FluentWindow
 
     public string CurrentTitle => TrackTitleText.Text;
     public string CurrentArtist => TrackArtistText.Text;
-    // Внешние потребители (мини-плеер и уведомление) по-прежнему получают ImageBrush, хотя
-    // главное окно рисует artwork отдельным Image ради качественного масштабирования. Кисть
-    // создаётся один раз при смене трека, а не при каждом запросе текущего состояния.
+    // Мини-плеер и уведомление получают ImageBrush, хотя главное окно рисует artwork отдельным Image ради качества
+    // масштабирования; кисть создаётся один раз при смене трека, а не на каждый запрос.
     public Brush? CurrentArtBrush => _currentArtBrush;
 
-    // Сырые байты текущей обложки (JPEG/PNG прямо из тега) — специально байты, а не готовый
-    // Brush/BitmapImage: TrayIconManager сам декодирует их через BitmapFrame для миниатюры
-    // в меню трея (см. TrayIconManager.SetNowPlaying), без зависимости от того, какой именно
-    // WPF-тип использует под капотом остальной код плеера.
+    // Сырые байты обложки (JPEG/PNG из тега), а не Brush/BitmapImage: TrayIconManager сам декодирует их через BitmapFrame
+    // для миниатюры в меню трея (TrayIconManager.SetNowPlaying), не завися от WPF-типа остального кода.
     public byte[]? CurrentAlbumArtBytes => AlbumArtIcon.Visibility == Visibility.Visible ? null : _currentAlbumArtBytes;
     public BitmapImage? CurrentAlbumArt => _currentAlbumArt;
     public double CurrentPlaybackSeconds => _audioFile?.CurrentTime.TotalSeconds ?? 0;
@@ -481,40 +433,30 @@ public partial class MainWindow : FluentWindow
     public bool IsPlayingNow => _isPlaying;
     public AudioLevelSampleProvider? AudioLevelMeter => _audioLevelMeter;
 
-    // Для мини-плеера — узнать текущий режим повтора сразу при открытии, до первого события
-    // RepeatModeChanged (тем же способом, каким мини-плеер узнаёт текущий трек/состояние
-    // воспроизведения при своём создании — см. конструктор MiniPlayerWindow).
+    // Для мини-плеера: узнать режим повтора сразу при открытии, до первого RepeatModeChanged (как трек и состояние
+    // воспроизведения в конструкторе MiniPlayerWindow).
     public string CurrentRepeatModeName => _repeatMode.ToString();
 
     // Зеркальный аналог CurrentRepeatModeName для перемешивания — см. ShuffleStateChanged.
     public bool CurrentIsShuffleEnabled => _isShuffleEnabled;
 
-    // Текущий путь к файлу — нужен мини-плееру для варианта "Избранное" второй кнопки (см.
-    // MiniPlayerWindow.UpdateFavoriteSecondaryButtonVisual), чтобы понять, какой именно трек
-    // сейчас проверять на признак избранного. Null, пока ничего не загружено (самый первый
-    // запуск без сохранённого последнего трека).
+    // Нужен мини-плееру для варианта "Избранное" второй кнопки (UpdateFavoriteSecondaryButtonVisual): какой трек проверять;
+    // null, пока ничего не загружено (первый запуск без сохранённого трека).
     public string? CurrentTrackPath => _currentTrackPath;
 
-    // Optimized UI-копия текущей обложки (или null). Она ограничена по ширине во время
-    // декодирования, поэтому HighQuality-отрисовка основной обложки и её анимация остаются
-    // плавными даже для многомегапиксельных embedded covers. Полный размер лениво читается
-    // из _currentAlbumArtBytes только для просмотра, копирования и свойств.
+    // Оптимизированная UI-копия обложки (или null): ограничена по ширине при декодировании, чтобы HighQuality-отрисовка и
+    // анимация оставались плавными на многомегапиксельных covers; полный размер лениво читается из _currentAlbumArtBytes.
     private BitmapImage? _currentAlbumArt;
     private ImageBrush? _currentArtBrush;
 
-    // Исходные байты обложки и её MIME-тип из тега — нужны отдельно от BitmapImage для
-    // контекстного меню по обложке: "Скачать изображение" пишет на диск именно эти байты
-    // как есть (без перекодирования), а "Свойства" показывает реальные формат и размер файла.
+    // Исходные байты и MIME-тип обложки из тега — для контекстного меню: "Скачать изображение" пишет эти байты как есть,
+    // а "Свойства" показывает реальные формат и размер файла.
     private byte[]? _currentAlbumArtBytes;
     private string? _currentAlbumArtMimeType;
     private AlbumArtPictureKind? _currentAlbumArtPictureType;
 
-    // Оборачивает fire-and-forget async-вызовы (несколько мест в этом файле: восстановление
-    // плейлиста, проверка обновлений при старте, фоновая проверка существования файлов, расчёт
-    // формы волны) логированием исключения сразу же, а не только когда сборщик мусора когда-
-    // нибудь уничтожит забытую задачу (TaskScheduler.UnobservedTaskException в App.xaml.cs —
-    // тот тоже сработает, но не гарантированно быстро, а иногда и вовсе не успевает до
-    // закрытия процесса).
+    // Оборачивает fire-and-forget async-вызовы логированием исключения сразу: TaskScheduler.UnobservedTaskException
+    // (App.xaml.cs) сработает лишь после сборки мусора, а иногда и вовсе не успеет до закрытия процесса.
     private static async void FireAndForget(Task task, string operationName)
     {
         try
@@ -535,9 +477,8 @@ public partial class MainWindow : FluentWindow
 
     public MainWindow()
     {
-        // Должно случиться до InitializeComponent(): SvgPathIcon читает IconPacks.Current уже
-        // при первом построении дерева окна. Дальнейшая смена пака применяется сразу и здесь
-        // тоже через IconPackContext, так что это только начальное значение.
+        // Должно быть до InitializeComponent(): SvgPathIcon читает IconPacks.Current при первом построении дерева; дальнейшую
+        // смену пака применяет IconPackContext, здесь только начальное значение.
         IconPacks.Initialize(_settings);
 
         // То же самое для Icon окна (см. AppIconContext, на который биндится Icon в XAML).
@@ -609,26 +550,19 @@ public partial class MainWindow : FluentWindow
         _playbackRatePersistenceTimer.Start();
         _settingsCheckpointTimer.Start();
 
-        // Не await — намеренно "запустили и забыли": файловая проверка треков и загрузка
-        // последнего трека идут в фоне, окно тем временем показывается сразу, без ожидания
-        // (см. подробный комментарий над RestoreSavedPlaylistAsync).
+        // Намеренно без await: проверка файлов и загрузка последнего трека идут в фоне, окно показывается сразу
+        // (см. комментарий над RestoreSavedPlaylistAsync).
         FireAndForget(RestoreSavedPlaylistAsync(), "RestoreSavedPlaylistAsync");
 
         StateChanged += MainWindow_StateChanged;
         SizeChanged += MainWindow_SizeChanged;
 
-        // Повторно применяем акцент уже ПОСЛЕ того, как окно реально отрисовано (см.
-        // MainWindow_Loaded) — иначе на некоторых машинах при запуске приложения с системным
-        // акцентом (AccentColorMode == "System") часть визуальных элементов не подхватывает
-        // акцент, хотя он совершенно корректно применён по коду (первый ApplyAccentColor() в
-        // ApplySettingsOnStartup выше отрабатывает ДО показа окна).
+        // Акцент применяем повторно после реальной отрисовки окна (MainWindow_Loaded): при AccentColorMode == "System" на части
+        // машин часть элементов не подхватывает акцент, применённый до показа в ApplySettingsOnStartup.
         Loaded += MainWindow_Loaded;
 
-        // Подстраховка для завершения сеанса Windows (выключение/перезагрузка/выход из
-        // системы) — в этот момент OnClosing/OnClosed могут не успеть отработать штатно, а
-        // сворачивание в трей само по себе новых сохранений после первого раза не вызывает.
-        // Без этого позиция трека, начатого прямо перед выключением компьютера, терялась бы
-        // до следующего периодического автосохранения (см. ProgressTimer_Tick).
+        // Подстраховка для завершения сеанса Windows: OnClosing/OnClosed могут не успеть, а позиция трека, начатого перед
+        // выключением, терялась бы до следующего автосохранения (ProgressTimer_Tick).
         System.Windows.Application.Current.SessionEnding += (_, _) => PersistPlaybackAndPlaylistState();
     }
 
@@ -640,29 +574,22 @@ public partial class MainWindow : FluentWindow
         UpdateTrackUserStatePresentation();
     }
 
-    // Первое применение акцента в ApplySettingsOnStartup происходит в конструкторе, до Show()
-    // — окно ещё не отрисовано. WPF-UI 3.0.5 не перечитывает DynamicResource-акцент для части
-    // элементов (выделение строки плейлиста и т.п.) до первой полной отрисовки дерева (issues
-    // #965/#981 у github.com/lepoco/wpfui). Кнопок плеера это не касается — их красим вручную,
-    // см. RefreshAccentDependentIcons. Повторяем ApplyAccentColor() после первого Loaded и сразу
-    // отписываемся — иначе акцент пересчитывался бы на каждый Loaded (например, при разворачивании).
+    // Первый ApplyAccentColor() идёт до Show(), а WPF-UI 3.0.5 не перечитывает DynamicResource-акцент для части элементов
+    // до первой отрисовки (lepoco/wpfui #965/#981): повторяем после первого Loaded и сразу отписываемся.
     private void MainWindow_Loaded(object? sender, RoutedEventArgs e)
     {
         Loaded -= MainWindow_Loaded;
         Dispatcher.BeginInvoke(new Action(() =>
         {
-            // settings.json уже содержит последнее значение (например, 0.75), но Popup и
-            // Slider были созданы из XAML раньше. Повторно применяем настройки после полной
-            // загрузки визуального дерева, чтобы поздняя инициализация WPF не вернула 1.0.
+            // Slider и Popup созданы из XAML раньше, чем применены значения из settings.json (например, 0.75): повторяем
+            // после полной загрузки дерева, чтобы поздняя инициализация WPF не вернула 1.0.
             SetPlaybackRate(_settings.PlaybackSpeed, persist: false);
             ApplyAccentColor();
         }), DispatcherPriority.Loaded);
     }
 
-    // ---------- Полноэкранный режим ----------
-    // Срабатывает при разворачивании окна кнопкой "Развернуть" в заголовке (или двойным
-    // кликом по заголовку/системными средствами) — в обоих случаях WindowState становится
-    // Maximized, и это единственное, что нам нужно отследить.
+    // Полноэкранный режим включается кнопкой "Развернуть" (или двойным кликом по заголовку) — везде WindowState == Maximized,
+    // его и отслеживаем.
     private void MainWindow_StateChanged(object? sender, EventArgs e)
     {
         var fullscreen = WindowState == WindowState.Maximized;
@@ -672,10 +599,8 @@ public partial class MainWindow : FluentWindow
             ApplyFullscreenLayout(fullscreen);
         }
 
-        // Только главный вид, восстановленный из мини-плеера внешней активацией, должен
-        // вернуть мини-плеер следующим обычным сворачиванием через кнопку панели задач.
-        // Системная кнопка «Свернуть» явно исключена: она всегда оставляет обычное окно
-        // свёрнутым, даже если оно было перед этим восстановлено из мини-плеера.
+        // Только главный вид, восстановленный из мини-плеера внешней активацией, возвращает мини-плеер следующим сворачиванием
+        // кнопкой панели задач; системная «Свернуть» исключена — она всегда оставляет обычное окно свёрнутым.
         if (WindowState == WindowState.Minimized
             && _returnToMiniOnNextTaskbarMinimize
             && !_isSystemTitleBarMinimize
@@ -686,9 +611,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Пересчитывает ширину ContentHost при изменении размеров окна — иначе после
-    // растягивания квадратного окна мышью или переноса на другой монитор контент оставался
-    // бы прежней узкой ширины с пустыми полями по бокам.
+    // Пересчитываем ширину ContentHost при изменении размера: иначе после растягивания квадратного окна или переноса на
+    // другой монитор контент остался бы узким, с пустыми полями.
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (_isFullscreenLayout || _viewMode == PlayerViewMode.Square) UpdateContentMaxWidth();
@@ -701,9 +625,7 @@ public partial class MainWindow : FluentWindow
         ApplyContentScale(fullscreen || _viewMode == PlayerViewMode.Square);
     }
 
-    // Тот же крупный стиль используется и квадратным видом плеера (PlayerViewMode.Square, см.
-    // SetPlayerViewMode) — разница только в том, что полноэкранный занимает весь монитор, а
-    // квадратный — увеличенное окно.
+    // Крупный стиль общий для полноэкранного режима (весь монитор) и квадратного вида (увеличенное окно), см. SetPlayerViewMode.
     private void ApplyContentScale(bool big)
     {
         double artSize = big ? 260.0 : 150.0;
@@ -738,10 +660,8 @@ public partial class MainWindow : FluentWindow
         ControlsPanel.Margin = big ? new Thickness(0, 22, 0, 10) : new Thickness(0, 14, 0, 6);
     }
 
-    // ContentHost.MaxWidth считается от реальной ширины окна, а не жёстко зашитым числом —
-    // на широком мониторе интерфейс шире, на ноутбучном экране не раздувается зря.
-    // SquareContentMaxWidth остался только нижней границей на случай, если окно квадратного
-    // вида по какой-то причине окажется уже неё.
+    // ContentHost.MaxWidth считается от реальной ширины окна: шире на широком мониторе, без раздувания на ноутбучном;
+    // SquareContentMaxWidth — только нижняя граница, если окно квадратного вида окажется уже.
     private void UpdateContentMaxWidth()
     {
         ContentHost.MaxWidth = _isFullscreenLayout
@@ -751,10 +671,8 @@ public partial class MainWindow : FluentWindow
                 : NormalContentMaxWidth;
     }
 
-    // Единственная точка входа для первого показа окна — вызывается один раз из
-    // App.OnStartup вместо автоматического Show() через StartupUri. EnsureHandle() создаёт
-    // нативный HWND без показа окна (нужен хоткеям/Now Playing/трею), Show() на самом
-    // MainWindow вызывается только если по итогу не мини-режим.
+    // Единственная точка первого показа окна (из App.OnStartup вместо StartupUri): EnsureHandle() создаёт HWND без показа
+    // (нужен хоткеям/Now Playing/трею); Show() вызывается только при видимом старте.
     public void StartupPresent()
     {
         new WindowInteropHelper(this).EnsureHandle();
@@ -762,21 +680,8 @@ public partial class MainWindow : FluentWindow
         PlayerViewMode startupMode = ResolveStartupViewMode(out bool? legacyPlaylistVisible);
         bool startsHidden = startupMode == PlayerViewMode.Mini || _settings.StartHiddenInTray;
 
-        // EnsureHandle() выше создаёт нативный HWND, но не завершает полный проход WPF-загрузки
-        // (Loaded срабатывает только после реального Show()) — а лог показал, что именно от
-        // Window.IsLoaded зависит успешная регистрация иконки в трее через
-        // TrayIconManager/NotifyIconService: при старте сразу в мини-режиме MainWindow.Hide()
-        // вызывается ниже без единого настоящего Show(), IsLoaded остаётся false навсегда, и
-        // Register() внутри EnterMiniMode() молча проваливается.
-        //
-        // Одного Opacity=0 перед Show()+Hide() оказалось недостаточно: DWM успевал запустить
-        // композицию Mica-подложки и отрисовать первый кадр ещё до Hide() — пользователь видел
-        // мгновенное мелькание окна. Меры ниже не дают DWM вообще начать эту композицию:
-        // WindowBackdropType=None (без Mica/Acrylic DWM не держит backbuffer), Left/Top за
-        // пределами всех мониторов, WindowState=Minimized (не мелькает и в панели задач),
-        // ShowActivated=false (не ворует фокус), Opacity=0 — последняя страховка. После Hide()
-        // возвращается всё, кроме WindowState. Видимому старту эта уловка не нужна: окно и так
-        // сразу показывается по-настоящему.
+        // Show()+Hide() нужны ради IsLoaded (иначе иконка в трее не регистрируется); чтобы окно не мелькало, DWM не даём начать
+        // композицию: backdrop None, Left/Top за экраном, Minimized, ShowActivated=false, Opacity=0. Видимому старту не нужно.
         if (!IsLoaded && startsHidden)
         {
             double originalLeft = Left;
@@ -840,12 +745,8 @@ public partial class MainWindow : FluentWindow
         FireAndForget(CheckForUpdatesOnStartupAsync(), "CheckForUpdatesOnStartupAsync");
     }
 
-    // Windows иногда не даёт свежезапущенному процессу забрать фокус (защита от "кражи
-    // фокуса", особенно заметно при запуске с закреплённого ярлыка) — обычного Activate() не
-    // всегда достаточно. Кратковременное включение-выключение Topmost — стандартный обходной
-    // путь, ставит окно наверх Z-порядка без побочного эффекта постоянного Topmost=true.
-    // Возвращаем именно исходное значение Topmost, а не жёстко false, чтобы не выключить
-    // случайно уже включённое "поверх всех окон".
+    // Windows может не отдать фокус свежему процессу (защита от кражи фокуса, заметно при запуске с закреплённого ярлыка):
+    // кратковременный Topmost поднимает окно без постоянного Topmost=true; возвращаем исходное значение Topmost, а не false.
     private static void ForceForeground(Window window)
     {
         bool wasTopmost = window.Topmost;
@@ -854,20 +755,11 @@ public partial class MainWindow : FluentWindow
         window.Activate();
     }
 
-    // Раньше здесь ещё был WarmUpMainWindowLayout(): прогревал layout обычного окна заранее в
-    // фоне, чтобы клик "Развернуть плеер" из мини-режима ощущался мгновенным. На практике для
-    // окна без виртуализации вложенных списков это просто переносило ту же тяжёлую блокирующую
-    // работу (Show()+UpdateLayout() одним атомарным проходом) с клика на сам старт — зависание
-    // просто переехало на запуск плеера. Убрали совсем: старт снова отзывчивый при любом
-    // стартовом виде, а первый разворот из мини-режима на большой библиотеке может занять
-    // время — но это уже осознанный отклик на действие пользователя, а не тишина после запуска.
+    // Прогрев layout окна заранее (был WarmUpMainWindowLayout) убран: он переносил блокирующую работу с клика на старт;
+    // первый разворот из мини-режима на большой библиотеке может занять время.
 
-    // Тихая проверка обновлений на старте: не блокирует запуск (полностью в фоне, с задержкой,
-    // чтобы не отвлекать ресурсы от первых секунд загрузки плейлиста/обложки) и не показывает
-    // диалог повторно для версии, которую пользователь уже отклонил кнопкой "Позже" (см.
-    // AppSettings.SkippedUpdateVersion и UpdateAvailableWindow.LaterButton_Click). Любые ошибки
-    // (нет сети, репозиторий недоступен и т.п.) молча проглатываются — ручная проверка кнопкой
-    // в настройках, в отличие от этой, ошибку покажет.
+    // Тихая проверка на старте: в фоне и с задержкой, чтобы не отвлекать ресурсы от загрузки плейлиста/обложки; не показывает
+    // диалог для версии, отклонённой кнопкой "Позже" (SkippedUpdateVersion); ошибки молча глотаются, ручная проверка их покажет.
     private async System.Threading.Tasks.Task CheckForUpdatesOnStartupAsync()
     {
         try
@@ -915,10 +807,8 @@ public partial class MainWindow : FluentWindow
         }
         else
         {
-            // settings.json уже существует, но вид плеера ещё не сохранялся — версия плеера
-            // до появления этой настройки. Открываем квадратный вид по умолчанию, единообразно
-            // с первым запуском; видимость плейлиста восстанавливается отдельно ниже, так что
-            // у существующих пользователей она не меняется сама по себе.
+            // settings.json уже есть, но вид не сохранялся — версия до появления этой настройки: открываем квадратный вид, как
+            // при первом запуске; видимость плейлиста восстанавливается отдельно, поэтому у существующих пользователей не меняется.
             startupMode = _settings.WasMiniPlayerOnClose ? PlayerViewMode.Mini : PlayerViewMode.Square;
             legacyPlaylistVisible = _settings.IsPlaylistVisible;
         }
@@ -926,21 +816,14 @@ public partial class MainWindow : FluentWindow
         return startupMode;
     }
 
-    // Восстанавливает режим отображения плеера, в котором он был на момент прошлого
-    // закрытия: скрытую панель плейлиста и/или сам режим мини-плеера. Вызывается из
-    // StartupPresent (см. выше) — уже после того, как EnsureHandle() создал HWND, но ДО
-    // того, как окно вообще может стать видимым пользователю: сам StartupPresent решает,
-    // вызывать ли Show(), уже ПОСЛЕ этого метода. Поэтому если стартовый вид — мини-режим,
-    // окно ни разу не успевает появиться на экране в каком-либо виде.
+    // Восстанавливает вид, в котором плеер был закрыт: скрытую панель плейлиста и/или мини-режим. Вызывается из StartupPresent
+    // до Show(): при стартовом мини-режиме окно ни разу не появляется на экране.
     private void RestorePlayerViewMode(PlayerViewMode startupMode, bool? legacyPlaylistVisible)
     {
         if (startupMode == PlayerViewMode.Mini)
         {
-            // Сначала приводим "скрытое под мини-плеером" окно к прямоугольному виду (так
-            // было и раньше — старая версия не различала квадратный/прямоугольный вид), а
-            // уже потом сворачиваем в мини-режим. Так EnterMiniMode запоминает корректный
-            // _preMiniViewMode, и "развернуть" из мини-плеера возвращает прямоугольный вид,
-            // а не квадратный по умолчанию.
+            // Сначала приводим скрытое окно к прямоугольному виду (старая версия не различала квадратный/прямоугольный), затем
+            // сворачиваем в мини-режим: EnterMiniMode запоминает верный _preMiniViewMode, и "развернуть" возвращает прямоугольный вид.
             SetPlayerViewMode(PlayerViewMode.Rectangular, persist: false);
             if (legacyPlaylistVisible == false) SetPlaylistVisibility(false);
             SetPlayerViewMode(PlayerViewMode.Mini, persist: false);
@@ -952,16 +835,11 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // ---------- Плоские представления плейлиста ----------
-    // Плейлист хранится по группам, но воспроизведение (индекс текущего трека, next/prev,
-    // сохранение между запусками) работает с обычным путём к файлу, поэтому здесь считаем
-    // "плоские" списки на лету из групп. Группы почти никогда не бывают настолько большими,
-    // чтобы это было заметно по производительности.
+    // Плейлист хранится по группам, а воспроизведение работает с путями файлов, поэтому "плоские" списки считаем на лету
+    // из групп (их размер не влияет на производительность заметно).
 
-    // Пока открыт виртуальный плейлист "Избранное" (см. SetFavoritesViewActive), "Далее"/"Назад"/
-    // шафл и автопереход к следующему треку должны листать именно его, а не основной плейлист,
-    // который в этот момент даже не показан на экране — поэтому обе "плоские" версии плейлиста,
-    // от которых зависит вся навигация по трекам, подменяются списком избранного целиком.
+    // Пока открыт виртуальный плейлист "Избранное" (SetFavoritesViewActive), "Далее"/"Назад"/шафл и автопереход листают именно его,
+    // поэтому обе "плоские" версии, от которых зависит навигация, подменяются списком избранного.
     private List<string> FlattenAll()
     {
         if (_allTracksCache != null && _trackCachesAreFavoritesView == _isFavoritesView)
@@ -988,11 +866,8 @@ public partial class MainWindow : FluentWindow
 
     private string? GetCurrentTrackPath() => _currentTrackPath;
 
-    // Восстанавливает сохранённый плейлист и последний трек. Звук запускается только если
-    // предыдущий сеанс действительно был активен и пользователь не включил запрет автозапуска.
-    // Загрузка не делает массовых обращений к диску: раньше File.Exists по каждому треку выполнялся синхронно до показа
-    // окна и был основной причиной долгого "чёрного экрана" при запуске. Устаревшие записи
-    // тихо убираются позже, уже после показа (см. VerifyTrackExistenceInBackgroundAsync).
+    // Восстанавливает плейлист и последний трек; звук стартует, только если прошлый сеанс играл и автозапуск не запрещён.
+    // Без File.Exists по каждому треку (давал "чёрный экран"): устаревшие записи убирает VerifyTrackExistenceInBackgroundAsync.
     private System.Threading.Tasks.Task RestoreSavedPlaylistAsync()
     {
         if (_settings.SavedPlaylistFolders.Count == 0)
@@ -1055,10 +930,8 @@ public partial class MainWindow : FluentWindow
         return System.Threading.Tasks.Task.CompletedTask;
     }
 
-    // Единственное место, где восстановленный плейлист трогает диск — запускается уже после
-    // показа списка (см. RestoreSavedPlaylistAsync), так что не влияет на скорость появления
-    // окна. AsParallel() — File.Exists по разным путям независим, важно на HDD/сетевых путях
-    // с высокой задержкой на обращение; AsOrdered() тут не нужен, порядок удаления не важен.
+    // Единственное обращение к диску для восстановленного плейлиста — после показа списка, поэтому окно появляется быстро;
+    // AsParallel() ради HDD/сетевых путей с высокой задержкой, порядок удаления не важен (AsOrdered не нужен).
     private async System.Threading.Tasks.Task VerifyTrackExistenceInBackgroundAsync(HashSet<PlaylistFolder> foldersThatWereNonEmpty)
     {
         var foldersToCheck = _folders.ToList();
@@ -1082,9 +955,8 @@ public partial class MainWindow : FluentWindow
                 folder.Tracks.Remove(path);
             anyChanged = true;
 
-            // Была непустой изначально, а теперь опустела целиком (все файлы удалены с диска) —
-            // убираем саму папку, а не оставляем пустой заголовок. См. комментарий у
-            // foldersThatWereNonEmpty в RestoreSavedPlaylistAsync.
+            // Была непустой, а теперь опустела (все файлы удалены) — убираем саму папку, а не оставляем пустой заголовок
+            // (см. foldersThatWereNonEmpty в RestoreSavedPlaylistAsync).
             if (folder.Tracks.Count == 0 && foldersThatWereNonEmpty.Contains(folder))
             {
                 _folders.Remove(folder);
@@ -1092,10 +964,8 @@ public partial class MainWindow : FluentWindow
             }
         }
 
-        // folder.Tracks — ObservableCollection<string>, а не элемент плоского отображаемого
-        // списка PlaylistFoldersControl.ItemsSource напрямую (см. PlaylistTrackRow) — точечные
-        // изменения в ней сами по себе не отражаются на уже построенном плоском списке. Нужен
-        // один пересбор в конце, и только если реально что-то изменилось.
+        // folder.Tracks не является источником плоского списка PlaylistFoldersControl (PlaylistTrackRow): точечные изменения
+        // не отражаются в нём, нужен один пересбор в конце, и только если что-то изменилось.
         if (anyChanged) RefreshPlaylistView();
         if (folderWasRemoved) StartFolderWatchers();
     }
@@ -1104,11 +974,8 @@ public partial class MainWindow : FluentWindow
     {
         base.OnSourceInitialized(e);
 
-        // Глобальные медиаклавиши (Play/Pause, Next, Prev, Stop) — работают даже без фокуса на окне.
-        // В try/catch — RegisterHotKey может отказать, если тот же самый хоткей уже занят другим
-        // приложением (не редкость для медиаклавиш и особенно для пользовательских комбинаций из
-        // настроек); раньше необработанное исключение здесь роняло весь плеер ещё до того, как
-        // он успевал показаться на экране.
+        // Глобальные медиаклавиши работают без фокуса; в try/catch, потому что RegisterHotKey может отказать, если хоткей занят
+        // другим приложением, и необработанное исключение роняло плеер до первого показа.
         try
         {
             _mediaHotKeys = new GlobalMediaHotKeys(this);
@@ -1159,9 +1026,7 @@ public partial class MainWindow : FluentWindow
             _nowPlaying = null;
         }
 
-        // Системный трей — тоже в try/catch, по той же причине, что и два блока выше: иконка в
-        // трее не критична для работы плеера как такового, а вот необработанное исключение
-        // здесь роняло бы всё окно ещё до первого показа.
+        // Трей тоже в try/catch: иконка не критична, а необработанное исключение уронило бы окно до первого показа.
         try
         {
             _trayIconManager = new TrayIconManager(this);
@@ -1185,10 +1050,8 @@ public partial class MainWindow : FluentWindow
         ApplyPlaybackButtonsVisibility();
     }
 
-    // Settings.HidePlaybackButtons — кнопки остаются видимыми и кликабельными, но без
-    // собственного фона: видна только иконка, сливающаяся с фоном плеера. Ховер/нажатие у
-    // ui:Button — отдельный слой поверх Background, так что подсветка продолжает работать и
-    // с прозрачным фоном.
+    // Кнопки остаются видимыми и кликабельными, но без фона — виден только значок; ховер/нажатие у ui:Button — отдельный
+    // слой поверх Background, поэтому подсветка работает и с прозрачным фоном.
     public void ApplyPlaybackButtonsVisibility()
     {
         if (_settings.HidePlaybackButtons)
@@ -1215,15 +1078,11 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Перекрашивает меню трея под текущую тему — WinForms-меню живёт в отдельном UI-стеке
-    // и не подхватывает Fluent-тему WPF-UI автоматически, без явного вызова осталось бы
-    // в прежней палитре после переключения темы в настройках
+    // WinForms-меню трея живёт в отдельном UI-стеке и не подхватывает тему WPF-UI: без явного вызова оставалось бы в прежней палитре.
     public void ApplyTrayTheme(bool isLight) => _trayIconManager?.ApplyTheme(isLight);
 
-    // WPF-UI передаёт клик по системной кнопке сворачивания в MinimizeActionOverride.
-    // Не полагаемся на поведение TitleBar по умолчанию: при нажатии «Свернуть» главное окно
-    // всегда остаётся главным окном и уходит только в панель задач. Переход в мини-плеер
-    // возможен исключительно по отдельной кнопке/пункту вида либо повторной активации ярлыка.
+    // WPF-UI отдаёт клик по кнопке сворачивания в MinimizeActionOverride; не полагаемся на поведение TitleBar: «Свернуть» уводит главное
+    // окно только в панель задач, а в мини-плеер — лишь отдельная кнопка/пункт вида или повторная активация ярлыка.
     private void ConfigureSystemTitleBarActions()
     {
         AppTitleBar.MinimizeActionOverride = (_, window) =>
@@ -1247,11 +1106,8 @@ public partial class MainWindow : FluentWindow
     {
         Dispatcher.BeginInvoke(() =>
         {
-            // Если сейчас активен мини-плеер, у MainWindow нет валидного показанного состояния
-            // (оно скрыто через Hide() — см. EnterMiniMode) — обычный Show() здесь показал бы
-            // его ПОВЕРХ ещё открытого окошка мини-плеера, то есть оба сразу на экране разом.
-            // Разворачиваем полноценно через тот же путь, что и кнопка "развернуть" в самом
-            // мини-плеере — это и закрывает мини-плеер, и корректно поднимает основное окно.
+            // Если активен мини-плеер, главное окно скрыто (EnterMiniMode): обычный Show() показал бы его поверх мини-плеера, поэтому
+            // разворачиваем тем же путём, что кнопка "развернуть" мини-плеера (он закрывается, основное окно поднимается).
             if (_isMiniMode)
             {
                 ExitMiniMode();
@@ -1274,13 +1130,8 @@ public partial class MainWindow : FluentWindow
         });
     }
 
-    // Вызывается из App при повторной попытке запуска плеера (например, повторным нажатием
-    // на ярлык плеера на панели задач/в меню Пуск), пока он уже работает — см.
-    // App.OnStartup/WaitForToggleSignal. В отличие от RestoreFromTray (которая всегда просто
-    // ПОКАЗЫВАЕТ окно) здесь именно переключение: мини-плеер активен — открываем обычное окно
-    // (как кнопкой "развернуть"), обычное окно уже открыто и видимо — сворачиваем в мини-плеер
-    // (как кнопкой "мини-плеер"). Если главное окно скрыто в трее ИЛИ свёрнуто в панели задач,
-    // внешняя активация только восстанавливает его и никогда не переводит в мини-режим.
+    // Из App при повторном запуске ярлыка (App.OnStartup/WaitForToggleSignal): в отличие от RestoreFromTray это переключение —
+    // мини-плеер → обычное окно, видимое окно → мини-плеер; скрытое в трее или свёрнутое лишь восстанавливается, без мини-режима.
     public void ToggleMiniOrMainFromExternalActivation()
     {
         Dispatcher.BeginInvoke(() =>
@@ -1315,9 +1166,8 @@ public partial class MainWindow : FluentWindow
             Hide();
             _trayIconManager?.Show("Lumisense");
 
-            // MinimizeToTrayOnClose включён по умолчанию, так что обычное закрытие крестиком
-            // почти всегда идёт сюда, а не в OnClosed — без явного сохранения здесь позиция
-            // трека могла не обновляться месяцами. См. PersistPlaybackAndPlaylistState.
+            // MinimizeToTrayOnClose включён по умолчанию, и закрытие крестиком идёт сюда, а не в OnClosed: без явного сохранения
+            // позиция трека могла не обновляться месяцами (PersistPlaybackAndPlaylistState).
             PersistPlaybackAndPlaylistState();
             return;
         }
@@ -1359,11 +1209,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Переключает вид полосы воспроизведения (см. AppSettings.ProgressBarStyle) — вызывается на
-    // старте и заново из окна настроек при переключении этой настройки (см.
-    // SettingsWindow.ProgressBarStyleRadio_Changed), пока плеер уже открыт. ProgressSlider
-    // остаётся источником истины для позиции/перемотки в любом случае — переключается только
-    // то, что видно (см. подробный комментарий в MainWindow.xaml у ProgressWaveform).
+    // Вид полосы воспроизведения (AppSettings.ProgressBarStyle): на старте и из окна настроек на открытом плеере; ProgressSlider
+    // всегда остаётся источником позиции/перемотки, переключается только видимое (см. MainWindow.xaml, ProgressWaveform).
     public void ApplyProgressBarStyle()
     {
         bool isWaveform = _settings.ProgressBarStyle == "Waveform";
@@ -1375,10 +1222,8 @@ public partial class MainWindow : FluentWindow
             FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
     }
 
-    // Считает (или достаёт из кэша) форму волны для трека, который сейчас загружен — вызывается
-    // и из LoadAndPlay при каждой новой загрузке трека (если в этот момент уже выбран режим
-    // "Waveform"), и из ApplyProgressBarStyle при переключении НА этот режим для уже играющего
-    // трека (до этого момента считать было незачем — режим мог быть выключен всю сессию).
+    // Считает (или берёт из кэша) волну загруженного трека: из LoadAndPlay при режиме "Waveform" и из ApplyProgressBarStyle
+    // при переключении на него на уже играющем треке.
     private async Task EnsureWaveformForCurrentTrackAsync()
     {
         string? filePath = _currentTrackPath;
@@ -1434,16 +1279,11 @@ public partial class MainWindow : FluentWindow
     }
 
 
-    // Применяет акцентный цвет из настроек (см. AppSettings.AccentColorMode/AccentColorHex) —
-    // вызывается при старте (ApplySettingsOnStartup) и заново при каждой смене этой настройки
-    // или темы (см. SettingsWindow.AccentColorMode/ThemeRadio_Changed) — Apply() учитывает
-    // текущую тему, чтобы подобрать светлые/тёмные варианты акцента (SystemAccentColorLight1
-    // и т.п.), поэтому пересчитывать нужно и при переключении темы, не только цвета.
+    // Применяет акцент (AccentColorMode/AccentColorHex) на старте и при смене акцента или темы: Apply() учитывает тему,
+    // выбирая светлые/тёмные варианты (SystemAccentColorLight1 и т.п.), поэтому пересчёт нужен и при смене темы.
 
-    // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
-    // подтверждённый баг библиотеки (github.com/lepoco/wpfui issues #965/#981): она не
-    // подхватывает смену акцента вживую. Красим Background вручную — обычное присваивание
-    // DependencyProperty, WPF гарантированно применяет и перерисовывает его сразу.
+    // Не полагаемся на ControlAppearance.Primary WPF-UI: баг библиотеки (lepoco/wpfui #965/#981) — не подхватывает смену акцента
+    // вживую; красим Background вручную.
     private void SetAccentButtonActive(Wpf.Ui.Controls.Button button, bool active)
     {
         button.Appearance = ControlAppearance.Secondary;
@@ -1454,12 +1294,8 @@ public partial class MainWindow : FluentWindow
             button.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
     }
 
-    // Возвращает акцент, реально применённый прямо сейчас — тот же цвет, который бы выбрал
-    // ApplyAccentColor: свой (AppSettings.AccentColorHex), либо, если он почему-то
-    // повреждён, или выбран режим "Системный", актуальный SystemAccentColor (его в ресурсы
-    // приложения кладёт сама ApplicationAccentColorManager.ApplySystemAccent). Публичный —
-    // им же пользуется и мини-плеер для покраски своих кнопок (см. MiniPlayerWindow.
-    // SetAccentButtonActive), чтобы не дублировать эту же логику там ещё раз.
+    // Реально применённый сейчас акцент: свой (AccentColorHex) либо системный, если он повреждён или выбран "Системный";
+    // публичный, чтобы мини-плеер красил кнопки той же логикой (MiniPlayerWindow.SetAccentButtonActive).
     public Color GetResolvedAccentColor()
     {
         if (_settings.AccentColorMode == "Manual")
@@ -1485,9 +1321,8 @@ public partial class MainWindow : FluentWindow
 
     private void ApplySelectableControlAccentResources(Color accent)
     {
-        // Явные стили SettingsWindow используют эти DynamicResource. Меняем значения в
-        // Application и уже открытых окнах, но не переустанавливаем Template вручную: это
-        // вызывало артефакты у Thumb Slider при смене обложки.
+        // Явные стили SettingsWindow используют эти DynamicResource: меняем значения в Application и открытых окнах, но Template
+        // не переустанавливаем — это давало артефакты у Thumb Slider при смене обложки.
         var accentBrush = new SolidColorBrush(accent);
         accentBrush.Freeze();
         var contrastBrush = new SolidColorBrush(GetAccentContrastColor(accent));
@@ -1513,11 +1348,8 @@ public partial class MainWindow : FluentWindow
 
         if (_settings.AccentColorMode == "Cover" && _coverAccentColor is Color coverColor)
         {
-            // Не вызываем ApplicationAccentColorManager.Apply для каждого нового трека. Эта
-            // операция заменяет глобальные DynamicResource WPF-UI и могла попасть внутрь
-            // TreeWalkHelper во время анимации/перерисовки обложки, приводя к fatal CLR error.
-            // Явные ресурсы Lumisense ниже и зависимые иконки обновляются без глобальной
-            // замены словаря ресурсов.
+            // Не вызываем ApplicationAccentColorManager.Apply на каждый трек: он заменяет глобальные DynamicResource WPF-UI и мог
+            // попасть в TreeWalkHelper во время анимации обложки (fatal CLR error); ресурсы Lumisense обновляем без замены словаря.
             appliedAccent = coverColor;
         }
         else if (_settings.AccentColorMode == "Manual")
@@ -1574,11 +1406,6 @@ public partial class MainWindow : FluentWindow
         RootGrid.Background = new SolidColorBrush(Color.FromArgb(0x4A, r, g, b));
     }
 
-    // Чёрный или белый — по относительной яркости акцента (тот же принцип, что и в
-    // рекомендациях WCAG для контраста текста, без гамма-коррекции — для выбора между двумя
-    // вариантами такая упрощённая формула более чем достаточна). Порог 0.6, а не ровно 0.5, —
-    // чтобы на пограничных, но всё ещё достаточно ярких акцентах (жёлтый/оранжевый и подобные)
-    // увереннее склоняться к тёмному варианту, а не оставлять белый там, где он уже еле читается.
     private static Color? ExtractCoverAccentColor(BitmapSource source)
     {
         try
@@ -1624,18 +1451,16 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    // Чёрный или белый по яркости акцента (упрощённая формула WCAG без гамма-коррекции); порог 0.6, а не 0.5, чтобы яркие
+    // пограничные акценты (жёлтый/оранжевый) склонялись к тёмному, а не оставляли трудночитаемый белый.
     private static Color GetAccentContrastColor(Color accent)
     {
         double luminance = (0.299 * accent.R + 0.587 * accent.G + 0.114 * accent.B) / 255.0;
         return luminance > 0.6 ? Colors.Black : Colors.White;
     }
 
-    // IconResources.AccentContrastBrush задаёт цвет ТОЛЬКО для новых/только что назначаемых
-    // иконок (см. IconResources.SetOnAccent) — уже показанные на постоянно акцентных кнопках
-    // иконки (Пуск/Пауза, включённые Шаффл/Повтор) сами по себе не перекрасятся только от
-    // смены этого статического свойства, их нужно переприсвоить явно. Вызывается сразу после
-    // пересчёта AccentContrastBrush выше — и на старте, и при каждой смене акцента в
-    // настройках (см. SettingsWindow.AccentModeRadio_Changed/ApplyAccentHex).
+    // IconResources.AccentContrastBrush задаёт цвет лишь для новых иконок (IconResources.SetOnAccent): уже показанные на
+    // акцентных кнопках иконки (Пуск/Пауза, включённые Шаффл/Повтор) переприсваиваем явно после пересчёта кисти.
     private void RefreshAccentDependentIcons()
     {
         PlayPauseButton.Icon = IconResources.MakeOnAccent(_isPlaying ? "IconPause" : "IconPlay", 15);
@@ -1652,9 +1477,8 @@ public partial class MainWindow : FluentWindow
             _ => RepeatButton.Icon
         };
         SetAccentButtonActive(RepeatButton, _repeatMode != RepeatMode.Off);
-        // Кнопка текста находится в Popup «Ещё», поэтому не используем для неё
-        // SetAccentButtonActive: этот helper переводит WPF-UI Button в Secondary и делает
-        // одну строку меню визуально тяжёлой относительно другой.
+        // Кнопка текста лежит в Popup «Ещё»: SetAccentButtonActive не годится — он переводит Button в Secondary и делает
+        // одну строку меню визуально тяжелее другой.
         LyricsPanelButton.Opacity = _isLyricsPanelActive ? 1.0 : 0.86;
 
         if (_isFavoritesView)
@@ -1667,19 +1491,16 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.RefreshAccentButtons();
     }
 
-    // Подложка главного окна (см. AppSettings.WindowBackdropType) — вызывается при старте и
-    // заново из окна настроек при переключении этой настройки (см.
-    // SettingsWindow.WindowBackdropRadio_Changed), пока главное окно уже открыто.
+    // Подложка главного окна (AppSettings.WindowBackdropType): на старте и из окна настроек при смене настройки
+    // (SettingsWindow.WindowBackdropRadio_Changed) на открытом окне.
     public void ApplyWindowBackdrop(bool forceReapply = false)
     {
         var desiredBackdrop = _settings.WindowBackdropType == "Acrylic"
             ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
             : Wpf.Ui.Controls.WindowBackdropType.Mica;
 
-        // WPF dependency properties не вызывают callback при присваивании того же значения.
-        // После ApplicationThemeManager.Apply WPF-UI 4 может заново применить свой дефолт Mica,
-        // хотя AppSettings всё ещё содержит Acrylic. Краткий переход через None запускает
-        // OnBackdropTypeChanged и повторно накладывает фактически выбранную основу на HWND.
+        // DependencyProperty не вызывает callback при присваивании того же значения, а после ApplicationThemeManager.Apply WPF-UI 4
+        // может вернуть Mica при выбранном Acrylic; переход через None вызывает OnBackdropTypeChanged и накладывает нужный backdrop.
         if (forceReapply && WindowBackdropType == desiredBackdrop)
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
 
@@ -1691,10 +1512,8 @@ public partial class MainWindow : FluentWindow
 
     private void StatisticsButton_Click(object sender, RoutedEventArgs e) => ShowStatisticsWindow();
 
-    // Открывает окно статистики (или активирует уже открытое, по тому же принципу, что и
-    // у ShowSettingsWindow) — своё окно, а не страница внутри настроек: данные там строятся
-    // асинхронно (чтение тегов, см. StatisticsWindow.LoadAsync) и логически не привязаны
-    // к настройкам приложения, это именно просмотр накопленной статистики.
+    // Окно статистики (или уже открытое, как ShowSettingsWindow) — отдельное, не страница настроек: данные строятся асинхронно
+    // (чтение тегов, StatisticsWindow.LoadAsync) и логически не относятся к настройкам.
     public void ShowStatisticsWindow()
     {
         if (_statisticsWindow == null)
@@ -1709,10 +1528,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Открывает окно настроек (или активирует уже открытое). Вынесено из SettingsButton_Click
-    // в отдельный публичный метод, чтобы то же самое можно было вызвать и не по клику на
-    // кнопку — например, когда окно списка изменений закрывают, и настройки должны открыться
-    // заново (см. ShowChangelogWindow ниже).
+    // Открывает окно настроек (или активирует уже открытое); отдельный публичный метод, чтобы вызывать его не только по кнопке —
+    // например, при закрытии списка изменений (ShowChangelogWindow).
     public void ShowSettingsWindow(string? section = null)
     {
         if (_settingsWindow == null)
@@ -1723,10 +1540,8 @@ public partial class MainWindow : FluentWindow
         }
         else
         {
-            // Окно уже открыто — возможно, на какой-то другой странице (например, было
-            // открыто вручную из основного окна, а сейчас его просят открыть на "Мини-плеер"
-            // из контекстного меню мини-плеера) — переключаем страницу и на уже открытом окне,
-            // а не только при первом создании.
+            // Окно уже открыто, возможно на другой странице (например, "Мини-плеер" из меню мини-плеера): переключаем страницу и
+            // на открытом окне, а не только при создании.
             if (section != null) _settingsWindow.NavigateToPage(section);
             _settingsWindow.Activate();
         }
@@ -1734,9 +1549,8 @@ public partial class MainWindow : FluentWindow
 
     private ChangelogWindow? _changelogWindow;
 
-    // Список изменений и настройки не должны быть открыты одновременно: открытие списка
-    // изменений закрывает окно настроек, а закрытие списка изменений открывает настройки
-    // заново. Вызывается из SettingsWindow.ChangelogButton_Click.
+    // Список изменений и настройки не открыты одновременно: открытие списка закрывает настройки, закрытие — открывает их
+    // заново (вызывается из SettingsWindow.ChangelogButton_Click).
     public void ShowChangelogWindow()
     {
         if (_changelogWindow == null)
@@ -1772,8 +1586,6 @@ public partial class MainWindow : FluentWindow
     }
 
     private void ShowNowPlayingMenuItem_Click(object sender, RoutedEventArgs e) => ShowNowPlayingWindow();
-
-    // ---------- Просмотр обложки ----------
 
     private void AlbumArtBorder_PreviewMouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
@@ -1842,10 +1654,8 @@ public partial class MainWindow : FluentWindow
                 Owner = this
             };
 
-            // Screen.WorkingArea возвращает физические пиксели, а Left/Top/Width/Height
-            // WPF-окна задаются в DIP. Прямое присваивание давало окно больше рабочей области
-            // на мониторах с масштабированием 125/150/200%. Переводим обе координаты и размер
-            // через текущий DPI главного окна и открываем CoverArtWindow ровно по рабочей области.
+            // Screen.WorkingArea в физических пикселях, а Left/Top/Width/Height окна — в DIP: прямое присваивание давало окно больше
+            // рабочей области при масштабе 125/150/200%, поэтому пересчитываем через DPI главного окна.
             var screen = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(this).Handle);
             var workArea = screen.WorkingArea;
             var fromDevice = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice
@@ -1989,30 +1799,24 @@ public partial class MainWindow : FluentWindow
         propsWindow.ShowDialog();
     }
 
-    // ---------- Скрыть/показать весь плейлист ----------
-
     private bool _isPlaylistVisible = true;
     private double _heightBeforeHidingPlaylist;
 
     private const double MinHeightWithPlaylist = 680; // как задан MinHeight окна в XAML
 
-    // Квадратный вид использует более крупный стиль элементов (см. ApplyContentScale) —
-    // без иного размера, кроме MinHeightWithPlaylist, всё, что не влезло в 680px, отнимало
-    // бы место именно у плейлиста, вплоть до его исчезновения. Запас подобран так, чтобы
-    // строка плейлиста осталась видна на несколько треков, а не сжалась до нуля.
+    // Квадратный вид использует крупный стиль (ApplyContentScale): без запаса сверх MinHeightWithPlaylist всё, что не влезло
+    // в 680px, отнимало бы место у плейлиста вплоть до его исчезновения; запас оставляет видимыми несколько треков.
     private const double SquareMinHeightWithPlaylist = 860;
 
-    // Шеврон рядом с "Плейлист" — быстрый способ скрыть/показать панель плейлиста, никак не
-    // связанный с видом плеера (PlayerViewMode): квадратный вид — это увеличенное окно с
-    // крупным стилем, а не просто "плейлист скрыт", так что это две независимые настройки.
+    // Шеврон "Плейлист" скрывает/показывает панель независимо от PlayerViewMode: квадратный вид — увеличенное окно с крупным
+    // стилем, а не просто "плейлист скрыт", так что это две независимые настройки.
     private void TogglePlaylistButton_Click(object sender, RoutedEventArgs e)
     {
         SetPlaylistVisibility(!_isPlaylistVisible);
     }
 
-    // Показывает/скрывает панель плейлиста и подгоняет высоту окна под новое состояние.
-    // Вынесено из TogglePlaylistButton_Click, чтобы то же самое можно было применить
-    // при старте, восстанавливая состояние, сохранённое при прошлом закрытии.
+    // Показывает/скрывает плейлист и подгоняет высоту окна; вынесено из TogglePlaylistButton_Click, чтобы применять
+    // то же при восстановлении состояния на старте.
     private void SetPlaylistVisibility(bool visible)
     {
         _isPlaylistVisible = visible;
@@ -2030,9 +1834,8 @@ public partial class MainWindow : FluentWindow
             PlaylistBorder.Visibility = Visibility.Collapsed;
             BodyGrid.RowDefinitions[6].Height = new GridLength(0);
 
-            // Захардкоженное число тут оказывалось меньше, чем реально нужно для контента
-            // (обложка, прогресс, кнопки, громкость) — всё обрезалось по нижнему краю. Вместо
-            // гадания даём WPF самому измерить, сколько места нужно оставшимся строкам грида.
+            // Захардкоженная высота оказывалась меньше нужной для контента (обложка, прогресс, кнопки, громкость) и обрезала
+            // нижний край, поэтому WPF сам измеряет место, нужное оставшимся строкам грида.
             MinHeight = 0;
             SizeToContent = SizeToContent.Height;
             UpdateLayout();
@@ -2048,9 +1851,8 @@ public partial class MainWindow : FluentWindow
         TogglePlaylistButton.ToolTip = _isPlaylistVisible ? "Скрыть плейлист" : "Показать плейлист";
     }
 
-    // Одна панель может показывать три взаимоисключающих представления: обычный плейлист,
-    // избранное и текст композиции. Разделяем выбор содержимого и саму видимость панели: шеврон
-    // продолжает сворачивать весь блок, а кнопка текста заменяет только его внутренности.
+    // Панель показывает одно из трёх представлений (плейлист, избранное, текст песни): выбор содержимого отделён от
+    // видимости панели — шеврон сворачивает весь блок, а кнопка текста заменяет только его содержимое.
     private void UpdatePlaylistSurface()
     {
         bool panelVisible = _isPlaylistVisible;
@@ -2231,9 +2033,8 @@ public partial class MainWindow : FluentWindow
             LyricsPanelScrollViewer.Visibility = Visibility.Collapsed;
             LyricsPanelSyncedList.Visibility = Visibility.Visible;
 
-            // Новый документ всегда начинается с первой LRC-строки: не считываем здесь
-            // прежнюю позицию аудио/старого списка, иначе новая песня визуально открывалась
-            // в середине. После layout повторяем ScrollToTop для уже видимого ListBox.
+            // Новый документ начинается с первой LRC-строки: прежнюю позицию не считываем, иначе песня визуально открывалась
+            // в середине; после layout повторяем ScrollToTop для уже видимого ListBox.
             UpdateMainWindowSyncedLyrics(TimeSpan.Zero, forceScroll: true);
             Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
             {
@@ -2309,9 +2110,8 @@ public partial class MainWindow : FluentWindow
 
     private void SmoothScrollLyricsToActiveLine(MainWindowLyricLine activeLine)
     {
-        // CanContentScroll=False в XAML переводит ScrollViewer в пиксельные единицы. Поэтому
-        // ExtentHeight, ViewportHeight и смещение ниже находятся в одной системе координат и
-        // анимация не смешивает индекс элементов с пикселями (прежняя причина скачка в конец).
+        // CanContentScroll=False переводит ScrollViewer в пиксели: ExtentHeight, ViewportHeight и смещение в одной системе
+        // координат, и анимация не смешивает индексы элементов с пикселями (прежняя причина скачка в конец).
         LyricsPanelSyncedList.UpdateLayout();
         FrameworkElement? container = LyricsPanelSyncedList.ItemContainerGenerator.ContainerFromItem(activeLine) as FrameworkElement;
         if (container is null)
@@ -2375,9 +2175,8 @@ public partial class MainWindow : FluentWindow
         e.Handled = true;
     }
 
-    // Настройки из SettingsWindow меняются без перезапуска: применяем их ко всем уже
-    // созданным строкам. Активная строка всегда белая, неактивные — серые; акцент приложения
-    // здесь намеренно не используется, чтобы текст оставался нейтральным при любой теме.
+    // Настройки применяются к уже созданным строкам без перезапуска: активная строка белая, неактивные серые; акцент
+    // не используем, чтобы текст оставался нейтральным при любой теме.
     public void ApplySyncedLyricsAppearance()
     {
         for (int index = 0; index < _mainWindowSyncedLyrics.Count; index++)
@@ -2423,18 +2222,13 @@ public partial class MainWindow : FluentWindow
             new DoubleAnimation(glowOpacity, duration) { EasingFunction = easing });
     }
 
-    // ---------- Вид плеера (квадратный / прямоугольный / мини-плеер) ----------
-    // Единая точка входа для переключения между тремя видами плеера — вызывается и из
-    // контекстного меню по клику на заголовок "Lumisense" (см. TitleClickArea в XAML),
-    // и из шеврона "скрыть/показать плейлист", и при восстановлении сохранённого вида
-    // на старте (см. RestorePlayerViewMode).
+    // Единая точка переключения видов (квадратный/прямоугольный/мини): из меню заголовка (TitleClickArea), шеврона плейлиста
+    // и при восстановлении вида на старте (RestorePlayerViewMode).
     private void SetPlayerViewMode(PlayerViewMode mode, bool persist = true)
     {
         if (mode == PlayerViewMode.Mini)
         {
-            // EnterMiniMode ещё внутри себя читает _viewMode (пока это старое значение) —
-            // чтобы запомнить его в _preMiniViewMode, поэтому присваиваем новое значение
-            // уже после вызова, а не до
+            // EnterMiniMode читает _viewMode (старое значение), чтобы запомнить его в _preMiniViewMode, поэтому новое присваиваем после вызова.
             if (!_isMiniMode) EnterMiniMode();
             _viewMode = mode;
         }
@@ -2446,24 +2240,15 @@ public partial class MainWindow : FluentWindow
 
             bool square = mode == PlayerViewMode.Square;
 
-            // Порядок важен: сначала переключаем крупный/обычный стиль элементов управления,
-            // и только потом подгоняем высоту под плейлист — SetPlaylistVisibility замеряет
-            // нужную высоту окна ПОСЛЕ того, как контент уже стал крупнее.
-            //
-            // Плейлист теперь остаётся открытым по умолчанию и в квадратном виде — раньше он
-            // автоматически скрывался, и в обычном (квадратном) окне плеера его приходилось
-            // каждый раз открывать заново шевроном.
+            // Порядок важен: сначала крупный/обычный стиль, потом высота под плейлист — SetPlaylistVisibility замеряет
+            // нужную высоту уже после увеличения контента. Плейлист по умолчанию остаётся открытым и в квадратном виде.
             ApplyContentScale(square || _isFullscreenLayout);
             SetPlaylistVisibility(true);
 
             if (square)
             {
-                // Крупный контент квадратного вида занимает больше места, чем обычная
-                // MinHeightWithPlaylist (680) предполагает для прямоугольного окна — без
-                // этого запаса плейлисту не хватило бы места и он визуально сжался бы
-                // почти до нуля вместо того, чтобы быть видимым. На маленьких экранах не
-                // даём окну вылезти выше рабочей области — квадрат тогда получится чуть
-                // меньше, но останется полностью на экране.
+                // Крупному контенту квадратного вида нужен запас сверх MinHeightWithPlaylist (680), иначе плейлист сожмётся почти в ноль;
+                // на маленьких экранах не даём окну выйти за рабочую область — квадрат чуть меньше, но полностью виден.
                 if (Height < SquareMinHeightWithPlaylist)
                 {
                     double screenLimit = SystemParameters.WorkArea.Height - 40;
@@ -2478,15 +2263,12 @@ public partial class MainWindow : FluentWindow
                 RestoreRectangularWidth();
             }
 
-            // MakeWindowSquare/RestoreRectangularWidth растят окно вправо-вниз от текущего
-            // угла — если оно стояло у правого/нижнего края экрана, могло вылезти за пределы
-            // рабочей области. Просто клэмп в границы экрана, без магнитного прилипания.
+            // MakeWindowSquare/RestoreRectangularWidth растят окно вправо-вниз от угла и могли вытолкнуть его за экран: обычный клэмп
+            // в границы, без магнитного прилипания.
             ClampWindowToWorkArea();
 
-            // Считаем ширину контента ПОСЛЕ того, как Width/Height уже приведены к новому
-            // виду (MakeWindowSquare/RestoreRectangularWidth выше) — иначе для квадратного
-            // вида здесь использовалась бы ещё старая, дорезайзовая ширина окна, и контент
-            // остался бы узким колонкой посреди широкого окна с пустыми полями по бокам.
+            // Ширину контента считаем после приведения Width/Height к новому виду, иначе для квадрата использовалась бы старая
+            // ширина окна и контент остался бы узкой колонкой с пустыми полями.
             UpdateContentMaxWidth();
         }
 
@@ -2500,9 +2282,8 @@ public partial class MainWindow : FluentWindow
         _settingsWindow?.RefreshViewModeRadios();
     }
 
-    // К этому моменту стиль элементов уже переключён на крупный, плейлист виден, а Height
-    // уже подогнана под него (см. SetPlayerViewMode, включая запас SquareMinHeightWithPlaylist).
-    // Делаем Width равной этой высоте, чтобы получить настоящий квадрат.
+    // Стиль уже крупный, плейлист виден, Height подогнана под него (SquareMinHeightWithPlaylist, см. SetPlayerViewMode):
+    // Width делаем равной Height, чтобы получить настоящий квадрат.
     private void MakeWindowSquare()
     {
         double size = Math.Max(Height, MinWidth);
@@ -2510,31 +2291,23 @@ public partial class MainWindow : FluentWindow
         Width = size;
     }
 
-    // Возвращает ширину/минимальную ширину окна к обычным значениям прямоугольного вида.
-    // Высотой уже занимается сам SetPlaylistVisibility(true) — он помнит, какой она была
-    // до того, как плейлист в последний раз скрывали.
+    // Возвращает ширину/минимальную ширину прямоугольного вида; высотой занимается SetPlaylistVisibility(true), он помнит
+    // прежнюю высоту до скрытия плейлиста.
     private void RestoreRectangularWidth()
     {
         MinWidth = 400; // как задан MinWidth окна в XAML
         Width = DefaultWindowWidth;
     }
 
-    // ---------- Не даём окну вылезти за экран при смене вида (Квадрат/Прямоугольный) ----------
-    // См. вызов в SetPlayerViewMode. MakeWindowSquare/RestoreRectangularWidth меняют только
-    // Width/Height, оставляя Left/Top как есть — окно растёт строго вправо-вниз от текущего
-    // угла, и если оно стояло у самого правого/нижнего края экрана, выросшее окно могло
-    // оказаться частично за пределами рабочей области. Это простой безусловный клэмп в
-    // границы экрана — никакого "магнитного" примагничивания к краю тут нет и не было, только
-    // гарантия, что окно останется полностью видимым и доступным для мыши.
+    // Клэмп в рабочую область после смены вида (см. SetPlayerViewMode): MakeWindowSquare/RestoreRectangularWidth меняют
+    // только Width/Height, и окно у правого/нижнего края могло выйти за экран. Магнитного прилипания здесь нет.
     private void ClampWindowToWorkArea()
     {
         if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return;
         if (WindowState != WindowState.Normal) return;
 
-        // Left/Top/ActualWidth/ActualHeight — DIP-единицы (96 DPI), Screen.WorkingArea —
-        // физические пиксели; TransformToDevice — тот же пересчёт, которым WPF сам переводит
-        // DIP в пиксели при отрисовке на текущем мониторе, поэтому клэмп корректен и на
-        // мониторах с масштабированием, отличным от 100%.
+        // Left/Top/ActualWidth/ActualHeight — DIP, Screen.WorkingArea — физические пиксели: TransformToDevice даёт тот же
+        // пересчёт, что WPF при отрисовке, поэтому клэмп корректен на мониторах с масштабом не 100%.
         var transform = target.TransformToDevice;
         var topLeft = transform.Transform(new Point(Left, Top));
         var size = transform.Transform(new Point(ActualWidth, ActualHeight));
@@ -2569,9 +2342,8 @@ public partial class MainWindow : FluentWindow
             SetPlayerViewMode(mode);
     }
 
-    // Публичная обёртка над SetPlayerViewMode для окна настроек (PlayerViewMode — приватный
-    // enum, наружу наружу торчать не должен) — тот же разбор строки "Square"/"Rectangular"/
-    // "Mini", что и в ViewModeMenuItem_Click, только вызывается из SettingsWindow.
+    // Публичная обёртка над SetPlayerViewMode для окна настроек (PlayerViewMode приватный); разбор строки "Square"/
+    // "Rectangular"/"Mini" тот же, что в ViewModeMenuItem_Click.
     public void SetPlayerViewModeByName(string modeName)
     {
         if (Enum.TryParse<PlayerViewMode>(modeName, out var mode))
@@ -2582,9 +2354,8 @@ public partial class MainWindow : FluentWindow
     // выставить нужную миниатюру выбранной при открытии, не имея доступа к самому enum.
     public string CurrentViewModeName => _viewMode.ToString();
 
-    // Клик (левой кнопкой) по заголовку "Lumisense" в левом верхнем углу — открывает то же
-    // самое контекстное меню, что показывается и по правому клику (ContextMenu на элементе
-    // делает это автоматически, но левый клик нужно открыть вручную).
+    // Левый клик по заголовку "Lumisense" открывает то же контекстное меню, что и правый (ContextMenu на элементе делает
+    // это только для правого клика).
     private void TitleClickArea_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { ContextMenu: { } menu } element) return;
@@ -2602,9 +2373,8 @@ public partial class MainWindow : FluentWindow
         Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(UpdateViewModeMenuChecks));
     }
 
-    // ContextMenu WPF открывается в собственном Popup-дереве и может не наследовать
-    // application accent. Публикуем локальные ресурсы, чтобы Fluent CheckBox трёх пунктов
-    // выбора вида брал реальный текущий цвет Lumisense.
+    // ContextMenu открывается в собственном Popup-дереве и может не унаследовать акцент: публикуем локальные ресурсы,
+    // чтобы Fluent CheckBox пунктов выбора вида брал текущий цвет Lumisense.
     private void ApplyMainViewContextMenuAccent()
     {
         Color accent = GetResolvedAccentColor();
@@ -2623,14 +2393,8 @@ public partial class MainWindow : FluentWindow
         MiniViewMenuItem.IsChecked = _viewMode == PlayerViewMode.Mini;
     }
 
-    // ---------- Добавление файлов и папок ----------
-
-    // Drag & Drop файлов/папок из Проводника — тот же результат, что и кнопки "Добавить" выше:
-    // папки становятся отдельными группами плейлиста (см. AddFolderPath), отдельные файлы —
-    // собираются в общую группу "Отдельные файлы" (см. AddLooseFiles). Можно бросить и то, и
-    // другое одним движением, вперемешку. DragEnter используется и для DragOver (см. XAML) —
-    // WPF не запоминает e.Effects между вызовами, каждый DragOver должен выставлять его заново,
-    // иначе курсор почти сразу покажет "нельзя" даже над принимаемым содержимым.
+    // Drag & Drop файлов/папок из Проводника (как "Добавить"): папки — отдельные группы (AddFolderPath), файлы — общая группа
+    // "Отдельные файлы" (AddLooseFiles). Тот же обработчик у DragOver (XAML): WPF не помнит e.Effects, иначе курсор покажет "нельзя".
     private void MainWindow_DragEnter(object sender, System.Windows.DragEventArgs e)
     {
         bool hasFiles = e.Data.GetDataPresent(DataFormats.FileDrop);
@@ -2639,10 +2403,8 @@ public partial class MainWindow : FluentWindow
         e.Handled = true;
     }
 
-    // DragLeave срабатывает и при уходе курсора с окна совсем, и просто при переходе между
-    // дочерними элементами внутри самого окна (тем не менее AllowDrop стоит только на корневом
-    // ui:FluentWindow, а не на каком-то из его детей, так что здесь это равнозначно "курсор
-    // покинул окно целиком") — прятать оверлей в обоих случаях правильно.
+    // DragLeave срабатывает и при уходе с окна, и при переходе между дочерними элементами; AllowDrop только на корневом
+    // FluentWindow, поэтому это означает уход с окна — оверлей прячем в обоих случаях.
     private void MainWindow_DragLeave(object sender, System.Windows.DragEventArgs e)
     {
         DragDropOverlay.Visibility = Visibility.Collapsed;
@@ -2670,10 +2432,8 @@ public partial class MainWindow : FluentWindow
                 newFiles.Add(path);
                 foundAnything = true;
             }
-            // Прочие файлы (не аудио, не папка) — молча пропускаем: пользователь вполне мог
-            // задеть при перетаскивании что-то лишнее вместе с музыкой, отдельно ругаться на
-            // каждый такой файл не стоит, итоговое сообщение "ничего не найдено" ниже покрывает
-            // только случай, когда В ИТОГЕ не добавилось вообще ничего.
+            // Прочие файлы молча пропускаем (мог задеть лишнее при перетаскивании); сообщение "ничего не найдено" ниже — только
+            // если в итоге не добавилось ничего.
         }
 
         if (_isExiting) return;
@@ -2714,10 +2474,8 @@ public partial class MainWindow : FluentWindow
         AddLooseFiles(dialog.FileNames);
     }
 
-    // ---------- Создание пустой ("временной") папки вручную — без привязки к диску ----------
-    // Такую папку можно тут же начать наполнять файлами через кнопку в её заголовке
-    // (см. AddFilesToFolderButton_Click) — удобно, например, чтобы собрать разовый плейлист
-    // из файлов, разбросанных по разным местам, не трогая структуру папок на диске.
+    // Пустая "временная" папка без привязки к диску: наполняется кнопкой в заголовке (AddFilesToFolderButton_Click), удобно для
+    // разового плейлиста из файлов из разных мест.
     private void CreateFolderMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new TextInputDialog("Новая папка", "Название папки:", settings: _settings) { Owner = this };
@@ -2734,10 +2492,8 @@ public partial class MainWindow : FluentWindow
         RefreshPlaylistView();
     }
 
-    // Кнопка "Добавить файлы" в заголовке конкретной группы (видна только у "Отдельные
-    // файлы" и у папок, созданных вручную, — см. PlaylistFolder.CanAddFilesDirectly) —
-    // в отличие от общей кнопки "Добавить" в шапке плейлиста, добавляет файлы именно
-    // в ту группу, на которой нажали, а не в общий список "Отдельные файлы".
+    // Кнопка "Добавить файлы" в заголовке группы (только "Отдельные файлы" и ручные папки, PlaylistFolder.CanAddFilesDirectly)
+    // добавляет именно в эту группу, в отличие от общей кнопки в шапке.
     private void AddFilesToFolderButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
@@ -2763,8 +2519,6 @@ public partial class MainWindow : FluentWindow
         if (wasEmptyBeforeAdd)
             LoadAndPlay(actuallyNew[0]);
     }
-
-    // ---------- Автоматическое обновление дисковых папок плейлиста ----------
 
     private void StartFolderWatchers()
     {
@@ -2820,11 +2574,8 @@ public partial class MainWindow : FluentWindow
 
     private void FolderWatcher_FileChanged(object sender, FileSystemEventArgs e)
     {
-        // Во время копирования большого файла событие может приходить несколько раз, а при
-        // переносе целого каталога — только для него. В обоих случаях повторный скан корневой
-        // папки после debounce найдёт все действительно готовые поддерживаемые файлы.
-        // Тот же обработчик и для Deleted; удаление целой подпапки при этом не триггерит
-        // refresh — только удаление отдельного поддерживаемого файла.
+        // При копировании большого файла событие приходит несколько раз, при переносе каталога — только для него: повторный скан
+        // корня после debounce найдёт все готовые файлы. Тот же обработчик у Deleted; удаление подпапки refresh не запускает.
         bool isDirectory = Directory.Exists(e.FullPath);
         bool isSupportedAudio = SupportedExtensions.Contains(Path.GetExtension(e.FullPath), StringComparer.OrdinalIgnoreCase);
         if (!isDirectory && !isSupportedAudio) return;
@@ -2850,9 +2601,8 @@ public partial class MainWindow : FluentWindow
                      .Cast<string>()
                      .Distinct(StringComparer.OrdinalIgnoreCase))
         {
-            // FileSystemWatcher не знает о событиях, произошедших до запуска приложения.
-            // Один отложенный скан после восстановления закрывает этот случай и использует
-            // ту же дедупликацию AddFolderPathAsync, что и уведомления в текущем сеансе.
+            // FileSystemWatcher не знает о событиях до запуска: один отложенный скан после восстановления закрывает этот случай,
+            // с той же дедупликацией AddFolderPathAsync, что и уведомления сеанса.
             QueueFolderRefresh(folderPath);
         }
     }
@@ -2922,8 +2672,6 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // ---------- Добавление папки (рекурсивно), в том числе нескольких сразу ----------
-
     private async void AddFolderMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog
@@ -2948,10 +2696,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Сканирует папку рекурсивно и добавляет её как отдельную группу плейлиста.
-    // Возвращает false, если в ней не нашлось ни одного поддерживаемого аудиофайла
-    // (например, нет доступа или папка пустая) — используется, чтобы решить, показывать
-    // ли предупреждение "ничего не найдено".
+    // Сканирует папку рекурсивно и добавляет как группу; false, если аудиофайлов не нашлось (нет доступа или пусто) —
+    // по нему решается, показывать ли предупреждение "ничего не найдено".
     private async Task<bool> AddFolderPathAsync(string folderPath)
     {
         try
@@ -2990,9 +2736,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Добавляет папку как отдельную группу плейлиста, без дубликата группы, если такая папка
-    // уже есть. Новые файлы добавляются автоматически, но исчезнувшие записи остаются видимыми
-    // как «Файл недоступен»: только пользователь решает, заменить путь или убрать запись.
+    // Добавляет группу без дубликата; новые файлы подхватываются автоматически, исчезнувшие остаются как «Файл недоступен»:
+    // заменить путь или убрать запись решает пользователь.
     private void AddFolderGroup(string folderPath, List<string> filesInFolder)
     {
         bool wasEmptyBeforeAdd = FlattenAll().Count == 0;
@@ -3073,11 +2818,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // Нормализация имён запускается только вручную — из настроек для всех добавленных файлов
-    // или из контекстного меню для одного выбранного трека. В обоих случаях сначала строится
-    // предпросмотр по тегам, затем пользователь видит примеры и явно подтверждает изменение.
-    // Текущий трек исключается, потому что его дескриптор может быть открыт AudioFileReader и
-    // Windows не позволит безопасно переместить файл.
+    // Нормализация имён — только вручную (настройки для всех файлов или меню для одного трека): сначала предпросмотр по тегам,
+    // затем явное подтверждение. Текущий трек исключён: AudioFileReader держит его дескриптор, и Windows не даст переместить файл.
     public Task<FileNameNormalizer.RenameResult?> NormalizePlaylistFileNamesAsync(System.Windows.Window dialogOwner) =>
         NormalizeTrackFileNamesAsync(_folders.SelectMany(folder => folder.Tracks), dialogOwner);
 
@@ -3187,9 +2929,8 @@ public partial class MainWindow : FluentWindow
             PersistPlaybackAndPlaylistState();
         }
 
-        // Текущий трек намеренно исключается из File.Move, но его подписи не должны оставаться
-        // с устаревшим fallback вида «имя папки». Если путь был в запросе, пересчитываем UI из
-        // тех же тегов и имени файла даже при результате «уже соответствует шаблону».
+        // Текущий трек исключён из File.Move, но его подписи не должны хранить устаревший fallback вида «имя папки»:
+        // если путь был в запросе, пересчитываем UI из тегов и имени файла, даже при результате «уже соответствует шаблону».
         if (_currentTrackPath is not null && sourcePaths.Any(path =>
                 string.Equals(path, _currentTrackPath, StringComparison.OrdinalIgnoreCase)))
         {
@@ -3252,9 +2993,8 @@ public partial class MainWindow : FluentWindow
         if (_isFavoritesView) RefreshFavoritesTrackList();
     }
 
-    // Ручное обновление остаётся доступным как запасной вариант для сетевых папок и файловых
-    // систем, которые не посылают события FileSystemWatcher. Как и автообновление, оно
-    // переиспользует AddFolderPathAsync и добавляет только отсутствующие файлы.
+    // Ручное обновление — запасной вариант для сетевых папок и ФС без событий FileSystemWatcher; как и автообновление,
+    // использует AddFolderPathAsync и добавляет только отсутствующие файлы.
     private async void RescanFolderButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
@@ -3276,19 +3016,15 @@ public partial class MainWindow : FluentWindow
     {
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
 
-        // Просто убираем группу из плейлиста. Если сейчас играет трек именно из неё —
-        // не трогаем воспроизведение: пусть доигрывает, он уже загружен в память и
-        // никак не зависит от списка. При следующем "Далее/Назад" плеер перейдёт
-        // к первому доступному активному треку, раз текущего уже нет в списке.
+        // Просто убираем группу; играющий из неё трек не трогаем — он уже загружен и от списка не зависит, а на следующем
+        // "Далее/Назад" плеер перейдёт к первому доступному активному треку.
         _folders.Remove(folder);
         RefreshPlaylistView();
         StartFolderWatchers();
     }
 
-    // В отличие от удаления одной группы (см. выше), очистка плейлиста целиком не оставляет
-    // вообще ничего, на что можно было бы переключиться дальше — поэтому, если что-то играло,
-    // останавливаем воспроизведение и возвращаем плеер к пустому состоянию ("Файл не выбран"),
-    // а не оставляем текущий трек тихо доигрывать сам по себе.
+    // В отличие от удаления одной группы, очистка не оставляет, на что переключиться: если что-то играло, останавливаем
+    // и возвращаем плеер в пустое состояние ("Файл не выбран"), а не даём треку доигрывать.
     private void ClearPlaylistButton_Click(object sender, RoutedEventArgs e)
     {
         if (_folders.Count == 0) return;
@@ -3318,10 +3054,8 @@ public partial class MainWindow : FluentWindow
         RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
     }
 
-    // Полный пересбор списка при каждом изменении _folders — дёшево благодаря виртуализации
-    // (PlaylistFoldersControl.ItemsSource — плоский список PlaylistFolder/PlaylistTrackRow,
-    // см. PlaylistDisplaySelectors.cs), реассайн не создаёт контейнеры для всех элементов, а
-    // только для видимых. Свёрнутые папки не кладут строки треков в список вовсе.
+    // Полный пересбор при каждом изменении _folders дёшев благодаря виртуализации (ItemsSource — плоский список
+    // PlaylistFolder/PlaylistTrackRow, PlaylistDisplaySelectors.cs); свёрнутые папки не кладут строки в список.
     private void RefreshPlaylistView()
     {
         _allTracksCache = null;
@@ -3419,10 +3153,8 @@ public partial class MainWindow : FluentWindow
             PlaylistFoldersControl.ItemsSource = items;
     }
 
-    // Обычный плейлист — смешанный список заголовков папок и строк. При поиске оставляем
-    // заголовок только у папки, в которой есть совпадения; «Избранное» содержит только строки
-    // и проходит тем же методом без лишней обёртки. Функция работает над неизменяемым снимком
-    // и вызывается в фоне, поэтому обращений к WPF или к диску здесь нет.
+    // Плейлист — смешанный список заголовков и строк: при поиске заголовок остаётся только у папки с совпадениями, "Избранное"
+    // проходит тем же методом. Работает над неизменяемым снимком в фоне — без обращений к WPF и диску.
     private static List<object> FilterPlaylistDisplayItems(
         IReadOnlyList<object> source, string query, CancellationToken cancellationToken)
     {
@@ -3463,14 +3195,10 @@ public partial class MainWindow : FluentWindow
             .Contains(query, StringComparison.OrdinalIgnoreCase);
     }
 
-    // ---------- Избранное ----------
-
     private void FavoritesButton_Click(object sender, RoutedEventArgs e) => SetFavoritesViewActive(!_isFavoritesView);
 
-    // Оба списка лежат в разметке друг на друге, переключается только Visibility —
-    // PlaylistFoldersControl не перепривязывается и не пересоздаёт контейнеры.
-    // "Добавить"/"Очистить" скрыты в режиме избранного — в виртуальную группу нельзя добавлять
-    // файлы напрямую, а "очищать" там нечего.
+    // Оба списка лежат друг на друге, переключается только Visibility (PlaylistFoldersControl не пересоздаётся); "Добавить"/
+    // "Очистить" в избранном скрыты — в виртуальную группу нельзя добавлять файлы, очищать нечего.
     private void SetFavoritesViewActive(bool active)
     {
         _isFavoritesView = active;
@@ -3490,10 +3218,8 @@ public partial class MainWindow : FluentWindow
             QueuePlaylistSearch();
     }
 
-    // Пересобирает СОДЕРЖИМОЕ только виртуального плейлиста "Избранное" — не трогая
-    // PlaylistFoldersControl вообще. Стоимость пропорциональна числу избранных треков, а не
-    // размеру всей библиотеки, поэтому вызывать его можно гораздо чаще, чем раньше можно было
-    // позволить себе полный RefreshPlaylistView().
+    // Пересобирает только содержимое виртуального "Избранного", не трогая PlaylistFoldersControl: стоимость зависит от числа
+    // избранных, а не от размера библиотеки, поэтому вызывать можно часто.
     private void RefreshFavoritesTrackList()
     {
         var favorites = FavoritesManager.GetAll();
@@ -3501,10 +3227,7 @@ public partial class MainWindow : FluentWindow
         _favoritesFolder.Tracks.Clear();
         _favoritesFolder.Tracks.AddRange(favorites);
 
-        // Тот же PlaylistTrackRow, что и у обычного плейлиста (см. TrackItemTemplate в
-        // MainWindow.xaml — общий шаблон для обоих списков) — Folder указывает на
-        // _favoritesFolder для всех строк, группировки тут нет, просто плоский список без
-        // заголовков.
+        // Тот же PlaylistTrackRow и общий TrackItemTemplate (MainWindow.xaml); Folder — _favoritesFolder, без группировки и заголовков.
         var items = new List<object>(favorites.Count);
         for (int i = 0; i < favorites.Count; i++)
             items.Add(new PlaylistTrackRow { Folder = _favoritesFolder, FilePath = favorites[i], IndexInFolder = i + 1 });
@@ -3514,11 +3237,8 @@ public partial class MainWindow : FluentWindow
             QueuePlaylistSearch();
     }
 
-    // Сердечко на строке трека (см. TrackFavoriteButton в MainWindow.xaml) и одноимённый пункт
-    // контекстного меню приводят сюда же — оба просто переключают избранное для того же трека,
-    // единственная разница в том, откуда берётся путь к файлу (DataContext кнопки против
-    // DataContext пункта меню — в обоих случаях это унаследованный DataContext строки, то есть
-    // PlaylistTrackRow, см. подробный комментарий у TrackItemTemplate в MainWindow.xaml).
+    // Сердечко на строке (TrackFavoriteButton) и одноимённый пункт меню приходят сюда: путь берётся из унаследованного
+    // DataContext строки (PlaylistTrackRow, см. TrackItemTemplate в MainWindow.xaml).
     private void FavoriteButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: PlaylistTrackRow row }) return;
@@ -3531,10 +3251,8 @@ public partial class MainWindow : FluentWindow
         ToggleFavoriteAndRefresh(row.FilePath);
     }
 
-    // Переключает избранное и обновляет UI минимально: сердечки во всех показанных строках
-    // перерисовываются сами через FavoritesChangeNotifier (см. DataTrigger в TrackItemTemplate,
-    // MainWindow.xaml). Вручную пересобирается только список виртуального плейлиста
-    // "Избранное" — и то лишь пока он открыт, чтобы трек тут же исчез при снятии сердечка.
+    // Минимальное обновление UI: сердечки в строках перерисовывает FavoritesChangeNotifier (DataTrigger в TrackItemTemplate),
+    // вручную пересобирается лишь открытое виртуальное "Избранное", чтобы трек сразу исчезал при снятии сердечка.
     private void ToggleFavoriteAndRefresh(string filePath)
     {
         FavoritesManager.Toggle(filePath);
@@ -3543,10 +3261,8 @@ public partial class MainWindow : FluentWindow
             RefreshFavoritesTrackList();
     }
 
-    // Закрепление трека наверху "Избранного" (см. FavoritesManager.TogglePin) — кнопка и пункт
-    // меню видны только в самом "Избранном" (Folder.IsFavoritesGroup, см. привязку Visibility в
-    // MainWindow.xaml), закреплять что-либо в обычном плейлисте нельзя и незачем: смысл
-    // закрепления — порядок показа именно на странице "Избранное".
+    // Закрепление наверху "Избранного" (FavoritesManager.TogglePin): кнопка и пункт меню видны только в нём
+    // (Folder.IsFavoritesGroup) — порядок показа важен лишь на этой странице.
     private void PinButton_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: PlaylistTrackRow row }) return;
@@ -3559,11 +3275,8 @@ public partial class MainWindow : FluentWindow
         TogglePinAndRefresh(row.FilePath);
     }
 
-    // Тот же принцип минимального обновления UI, что и у ToggleFavoriteAndRefresh выше —
-    // FavoritesChangeNotifier сам поднимает перерисовку иконки закрепления (см.
-    // IsPinnedMultiConverter/TrackPinIcon в MainWindow.xaml), а вот сам ПОРЯДОК строк
-    // "Избранного" от закрепления меняется, поэтому список нужно пересобрать явно — так же,
-    // как и при добавлении/удалении из избранного.
+    // Как в ToggleFavoriteAndRefresh: иконку закрепления обновляет FavoritesChangeNotifier (IsPinnedMultiConverter/TrackPinIcon),
+    // а порядок строк "Избранного" от закрепления меняется, поэтому список пересобираем явно.
     private void TogglePinAndRefresh(string filePath)
     {
         FavoritesManager.TogglePin(filePath);
@@ -3577,18 +3290,13 @@ public partial class MainWindow : FluentWindow
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
         folder.IsExpanded = !folder.IsExpanded;
 
-        // Раньше сворачивание работало через обычный биндинг Visibility вложенного ListView
-        // на IsExpanded. Теперь треки папки — отдельные элементы плоского списка (PlaylistTrackRow),
-        // а не содержимое своего вложенного контрола — нужно физически добавить/убрать их
-        // из ItemsSource, отсюда явный пересбор.
+        // Треки папки — отдельные элементы плоского списка (PlaylistTrackRow), а не содержимое вложенного контрола (раньше
+        // сворачивание шло через Visibility по IsExpanded), поэтому их нужно добавлять/убирать из ItemsSource — явный пересбор.
         RefreshPlaylistView();
     }
 
-    // PlaylistFoldersControl/FavoritesTrackListView — самостоятельные ListView со своим
-    // скроллом (VerticalScrollBarVisibility="Hidden"); "общий скролл" визуально сохраняется тем,
-    // что оба показывают один и тот же кастомный PlaylistScrollTrack/Thumb, подключённый к
-    // ScrollViewer текущего видимого списка. ScrollViewer не именован в XAML — достаём и кэшируем
-    // через обход визуального дерева.
+    // PlaylistFoldersControl/FavoritesTrackListView — отдельные ListView со своим скроллом (VerticalScrollBarVisibility="Hidden");
+    // общий скролл — один кастомный PlaylistScrollTrack/Thumb на ScrollViewer видимого списка (в XAML без имени, ищем по дереву).
     private System.Windows.Controls.ScrollViewer? _playlistFoldersScrollViewer;
     private System.Windows.Controls.ScrollViewer? _favoritesScrollViewer;
 
@@ -3597,9 +3305,8 @@ public partial class MainWindow : FluentWindow
             ? _favoritesScrollViewer ??= FindVisualChild<System.Windows.Controls.ScrollViewer>(FavoritesTrackListView)
             : _playlistFoldersScrollViewer ??= FindVisualChild<System.Windows.Controls.ScrollViewer>(PlaylistFoldersControl);
 
-    // PreviewMouseWheel идёт по дереву раньше bubbling MouseWheel, на которое реагирует
-    // встроенный скролл — e.Handled не даёт этому более резкому (~3 строки за деление) скроллу
-    // сработать вдобавок к нашему.
+    // PreviewMouseWheel идёт раньше bubbling MouseWheel встроенного скролла: e.Handled не даёт более резкому (~3 строки за деление)
+    // скроллу сработать вдобавок к нашему.
     private void PlaylistTrackList_PreviewMouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
         var scrollViewer = GetActivePlaylistScrollViewer();
@@ -3614,12 +3321,8 @@ public partial class MainWindow : FluentWindow
         scrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset - offsetDelta);
     }
 
-    // ---------- Свой скроллбар плейлиста (с нуля, без ScrollBar/Track) ----------
-    // PlaylistScrollTrack (дорожка) и PlaylistScrollThumb (ползунок) из XAML:
-    //  - PlaylistScrollViewer_ScrollChanged/PlaylistScrollTrack_SizeChanged пересчитывают
-    //    высоту и позицию ползунка при изменении контента/офсета/размера;
-    //  - клик по дорожке мимо ползунка прыгает туда, куда кликнули;
-    //  - перетаскивание ползунка двигает прокрутку один в один за мышью (ручной MouseCapture).
+    // Свой скроллбар плейлиста без ScrollBar/Track: PlaylistScrollTrack и PlaylistScrollThumb из XAML; ScrollChanged/SizeChanged
+    // пересчитывают ползунок, клик по дорожке прыгает к точке, перетаскивание ползунка — ручной MouseCapture.
     private bool _isDraggingPlaylistThumb;
     private double _playlistThumbDragStartMouseY;
     private double _playlistThumbDragStartOffset;
@@ -3629,12 +3332,8 @@ public partial class MainWindow : FluentWindow
         UpdatePlaylistScrollThumb();
     }
 
-    // ScrollViewer обрезает содержимое прямоугольно по своим границам — незаметно, пока список
-    // не прокручен, но при прокрутке карточки у края становятся видны с чётким прямоугольным
-    // обрезом, спорящим со скруглённой рамкой PlaylistBorder вокруг. Свой Clip со скруглением
-    // решает это. Радиус 8 — как у самих карточек, а не как у внешней рамки (10), иначе
-    // скругление не концентрично и режет по углам. Общий обработчик на оба ListView — клипует
-    // sender, а не именованный элемент.
+    // ScrollViewer обрезает содержимое прямоугольно, и при прокрутке карточки у края спорят со скруглённой рамкой PlaylistBorder:
+    // свой Clip с радиусом 8 (как у карточек, а не 10 у рамки — иначе неконцентрично); общий обработчик клипует sender.
     private void PlaylistScrollViewer_SizeChanged(object sender, SizeChangedEventArgs e)
     {
         if (sender is not FrameworkElement element) return;
@@ -3769,14 +3468,8 @@ public partial class MainWindow : FluentWindow
         LoadAndPlay(row.FilePath);
     }
 
-    // ---------- Удаление выбранных треков клавишей Delete + отмена (Ctrl+Z) ----------
-    // SelectionMode="Extended" у обоих ListView — можно выделять несколько строк (Ctrl+клик,
-    // Shift+клик, Ctrl+A), при этом "текущий играющий трек" как единственный SelectedItem не
-    // страдает: LoadAndPlay просто переприсваивает SelectedItem, WPF сам снимает выделение с
-    // остальных.
-    //
-    // Стек отмены — только для удаления треков, не общий undo-фреймворк. Каждый Delete кладёт
-    // одно замыкание, полностью восстанавливающее удалённое; Ctrl+Z снимает и выполняет верхнее.
+    // Delete удаляет выбранные (SelectionMode="Extended"), Ctrl+Z откатывает: стек только для удаления треков, не общий undo —
+    // каждый Delete кладёт замыкание, полностью восстанавливающее удалённое; Ctrl+Z выполняет верхнее.
     private readonly Stack<Action> _playlistDeleteUndoStack = new();
 
     private void PlaylistTrackList_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
@@ -3791,8 +3484,7 @@ public partial class MainWindow : FluentWindow
         DeleteTracksFromPlaylist(rows);
     }
 
-    // Убирает переданные строки из плейлиста пачкой (тот же смысл, что и "Убрать из плейлиста"
-    // в контекстном меню, см. RemoveTrackMenuItem_Click) и кладёт в _playlistDeleteUndoStack
+    // Убирает строки пачкой (как "Убрать из плейлиста", RemoveTrackMenuItem_Click) и кладёт в _playlistDeleteUndoStack
     // одно действие, откатывающее именно эту пачку.
     private void DeleteTracksFromPlaylist(IReadOnlyList<PlaylistTrackRow> rows)
     {
@@ -3858,9 +3550,8 @@ public partial class MainWindow : FluentWindow
         });
     }
 
-    // Ctrl+Z — на уровне всего окна, не только списков плейлиста, т.к. фокус между удалением
-    // и Ctrl+Z мог уйти куда угодно. Пропускаем, если фокус в текстовом поле — там Ctrl+Z должен
-    // работать как отмена ввода текста.
+    // Ctrl+Z на уровне окна: фокус между удалением и отменой мог уйти куда угодно; в текстовом поле не перехватываем —
+    // там это отмена ввода.
     private void MainWindow_PreviewKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         if (e.Key == System.Windows.Input.Key.F11)
@@ -3879,10 +3570,8 @@ public partial class MainWindow : FluentWindow
         _playlistDeleteUndoStack.Pop().Invoke();
     }
 
-    // ---------- Контекстное меню трека (правый клик по строке в плейлисте) ----------
-    // DataContext каждого пункта меню унаследован от ContextMenu.PlacementTarget по логическому
-    // дереву (WPF пробрасывает его и через Popup) — это сам PlaylistTrackRow (row.FilePath и
-    // row.Folder приходят вместе, без Tag/CommandParameter-трюков).
+    // DataContext пунктов меню унаследован от ContextMenu.PlacementTarget (WPF пробрасывает его и через Popup) — это сам
+    // PlaylistTrackRow (row.FilePath и row.Folder), без Tag/CommandParameter.
 
     private void PlayTrackMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -3890,11 +3579,8 @@ public partial class MainWindow : FluentWindow
         LoadAndPlay(row.FilePath);
     }
 
-    // Общий помощник для пунктов меню, которые должны применяться сразу ко всем выделенным
-    // строкам (Ctrl/Shift-клик), а не только к той, на которой был правый клик — см.
-    // PlaylistTrackList_PreviewKeyDown/DeleteTracksFromPlaylist, тот же принцип. Если правый
-    // клик пришёлся на строку ВНЕ текущего выделения, действие применяется только к ней одной
-    // (совпадает с тем, что WPF и так обычно делает с самим выделением при таком клике).
+    // Помощник для пунктов, применяемых ко всем выделенным строкам (как PlaylistTrackList_PreviewKeyDown/DeleteTracksFromPlaylist);
+    // если правый клик вне выделения, действие — только для этой строки.
     private List<PlaylistTrackRow> GetSelectedRowsForBulkAction(PlaylistTrackRow clickedRow)
     {
         var listView = clickedRow.Folder.IsFavoritesGroup ? FavoritesTrackListView : PlaylistFoldersControl;
@@ -4085,9 +3771,7 @@ public partial class MainWindow : FluentWindow
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
 
-        // То же самое имя, что видно строкой в плейлисте — просто имя файла без расширения и
-        // пути (см. FileNameConverter), а не название/исполнитель из тегов: плейлист их не
-        // показывает, так что и тут копируем ровно то, что человек видит на экране.
+        // Копируем то, что видно в плейлисте: имя файла без расширения и пути (FileNameConverter), а не теги.
         System.Windows.Clipboard.SetText(Path.GetFileNameWithoutExtension(row.FilePath));
     }
 
@@ -4163,10 +3847,8 @@ public partial class MainWindow : FluentWindow
         System.Windows.Clipboard.SetFileDropList(files);
     }
 
-    // Раньше здесь был системный shell-диалог "Свойства" через ShellExecute — но для многих
-    // типов аудиофайлов Windows не регистрирует обработчик этого verb-а, и вызов молча ничего
-    // не делал. Вместо системного — своё окно в стиле плеера (TrackPropertiesWindow),
-    // не зависящее от того, что зарегистрировано в реестре у конкретного пользователя.
+    // Системный shell-диалог "Свойства" для многих аудиотипов молча не срабатывал (нет обработчика verb): вместо него
+    // своё окно TrackPropertiesWindow, независимое от реестра пользователя.
     private void TrackPropertiesMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -4175,10 +3857,8 @@ public partial class MainWindow : FluentWindow
         new TrackPropertiesWindow(row.FilePath, _settings) { Owner = this }.ShowDialog();
     }
 
-    // Отдельное окно редактирования тегов (название/исполнитель/альбом/год/трек/жанр/
-    // комментарий) — пишет прямо в файл через ATL.NET. Если отредактированный файл — это
-    // как раз сейчас играющий трек, обновляем название/исполнителя/обложку в самом плеере
-    // сразу же, не дожидаясь следующего переключения трека.
+    // Окно редактирования тегов пишет прямо в файл через ATL.NET; если файл — играющий трек, название/исполнитель/обложка
+    // в плеере обновляются сразу, не дожидаясь переключения.
     private void EditTagsMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -4224,10 +3904,8 @@ public partial class MainWindow : FluentWindow
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
 
-        // В виртуальной группе "Избранное" своего списка треков по сути нет — она каждый раз
-        // пересобирается из FavoritesManager (см. RefreshFavoritesTrackList), поэтому "убрать
-        // из плейлиста" здесь означает "снять сердечко", а не удаление из folder.Tracks — иначе
-        // трек тут же вернулся бы в список при следующем обновлении.
+        // В виртуальном "Избранном" нет своего списка (пересобирается из FavoritesManager, RefreshFavoritesTrackList): "убрать" здесь
+        // означает "снять сердечко", иначе трек вернулся бы при следующем обновлении.
         if (row.Folder.IsFavoritesGroup)
         {
             FavoritesManager.SetFavorite(row.FilePath, false);
@@ -4241,10 +3919,8 @@ public partial class MainWindow : FluentWindow
         RefreshPlaylistView();
     }
 
-    // Безвозвратно удаляет файл трека с диска (не просто убирает из плейлиста). В отличие от
-    // "Убрать из плейлиста", это затрагивает реальный файл — поэтому сначала спрашиваем
-    // подтверждение и удаляем через корзину (Microsoft.VisualBasic.FileIO), а не File.Delete,
-    // чтобы у пользователя оставался шанс восстановить файл в случае ошибки.
+    // Удаляет файл с диска (в отличие от "Убрать из плейлиста"): сначала подтверждение, затем корзина (Microsoft.VisualBasic.FileIO)
+    // вместо File.Delete, чтобы файл можно было восстановить.
     private void DeleteTrackFromDiskMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -4252,12 +3928,8 @@ public partial class MainWindow : FluentWindow
         DeleteTrackFromDisk(row.FilePath);
     }
 
-    // Хоткей "Удалить трек с диска" (см. AppSettings.HotkeyDeleteTrack и GlobalMediaHotKeys) —
-    // без выключенной по умолчанию комбинации; пользователь должен сам назначить её в
-    // настройках. Удаляет ИМЕННО текущий загруженный/играющий трек тем же путём, что и
-    // одноимённый пункт контекстного меню плейлиста (см. DeleteTrackFromDiskMenuItem_Click) —
-    // с тем же подтверждением и той же отправкой в корзину, просто без необходимости сначала
-    // искать трек в списке и кликать по нему правой кнопкой.
+    // Хоткей удаления (AppSettings.HotkeyDeleteTrack) по умолчанию не назначен; удаляет текущий играющий трек тем же путём,
+    // что пункт меню (DeleteTrackFromDiskMenuItem_Click): с подтверждением и через корзину.
     private void DeleteCurrentTrackFromDiskHotkey()
     {
         if (_currentTrackPath == null) return;
@@ -4268,18 +3940,12 @@ public partial class MainWindow : FluentWindow
     {
         var trackName = Path.GetFileName(filePath);
 
-        // Владелец диалога — то из окон приложения, что сейчас реально видно на экране.
-        // Обычно это само MainWindow, но в мини-режиме оно спрятано (см. Hide() в
-        // ShowMiniPlayer) — диалог, привязанный к невидимому окну, не может нормально выйти
-        // на передний план сам по себе, каким бы owner'ом он ни был. Берём мини-плеер в
-        // качестве владельца в этом случае — это и есть то, что сейчас видно.
+        // Владелец диалога — реально видимое окно: в мини-режиме MainWindow скрыто (Hide в ShowMiniPlayer), и диалог
+        // с невидимым владельцем не выходит на передний план, поэтому берём мини-плеер.
         Window ownerWindow = _isMiniMode && _miniPlayerWindow != null ? _miniPlayerWindow : this;
 
-        // Хоткей удаления — глобальный, срабатывает независимо от того, какое окно активно,
-        // так что плеер в этот момент почти наверняка не в фокусе, и обычный MessageBox.Show
-        // оказался бы под активным окном другого приложения (Windows блокирует "кражу" фокуса
-        // фоновыми процессами). Тот же приём (Topmost-моргание), что и при разворачивании
-        // мини-плеера, чинит и это; для контекстного меню — просто безвредный no-op.
+        // Хоткей глобальный: плеер почти наверняка не в фокусе, и MessageBox оказался бы под чужим окном (Windows блокирует
+        // кражу фокуса); Topmost-моргание (ForceForeground) чинит это, для контекстного меню — безвредный no-op.
         ForceForeground(ownerWindow);
 
         var confirm = LocalizedMessageBox.Show(
@@ -4302,17 +3968,12 @@ public partial class MainWindow : FluentWindow
             previousPosition = _audioFile!.CurrentTime;
             wasPlaying = _isPlaying;
 
-            // Считаем "следующий трек в очереди" ДО того, как уберём удаляемый из плейлиста
-            // ниже — иначе ComputeNextTrackPath отсчитывал бы позицию уже без него и с этого
-            // же места начал бы играть что-то не то (или сначала списка). Если следующий
-            // трек — это тот же самый файл (он был единственным в очереди), играть больше
-            // нечего.
+            // "Следующий трек" считаем до удаления текущего из плейлиста: иначе ComputeNextTrackPath отсчитал бы позицию без него;
+            // если следующий — тот же файл (он один в очереди), играть больше нечего.
             nextPath = ResolveNextTrackPathRespectingQueue(_currentTrackPath);
             if (nextPath == filePath) nextPath = null;
 
-            // Файл у играющего трека открыт NAudio-потоком, поэтому удаление ниже упадёт с
-            // "файл занят другим процессом", пока мы явно не остановим воспроизведение и не
-            // освободим хендл.
+            // Файл играющего трека открыт NAudio-потоком, и без остановки воспроизведения и освобождения хендла удаление упадёт ("файл занят").
             StopPlayback();
         }
 
@@ -4328,9 +3989,8 @@ public partial class MainWindow : FluentWindow
         }
         catch (Exception ex)
         {
-            // StopPlayback был нужен для освобождения file handle, но при ошибке удаления
-            // пользовательский трек всё ещё существует. Возвращаем его на прежнюю позицию,
-            // чтобы не превращать временную ошибку корзины/прав доступа в потерю воспроизведения.
+            // StopPlayback освобождал хендл, но при ошибке удаления трек существует: возвращаем позицию, чтобы временная ошибка
+            // корзины/прав не превращалась в потерю воспроизведения.
             if (isCurrentlyLoaded && File.Exists(filePath))
                 LoadAndPlay(filePath, autoPlay: wasPlaying, startPosition: previousPosition,
                     changeOrigin: TrackChangeOrigin.ExternalEdit);
@@ -4340,27 +4000,19 @@ public partial class MainWindow : FluentWindow
             return;
         }
 
-        // Файла больше нет — убираем эту дорожку из ВСЕХ плейлистов, где она встречается,
-        // а не только из того, где был вызван правый клик (иначе в других группах осталась
-        // бы "битая" ссылка на несуществующий файл). Избранное — туда же, по той же причине.
+        // Файла больше нет: убираем его из ВСЕХ плейлистов и избранного, иначе в других группах остались бы битые ссылки.
         foreach (var folder in _folders)
             folder.Tracks.RemoveAll(t => t == filePath);
         FavoritesManager.SetFavorite(filePath, false);
 
-        // Действие редкое (явное подтверждённое удаление файла с диска, не частый клик по
-        // сердечку) — полный пересбор обоих списков здесь не проблема с точки зрения
-        // производительности, а вот забыть обновить один из них было бы багом.
+        // Действие редкое (подтверждённое удаление файла): полный пересбор обоих списков не проблема, а пропуск одного был бы багом.
         RefreshPlaylistView();
         if (_isFavoritesView) RefreshFavoritesTrackList();
 
-        // Играл именно удалённый трек и в очереди был кто-то ещё — переключаемся дальше,
-        // сохраняя состояние "играло/было на паузе", а не просто останавливаемся на месте
-        // удалённого трека.
+        // Если играл удалённый трек и в очереди есть следующий — переключаемся, сохраняя состояние играло/на паузе.
         if (nextPath != null)
             LoadAndPlay(nextPath, autoPlay: wasPlaying, changeOrigin: TrackChangeOrigin.Automatic);
     }
-
-    // ---------- Загрузка и воспроизведение ----------
 
     private async void LoadAndPlay(string filePath, bool autoPlay = true, TimeSpan? startPosition = null,
         AlbumArtTransitionDirection albumArtDirection = AlbumArtTransitionDirection.Next,
@@ -4381,10 +4033,8 @@ public partial class MainWindow : FluentWindow
             return;
         }
 
-        // FadeOutBeforeTrackChangeAsync останавливает промежуточный output и сбрасывает
-        // _isPlaying. При быстром Next/Previous следующая заявка могла прочитать уже false и
-        // в итоге загрузить последний трек на паузе. Для одной цепочки навигации сохраняем
-        // исходное намерение пользователя до готовности самого последнего запроса.
+        // FadeOutBeforeTrackChangeAsync останавливает промежуточный output и сбрасывает _isPlaying: при быстром Next/Previous
+        // следующая заявка читала false и грузила последний трек на паузе, поэтому сохраняем исходное намерение пользователя.
         if (preservePendingPlaybackState)
         {
             if (_pendingNavigationAutoPlay)
@@ -4419,9 +4069,8 @@ public partial class MainWindow : FluentWindow
         {
             SetTrackUserState(TrackUserState.Loading);
 
-            // Подготавливаем независимый граф следующего трека, пока текущий поток выполняет
-            // уже проверенный fade/drain. Новый WasapiPlayer здесь намеренно НЕ создаётся:
-            // endpoint по-прежнему останавливается только после нулевого хвоста в его буфере.
+            // Готовим граф следующего трека, пока текущий поток доигрывает fade/drain; новый WasapiPlayer не создаём —
+            // endpoint останавливается только после нулевого хвоста в его буфере.
             double volumeSliderValue = VolumeSlider.Value;
             bool replayGainEnabled = _settings.ReplayGainEnabled;
             bool equalizerEnabled = _settings.EqualizerEnabled;
@@ -4479,10 +4128,8 @@ public partial class MainWindow : FluentWindow
             TotalTimeText.Text = _audioFile.TotalTime.ToString(@"mm\:ss");
             ProgressSlider.Maximum = Math.Max(_audioFile.TotalTime.TotalSeconds, 0.01);
             _currentTrackPath = filePath;
-            // Ручной выбор строки плейлиста — это новая отправная точка обычного шаффла.
-            // Иначе «Следующий» мог продолжить старую историю до выбранного вручную трека и
-            // неожиданно вернуть уже ранее пройденную последовательность. Кнопки навигации,
-            // hotkey и автопереход явно передают preserveShuffleSession=true.
+            // Ручной выбор строки — новая отправная точка обычного шаффла, иначе «Следующий» продолжил бы старую историю и вернул
+            // пройденную последовательность; кнопки, hotkey и автопереход явно передают preserveShuffleSession=true.
             if (!preserveShuffleSession && changeOrigin == TrackChangeOrigin.User)
                 StartStandardShuffleSession(filePath);
 
@@ -4508,16 +4155,13 @@ public partial class MainWindow : FluentWindow
             RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
             RaiseProgressChanged(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
 
-            // Сохраняем shuffle-сессию сразу после успешного применения нового трека. Одного
-            // периодического checkpoint недостаточно: при быстром переключении и последующем
-            // выходе приложение могло закрыться раньше таймера, и после запуска оставалась
-            // устаревшая история/колода.
+            // Сохраняем shuffle-сессию сразу после применения трека: периодического checkpoint мало — при быстром переключении
+            // и выходе история/колода остались бы устаревшими.
             if (_isShuffleEnabled && _playlistRestoreCompleted)
                 PersistPlaybackAndPlaylistState(asyncSave: true);
 
-            // Панель текста не выполняет работу в фоне, пока скрыта. Если пользователь уже
-            // открыл её, новая композиция сразу отменяет предыдущий запрос и загружает свой
-            // LRC/TXT/кэш или точное онлайн-совпадение.
+            // Скрытая панель текста ничего не делает в фоне; если она открыта, новая композиция отменяет прошлый запрос и
+            // грузит свой LRC/TXT/кэш или точное онлайн-совпадение.
             if (_isLyricsPanelActive)
                 FireAndForget(LoadMainWindowLyricsAsync(filePath), "LoadMainWindowLyricsAsync");
 
@@ -4581,9 +4225,8 @@ public partial class MainWindow : FluentWindow
             prepared?.Dispose();
             if (preparationTask is not null)
             {
-                // При отмене во время fade задача могла создать AudioFileReader, но ещё не
-                // вернуться в этот метод. Дожидаемся её отдельно и освобождаем result, чтобы
-                // быстрые Next/Previous не оставляли файловый handle у устаревшего запроса.
+                // При отмене во время fade задача могла создать AudioFileReader, но ещё не вернуться: дожидаемся её и освобождаем result,
+                // чтобы быстрые Next/Previous не держали handle устаревшего запроса.
                 FireAndForget(DisposeUnusedPreparedTrackAsync(preparationTask), "DisposeUnusedPreparedTrackAsync");
             }
             if (operation.IsCurrent)
@@ -4608,10 +4251,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // ---------- Подсветка и автопрокрутка плейлиста к текущему треку ----------
-    // Подсветка — обычное выделение строки (ListViewItem.IsSelected), то же самое, что при
-    // клике мышью. При смене трека просто выставляем SelectedItem нужной строки, разворачиваем
-    // её группу, если была свёрнута, и прокручиваем список, чтобы строка была видна.
+    // Подсветка — обычное выделение строки (ListViewItem.IsSelected): при смене трека выставляем SelectedItem, разворачиваем
+    // группу и прокручиваем список к строке.
 
     private void ScrollPlaylistToCurrentTrack()
     {
@@ -4626,10 +4267,8 @@ public partial class MainWindow : FluentWindow
         {
             folder.IsExpanded = true;
 
-            // Строка трека появится в плоском отображаемом списке (PlaylistTrackRow, см.
-            // RefreshPlaylistView) только ПОСЛЕ пересборки — раньше разворачивание работало
-            // само, через обычный WPF-биндинг Visibility вложенного ListView на IsExpanded;
-            // теперь список плоский, и нужен явный пересбор.
+            // Строка появится в плоском списке (PlaylistTrackRow) только после пересборки (RefreshPlaylistView), поэтому разворачивание
+            // требует явного пересбора.
             RefreshPlaylistView();
         }
 
@@ -4665,11 +4304,8 @@ public partial class MainWindow : FluentWindow
             return;
         }
 
-        // ScrollIntoView — встроенный способ для виртуализированных списков и прокрутить
-        // к элементу, и заставить WPF реализовать его контейнер (ContainerFromItem для элемента
-        // вне видимой области иначе вернул бы null). Раньше, когда каждая папка была отдельным
-        // невиртуализированным ListView, все контейнеры существовали всегда, и прокрутку
-        // приходилось считать вручную через координаты — теперь в этом нет нужды.
+        // ScrollIntoView и прокручивает, и заставляет WPF реализовать контейнер виртуализированного списка (иначе ContainerFromItem
+        // вне видимой области вернул бы null).
         listView.ScrollIntoView(row);
         listView.SelectedItem = row;
     }
@@ -4843,11 +4479,8 @@ public partial class MainWindow : FluentWindow
         QueueAlbumArtAppearanceRefresh();
     }
 
-    // Смена обложки в духе iTunes: снимок прежней обложки "улетает" в сторону с затуханием,
-    // новая в этот момент "влетает" с противоположной стороны. При удержании Next/Previous
-    // новые треки приходят быстрее обычных 460 ms. Тогда сохраняется тот же двухслойный
-    // переход, но с короткой длительностью 120 ms — он укладывается в repeat hotkey и не
-    // успевает накопить пересекающиеся ghost-кадры.
+    // Смена обложки в духе iTunes: снимок прежней "улетает" с затуханием, новая "влетает" с противоположной стороны.
+    // При удержании Next/Previous длительность 120 ms вместо 460 ms — укладывается в repeat hotkey без накопления ghost-кадров.
     private void AnimateAlbumArtTransition(AlbumArtTransitionDirection direction, Action applyNewArt)
     {
         bool canAnimate = direction != AlbumArtTransitionDirection.None &&
@@ -4889,9 +4522,7 @@ public partial class MainWindow : FluentWindow
         AlbumArtBorderScale.ScaleX = 0.88;
         AlbumArtBorderScale.ScaleY = 0.88;
 
-        // Плавные, но разные кривые для "туда" и "оттуда": уезжающая обложка стартует резче и
-        // ускоряется (EaseIn), а влетающая — наоборот, гасит скорость к концу и мягко
-        // "садится" на место (EaseOut).
+        // Кривые разные: уезжающая обложка ускоряется (EaseIn), влетающая гасит скорость и мягко садится (EaseOut).
         var duration = isBurst ? TimeSpan.FromMilliseconds(120) : TimeSpan.FromMilliseconds(460);
         var exitEase = new CubicEase { EasingMode = EasingMode.EaseIn };
         var enterEase = new CubicEase { EasingMode = EasingMode.EaseOut };
@@ -4946,9 +4577,8 @@ public partial class MainWindow : FluentWindow
 
     private void OutputDevice_PlaybackStopped(object? sender, StoppedEventArgs e)
     {
-        // Сохраняем generation и путь именно того reader, который остановился. Callback
-        // приходит с audio thread, а Dispatcher может выполнить его уже после быстрой загрузки
-        // следующего трека.
+        // Сохраняем generation и путь именно остановившегося reader: callback приходит с audio thread, а Dispatcher может
+        // выполнить его уже после быстрой загрузки следующего трека.
         int generation = _audioPlaybackCoordinator.CurrentGeneration;
         string? stoppedPath = _currentTrackPath;
         Exception? playbackError = e.Exception;
@@ -4994,9 +4624,8 @@ public partial class MainWindow : FluentWindow
         string? currentPath = GetCurrentTrackPath();
         if (currentPath == null) return;
 
-        // Очередь важнее RepeatMode.One — иначе явно поставленный в очередь трек никогда бы
-        // не сыграл, пока включён повтор одного трека (та ветка ниже не проходит через
-        // PlayNextTrack/очередь вообще, она просто перезапускает текущий трек).
+        // Очередь важнее RepeatMode.One: иначе поставленный в очередь трек не сыграл бы при повторе одного трека
+        // (та ветка ниже просто перезапускает текущий, минуя PlayNextTrack/очередь).
         if (_playbackQueue.Count > 0)
         {
             PlayNextTrack(TrackChangeOrigin.Automatic);
@@ -5029,13 +4658,10 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // ---------- Кнопки управления ----------
-
     private async void PlayPauseButton_Click(object sender, RoutedEventArgs e)
     {
-        // _audioFile, а не _outputDevice: WasapiPlayer создаётся для текущего источника и
-        // освобождается при StopPlayback. Наличие output само по себе не означает, что трек
-        // загружен, а _audioFile остаётся единственным достоверным признаком готового источника.
+        // Признак готового источника — _audioFile, а не _outputDevice: WasapiPlayer создаётся для текущего источника и
+        // освобождается при StopPlayback, так что наличие output ничего не значит.
         if (_audioFile == null)
         {
             var active = FlattenActive();
@@ -5046,10 +4672,8 @@ public partial class MainWindow : FluentWindow
             return;
         }
 
-        // Pause/Play у WASAPI нельзя запускать параллельно: быстрый второй клик мог попасть
-        // в момент смены состояния endpoint и оборвать ненулевой sample на границе буфера.
-        // Повторный клик в это короткое окно не запускается поверх первой операции: сохраняем
-        // только нечётность числа дополнительных переключений и выполним её после fade.
+        // Pause/Play у WASAPI нельзя запускать параллельно: быстрый второй клик мог попасть в смену состояния endpoint и оборвать
+        // ненулевой sample, поэтому запоминаем лишь чётность дополнительных переключений и выполняем её после fade.
         if (_playPauseTransitionInProgress)
         {
             _playPausePendingToggle = !_playPausePendingToggle;
@@ -5081,10 +4705,8 @@ public partial class MainWindow : FluentWindow
                 }
                 catch (Exception ex)
                 {
-                    // Устройство вывода могло исчезнуть прямо во время работы (наушники/колонки
-                    // отключили, драйвер упал). Не выдаём желаемое состояние «На паузе» за факт:
-                    // аудио могло продолжить играть, поэтому оставляем существующий playback state
-                    // и показываем понятную ошибку с подсказкой в индикаторе трека.
+                    // Устройство могло исчезнуть во время работы (отключили наушники, упал драйвер): не выдаём «На паузе» за факт,
+                    // оставляем состояние воспроизведения и показываем ошибку с подсказкой в индикаторе трека.
                     RecoverOutputDeviceAfterFailure(ex, resumePlayback: true);
                     return;
                 }
@@ -5161,23 +4783,16 @@ public partial class MainWindow : FluentWindow
         IWavePlayer? activeOutput = _outputDevice;
         if (activeFade is not null && _isPlaying)
         {
-            // BeginFadeOut применяется только при следующем Read audio-thread. Прежняя
-            // фиксированная пауза 30 ms могла вызвать Stop ещё до того, как был записан
-            // нулевой хвост в WASAPI buffer; на некоторых endpoint это слышно как щелчок.
-            // Ждём сигнал, что fade действительно достиг тишины, затем даём уже
-            // записанному буферу доиграть свой silent tail. Это не меняет Shared-mode,
-            // latency profile или формат, а устраняет обрыв ненулевого sample.
+            // BeginFadeOut применяется на следующем Read audio thread: фиксированная пауза 30 ms могла вызвать Stop до записи нулевого
+            // хвоста в WASAPI buffer (щелчок на части endpoint). Ждём сигнал тишины и даём буферу доиграть silent tail.
             var fadeOutCompleted = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             EventHandler fadeOutHandler = (_, _) => fadeOutCompleted.TrySetResult(true);
             activeFade.FadeOutComplete += fadeOutHandler;
             try
             {
                 activeFade.BeginFadeOut(TrackChangeFadeOutMilliseconds);
-                // Обычно FadeOutComplete приходит от следующего Read audio-thread. Если
-                // output уже paused/stopped и callback не придёт, 350-ms timeout заметно
-                // замедлял Next/Previous. Вместо него ждём расчётный путь: текущий buffer,
-                // 24-ms fade и safety margin. В этот момент endpoint уже воспроизводит
-                // тишину, поэтому Stop не обрывает ненулевой sample.
+                // FadeOutComplete приходит с audio thread; если output уже paused/stopped, 350-ms timeout замедлял Next/Previous,
+                // поэтому ждём расчётный путь: buffer, 24-ms fade и запас — endpoint уже играет тишину, и Stop не обрывает sample.
                 int fallbackDelayMilliseconds = GetTrackChangeFadeFallbackDelayMilliseconds(activeOutput);
                 Task completed = await Task.WhenAny(
                     fadeOutCompleted.Task,
@@ -5430,10 +5045,8 @@ public partial class MainWindow : FluentWindow
         if (_isExiting)
             return;
 
-        // Список и диагностическая карточка Settings должны отражать подключение/отключение
-        // сразу, но callback сначала всегда переносится с Core Audio worker thread на Dispatcher.
-        // PropertyValueChanged может приходить часто (например, при громкости) и не требует
-        // пересборки ComboBox или recovery.
+        // Список и карточка Settings должны сразу отражать подключение/отключение, но callback переносим с Core Audio worker
+        // thread на Dispatcher; PropertyValueChanged приходит часто (например, громкость) и не требует пересборки ComboBox или recovery.
         if (e.Kind != AudioOutputEndpointChangeKind.DevicePropertiesChanged && _settingsWindow?.IsLoaded == true)
             _settingsWindow.RefreshOutputDeviceSelection();
 
@@ -5517,10 +5130,8 @@ public partial class MainWindow : FluentWindow
         RecoverOutputDeviceAfterFailure(new InvalidOperationException(reason), _isPlaying, expectedDeviceEvent: true);
     }
 
-    // Устройство могло исчезнуть в процессе Play/Pause, прислать PlaybackStopped с ошибкой или
-    // сообщить о недоступности через Core Audio endpoint event. Один controlled retry через Windows
-    // audio mapper лучше, чем повторные сообщения об ошибке: при отключении USB/Bluetooth это обычно
-    // уже новое системное устройство Windows.
+    // Устройство могло исчезнуть при Play/Pause, прислать PlaybackStopped с ошибкой или сообщить через Core Audio endpoint event:
+    // один controlled retry через Windows audio mapper лучше повторных ошибок (после отключения USB/Bluetooth это уже новое устройство).
     private void RecoverOutputDeviceAfterFailure(Exception error, bool resumePlayback, bool expectedDeviceEvent = false)
     {
         if (expectedDeviceEvent)
@@ -5604,12 +5215,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
-    // См. TrackTagsWindow.SaveButton_Click — координация с внешней записью в файл (изменение
-    // тегов/обложки), пока он может быть открыт живым NAudio-потоком на чтение. Возвращает
-    // null, если сейчас играет не этот файл вовсе (ничего останавливать не нужно, запись
-    // пройдёт спокойно параллельно с воспроизведением ДРУГОГО трека); если это именно
-    // filePath — временно освобождает хендл и возвращает точку восстановления, которую нужно
-    // передать в ResumeAfterExternalWrite после того, как запись закончится (успешно или нет).
+    // Координация с внешней записью в файл (теги/обложка, см. TrackTagsWindow.SaveButton_Click), пока файл открыт NAudio-потоком:
+    // null, если играет другой трек; иначе освобождает хендл и возвращает точку для ResumeAfterExternalWrite после записи.
     public (TimeSpan Position, bool WasPlaying)? ReleaseFileForExternalWrite(string filePath)
     {
         if (filePath != _currentTrackPath || _audioFile == null) return null;
@@ -5637,10 +5244,8 @@ public partial class MainWindow : FluentWindow
 
         StopProgressTimerAndAnimation();
 
-        // Stop()/Dispose() ниже сами поднимают PlaybackStopped — срабатывает и на естественное
-        // завершение, и на ручную остановку. Без отписки заранее автопереключение из
-        // OutputDevice_PlaybackStopped вызывало бы этот же обработчик повторно для СТАРОГО
-        // _audioFile, и автопереход срабатывал через раз вместо каждого трека.
+        // Stop()/Dispose() поднимают PlaybackStopped и при естественном завершении, и при ручной остановке: без предварительной отписки
+        // автопереключение из OutputDevice_PlaybackStopped вызывалось бы повторно для старого _audioFile, и автопереход работал через раз.
         if (_outputDevice != null)
             _outputDevice.PlaybackStopped -= OutputDevice_PlaybackStopped;
 
@@ -5706,26 +5311,18 @@ public partial class MainWindow : FluentWindow
                 preservePendingPlaybackState: true);
     }
 
-    // Сначала отдаёт и убирает первый элемент очереди "Играть следующим", если она не пуста;
-    // иначе — обычная логика (шаффл/плейлист) через ComputeNextTrackPath. Использовать только
-    // там, где путь ДЕЙСТВИТЕЛЬНО будет передан в LoadAndPlay — см. комментарий над
-    // PlaybackQueue.PopNext о том, почему это не годится для CommitPendingHotkeyTrackStep.
+    // Отдаёт и убирает первый элемент очереди "Играть следующим", иначе обычная логика (ComputeNextTrackPath); использовать
+    // только если путь точно пойдёт в LoadAndPlay (см. PlaybackQueue.PopNext и CommitPendingHotkeyTrackStep).
     private string? ResolveNextTrackPathRespectingQueue(string? currentPath)
     {
-        // Файл могли удалить или переместить уже после постановки в очередь. Перед
-        // потреблением пропускаем такие записи, чтобы обычное переключение не превращалось
-        // в сообщение об ошибке открытия трека.
+        // Файл могли удалить или переместить после постановки в очередь: пропускаем такие записи, чтобы переключение не превращалось
+        // в ошибку открытия трека.
         _playbackQueue.PruneMissing();
         return _playbackQueue.PopNext() ?? ComputeNextTrackPath(currentPath);
     }
 
-    // Чистое вычисление пути к следующему/предыдущему треку — без загрузки и воспроизведения.
-    // Вынесено из PlayNextTrack/PrevButton_Click, чтобы им же можно было "прокрутить" несколько
-    // шагов вперёд/назад подряд (см. HandleHotkeyNext/HandleHotkeyPrevious) не запуская
-    // декодирование аудио на каждый промежуточный шаг — сама эта функция ничего не декодирует,
-    // только двигает индекс по активному плейлисту либо по истории шафла (см. комментарий
-    // над GetShuffleHistoryTrack — там же и мутация истории, она достаточно дешёвая, чтобы
-    // звать её хоть на каждое сообщение WM_HOTKEY при зажатой клавише).
+    // Чистое вычисление пути следующего/предыдущего трека без загрузки и декодирования: позволяет "прокрутить" несколько шагов
+    // (HandleHotkeyNext/Previous); двигает индекс по плейлисту или истории шафла (GetShuffleHistoryTrack), это дёшево.
     private List<string> GetAvailableActiveTracks()
     {
         DateTime now = DateTime.UtcNow;
@@ -5736,9 +5333,8 @@ public partial class MainWindow : FluentWindow
             return _availableTracksNavigationCache;
         }
 
-        // Это единственная массовая File.Exists-проверка в коротком окне серии. Устаревший
-        // путь не будет открыт вслепую: LoadAndPlay повторяет проверку непосредственно перед
-        // созданием AudioFileReader.
+        // Единственная массовая File.Exists-проверка в коротком окне серии; устаревший путь не откроется вслепую —
+        // LoadAndPlay повторяет проверку перед созданием AudioFileReader.
         _availableTracksNavigationCache = FlattenActive().Where(File.Exists).ToList();
         _availableTracksNavigationCacheIsFavoritesView = _isFavoritesView;
         _availableTracksNavigationCacheCreatedUtc = now;
@@ -5747,18 +5343,15 @@ public partial class MainWindow : FluentWindow
 
     private string? ComputeNextTrackPath(string? currentPath, List<string>? activeTracks = null)
     {
-        // Файлы могли исчезнуть после построения плейлиста. Для обычной навигации проверяем
-        // актуальную доступность сразу; при удержании hotkey используем короткоживущий snapshot,
-        // а LoadAndPlay перед открытием всё равно проверит конечный путь повторно.
+        // Файлы могли исчезнуть после построения плейлиста: обычная навигация проверяет доступность сразу, при удержании hotkey
+        // берётся короткоживущий snapshot, а LoadAndPlay всё равно перепроверит конечный путь.
         var active = activeTracks ?? GetAvailableActiveTracks();
         if (active.Count == 0) return null;
 
         if (_isShuffleEnabled)
         {
-            // Если перед этим переключались назад по истории шафла, "вперёд" сначала
-            // возвращает туда, откуда уходили назад, а не сразу к новому случайному треку —
-            // и только когда история исчерпана, генерируем новый случайный трек и дописываем
-            // его в конец.
+            // После шага назад по истории шафла "вперёд" сначала возвращает туда, откуда ушли, и только по исчерпании истории
+            // генерирует новый случайный трек и дописывает его в конец.
             return GetShuffleHistoryTrack(+1, active, currentPath)
                    ?? AppendNewShuffleTrack(active, currentPath);
         }
@@ -5777,11 +5370,8 @@ public partial class MainWindow : FluentWindow
 
         if (_isShuffleEnabled)
         {
-            // Не генерируем новый случайный трек, а идём на шаг назад по уже пройденной
-            // истории шафла — и только если двигаться назад больше некуда (это самый первый
-            // "назад", раньше которого история не заходит), подбираем случайный трек и
-            // дописываем его в начало истории, чтобы дальнейшие "вперёд"/"назад" оставались
-            // последовательными.
+            // Идём на шаг назад по истории шафла; если назад некуда (самый первый "назад"), подбираем случайный трек и дописываем
+            // его в начало истории, чтобы дальнейшие "вперёд"/"назад" оставались последовательными.
             return GetShuffleHistoryTrack(-1, active, currentPath)
                    ?? PrependNewShuffleTrack(active, currentPath);
         }
@@ -5791,12 +5381,8 @@ public partial class MainWindow : FluentWindow
         return active[prevPos];
     }
 
-    // ---------- Быстрое переключение треков зажатой хоткей-клавишей ----------
-    // Первый переход выполняется сразу. Если клавиша остаётся зажатой, после 280 мс запускается
-    // независимый от системных WM_HOTKEY повтор каждые 140 мс (максимум около 7 треков/сек).
-    // Это устраняет зависимость от настроек автоповтора Windows и не позволяет породить десятки
-    // одновременных загрузок: LoadAndPlay отменяет предыдущую подготовку, а между шагами есть
-    // жёсткое ограничение частоты.
+    // Быстрое переключение зажатой хоткей-клавишей: первый переход сразу, при удержании через 280 мс — собственный повтор каждые 140 мс
+    // (~7 треков/сек), независимый от автоповтора Windows; LoadAndPlay отменяет прошлую подготовку, а частота жёстко ограничена.
     private const int HotkeyTrackInitialHoldDelayMs = 280;
     private const int HotkeyTrackRepeatIntervalMs = 140;
     // Короткий опрос нужен только до начала повтора: он быстро замечает отпускание клавиши,
@@ -5812,9 +5398,8 @@ public partial class MainWindow : FluentWindow
     private bool _hotkeyTrackRepeatStarted;
     private DateTime _hotkeyTrackHoldStartedUtc;
     private string? _hotkeyTrackNavigationCursor;
-    // Для одного удержания hotkey список доступных путей неизменен практически всегда. Снимок
-    // исключает синхронный File.Exists по всему плейлисту каждые 140 ms; перед загрузкой
-    // конечный путь всё равно повторно проверяется в LoadAndPlay.
+    // Список доступных путей за одно удержание почти не меняется: снимок исключает синхронный File.Exists по плейлисту каждые 140 ms,
+    // а LoadAndPlay всё равно перепроверит конечный путь.
     private List<string>? _hotkeyAvailableTracksSnapshot;
 
     private void HandleHotkeyNext(int virtualKey) => HandleHotkeyTrackStep(+1, virtualKey);
@@ -5823,9 +5408,8 @@ public partial class MainWindow : FluentWindow
 
     private void HandleHotkeyTrackStep(int stepDirection, int virtualKey)
     {
-        // После первого WM_HOTKEY система продолжит присылать повторы, пока клавиша нажата.
-        // Их игнорируем целиком: собственный таймер уже опрашивает физическое отпускание и
-        // выдаёт шаги с фиксированной безопасной частотой, независимо от настроек Windows.
+        // Повторы WM_HOTKEY при удержании игнорируем: собственный таймер сам опрашивает физическое отпускание и выдаёт шаги
+        // с фиксированной безопасной частотой, независимо от настроек Windows.
         bool sameHeldKey = _hotkeyTrackStepTimer.IsEnabled
             && _heldHotkeyVirtualKey == virtualKey && _heldHotkeyDirection == stepDirection;
         if (sameHeldKey)
@@ -5895,9 +5479,8 @@ public partial class MainWindow : FluentWindow
         _pendingHotkeyNetSteps = 0;
         if (steps == 0) return;
 
-        // NavigationCursor хранит уже запрошенный путь, пока асинхронная загрузка ещё не успела
-        // сделать его CurrentTrackPath. Благодаря этому удержание действительно проходит по
-        // последовательности треков, а не повторно запрашивает один и тот же следующий файл.
+        // NavigationCursor хранит уже запрошенный путь, пока асинхронная загрузка не сделала его CurrentTrackPath: так удержание
+        // идёт по последовательности, а не запрашивает один и тот же файл.
         var direction = steps > 0 ? AlbumArtTransitionDirection.Next : AlbumArtTransitionDirection.Previous;
         string? path = _hotkeyTrackNavigationCursor ?? GetCurrentTrackPath();
         List<string>? activeTracksSnapshot = _hotkeyAvailableTracksSnapshot;
@@ -5935,19 +5518,15 @@ public partial class MainWindow : FluentWindow
         _shuffleBag.Clear();
     }
 
-    // Обычный shuffle и UseImprovedShuffle используют одну и ту же безопасную колоду.
-    // Это исключает повтор до завершения цикла и не допускает повтора текущего трека
-    // на границе новой колоды. Различия режима сохраняются на уровне настроек и UI.
+    // Обычный shuffle и UseImprovedShuffle используют одну колоду: нет повторов до конца цикла и повтора текущего трека на границе колоды;
+    // различия режимов — только в настройках и UI.
     private string GetNextShuffleTrack(List<string> activeTracks, string? excludePath)
     {
         return GetRandomTrack(activeTracks, excludePath);
     }
 
-    // Двигается по уже накопленной истории шафла на shift (-1 — назад, +1 — вперёд) и
-    // возвращает трек по новому положению, либо null, если двигаться в эту сторону
-    // больше некуда (истории ещё нет, или она уже кончилась). Трек, который мог быть
-    // удалён из плейлиста с момента проигрывания, пропускается вместе с "хвостом"
-    // истории после него.
+    // Двигается по истории шафла на shift (-1 назад, +1 вперёд); null, если в эту сторону больше некуда. Треки, удалённые из
+    // плейлиста, пропускаются вместе с «хвостом» истории после них.
     private string? GetShuffleHistoryTrack(int shift, List<string> activeTracks, string? currentPath)
     {
         if (_shuffleHistory.Count == 0 && currentPath != null)
@@ -6008,9 +5587,7 @@ public partial class MainWindow : FluentWindow
 
     private void ShuffleButton_Click(object sender, RoutedEventArgs e) => SetShuffleEnabled(!_isShuffleEnabled);
 
-    // Вынесено из ShuffleButton_Click, чтобы этим же кодом (смена состояния + иконки кнопки)
-    // можно было воспользоваться и при восстановлении сохранённого состояния при запуске
-    // (см. ApplySettingsOnStartup), не эмулируя клик по кнопке.
+    // Вынесено из ShuffleButton_Click, чтобы применять то же (состояние и иконка) при восстановлении на старте без эмуляции клика.
     private void SetShuffleEnabled(bool enabled, bool resetSessionHistory = true)
     {
         _isShuffleEnabled = enabled;
@@ -6024,9 +5601,6 @@ public partial class MainWindow : FluentWindow
             ResetShuffleState();
     }
 
-    // Вызывается из окна настроек при переключении настройки "Шаффл без повторов" — колода
-    // от старого/нового алгоритма не имеет смысла продолжать использовать после смены режима
-    // на лету, поэтому просто начинаем её заново.
     public void ResetAllUserData()
     {
         FlushPlaybackClock();
@@ -6065,9 +5639,8 @@ public partial class MainWindow : FluentWindow
         SettingsManager.Save(_settings);
     }
 
-    // Возвращает последний полный снимок, созданный перед явным сбросом. Здесь восстанавливаем
-    // не только AppSettings, но и runtime-коллекции, которые при полном сбросе уже были очищены.
-    // Сохранённый трек загружается на паузе: возврат настроек не должен внезапно начать музыку.
+    // Возвращает последний полный снимок перед явным сбросом: восстанавливаем не только AppSettings, но и runtime-коллекции,
+    // очищенные сбросом; сохранённый трек грузится на паузе — возврат настроек не должен внезапно включать музыку.
     public bool TryRestoreLastSettingsReset()
     {
         if (!SettingsResetRecoveryService.TryRestoreLatest(_settings)) return false;
@@ -6110,6 +5683,8 @@ public partial class MainWindow : FluentWindow
         return true;
     }
 
+    // Вызывается из настроек при переключении "Шаффл без повторов": колода старого/нового алгоритма после смены режима
+    // бессмысленна, поэтому начинаем заново.
     public void ResetShuffleState()
     {
         _shuffleHistory.Clear();
@@ -6117,18 +5692,16 @@ public partial class MainWindow : FluentWindow
         _shuffleBag.Clear();
     }
 
-    // Включение сразу снимает снимок текущей очереди (иначе до первого изменения очереди
-    // settings.json ещё хранил бы старое значение); выключение чистит сохранённую копию,
-    // чтобы она не всплыла молча, если настройку включат снова позже.
+    // Включение сразу снимает снимок текущей очереди (иначе settings.json хранил бы старое значение до первого её изменения),
+    // выключение чистит сохранённую копию, чтобы она не всплыла при повторном включении.
     public void SetSaveQueueBetweenRestarts(bool enabled)
     {
         _settings.SaveQueueBetweenRestarts = enabled;
         _settings.SavedQueue = enabled ? _playbackQueue.Items.ToList() : new List<string>();
     }
 
-    // Вызывается только после восстановления SavedPlaylistFolders. Повреждённые, удалённые
-    // или выключенные пути не должны делать кнопку «Назад» непредсказуемой, поэтому берём лишь
-    // актуальные активные треки и аккуратно ограничиваем сохранённый индекс.
+    // Вызывается после восстановления SavedPlaylistFolders: повреждённые, удалённые или выключенные пути не должны
+    // делать «Назад» непредсказуемым, поэтому берём актуальные активные треки и ограничиваем сохранённый индекс.
     private void PersistShuffleSessionState()
     {
         if (!_isShuffleEnabled || _shuffleHistory.Count == 0)
@@ -6217,8 +5790,6 @@ public partial class MainWindow : FluentWindow
         RepeatModeChanged?.Invoke(_repeatMode.ToString());
     }
 
-    // ---------- Мини-плеер (отдельное окно с настоящей прозрачностью) ----------
-
     private void MiniModeButton_Click(object sender, RoutedEventArgs e) => SetPlayerViewMode(PlayerViewMode.Mini);
 
     // Переключает в мини-плеер. Вызывается из SetPlayerViewMode — как по кнопке/пункту
@@ -6233,22 +5804,12 @@ public partial class MainWindow : FluentWindow
         // После фактического возврата в мини-плеер отложенный маркер больше не нужен.
         _returnToMiniOnNextTaskbarMinimize = false;
 
-        // На этот момент _viewMode ещё хранит вид ДО перехода в мини-режим (SetPlayerViewMode
-        // присваивает новое значение уже после вызова этого метода) — запоминаем его, чтобы
-        // при "развернуть" в ExitMiniMode вернуться именно туда, откуда ушли.
+        // _viewMode ещё хранит вид ДО мини-режима (SetPlayerViewMode присваивает новый после вызова): запоминаем его,
+        // чтобы "развернуть" в ExitMiniMode вернулся туда, откуда ушли.
         _preMiniViewMode = _viewMode;
 
-        // У мини-плеера ShowInTaskbar="False" (см. MiniPlayerWindow.xaml) — в мини-режиме у
-        // приложения вообще нет никакого присутствия ни в панели задач, ни в трее, кроме самого
-        // окошка мини-плеера. Показываем иконку в трее и здесь, а не только при закрытии
-        // основного окна в трей (см. OnClosing) — иначе, свернув плеер в мини-режим, до него
-        // потом никак не добраться, кроме как найти и кликнуть само окошко мини-плеера.
-        //
-        // Делаем это ДО создания/показа MiniPlayerWindow, а не после: ForceForeground ниже —
-        // не мгновенная операция, и если сначала выводить окно на передний план, а трей
-        // регистрировать последним, значок на старте в мини-режиме заметно отстаёт от уже
-        // видимого окошка. Сама регистрация в трее — почти мгновенный вызов, ей незачем ждать
-        // своей очереди позади более тяжёлой отрисовки окна.
+        // У мини-плеера ShowInTaskbar="False" (MiniPlayerWindow.xaml): иконку в трее показываем здесь, а не только в OnClosing, иначе
+        // до него не добраться; делаем до показа окна, чтобы значок не отставал от видимого мини-плеера (ForceForeground небыстр).
         Logger.Info($"EnterMiniMode: вызываю _trayIconManager.Show() (стартовый вызов={_isApplyingStartupSettings}).");
         _trayIconManager?.Show("Lumisense");
 
@@ -6258,9 +5819,7 @@ public partial class MainWindow : FluentWindow
         };
         _miniPlayerWindow.ApplyOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
 
-        // Возвращаем мини-плеер туда, куда его в прошлый раз поставил пользователь.
-        // Если позиция ещё ни разу не задавалась — ставим его в правый нижний угол
-        // рабочей области экрана (стандартное место для мини-плеера).
+        // Возвращаем мини-плеер на прежнее место; если позиция не задавалась — в правый нижний угол рабочей области.
         if (_settings.MiniPlayerLeft.HasValue && _settings.MiniPlayerTop.HasValue)
         {
             _miniPlayerWindow.Left = _settings.MiniPlayerLeft.Value;
@@ -6281,9 +5840,8 @@ public partial class MainWindow : FluentWindow
         Hide();
     }
 
-    // Вызывается из MiniPlayerWindow при нажатии кнопки "развернуть".
-    // Внешняя активация ярлыка передаёт true, чтобы следующий клик по кнопке панели задач
-    // снова вернул мини-плеер; обычное разворачивание мини-плеера этот маркер не устанавливает.
+    // Вызывается из MiniPlayerWindow по кнопке "развернуть"; внешняя активация ярлыка передаёт true, чтобы следующий клик
+    // по кнопке панели задач снова вернул мини-плеер (обычное разворачивание маркер не ставит).
     public void ExitMiniMode(bool returnToMiniOnNextTaskbarMinimize = false)
     {
         _isMiniMode = false;
@@ -6297,19 +5855,16 @@ public partial class MainWindow : FluentWindow
         ForceForeground(this);
         _trayIconManager?.Hide();
 
-        // Ширина/высота окна не менялись, пока плеер был свёрнут в мини-режим — они уже
-        // соответствуют тому виду, в котором плеер был до сворачивания. Здесь только
-        // возвращаем сам флаг вида плеера (для галочки в контекстном меню и настроек) —
-        // без повторного SetPlayerViewMode, чтобы не запускать пересчёт размеров заново.
+        // Ширина/высота не менялись в мини-режиме и уже соответствуют прежнему виду: возвращаем лишь флаг вида (галочка меню и
+        // настроек) без повторного SetPlayerViewMode и пересчёта размеров.
         _viewMode = _preMiniViewMode;
         _settings.PlayerViewMode = _viewMode.ToString();
         SettingsManager.Save(_settings);
         UpdateViewModeMenuChecks();
     }
 
-    // Вызывается из MiniPlayerWindow при перемещении окна пользователем — запоминаем
-    // положение в общих настройках, чтобы при следующем сворачивании в мини-плеер
-    // окно появилось на том же месте (в том числе и после перезапуска приложения)
+    // Вызывается при перемещении мини-плеера пользователем: запоминаем положение, чтобы следующее сворачивание (и после
+    // перезапуска) появилось на том же месте.
     public void SaveMiniPlayerPosition(double left, double top)
     {
         _settings.MiniPlayerLeft = left;
@@ -6320,9 +5875,7 @@ public partial class MainWindow : FluentWindow
     // если мини-плеер сейчас открыт
     public void ApplyMiniPlayerOpacityLive(double opacity)
     {
-        // _settings.MiniPlayerOpacity уже обновлён вызывающей стороной (см.
-        // SettingsWindow.MiniOpacitySlider_ValueChanged) — ApplyOpacityLive просто
-        // перечитывает его и пересчитывает альфа-канал фона мини-плеера.
+        // MiniPlayerOpacity уже обновлён вызывающей стороной (MiniOpacitySlider_ValueChanged): ApplyOpacityLive лишь пересчитывает альфу фона.
         if (_miniPlayerWindow != null) _miniPlayerWindow.ApplyOpacityLive();
     }
 
@@ -6339,9 +5892,7 @@ public partial class MainWindow : FluentWindow
         _trackChangeToastController.ApplyOverlayCompatibilityLive(enabled);
     }
 
-    // Либо пользователь включил вручную, либо автоопределение сейчас считает, что запущена
-    // игра/оверлей — одно не переписывает другое: выключение автоопределения не трогает
-    // ручной режим, а выключение ручного не мешает автоопределению включить его снова.
+    // Включено вручную либо автоопределением игры/оверлея: они независимы — выключение одного не мешает другому.
     public bool EffectiveGameOverlayCompatibilityEnabled =>
         _settings.GameOverlayCompatibilityMode ||
         (_settings.GameOverlayCompatibilityAutoDetect && _autoDetectedGameOverlayActive);
@@ -6388,17 +5939,13 @@ public partial class MainWindow : FluentWindow
         ApplyMiniPlayerOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
     }
 
-    // Позволяет окну настроек мгновенно применить смену светлой/тёмной темы к мини-плееру,
-    // если он сейчас открыт — иначе мини-плеер узнал бы о новой теме только при следующем
-    // открытии (пересоздании окна).
+    // Мгновенно применяет смену темы к открытому мини-плееру, иначе он узнал бы о ней только при пересоздании окна.
     public void ApplyMiniPlayerThemeLive()
     {
         if (_miniPlayerWindow != null) _miniPlayerWindow.ApplyThemeLive();
     }
 
-    // Позволяет окну настроек мгновенно переключить, какую функцию выполняет вторая кнопка
-    // мини-плеера (повтор/перемешать — см. AppSettings.MiniPlayerSecondaryButton), если он
-    // сейчас открыт, не дожидаясь его переоткрытия.
+    // Мгновенно переключает функцию второй кнопки мини-плеера (AppSettings.MiniPlayerSecondaryButton) на открытом окне.
     public void ApplyMiniPlayerSecondaryButtonLive()
     {
         _miniPlayerWindow?.UpdateSecondaryButton();
@@ -6467,9 +6014,8 @@ public partial class MainWindow : FluentWindow
         _miniPlayerWindow?.ApplyInfoModeLive();
     }
 
-    // Всплывающая карточка показывается только после готовности метаданных и обложки. Решение
-    // принимает явная политика: каждый новый трек, только фактический старт или лишь ручной
-    // выбор/переключение. Возобновление той же композиции не вызывает этот метод вообще.
+    // Карточка показывается после готовности метаданных и обложки по политике (каждый трек, только старт или ручной выбор);
+    // возобновление той же композиции этот метод не вызывает.
     private void ShowTrackChangeToast(TrackChangeOrigin origin, bool autoPlay)
     {
         if (!_settings.ShowTrackChangeToast || !ShouldShowTrackChangeToast(origin, autoPlay)) return;
@@ -6488,11 +6034,8 @@ public partial class MainWindow : FluentWindow
         };
 
 
-    // ---------- Эквалайзер (см. EqualizerSampleProvider) ----------
-    // Настройки читаются/пишутся здесь, а не прямо из SettingsWindow — EqualizerSampleProvider
-    // существует только пока что-то играет (пересоздаётся в LoadAndPlay), а
-    // AppSettings.EqualizerEnabled/EqualizerBandGainsDb должны сохраняться и применяться даже
-    // без активного воспроизведения.
+    // Эквалайзер: настройки читаются/пишутся здесь, а не в SettingsWindow — EqualizerSampleProvider живёт только пока что-то
+    // играет (пересоздаётся в LoadAndPlay), а EqualizerEnabled/EqualizerBandGainsDb должны сохраняться и без воспроизведения.
 
     // Заполняет только что созданный _equalizer сохранёнными настройками — вызывается из
     // LoadAndPlay при каждой смене трека, потому что сам _equalizer живёт не дольше трека.
@@ -6507,10 +6050,7 @@ public partial class MainWindow : FluentWindow
         _equalizer.Enabled = _settings.EqualizerEnabled && !_settings.EqualizerBypass;
     }
 
-    // Анимация смены обложки (см. AnimateAlbumArtTransition) — переключатель в настройках,
-    // "Оформление". Хранится и читается напрямую из _settings, отдельного применения к
-    // "живому" состоянию не требуется: флаг просто проверяется при каждом следующем вызове
-    // AnimateAlbumArtTransition.
+    // Флаг анимации смены обложки (AnimateAlbumArtTransition) читается из _settings при каждом вызове — отдельного применения не нужно.
     public bool IsAlbumArtTransitionEnabled => _settings.AlbumArtTransitionEnabled;
 
     public void SetAlbumArtTransitionEnabled(bool enabled) => _settings.AlbumArtTransitionEnabled = enabled;
@@ -6525,9 +6065,8 @@ public partial class MainWindow : FluentWindow
 
     private void ReapplySavedPlaybackRateAfterTrackReady(int generation)
     {
-        // SoundTouch создаётся в фоне, затем WaveOut инициализируется на UI-потоке. Повторяем
-        // установку уже после Init через очередь Dispatcher, чтобы исключить поздний сброс
-        // Tempo во время восстановления последнего трека при запуске приложения.
+        // SoundTouch создаётся в фоне, а WaveOut инициализируется на UI-потоке: повторяем установку после Init через Dispatcher,
+        // чтобы поздний сброс Tempo при восстановлении последнего трека на старте её не затёр.
         Dispatcher.BeginInvoke(() =>
         {
             if (_isExiting || generation != _audioPlaybackCoordinator.CurrentGeneration || _tempoProvider == null)
@@ -6614,16 +6153,14 @@ public partial class MainWindow : FluentWindow
     public double GetEqualizerBandGain(int band) =>
         band >= 0 && band < _settings.EqualizerBandGainsDb.Length ? _settings.EqualizerBandGainsDb[band] : 0;
 
-    // Вызывается из SettingsWindow при каждом движении слайдера одной полосы — сразу и
-    // сохраняет значение в настройки, и (если сейчас что-то играет) применяет его к реальному
-    // фильтру, чтобы звук менялся вживую, а не только после следующего перезапуска трека.
+    // Вызывается при каждом движении слайдера полосы: сразу сохраняет значение и, если что-то играет, применяет его к фильтру,
+    // чтобы звук менялся вживую.
     public void SetEqualizerBandGain(int band, double gainDb)
     {
         if (band < 0 || band >= EqualizerSampleProvider.BandFrequencies.Length) return;
 
-        // EqualizerBandGainsDb у уже существующих settings.json мог быть сохранён с ДРУГИМ
-        // количеством полос более старой/новой версией плеера — расширяем массив, а не падаем
-        // с IndexOutOfRange, если он окажется короче текущего набора полос.
+        // EqualizerBandGainsDb из settings.json другой версии мог иметь иное число полос — расширяем массив, а не падаем
+        // с IndexOutOfRange.
         if (_settings.EqualizerBandGainsDb.Length <= band)
         {
             var resized = new double[EqualizerSampleProvider.BandFrequencies.Length];
@@ -6642,14 +6179,10 @@ public partial class MainWindow : FluentWindow
         ApplyEqualizerGainsFromSettings();
     }
 
-    // ---------- Пресеты эквалайзера ----------
-
     public IReadOnlyList<EqualizerPreset> EqualizerPresets => _settings.EqualizerPresets;
 
-    // Сохраняет ТЕКУЩИЕ значения полос (EqualizerBandGainsDb) как пресет с этим именем.
-    // Имя уже занято — тихо перезаписывает существующий пресет, а не плодит дубликаты:
-    // пользователь чаще всего "пересохраняет" под тем же названием, донастроив что-то,
-    // а не специально хочет несколько пресетов с одинаковым именем.
+    // Сохраняет ТЕКУЩИЕ значения полос как пресет; занятое имя тихо перезаписывается — чаще всего пользователь
+    // пересохраняет под тем же названием после донастройки, а не хочет дубликатов.
     public void SaveEqualizerPreset(string name)
     {
         name = name.Trim();
@@ -6681,19 +6214,16 @@ public partial class MainWindow : FluentWindow
         SettingsManager.Save(_settings);
     }
 
-    // Экспорт пресета в отдельный .json-файл — тот же формат, что и сам пресет в settings.json
-    // (см. EqualizerPreset в AppSettings.cs), поэтому файл можно просто переслать кому-то ещё
-    // и импортировать обратно тем же методом ниже, без специального протокола обмена.
+    // Экспорт пресета в .json — тот же формат, что в settings.json (EqualizerPreset), поэтому файл можно переслать и импортировать
+    // обратно без специального протокола.
     public void ExportEqualizerPreset(EqualizerPreset preset, string filePath)
     {
         string json = JsonSerializer.Serialize(preset, new JsonSerializerOptions { WriteIndented = true });
         File.WriteAllText(filePath, json);
     }
 
-    // Импортирует пресет из файла, ранее сохранённого через ExportEqualizerPreset (в том числе
-    // присланного кем-то другим). Имя уже занято среди существующих пресетов — добавляет
-    // суффикс " (2)", " (3)" и т.д., а не молча перезаписывает чужую настройку.
-    // Возвращает null, если файл повреждён или не похож на пресет.
+    // Импортирует пресет из файла ExportEqualizerPreset (в том числе чужого); занятое имя получает суффикс " (2)", " (3)",
+    // а не перезаписывает чужую настройку; null, если файл повреждён или не похож на пресет.
     public EqualizerPreset? ImportEqualizerPresetFromFile(string filePath)
     {
         const long maxPresetBytes = 512 * 1024;
@@ -6728,10 +6258,8 @@ public partial class MainWindow : FluentWindow
         return preset;
     }
 
-    // Переключение "Закрепить" / "Поверх окон" прямо из контекстного меню мини-плеера
-    // (ПКМ по мини-плееру). Работает с теми же настройками, что и чекбоксы в окне настроек —
-    // если оно сейчас открыто, подтягиваем в нём актуальное состояние, чтобы оба места
-    // управления не разъезжались друг с другом.
+    // "Закрепить"/"Поверх окон" из контекстного меню мини-плеера: те же настройки, что чекбоксы в окне настроек —
+    // если оно открыто, подтягиваем в нём состояние, чтобы два места управления не расходились.
     public void SetMiniPlayerPinned(bool pinned)
     {
         _settings.MiniPlayerPinned = pinned;
@@ -6745,11 +6273,8 @@ public partial class MainWindow : FluentWindow
         _settingsWindow?.RefreshMiniPlayerToggles();
     }
 
-    // Вызывается из контекстного меню мини-плеера (ПКМ → слайдер "Прозрачность"), когда её
-    // меняют прямо там, а не через окно настроек — та же роль, что и у SetMiniPlayerPinned/
-    // SetMiniPlayerTopmost выше: сохранить настройку, применить её вживую и подтянуть значение
-    // в окне настроек, если оно сейчас открыто, чтобы два места редактирования одной и той же
-    // настройки не разъезжались друг с другом.
+    // Прозрачность из контекстного меню мини-плеера (как SetMiniPlayerPinned/SetMiniPlayerTopmost): сохраняет, применяет вживую
+    // и подтягивает значение в открытое окно настроек, чтобы два места редактирования не расходились.
     public void SetMiniPlayerOpacity(double opacity)
     {
         _settings.MiniPlayerOpacity = opacity;
@@ -6761,8 +6286,6 @@ public partial class MainWindow : FluentWindow
     // комбинацию клавиш (или очистил старую) — применяет её без перезапуска приложения
     public void ReapplyHotkeys() => _mediaHotKeys?.ApplyCustomHotkeys(_settings);
 
-    // ---------- Управление плеером извне (из MiniPlayerWindow) ----------
-
     public void ExternalPlayPause() => PlayPauseButton_Click(this, new RoutedEventArgs());
     public void ExternalNext() => PlayNextTrack();
     public void ExternalPrev() => PrevButton_Click(this, new RoutedEventArgs());
@@ -6771,11 +6294,8 @@ public partial class MainWindow : FluentWindow
     public void ExternalToggleShuffle() => ShuffleButton_Click(this, new RoutedEventArgs());
     public void ExternalToggleMute() => ToggleMute();
 
-    // Для "второй кнопки" мини-плеера в режиме "Избранное" (см. AppSettings.
-    // MiniPlayerSecondaryButton и MiniPlayerWindow.SecondaryButton_Click) — тот же метод,
-    // которым пользуется сердечко в обычном плейлисте (см. ToggleFavoriteAndRefresh), просто
-    // путь к файлу берётся из того, что сейчас играет, а не из DataContext строки плейлиста.
-    // Ничего не делает, если сейчас ничего не загружено.
+    // Для "второй кнопки" мини-плеера в режиме "Избранное" (MiniPlayerWindow.SecondaryButton_Click): тот же метод, что у сердечка
+    // в плейлисте (ToggleFavoriteAndRefresh), но путь — текущий трек; ничего не делает, если ничего не загружено.
     public void ExternalToggleFavoriteCurrentTrack()
     {
         if (_currentTrackPath != null) ToggleFavoriteAndRefresh(_currentTrackPath);
@@ -6800,13 +6320,8 @@ public partial class MainWindow : FluentWindow
         CurrentTimeText.Text = newTime.ToString(@"mm\:ss");
     }
 
-    // ---------- Прогресс и перемотка ----------
-
-    // ---------- Перетаскивание ползунков через прозрачный слой поверх Slider ----------
-    // Сам Slider сделан IsHitTestVisible="False" — он только рисует трек и шарик.
-    // Всю мышь обрабатывает прозрачный Border поверх него, поэтому неважно, куда именно
-    // кликнули: в любую точку трека или прямо в шарик — перетаскивание продолжается плавно
-    // на всём протяжении зажатой кнопки мыши, без конфликтов со внутренней логикой Thumb.
+    // Перетаскивание ползунков: Slider с IsHitTestVisible="False" только рисует, а мышь обрабатывает прозрачный Border поверх него —
+    // перетаскивание идёт плавно из любой точки трека без конфликтов с логикой Thumb.
 
     private bool _isDraggingProgressOverlay;
     private bool _isDraggingVolumeOverlay;
@@ -6836,9 +6351,8 @@ public partial class MainWindow : FluentWindow
         _isUserInteractingWithProgress = false;
     }
 
-    // Перемотка колесом мыши над прогресс-баром и хоткеями "перемотка вперёд"/"назад" (см.
-    // подписку на _mediaHotKeys.SeekForwardPressed/SeekBackwardPressed) — общий шаг в 5 секунд,
-    // общий код клампинга по границам трека и обновления UI.
+    // Общий шаг 5 секунд с клампингом по границам трека и обновлением UI для колеса над прогресс-баром и хоткеев
+    // (_mediaHotKeys.SeekForwardPressed/SeekBackwardPressed).
     private void SeekBy(double seconds)
     {
         if (_audioFile == null) return;
@@ -6853,9 +6367,7 @@ public partial class MainWindow : FluentWindow
         RaiseProgressChanged(newTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
     }
 
-    // Прокрутка колесом мыши над прогресс-баром — перемотка с тем же шагом, что и хоткеи
-    // "вперёд"/"назад" (5 секунд за одно деление). e.Delta положителен при прокрутке "от себя"
-    // (вверх) — это и есть перемотка вперёд, по аналогии с VolumeRow_MouseWheel.
+    // Колесо над прогресс-баром перематывает с тем же шагом, что хоткеи; e.Delta > 0 (вверх) — вперёд, как в VolumeRow_MouseWheel.
     private void ProgressOverlay_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
         if (_audioFile == null) return;
@@ -6895,17 +6407,13 @@ public partial class MainWindow : FluentWindow
         slider.Value = slider.Minimum + ratio * (slider.Maximum - slider.Minimum);
     }
 
-    // Раз в ~10 секунд во время игры (таймер тикает каждые 250мс — 40 тиков) сохраняем
-    // текущий трек/позицию на диск, а не только по паузе/сворачиванию в трей/закрытию — так
-    // даже при аварийном завершении процесса (зависание, "снять задачу" и т.п.) позиция
-    // потеряется не больше чем на несколько секунд, а не полностью, как раньше (см.
-    // PersistPlaybackAndPlaylistState).
+    // Раз в ~10 секунд игры (40 тиков по 250 мс) сохраняем трек/позицию: при аварийном завершении позиция потеряется
+    // не более чем на секунды (см. PersistPlaybackAndPlaylistState).
     private const int AutoSaveEveryNTicks = 40;
     private int _ticksSinceLastAutoSave;
 
-    // Обновляет позицию ползунка прогресса под текущее время воспроизведения. Флагом
-    // _isSyncingProgressFromPlayback управляет сама — без него ProgressSlider_ValueChanged
-    // принял бы это присвоение за перемотку пользователем и дёргал бы _audioFile.CurrentTime.
+    // Флагом _isSyncingProgressFromPlayback метод управляет сам: иначе ProgressSlider_ValueChanged принял бы присваивание
+    // за перемотку пользователем и дёргал бы _audioFile.CurrentTime.
     private void SetProgressSliderValue(double seconds)
     {
         _isSyncingProgressFromPlayback = true;
@@ -6930,9 +6438,7 @@ public partial class MainWindow : FluentWindow
 
     private void ProgressTimer_Tick(object? sender, EventArgs e)
     {
-        // Пока пользователь держит ползунок нажатым (клик или перетаскивание) — не трогаем его
-        // значение автоматически, иначе неточность перемотки в mp3/aac будет сбивать позицию
-        // прямо во время движения, и ползунок будет "дёргаться".
+        // Пока ползунок зажат — значение не трогаем: неточность перемотки в mp3/aac иначе "дёргала" бы ползунок.
         if (_audioFile == null || _isUserInteractingWithProgress) return;
 
         // SetProgressSliderValue вызывает ProgressSlider_ValueChanged, который уже обновляет
@@ -6980,9 +6486,7 @@ public partial class MainWindow : FluentWindow
     {
         CurrentTimeText.Text = TimeSpan.FromSeconds(e.NewValue).ToString(@"mm\:ss");
 
-        // Общая точка для ЛЮБОГО изменения позиции — ручная перемотка, таймер прогресса или
-        // SeekBy — поэтому проще синхронизировать сюда прогресс waveform-полосы один раз, чем
-        // дублировать это же присваивание в каждом из тех мест по отдельности.
+        // Общая точка любого изменения позиции (перемотка, таймер, SeekBy): проще синхронизировать waveform здесь, чем дублировать.
         ProgressWaveform.Progress = ProgressSlider.Maximum > 0 ? e.NewValue / ProgressSlider.Maximum : 0;
         UpdateMainWindowSyncedLyrics(TimeSpan.FromSeconds(e.NewValue));
 
@@ -6996,20 +6500,14 @@ public partial class MainWindow : FluentWindow
             SeekCurrentAudioFile(TimeSpan.FromSeconds(e.NewValue));
     }
 
-    // ---------- Громкость ----------
-
-    // Плавно меняет громкость на заданный шаг (используется хоткеями увеличения/уменьшения
-    // громкости) — просто двигает тот же VolumeSlider, поэтому вся остальная логика
-    // (сохранение в настройки, обновление подписи процентов) срабатывает как обычно.
+    // Двигает тот же VolumeSlider (хоткеи громкости), поэтому сохранение и подпись процентов работают как обычно.
     private void ChangeVolumeBy(double delta)
     {
         VolumeSlider.Value = Math.Clamp(VolumeSlider.Value + delta, VolumeSlider.Minimum, VolumeSlider.Maximum);
     }
 
-    // Переводит положение ползунка (0..1) в множитель амплитуды. В обычном режиме используется
-    // мягкая audio-taper кривая, а в логарифмическом режиме ползунок сначала
-    // переводится в децибелы [MinDb, 0], потом в множитель амплитуды (10^(dB/20)), чтобы
-    // движение ползунка воспринималось на слух равномерно, а не сжато в нижние 10-20% хода.
+    // Положение ползунка (0..1) → множитель амплитуды: обычно мягкая audio-taper кривая, в логарифмическом режиме — через
+    // децибелы [MinDb, 0] и 10^(dB/20), чтобы ход воспринимался равномерно, а не сжатым в нижние 10-20%.
     private const double MinVolumeDb = -40.0; // тише практически не слышно — дальше просто тишина
     private const double LinearVolumeExponent = 2.0;
 
@@ -7025,9 +6523,8 @@ public partial class MainWindow : FluentWindow
         double db = MinVolumeDb * (1.0 - sliderValue);
         double raw = Math.Pow(10.0, db / 20.0);
 
-        // 10^(dB/20) при sliderValue → 0 стремится не к 0, а к "полу" в 10^(MinVolumeDb/20) —
-        // без этой перенормировки последний отрезок хода ползунка перед нулём давал резкий
-        // скачок к тишине вместо плавного затухания.
+        // 10^(dB/20) при sliderValue → 0 стремится к "полу", а не к 0: без перенормировки последний отрезок хода давал
+        // резкий скачок к тишине вместо плавного затухания.
         double floor = Math.Pow(10.0, MinVolumeDb / 20.0);
         return (float)((raw - floor) / (1.0 - floor));
     }
@@ -7244,9 +6741,8 @@ public partial class MainWindow : FluentWindow
         e.Handled = true;
     }
 
-    // Очередь остаётся читаемой в обычном и расширенном представлении окна: при ширине
-    // владельца 524–664 DIP содержимое Popup растёт вместе с окном, за пределами диапазона
-    // удерживается разумный минимум/максимум. Ширина внешней рамки на 28 DIP больше за счёт Padding.
+    // Очередь читаема в обычном и расширенном виде: при ширине владельца 524–664 DIP Popup растёт с окном, вне диапазона —
+    // минимум/максимум; внешняя рамка шире на 28 DIP из-за Padding.
     private void UpdateQueuePopupWidth()
     {
         QueuePopupContent.Width = Math.Clamp(ActualWidth - 52, 472, 612);
@@ -7254,9 +6750,8 @@ public partial class MainWindow : FluentWindow
 
     private void QueueButton_Click(object sender, RoutedEventArgs e)
     {
-        // Popup с StaysOpen=False закрывается в том же input-цикле, что и Click. Открываем
-        // вторую панель в следующем Dispatcher-проходе, иначе WPF мог сразу закрыть её вместе
-        // с меню «Ещё» или показать кнопку без содержимого.
+        // Popup с StaysOpen=False закрывается в том же input-цикле, что и Click: открываем вторую панель в следующем проходе
+        // Dispatcher, иначе WPF закрыл бы её вместе с меню «Ещё» или показал бы пустую кнопку.
         MoreActionsPopup.IsOpen = false;
         QueuePopup.IsOpen = false;
         Dispatcher.BeginInvoke(new Action(() =>
@@ -7303,9 +6798,8 @@ public partial class MainWindow : FluentWindow
         _playbackQueue.Remove(item.FilePath);
     }
 
-    // См. комментарий у _queueDisplayItems — Popup-контент не биндится к MainWindow напрямую,
-    // поэтому список и видимость пустого состояния обновляются здесь руками при каждом
-    // изменении PlaybackQueue.
+    // Popup-контент не биндится к MainWindow (см. _queueDisplayItems): список и пустое состояние обновляем вручную при
+    // каждом изменении PlaybackQueue.
     private void RefreshQueueUi()
     {
         _queueDisplayItems.Clear();
@@ -7357,12 +6851,8 @@ public partial class MainWindow : FluentWindow
         e.Handled = true;
     }
 
-    // Живо переприменяет только тему/акцент/подложку после импорта .lumi-профиля или сброса
-    // настроек — остальное (хоткеи, эквалайзер, трей, мини-плеер) читается только при старте
-    // соответствующих подсистем, поэтому SettingsWindow в обоих случаях дополнительно
-    // предлагает перезапустить плеер.
-    // Обновляет Rich Presence единым снимком аудиосостояния. Полная длительность и позиция
-    // берутся только из AudioFileReader, поэтому Discord не зависит от текстовых полей UI.
+    // Обновляет Rich Presence единым снимком аудиосостояния; длительность и позиция берутся только из AudioFileReader,
+    // поэтому Discord не зависит от текстовых полей UI.
     private void UpdateDiscordRichPresence(bool force)
     {
         var audioFile = _audioFile;
@@ -7384,6 +6874,8 @@ public partial class MainWindow : FluentWindow
         UpdateDiscordRichPresence(force: true);
     }
 
+    // Живо применяет только тему/акцент/подложку после импорта .lumi или сброса; остальное (хоткеи, эквалайзер, трей,
+    // мини-плеер) читается при старте подсистем, поэтому SettingsWindow предлагает перезапуск.
     public void ApplyImportedSettingsLive()
     {
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
@@ -7400,15 +6892,12 @@ public partial class MainWindow : FluentWindow
         ApplyPlaybackPitchLive(_settings.PlaybackPitchSemitones);
     }
 
-    // Раньше вызывалась только из OnClosed — а поскольку MinimizeToTrayOnClose включён по
-    // умолчанию, обычное закрытие крестиком просто прячет окно в трей, и до настоящего
-    // "Выход" могло не доходить месяцами. Теперь дополнительно вызывается при сворачивании в
-    // трей, на паузе и периодически во время игры.
+    // Раньше вызывалась только из OnClosed, а при MinimizeToTrayOnClose (по умолчанию) окно прячется в трей и до "Выход"
+    // могло не доходить месяцами; теперь вызывается ещё при сворачивании в трей, на паузе и периодически.
     private void PersistPlaybackAndPlaylistState(bool asyncSave = false)
     {
-        // До завершения RestoreSavedPlaylistAsync часть runtime-полей ещё содержит XAML-значения
-        // (текущий трек, режим окна и т.п.). Не только плейлист, но и любые такие поля нельзя
-        // записывать поверх settings.json после неудачного или прерванного старта.
+        // До завершения RestoreSavedPlaylistAsync часть runtime-полей (трек, режим окна) ещё содержит XAML-значения:
+        // их нельзя записывать поверх settings.json после неудачного или прерванного старта.
         if (!_playlistRestoreCompleted)
         {
             Logger.Warn("Пропущено раннее сохранение: восстановление состояния плеера ещё не завершено");
@@ -7457,12 +6946,8 @@ public partial class MainWindow : FluentWindow
 
     protected override void OnClosed(EventArgs e)
     {
-        // OnClosed означает, что окно действительно закрывается насовсем (в отличие от
-        // OnClosing, где закрытие ещё можно было заменить сворачиванием в трей) — на всякий
-        // случай выставляем здесь и так, чтобы Closed-обработчик ShowChangelogWindow ниже
-        // точно не попытался открыть окно настроек заново посреди выключения программы.
-        // Timer должен быть остановлен до финального Save, чтобы он не начал новую запись
-        // параллельно с закрытием окна.
+        // OnClosed — окно закрывается насовсем (в отличие от OnClosing): выставляем флаг, чтобы Closed-обработчик ShowChangelogWindow
+        // не открыл настройки посреди выключения; таймер останавливаем до финального Save, чтобы не начал запись параллельно.
         _playbackRatePersistenceTimer.Stop();
         _settingsCheckpointTimer.Stop();
         _systemDefaultEndpointDebounceTimer.Stop();
@@ -7505,9 +6990,8 @@ public partial class MainWindow : FluentWindow
         _changelogWindow?.Close();
         _coverArtWindow?.Close();
         _nowPlayingWindow?.Close();
-        // Track-load, ReplayGain и waveform tasks владеют своими CTS и освобождают их
-        // в собственных finally-блоках после отмены. Не Dispose здесь, пока task ещё может
-        // обращаться к TokenSource.
+        // Track-load, ReplayGain и waveform tasks владеют своими CTS и освобождают их сами после отмены: здесь Dispose нельзя,
+        // пока task ещё может обращаться к TokenSource.
         _lifetimeCts.Dispose();
 
         base.OnClosed(e);
@@ -7515,10 +6999,8 @@ public partial class MainWindow : FluentWindow
 }
 
 
-/// <summary>
-/// Рисует фоновую и акцентную части дорожки одним DrawingContext — исключает светлые швы от
-/// двух Border с полукруглыми углами на дробном DPI.
-/// </summary>
+/// <summary>Рисует фоновую и акцентную части дорожки одним DrawingContext — без светлых швов от двух Border
+/// с полукруглыми углами на дробном DPI.</summary>
 public sealed class MainWindowSliderTrackRenderer : FrameworkElement
 {
     public static readonly DependencyProperty BackgroundBrushProperty =

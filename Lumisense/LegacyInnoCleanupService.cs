@@ -5,12 +5,8 @@ using Microsoft.Win32;
 
 namespace Lumisense;
 
-/// <summary>
-/// Находит именно историческую Inno Setup-установку Lumisense и запускает её собственный
-/// интерактивный деинсталлятор. Сервис не удаляет файлы, ключи реестра или пользовательские
-/// данные сам: Inno Setup показывает свой штатный мастер, где пользователь сохраняет
-/// %AppData%\Lumisense для новой MSI-версии.
-/// </summary>
+/// <summary>Находит историческую Inno Setup-установку и запускает её интерактивный деинсталлятор;
+/// сам файлы, ключи реестра и данные не удаляет.</summary>
 internal static class LegacyInnoCleanupService
 {
     // Должен совпадать с фиксированным AppId в Installer/Lumisense.iss. Inno Setup добавляет
@@ -21,11 +17,8 @@ internal static class LegacyInnoCleanupService
 
     internal sealed record LegacyInnoInstall(string UninstallerPath);
 
-    /// <summary>
-    /// Возвращает legacy installation только при точном совпадении с AppId Lumisense и при
-    /// наличии локального unins*.exe. Сторонние приложения и произвольные UninstallString
-    /// никогда не запускаются.
-    /// </summary>
+    /// <summary>Возвращает legacy-установку только при точном совпадении AppId и наличии локального unins*.exe;
+    /// сторонние приложения и произвольные UninstallString не запускаются.</summary>
     public static bool TryFind(out LegacyInnoInstall? legacyInstall)
     {
         legacyInstall = null;
@@ -51,11 +44,8 @@ internal static class LegacyInnoCleanupService
         return false;
     }
 
-    /// <summary>
-    /// Открывает legacy Inno Setup uninstaller в обычном интерактивном режиме. Не используем
-    /// /SILENT или /SUPPRESSMSGBOXES: пользователь должен увидеть штатный вопрос Inno Setup и
-    /// сохранить общую папку %AppData%\Lumisense, выбрав «Нет».
-    /// </summary>
+    /// <summary>Запускает деинсталлятор в интерактивном режиме (без /SILENT и /SUPPRESSMSGBOXES): пользователь
+    /// должен увидеть вопрос Inno Setup и сохранить %AppData%\Lumisense, выбрав «Нет».</summary>
     public static bool TryStartInteractiveUninstall(
         LegacyInnoInstall legacyInstall,
         out Process? uninstallerProcess,

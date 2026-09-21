@@ -64,9 +64,8 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private bool _customToggleLyricsRegistered;
     private bool _customToggleMiniPlayerRegistered;
 
-    // Next/Previous передают виртуальный код фактически нажатой клавиши. Это позволяет
-    // MainWindow самостоятельно определить, удерживается ли именно этот хоткей, и не
-    // зависеть от системной частоты повторных WM_HOTKEY.
+    // Next/Previous передают код фактически нажатой клавиши, чтобы MainWindow сам определял удержание
+    // хоткея, не завися от системной частоты повторных WM_HOTKEY.
     public event Action<int>? NextPressed;
     public event Action<int>? PreviousPressed;
     public event Action? StopPressed;
@@ -91,23 +90,15 @@ public sealed class GlobalMediaHotKeys : IDisposable
 
         _source.AddHook(WndProc);
 
-        // Регистрация может не удаться, если клавишу уже перехватило другое приложение —
-        // это не критично, остальные хоткеи всё равно продолжат работать
-        // MOD_NOREPEAT здесь намеренно НЕ используется для Next/Prev: без него Windows сама
-        // шлёт повторные WM_HOTKEY, пока клавиша зажата (с той же частотой, что и обычный
-        // повтор клавиатуры из настроек Windows) — то есть переключение треков само повторяется
-        // при удержании клавиши, без какого-либо отдельного таймера в самом приложении.
-        // Для Stop/PlayPause повтор не нужен и был бы вреден (зажатие "пауза" не должно
-        // судорожно дёргать play/pause туда-обратно), поэтому там MOD_NOREPEAT остаётся.
+        // Сбой регистрации (клавишу занято другое приложение) не критичен для остальных хоткеев. Next/Prev без
+        // MOD_NOREPEAT: Windows сама повторяет WM_HOTKEY при удержании; для Stop/PlayPause повтор вреден.
         RegisterHotKey(_handle, IdNext, 0, VK_MEDIA_NEXT_TRACK);
         RegisterHotKey(_handle, IdPrev, 0, VK_MEDIA_PREV_TRACK);
         RegisterHotKey(_handle, IdStop, MOD_NOREPEAT, VK_MEDIA_STOP);
         RegisterHotKey(_handle, IdPlayPause, MOD_NOREPEAT, VK_MEDIA_PLAY_PAUSE);
     }
 
-    // Перерегистрирует настраиваемые хоткеи под текущие настройки. Можно вызывать повторно
-    // в любой момент (например, сразу после того как пользователь записал новую комбинацию
-    // в окне настроек) — старые комбинации корректно снимаются перед регистрацией новых.
+    // Перерегистрирует хоткеи под текущие настройки; безопасно вызывать повторно — старые комбинации снимаются.
     public void ApplyCustomHotkeys(AppSettings settings)
     {
         if (_customPlayPauseRegistered) UnregisterHotKey(_handle, IdCustomPlayPause);
@@ -147,10 +138,8 @@ public sealed class GlobalMediaHotKeys : IDisposable
         _customToggleMiniPlayerRegistered = TryRegister(IdCustomToggleMiniPlayer, settings.HotkeyToggleMiniPlayer);
     }
 
-    // allowRepeat=true снимает флаг MOD_NOREPEAT: Windows будет сама слать повторные
-    // WM_HOTKEY, пока комбинация зажата (переключение треков и громкость — см. вызовы выше).
-    // Для остальных действий (play/pause, стоп, mute, shuffle, repeat) повтор при удержании
-    // не нужен, поэтому по умолчанию (allowRepeat=false) поведение прежнее — одно нажатие.
+    // allowRepeat=true снимает MOD_NOREPEAT, и Windows повторяет WM_HOTKEY при удержании (треки, громкость);
+    // для остальных действий по умолчанию одно нажатие.
     private bool TryRegister(int id, HotkeyBinding binding, bool allowRepeat = false)
     {
         if (binding.IsEmpty) return false;
@@ -242,10 +231,8 @@ public sealed class GlobalMediaHotKeys : IDisposable
         return IntPtr.Zero;
     }
 
-    // Старший бит GetAsyncKeyState показывает физическое состояние клавиши в момент
-    // опроса. Для Next/Previous это надёжнее, чем ждать следующего WM_HOTKEY: Windows
-    // сначала делает системную паузу повторения, а затем использует заданную пользователем
-    // частоту, которая может быть слишком медленной или слишком высокой.
+    // Физическое состояние клавиши надёжнее ожидания следующего WM_HOTKEY: у системного повтора есть
+    // начальная пауза, а частота задаётся пользователем и может быть слишком медленной или быстрой.
     public static bool IsVirtualKeyDown(int virtualKey) => (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
 
     private static int GetVirtualKey(IntPtr lParam) => (int)((lParam.ToInt64() >> 16) & 0xFFFF);

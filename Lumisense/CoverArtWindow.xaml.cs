@@ -26,13 +26,8 @@ public partial class CoverArtWindow : FluentWindow
     private double _dragStartOffsetY;
     private const double DragThresholdPixels = 4.0;
 
-    // Клик, которым пользователь открывает это окно (по обложке в главном окне), обычно
-    // завершается уже после того, как окно показано: физический MouseUp долетает не до
-    // главного окна, а до ArtImage этого окна, если оно оказалось под курсором в момент
-    // отпускания кнопки. Без этой защиты такой "осиротевший" MouseUp (без своего MouseDown
-    // в этом окне) воспринимался как клик и сразу же приближал картинку — окно как будто
-    // открывалось уже увеличенным. Считаем клик настоящим, только если у него было своё
-    // MouseDown именно в этом окне.
+    // MouseUp клика, открывшего окно, может долететь до ArtImage без своего MouseDown и сразу приблизить
+    // картинку; клик считаем настоящим, только если MouseDown был именно в этом окне.
     private bool _receivedMouseDownHere;
 
     public CoverArtWindow(BitmapSource art, string trackTitle, AppSettings settings)
@@ -57,9 +52,8 @@ public partial class CoverArtWindow : FluentWindow
 
     private void ArtHost_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        // Если пользователь ещё не приближал вручную — просто следуем за размером окна.
-        // Если уже приблизил — не сбрасываем масштаб, только обновляем, что значит "fit"
-        // (пригодится, если он потом нажмёт правую кнопку мыши).
+        // Пока пользователь не приближал вручную — следуем за размером окна; иначе сохраняем масштаб,
+        // обновляя лишь значение "fit" (для сброса правой кнопкой мыши).
         if (Math.Abs(_scale - _fitScale) < 0.001)
             ResetToFit();
         else
@@ -79,11 +73,8 @@ public partial class CoverArtWindow : FluentWindow
         UpdateFitScale();
         ApplyScale(_fitScale);
 
-        // Картинка была скрыта (Opacity=0 в XAML), пока не появился первый достоверный
-        // расчёт масштаба "по окну" — иначе на долю секунды был бы виден кадр с картинкой
-        // в натуральную величину (обычно крупнее окна), что выглядело как самопроизвольный
-        // зум сразу при открытии. Показываем её только теперь, когда контейнер обложки уже
-        // реально отмерен и масштаб посчитан правильно.
+        // Картинка скрыта (Opacity=0 в XAML) до первого достоверного расчёта масштаба, иначе на долю секунды
+        // мелькал бы кадр в натуральную величину, похожий на самопроизвольный зум при открытии.
         if (ArtImage.Opacity == 0 && ArtHost.ActualWidth > 0 && ArtHost.ActualHeight > 0)
             ArtImage.Opacity = 1;
     }
@@ -94,8 +85,6 @@ public partial class CoverArtWindow : FluentWindow
         ArtImage.Width = _naturalWidth * scale;
         ArtImage.Height = _naturalHeight * scale;
     }
-
-    // ---------- Панорамирование перетаскиванием ----------
 
     private void ArtImage_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -149,8 +138,6 @@ public partial class CoverArtWindow : FluentWindow
     {
         ResetToFit();
     }
-
-    // ---------- Приближение по клику ----------
 
     private void ZoomInAt(Point clickPositionInImage)
     {

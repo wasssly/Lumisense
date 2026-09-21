@@ -18,33 +18,27 @@ public partial class App : Application
     private int _isOrderlyExit;
     private int _lastChanceSettingsSaveStarted;
 
-    // WinExe не создаёт консоль сам — без этого Console.WriteLine никуда не пишет, даже
-    // при запуске из cmd/PowerShell. Подключаемся к консоли родителя, если она есть;
-    // если приложение запущено двойным кликом, AttachConsole просто вернёт false — не ошибка.
+    // WinExe не создаёт консоль: подключаемся к консоли родителя (cmd/PowerShell), чтобы Console.WriteLine работал;
+    // при двойном клике AttachConsole просто вернёт false.
     [DllImport("kernel32.dll")]
     private static extern bool AttachConsole(int dwProcessId);
 
     private const int AttachParentProcess = -1;
 
-    // Окно создаём вручную вместо StartupUri="MainWindow.xaml": Show() безусловно выставляет
-    // Visibility.Visible, даже если MainWindow уже спрятало себя через Hide() при восстановлении
-    // мини-режима — иначе при запуске в мини-режиме на мгновение мелькало пустое главное окно.
+    // Окно создаём вручную вместо StartupUri: Show() безусловно ставит Visibility.Visible, даже если MainWindow
+    // спрятало себя через Hide() при старте в мини-режиме — иначе мелькало бы пустое главное окно.
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
 
-        // Все окна (основное, мини-плеер, диалоги, Now Playing) получают текущий язык после
-        // построения собственного визуального дерева. Это исключает копирование одного и того
-        // же вызова локализации во все конструкторы окон.
+        // Все окна получают текущий язык после построения визуального дерева — без копирования вызова во все конструкторы.
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) =>
             {
                 LocalizationService.Apply(sender);
 
-                // Часть программных подписей создаётся в обработчиках Loaded конкретных окон.
-                // Повторный проход на ContextIdle выполняется после этих обработчиков и до
-                // первого устойчивого кадра, поэтому английский текст не остаётся русским до
-                // следующего запуска или ручного переключения языка.
+                // Часть подписей создаётся в Loaded конкретных окон: повторный проход на ContextIdle идёт после этих
+                // обработчиков и до первого устойчивого кадра, поэтому английский текст не остаётся русским.
                 if (sender is Window window)
                 {
                     window.Dispatcher.BeginInvoke(new Action(() =>
@@ -66,19 +60,13 @@ public partial class App : Application
 
         try { AttachConsole(AttachParentProcess); } catch { /* нет родительской консоли — и ладно */ }
 
-        // Для запуска из cmd/PowerShell Ctrl+C и закрытие консольного сеанса могут оборвать
-        // обычный WPF shutdown. Обработчики ниже — best-effort дополнение к односекундному
-        // checkpoint MainWindow: они синхронно записывают уже готовый snapshot без обращения к UI.
+        // Ctrl+C и закрытие консольного сеанса могут оборвать обычный WPF shutdown: обработчики — best-effort
+        // дополнение к односекундному checkpoint MainWindow, синхронно пишут готовый snapshot без обращения к UI.
         Console.CancelKeyPress += (_, _) => SaveSettingsOnUnexpectedTermination();
         AppDomain.CurrentDomain.ProcessExit += (_, _) => SaveSettingsOnUnexpectedTermination();
 
-        // Логируем необработанные исключения максимально рано, иначе падение до показа первого
-        // окна выглядело как полная тишина — раньше это шло только в консоль (Console.Error),
-        // которую почти никто не видит при обычном запуске двойным кликом: окно консоли не
-        // создаётся, AttachConsole выше подключается только если плеер запущен ИЗ уже открытой
-        // консоли/PowerShell. Теперь то же самое ещё и пишется в файл (см. Logger) — именно
-        // ради случая "плеер упал, а почему — неизвестно": после падения файл в
-        // %AppData%\Lumisense\logs\ остаётся, в отличие от текста в уже закрывшейся консоли.
+        // Логируем необработанные исключения как можно раньше в файл (Logger): при запуске двойным кликом консоли нет,
+        // а лог в %AppData%\Lumisense\logs\ остаётся после падения, в отличие от текста закрывшейся консоли.
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
         {
             Logger.Error("Необработанное исключение (AppDomain, приложение сейчас завершится)",
@@ -86,10 +74,8 @@ public partial class App : Application
             SaveSettingsOnUnexpectedTermination();
         };
 
-        // DispatcherUnhandledException позволяет предотвратить падение UI, но делать это для
-        // ЛЮБОЙ ошибки небезопасно: неизвестное исключение может оставить аудио-цепочку или
-        // визуальное дерево в повреждённом состоянии. Продолжаем работу только для ограниченного
-        // набора ожидаемых локальных ошибок; для остальных даём WPF корректно завершить процесс.
+        // DispatcherUnhandledException можно подавить, но для любой ошибки это небезопасно: неизвестное исключение
+        // может повредить аудио-цепочку или визуальное дерево. Продолжаем только для ожидаемых локальных ошибок.
         DispatcherUnhandledException += (_, args) =>
         {
             UiExceptionRecoveryAction action = UiExceptionRecoveryPolicy.Classify(args.Exception);
@@ -125,13 +111,8 @@ public partial class App : Application
             }
         };
 
-        // В дополнение к двум обработчикам выше — исключения из "забытых" async-задач
-        // (fire-and-forget вида "_ = SomeAsync()", которых в плеере несколько: расчёт формы
-        // волны, автообновление и т.п.) сами по себе НЕ попадают ни в DispatcherUnhandledException,
-        // ни в AppDomain.UnhandledException — необработанное исключение внутри такой задачи
-        // просто оседает в самой Task, и всплывает только когда сборщик мусора уничтожает её
-        // экземпляр, через это событие. Без него подобные ошибки были бы попросту невидимы —
-        // ни падения, ни следа в логе.
+        // Исключения из fire-and-forget задач ("_ = SomeAsync()") не попадают в предыдущие два обработчика и всплывают
+        // лишь при финализации Task; без этого события такие ошибки были бы невидимы (ни падения, ни следа в логе).
         TaskScheduler.UnobservedTaskException += (_, args) =>
         {
             Logger.Error("Необработанное исключение в фоновой задаче (fire-and-forget)", args.Exception);
@@ -143,10 +124,8 @@ public partial class App : Application
         // приложение не будет установлено через Velopack MSI в отдельном переходном релизе.
         UpdateMigrationGuard.LogCurrentMode();
 
-        // В мини-режиме окна плеера не видны на панели задач, поэтому повторный клик по ярлыку
-        // запустил бы второй процесс вместо активации уже открытого. Именованный Mutex — обычный
-        // приём single-instance: если он уже занят, сигналим работающему экземпляру переключить
-        // вид (см. WaitForToggleSignal) и сразу выходим.
+        // В мини-режиме окон нет на панели задач, и повторный клик по ярлыку запустил бы второй процесс: если Mutex
+        // занят, сигналим работающему экземпляру переключить вид (см. WaitForToggleSignal) и выходим.
         _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out bool createdNew);
 
         if (!createdNew)
@@ -171,12 +150,8 @@ public partial class App : Application
 
         _toggleViewEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ToggleViewEventName);
 
-        // На случай, если конструктор MainWindow бросит исключение ещё до того, как окно
-        // вообще успело появиться (например, повреждённый settings.json провоцирует where-то
-        // внутри необработанное исключение, до которого не добрались более точечные try/catch
-        // внутри самого MainWindow) — тут это ловится максимально широко: логируем, показываем
-        // сообщение вместо тихого падения без единого следа, и корректно завершаемся, а не
-        // остаёмся в неопределённом полуживом состоянии.
+        // Конструктор MainWindow может бросить исключение до появления окна (например, из-за повреждённого settings.json):
+        // ловим широко, логируем и показываем сообщение вместо тихого падения, затем корректно завершаемся.
         MainWindow window;
         try
         {
@@ -248,10 +223,8 @@ public partial class App : Application
         thread.Start();
     }
 
-    // Вызывается из UI-потока сразу после успешного SettingsManager.Save и перед передачей
-    // управления Update.exe. ProcessExit этого намеренного restart не должен повторно писать
-    // snapshot с фонового потока: это устраняет warning из журнала и не ослабляет аварийное
-    // сохранение для реального сбоя или принудительного завершения.
+    // Вызывается из UI-потока после SettingsManager.Save и перед передачей управления Update.exe: ProcessExit этого
+    // restart не должен повторно писать snapshot с фона (убирает warning, аварийное сохранение не ослабляется).
     internal void MarkPlannedUpdateRestart()
     {
         Volatile.Write(ref _isOrderlyExit, 1);
@@ -272,9 +245,8 @@ public partial class App : Application
 
         try
         {
-            // ProcessExit и Console.CancelKeyPress могут выполняться не в Dispatcher-потоке.
-            // Не обращаемся к MainWindow: используем последний атомарно опубликованный JSON,
-            // чтобы не читать WPF UI-объекты во время разрушения приложения.
+            // ProcessExit и CancelKeyPress могут идти не в Dispatcher-потоке: не трогаем MainWindow, берём последний
+            // атомарно опубликованный JSON, чтобы не читать WPF UI-объекты при разрушении приложения.
             SettingsManager.SaveLastObservedSnapshot();
         }
         catch (Exception ex)

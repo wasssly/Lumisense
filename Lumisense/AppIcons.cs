@@ -6,9 +6,8 @@ using System.Windows.Media.Imaging;
 
 namespace Lumisense;
 
-// Единственный источник PropertyChanged для активной иконки приложения — те же причины, что у
-// IconPackContext в SvgPathIcon.cs: WPF Binding реагирует на смену значения только когда
-// источник реализует INotifyPropertyChanged, а статика для этого не годится.
+// PropertyChanged для активной иконки: WPF Binding реагирует на смену значения только у
+// INotifyPropertyChanged-источника, статика не подходит (та же причина, что у IconPackContext).
 public sealed class AppIconContext : INotifyPropertyChanged
 {
     public static readonly AppIconContext Instance = new();
@@ -29,10 +28,8 @@ public sealed class AppIconContext : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
-// Реестр значков приложения (окна, трей). AppIcons.Current выставляется при старте из
-// AppSettings.AppIcon, дальше меняется вживую через AppIcons.SetCurrent (см. AppIconContext
-// выше) — окна читают его через биндинг на AppIconContext.Instance.Current, TrayIconManager
-// подписан на PropertyChanged напрямую.
+// Реестр значков окон и трея: Current выставляется при старте из AppSettings.AppIcon и меняется
+// вживую через SetCurrent; окна биндятся на AppIconContext.Instance.Current, трей слушает PropertyChanged.
 public static class AppIcons
 {
     public const string Classic = "Classic";

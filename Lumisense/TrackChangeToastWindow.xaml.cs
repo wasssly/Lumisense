@@ -14,9 +14,7 @@ public partial class TrackChangeToastWindow : Window
     private static readonly TimeSpan VisibleDuration = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(200);
 
-    // Те же самые RGB, что и у фона мини-плеера (см. MiniPlayerWindow.ApplyBackground) —
-    // визуальная согласованность между двумя "плавающими поверх рабочего стола" окнами
-    // приложения.
+    // Те же RGB, что у фона мини-плеера (MiniPlayerWindow.ApplyBackground), для согласованности двух плавающих окон.
     private static readonly Color DarkBackground = Color.FromRgb(0x1C, 0x1C, 0x1E);
     private static readonly Color LightBackground = Color.FromRgb(0xF2, 0xF2, 0xF2);
 
@@ -33,14 +31,8 @@ public partial class TrackChangeToastWindow : Window
         _normalEffect = RootBorder.Effect;
     }
 
-    // isLightTheme — та же логика, что и у MiniPlayerWindow.ApplyTheme: карточка не связана
-    // с системной темой автоматически (фон рисуется вручную, не через Mica/Acrylic), поэтому
-    // текущую тему приложения передаёт вызывающий код (см. MainWindow.ShowTrackChangeToast).
-    // screen/position/size/width — см. AppSettings.TrackChangeToastMonitor/
-    // TrackChangeToastPosition/TrackChangeToastSize/TrackChangeToastWidth; screen уже полностью
-    // разрешён вызывающим кодом (см. MainWindow.ResolveToastScreen) — это окно само не решает,
-    // "какой монитор", только "где на нём" и "какого размера". artSide/textAlignment — см.
-    // AppSettings.TrackChangeToastArtSide/TrackChangeToastTextAlignment.
+    // isLightTheme приходит от вызывающего кода (фон рисуется вручную, не через Mica/Acrylic); screen уже разрешён
+    // MainWindow.ResolveToastScreen; остальные параметры — см. AppSettings.TrackChangeToast*.
     public void ShowToast(string title, string artist, Brush? art, bool isLightTheme,
         System.Windows.Forms.Screen screen, string position, string size, double width,
         string artSide, string textAlignment)
@@ -57,9 +49,7 @@ public partial class TrackChangeToastWindow : Window
 
         if (art is ImageBrush { ImageSource: not null } imageBrush)
         {
-            // Не используем ImageBrush как Background: на небольшой обложке уведомления WPF
-            // может выбрать низкокачественное масштабирование. Явный Image в XAML работает
-            // так же, как проверенное отображение в мини-плеере.
+            // Не используем ImageBrush как Background: на небольшой обложке WPF может выбрать низкокачественное масштабирование.
             ArtImage.Source = imageBrush.ImageSource;
             ArtImage.Visibility = Visibility.Visible;
             ArtBorder.Background = Brushes.Transparent;
@@ -75,16 +65,13 @@ public partial class TrackChangeToastWindow : Window
 
         ToastBackgroundBrush.Color = isLightTheme ? LightBackground : DarkBackground;
 
-        // Останавливаем и таймер, и любую уже идущую анимацию (например, недоигравший
-        // fade-out от предыдущего, слишком быстро сменившегося трека) — иначе её Completed
-        // мог бы сработать уже ПОСЛЕ того, как мы только что показали уведомление для нового
-        // трека, и спрятать его раньше времени.
+        // Останавливаем и таймер, и идущую анимацию: иначе Completed fade-out предыдущего трека сработал бы после
+        // показа нового уведомления и спрятал бы его раньше времени.
         _hideTimer.Stop();
         RootBorder.BeginAnimation(UIElement.OpacityProperty, null);
 
-        // HWND нужен для точного SetWindowPos в физических пикселях конкретного монитора.
-        // Первое создание остаётся невидимым, поэтому пользователь не увидит промежуточное
-        // размещение на основном дисплее до per-monitor DPI-позиционирования.
+        // HWND нужен для SetWindowPos в физических пикселях нужного монитора; первое создание невидимо, поэтому
+        // промежуточное размещение на основном дисплее пользователь не увидит.
         if (!IsVisible)
         {
             RootBorder.Opacity = 0;
@@ -155,12 +142,8 @@ public partial class TrackChangeToastWindow : Window
         FadeOutAndHide();
     }
 
-    // Три готовых размера карточки — высота, размер обложки, размер шрифтов и запас, который
-    // ширина карточки тратит на всё, ЧТО НЕ текст (обложка + отступы), см. ApplyWidth ниже.
-    // Не трогает саму ширину окна — она задаётся отдельно, см. AppSettings.TrackChangeToastSize
-    // (комментарий там же поясняет, почему это два независимых значения). Применяется заново
-    // на каждый показ (не только при создании окна) — размер мог смениться в настройках между
-    // двумя прослушиваниями, а окно переиспользуется одно на всё время работы приложения.
+    // Три готовых размера карточки (высота, обложка, шрифты, запас под не-текст, см. ApplyWidth); ширину окна не
+    // трогает. Применяется на каждый показ: размер мог смениться в настройках, а окно переиспользуется.
     private (double Height, double Art, double TitleFont, double ArtistFont, double NonTextWidth) GetSizePreset(string size) => size switch
     {
         "Small" => (60.0, 38.0, 12.0, 10.0, 90.0),
@@ -175,9 +158,7 @@ public partial class TrackChangeToastWindow : Window
         Height = preset.Height;
         ArtBorder.Width = preset.Art;
         ArtBorder.Height = preset.Art;
-        // Border не обрезает дочерний Image по CornerRadius автоматически. Явный Clip нужен,
-        // чтобы обложка не оставалась квадратной при HighQuality-отрисовке; пересчитываем его
-        // для каждого выбранного размера уведомления.
+        // Border не обрезает Image по CornerRadius, поэтому нужен явный Clip (пересчитывается для каждого размера).
         double cornerRadius = Math.Min(8.0, preset.Art / 6.0);
         ArtImage.Clip = new RectangleGeometry(new Rect(0, 0, preset.Art, preset.Art), cornerRadius, cornerRadius);
         ArtIcon.Size = preset.Art * 0.42; // та же пропорция иконки к обложке, что и раньше (20/48)
@@ -185,11 +166,8 @@ public partial class TrackChangeToastWindow : Window
         ToastArtistText.FontSize = preset.ArtistFont;
     }
 
-    // Ширина карточки — отдельный от размера ползунок в настройках (см. AppSettings.
-    // TrackChangeToastWidth): меняет ТОЛЬКО ширину самого окна и то, сколько текста влезает в
-    // строку до многоточия, высота/обложка/шрифты не трогает — их уже выставил ApplySizePreset
-    // выше. NonTextWidth (запас под обложку и отступы) берётся из текущего размера, поэтому
-    // отступы вокруг текста выглядят одинаково пропорционально при любой выбранной ширине.
+    // Ширина — отдельный от размера ползунок (AppSettings.TrackChangeToastWidth): меняет только ширину окна и
+    // сколько текста влезает до многоточия; NonTextWidth берётся из размера, чтобы отступы оставались пропорциональными.
     private void ApplyWidth(double width, string size)
     {
         Width = width;
@@ -221,10 +199,8 @@ public partial class TrackChangeToastWindow : Window
         ToastArtistText.TextAlignment = textAlign;
     }
 
-    // Рабочая область Screen задаётся физическими пикселями. Получаем DPI именно выбранного
-    // монитора, рассчитываем физический прямоугольник и передаём его HWND через SetWindowPos.
-    // Поэтому 100% + 150% и другие mixed-DPI конфигурации не зависят от монитора, на котором
-    // toast находился при предыдущем показе.
+    // Рабочая область Screen — в физических пикселях: берём DPI именно выбранного монитора и позиционируем
+    // HWND через SetWindowPos, чтобы mixed-DPI не зависел от монитора прошлого показа.
     private void PositionOnScreen(System.Windows.Forms.Screen screen, string position)
     {
         double scale = ToastMonitorDpi.GetScale(screen, GetDpiScale());
@@ -244,10 +220,8 @@ public partial class TrackChangeToastWindow : Window
         Top = placement.Y / scale;
     }
 
-    // Масштаб текущего окна (1.0 = 100%, 1.25 = 125% и т.д.). До первого показа
-    // (PresentationSource ещё нет — окно ни разу не рендерилось) считаем масштаб равным 100%;
-    // на практике это не имеет значения, потому что PositionOnScreen всё равно пересчитывается
-    // заново перед каждым показом, когда PresentationSource уже есть.
+    // Масштаб окна (1.0 = 100%); до первого показа PresentationSource нет и берём 100% — не страшно, так как
+    // PositionOnScreen пересчитывается перед каждым показом.
     private double GetDpiScale()
     {
         var source = PresentationSource.FromVisual(this);

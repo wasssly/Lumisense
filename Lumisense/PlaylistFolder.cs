@@ -17,9 +17,8 @@ public class PlaylistFolder : INotifyPropertyChanged
 
     private string _persistedDisplayName = "";
 
-    // Имя системной группы отдельных файлов не является пользовательским: оно отображается
-    // на текущем языке, а в settings.json сохраняется исходное значение только для обратной
-    // совместимости. Имена папок, созданных пользователем, остаются неизменными.
+    // Имя системной группы показывается на текущем языке, а в settings.json остаётся исходным (обратная
+    // совместимость); имена пользовательских папок не меняются.
     public string DisplayName
     {
         get => IsLooseFilesBucket ? LocalizationService.Get(LocalizationKey.PlaylistLooseFiles) : _persistedDisplayName;
@@ -28,33 +27,23 @@ public class PlaylistFolder : INotifyPropertyChanged
 
     public string PersistedDisplayName => _persistedDisplayName;
 
-    // true только у единственной автосоздаваемой группы "Отдельные файлы" (см. AddLooseFiles
-    // в MainWindow.xaml.cs) — отличает её от папок, созданных вручную через "Новую папку…",
-    // у которых SourcePath тоже null, но это отдельные именованные группы.
+    // true только у автосоздаваемой группы "Отдельные файлы" (см. AddLooseFiles): у ручных папок SourcePath
+    // тоже null, но это отдельные именованные группы.
     public bool IsLooseFilesBucket { get; init; }
 
-    // true только у единственной виртуальной группы "Избранное" (см. MainWindow._favoritesFolder) —
-    // её содержимое каждый раз пересобирается из FavoritesManager, а не хранится и не
-    // редактируется как обычная группа: нельзя добавить в неё файлы напрямую, пересканировать
-    // или удалить её саму — только снять сердечко с отдельного трека (см. RemoveTrackMenuItem_Click
-    // и MainWindow.FavoriteButton_Click).
+    // true только у виртуальной группы "Избранное": она пересобирается из FavoritesManager и не редактируется
+    // как обычная (без добавления, пересканирования и удаления — только снять сердечко с трека).
     public bool IsFavoritesGroup { get; init; }
 
-    // Можно ли добавлять файлы прямо в эту группу кнопкой в её заголовке (см. AddFilesToFolderButton_Click)
-    // — да для всего, что не привязано к папке на диске: и для "Отдельные файлы", и для ручных папок.
-    // Виртуальная группа "Избранное" исключение: у неё SourcePath тоже null, но добавлять в неё
-    // файлы напрямую нельзя — она собирается только из отмеченных сердечком треков.
+    // Можно ли добавлять файлы кнопкой в заголовке: для всего без папки на диске, кроме "Избранного"
+    // (оно собирается только из треков с сердечком).
     public bool CanAddFilesDirectly => SourcePath == null && !IsFavoritesGroup;
 
-    // Можно ли проверить эту группу на новые треки, появившиеся на диске после добавления
-    // (см. RescanFolderButton_Click / RescanFolderForNewTracks) — только для групп, реально
-    // привязанных к папке на диске. У "Отдельные файлы" и ручных папок нет источника на диске,
-    // который можно было бы пересканировать.
+    // Только для групп с папкой на диске: у "Отдельные файлы" и ручных папок пересканировать нечего.
     public bool CanRescan => SourcePath != null;
 
-    // ObservableCollection, а не List — SubtitleText ("N треков · путь") зависит от Tracks.Count
-    // и должен обновляться сам при любом изменении списка. AddRange/RemoveAll добавлены ниже
-    // как extension-методы, которых у ObservableCollection нет из коробки.
+    // ObservableCollection, чтобы SubtitleText ("N треков · путь") обновлялся при любом изменении списка;
+    // AddRange/RemoveAll ниже — extension-методы, которых у него нет.
     public ObservableCollection<string> Tracks { get; } = new();
 
     public PlaylistFolder()

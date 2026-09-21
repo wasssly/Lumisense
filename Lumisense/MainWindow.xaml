@@ -29,23 +29,13 @@
         <BooleanToVisibilityConverter x:Key="BoolToVisibilityConverter" />
         <local:InverseBooleanToVisibilityConverter x:Key="InverseBoolToVisibilityConverter" />
 
-        <!-- Выбирают DataTemplate/Style контейнера для ЕДИНОГО плоского списка PlaylistFoldersControl
-             (см. MainWindow.RefreshPlaylistView) по CLR-типу элемента: PlaylistFolder — заголовок
-             папки (PlaylistFolderHeaderTemplate), PlaylistTrackRow — строка трека (TrackItemTemplate,
-             тот же, что и у "Избранного"). См. Converters.cs. -->
+        <!-- Выбирают DataTemplate/Style контейнера для плоского PlaylistFoldersControl (RefreshPlaylistView) по CLR-типу:
+             PlaylistFolder — заголовок (PlaylistFolderHeaderTemplate), PlaylistTrackRow — строка трека (TrackItemTemplate); см. Converters.cs. -->
         <local:PlaylistDisplayItemTemplateSelector x:Key="PlaylistDisplayItemTemplateSelector" />
         <local:PlaylistDisplayItemContainerStyleSelector x:Key="PlaylistDisplayItemContainerStyleSelector" />
 
-        <!-- Шаблон строки трека — общий и для обычных групп плейлиста (единый
-             PlaylistFoldersControl, элементы типа PlaylistTrackRow), и для отдельного
-             FavoritesTrackListView виртуального плейлиста "Избранное". DataContext — сам
-             PlaylistTrackRow (Folder + FilePath + IndexInFolder, см. PlaylistTrackRow.cs) — то
-             есть путь к файлу и его папка приходят ВМЕСТЕ, одним объектом, без Tag/
-             PlacementTarget/RelativeSource-трюков, которые раньше были нужны только чтобы
-             дотянуться до DataContext охватывающего ListView (пока у каждой папки был свой
-             отдельный ListView) — обычный Binding и обычное наследование DataContext внутрь
-             ContextMenu (оно работает и через границу Popup, см. существующие обработчики вида
-             "sender is MenuItem { DataContext: ... }") дают оба значения сразу. -->
+        <!-- Шаблон строки трека общий для плейлиста (PlaylistFoldersControl) и FavoritesTrackListView; DataContext — PlaylistTrackRow
+             (Folder + FilePath + IndexInFolder), поэтому путь и папка приходят вместе, без Tag/PlacementTarget-трюков (DataContext наследуется в ContextMenu). -->
         <DataTemplate x:Key="TrackItemTemplate">
             <Grid Opacity="{Binding Folder.IsEnabled, Converter={StaticResource BoolToOpacityConverter}}">
                 <Grid.ColumnDefinitions>
@@ -160,11 +150,8 @@
                     </StackPanel>
                 </StackPanel>
 
-                <!-- Счётчик прослушиваний — MultiBinding по тому же принципу, что и сердечко
-                     ниже (см. IsFavoriteMultiConverter): путь к файлу сам по себе не меняется,
-                     PlayCountChangeNotifier.Epoch даёт WPF повод перечитать значение, когда
-                     счётчик где-то обновился. Пустая строка при 0 прослушиваний просто не рисует
-                     иконку/текст — свойство Visibility завязано на тот же текст ниже. -->
+                <!-- Счётчик прослушиваний — MultiBinding как у сердечка (IsFavoriteMultiConverter): путь не меняется, PlayCountChangeNotifier.Epoch
+                     даёт повод перечитать значение; пустая строка при 0 прослушиваний не рисует иконку/текст. -->
                 <StackPanel x:Name="TrackPlayCountPanel" Grid.Column="2" Orientation="Horizontal"
                             VerticalAlignment="Center" Margin="6,0,0,0" Opacity="0.45"
                             ToolTip="Сколько раз прослушан этот трек">
@@ -179,28 +166,8 @@
                     </TextBlock>
                 </StackPanel>
 
-                <!-- Сердечко "добавить/убрать из избранного" на строке трека. Контур,
-                     приглушённый — трек не избранный; закрашенное красное — избранный
-                     (переключается DataTrigger-ом ниже по IsFavoriteMultiConverter).
-
-                     FocusVisualStyle использует RoundedIconButtonFocusVisualStyle (см. App.xaml)
-                     вместо штатной рамки, которая на скруглённой выделенной строке смотрелась
-                     как острый прямоугольник поверх скругления.
-
-                     Foreground у самой иконки (не у кнопки) — TrackFavoriteIcon ничего не
-                     задаёт сам и по умолчанию наследует Foreground от ближайшего предка;
-                     обычно это TextFillColorPrimaryBrush от строки-ListViewItem, но когда трек
-                     выделен, ListViewItem подменяет Foreground на TextOnAccentFillColorPrimaryBrush
-                     (см. App.xaml, Trigger IsSelected) — светлый на светлом акценте читался бы
-                     плохо, поэтому на выделенном треке (см. MultiDataTrigger в
-                     DataTemplate.Triggers ниже) явно фиксируем тёмный #141414 вместо него. На
-                     обычном (невыделенном) треке ничего не переопределяем — используется
-                     светлый TextFillColorPrimaryBrush, заданный явно ниже, как было раньше.
-                     Заполненное (избранное) сердечко в этот механизм не входит — у него свой
-                     явный красный Foreground ниже, и он неплохо читается в обоих случаях.
-
-                     AutomationProperties.Name привязан к собственному ToolTip, чтобы screen-reader
-                     имя переводилось тем же runtime-обходом, что и ToolTip. -->
+                <!-- Сердечко избранного: контур — не избранный, красное закрашенное — избранный (DataTrigger по IsFavoriteMultiConverter);
+                     Foreground задан у иконки: на выделенной строке фиксируем тёмный #141414 (MultiDataTrigger ниже), чтобы читалось на светлом акценте. -->
                 <ui:Button x:Name="TrackFavoriteButton" Grid.Column="3" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="4,0,0,0"
                            Click="FavoriteButton_Click"
@@ -213,12 +180,8 @@
                     </ui:Button.Icon>
                 </ui:Button>
 
-                <!-- Кнопка закрепления — видна только в самом "Избранном" (Folder.IsFavoritesGroup;
-                     в обычном плейлисте закреплять нечего и незачем, см. тот же комментарий у
-                     пункта контекстного меню "Закрепить/открепить в избранном" выше). Цвет —
-                     тёплый янтарный, а не красный (как у избранного) и не акцентный синий
-                     приложения, чтобы закрепление визуально не путалось ни с тем, ни с другим —
-                     это самостоятельный, третий признак трека. -->
+                <!-- Кнопка закрепления видна только в "Избранном" (Folder.IsFavoritesGroup); тёплый янтарный цвет, чтобы не путать ни с красным
+                     избранным, ни с акцентом — это отдельный признак трека. -->
                 <ui:Button x:Name="TrackPinButton" Grid.Column="4" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="2,0,0,0"
                            Click="PinButton_Click"
@@ -245,13 +208,8 @@
                 <DataTrigger Binding="{Binding Text, ElementName=TrackPlayCountText}" Value="">
                     <Setter TargetName="TrackPlayCountPanel" Property="Visibility" Value="Collapsed" />
                 </DataTrigger>
-                <!-- MultiBinding, а не обычный Binding по одному только пути к файлу — путь у
-                     трека никогда не меняется, поэтому обычный Binding никогда бы не
-                     перевычислился заново сам по себе при изменении избранного, и сердечко
-                     обновлялось бы только через полный пересбор ItemsSource всего плейлиста
-                     (см. FavoritesChangeNotifier — второе плечо этого MultiBinding как раз и
-                     даёт триггеру повод перевычислиться, когда избранное действительно
-                     поменялось, независимо от того, у какого именно трека). -->
+                <!-- MultiBinding вместо Binding по пути: путь трека не меняется, и обычный Binding не перевычислялся бы при изменении избранного —
+                     второе плечо (FavoritesChangeNotifier) даёт триггеру повод перевычислиться, иначе нужен полный пересбор ItemsSource. -->
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
                         <MultiBinding Converter="{StaticResource IsFavoriteMultiConverter}">
@@ -263,10 +221,8 @@
                     <Setter TargetName="TrackFavoriteIcon" Property="Foreground" Value="#E53935" />
                     <Setter TargetName="TrackFavoriteIcon" Property="Opacity" Value="1" />
                 </DataTrigger>
-                <!-- Закреплённый трек — та же MultiBinding-механика, что и у сердечка выше, тот
-                     же FavoritesChangeNotifier (TogglePin тоже вызывает Bump, см. FavoritesManager) —
-                     заводить для этого отдельный notifier не нужно, "избранное поменялось" и
-                     "закрепление поменялось" для целей перерисовки строки — один и тот же повод. -->
+                <!-- Закреплённый трек — та же MultiBinding-механика и тот же FavoritesChangeNotifier (TogglePin тоже вызывает Bump):
+                     для перерисовки строки «избранное» и «закрепление» — один повод, отдельный notifier не нужен. -->
                 <DataTrigger Value="True">
                     <DataTrigger.Binding>
                         <MultiBinding Converter="{StaticResource IsPinnedMultiConverter}">
@@ -277,11 +233,8 @@
                     <Setter TargetName="TrackPinIcon" Property="Foreground" Value="#F5A623" />
                     <Setter TargetName="TrackPinIcon" Property="Opacity" Value="1" />
                 </DataTrigger>
-                <!-- Контурное (НЕ избранное) сердечко на выделенной строке — см. подробный
-                     комментарий выше, у TrackFavoriteButton. Второе условие
-                     (IsFavoriteMultiConverter = False) — чтобы не перебивать явный красный
-                     Foreground избранного сердечка из триггера выше: избранное и так неплохо
-                     читается на выделении, этот триггер только про обычный контур. -->
+                <!-- Контурное (не избранное) сердечко на выделенной строке — см. TrackFavoriteButton; второе условие (IsFavoriteMultiConverter = False)
+                     не даёт перебить красный Foreground избранного, который и так читается на выделении. -->
                 <MultiDataTrigger>
                     <MultiDataTrigger.Conditions>
                         <Condition Value="True">
@@ -323,11 +276,8 @@
             </DataTemplate.Triggers>
         </DataTemplate>
 
-        <!-- Заголовок папки плейлиста — раньше был инлайновой частью ItemTemplate у ItemsControl
-             (см. историю), теперь отдельный ресурс: элемент верхнего уровня в плоском
-             PlaylistFoldersControl.ItemsSource, выбирается PlaylistDisplayItemTemplateSelector
-             для элементов типа PlaylistFolder. DataContext — сам PlaylistFolder, все биндинги
-             ниже те же самые, что были и раньше. -->
+        <!-- Заголовок папки — отдельный ресурс для элемента типа PlaylistFolder в плоском PlaylistFoldersControl.ItemsSource
+             (выбирается PlaylistDisplayItemTemplateSelector); DataContext — сам PlaylistFolder. -->
         <DataTemplate x:Key="PlaylistFolderHeaderTemplate">
             <Border Margin="2,2,2,10" CornerRadius="8" Padding="10,8"
                     Background="{DynamicResource ControlFillColorSecondaryBrush}">
@@ -374,9 +324,7 @@
                         </ui:Button.Icon>
                     </ui:Button>
 
-                    <!-- Только у групп, привязанных к реальной папке на диске — проверить,
-                         не появились ли в ней новые файлы после добавления в плейлист
-                         (см. RescanFolderButton_Click) -->
+                    <!-- Только для групп, привязанных к папке на диске: проверить, не появились ли новые файлы (RescanFolderButton_Click). -->
                     <ui:Button Grid.Column="4" Appearance="Secondary"
                                Width="28" Height="28" Padding="0" Margin="0,0,4,0"
                                Click="RescanFolderButton_Click"
@@ -399,22 +347,15 @@
             </Border>
         </DataTemplate>
 
-        <!-- Стиль контейнера заголовка папки — НЕ должен вести себя как выбираемая строка
-             списка (никакого hover/selection-акцента из общего Style TargetType="ListViewItem"
-             в App.xaml): Focusable="False" и IsHitTestVisible оставлен true только чтобы кнопки
-             внутри самого заголовка (чекбокс, шеврон, пересканировать, удалить) продолжали
-             ловить клики. -->
+        <!-- Заголовок папки не ведёт себя как выбираемая строка (без hover/selection из глобального ListViewItem-стиля в App.xaml):
+             Focusable="False", а IsHitTestVisible оставлен true, чтобы кнопки заголовка (чекбокс, шеврон, пересканировать, удалить) ловили клики. -->
         <Style x:Key="PlaylistFolderHeaderContainerStyle" TargetType="ListViewItem">
             <Setter Property="Focusable" Value="False" />
             <Setter Property="IsHitTestVisible" Value="True" />
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0" />
-            <!-- Без BasedOn на глобальный Style TargetType="ListViewItem" (сделано намеренно —
-                 не нужны его отступы/ховер-подсветка на заголовке), но вместе с этим по
-                 умолчанию терялся и Foreground, который в оригинале тоже задаётся тем самым
-                 глобальным стилем: без явного Setter здесь TextBlock/иконки внутри заголовка
-                 падали на дефолтный чёрный цвет вместо темизированного — на тёмном фоне
-                 карточки текст был почти нечитаем. -->
+            <!-- Без BasedOn на глобальный ListViewItem-стиль (не нужны его отступы и ховер) терялся и Foreground: без явного Setter текст и иконки
+                 заголовка были бы дефолтным чёрным вместо темизированного и почти нечитаемы на тёмном фоне. -->
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -425,17 +366,13 @@
             </Setter>
         </Style>
 
-        <!-- Общий стиль строк трека. Поиск теперь формирует отдельный отфильтрованный
-             ItemsSource в фоне (см. MainWindow.QueuePlaylistSearch), поэтому здесь нет
-             MultiBinding, который раньше пересчитывал Visibility каждого контейнера при любом
-             введённом символе и мог надолго блокировать раскладку большого списка. -->
+        <!-- Общий стиль строк трека: поиск формирует отфильтрованный ItemsSource в фоне (MainWindow.QueuePlaylistSearch), поэтому здесь нет
+             MultiBinding, который пересчитывал Visibility каждого контейнера на каждый символ и мог надолго блокировать раскладку. -->
         <Style x:Key="SearchableTrackListViewItemStyle" TargetType="ListViewItem"
                BasedOn="{StaticResource {x:Type ListViewItem}}" />
 
-        <!-- Главные полосы времени и громкости рисуются часто (progress обновляется во время
-             воспроизведения) и занимают всего 4 DIP. Локальный template фиксирует их на
-             физических пикселях: это убирает размытые края и «дрожание» тонкой линии на
-             дробном Windows DPI, не меняя более крупные вертикальные слайдеры в настройках. -->
+        <!-- Полосы времени и громкости рисуются часто и занимают 4 DIP: локальный template фиксирует их на физических пикселях,
+             убирая размытые края и "дрожание" линии на дробном DPI; крупные вертикальные слайдеры в настройках не затронуты. -->
         <Style x:Key="MainWindowPlaybackSliderStyle" TargetType="Slider">
             <Setter Property="Height" Value="24" />
             <Setter Property="Focusable" Value="True" />
@@ -512,13 +449,8 @@
             <RowDefinition Height="*" />      <!-- Тело: центрируется и масштабируется в полноэкранном режиме -->
         </Grid.RowDefinitions>
 
-        <!-- Заголовок окна (Fluent TitleBar).
-             ВАЖНО: ui:TitleBar перехватывает клики в СВОИХ границах на уровне Win32
-             (WM_NCHITTEST → HTCAPTION) ещё до того, как они доходят до обычных WPF-элементов —
-             поэтому прозрачный элемент, просто наложенный поверх TitleBar, кликов не получает.
-             Чтобы кликабельная область на "Lumisense" реально работала, она вынесена в
-             отдельную колонку СЛЕВА от TitleBar, а не поверх него — так эта часть экрана
-             вообще не входит в границы TitleBar, и клики по ней обрабатываются как обычно. -->
+        <!-- Заголовок окна (Fluent TitleBar). ВАЖНО: ui:TitleBar перехватывает клики в своих границах на уровне Win32 (WM_NCHITTEST → HTCAPTION),
+             поэтому кликабельная область "Lumisense" вынесена в отдельную колонку слева от него, а не наложена поверх. -->
         <Grid Grid.Row="0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
@@ -530,9 +462,8 @@
                     MouseLeftButtonUp="TitleClickArea_MouseLeftButtonUp"
                     ToolTip="Вид плеера">
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- PNG сохраняет исходный детализированный 256px artwork. Для этой
-                         custom title area он лучше, чем упрощённый 16px frame ICO, а layout/
-                         scaling flags не дают ему размыться на дробном Windows DPI. -->
+                    <!-- PNG сохраняет детализированный 256px artwork (лучше 16px-кадра ICO для этой области), а layout/scaling flags не дают ему
+                         размыться на дробном DPI. -->
                     <Image Source="/Icons/app/lumisense.png" Width="14" Height="14" Margin="0,0,6,0"
                            Stretch="Uniform" SnapsToDevicePixels="True" UseLayoutRounding="True"
                            RenderOptions.BitmapScalingMode="HighQuality" />
@@ -542,10 +473,8 @@
                     <ContextMenu x:Name="MainViewContextMenu" Placement="Bottom"
                                  Opened="MainViewContextMenu_Opened">
                         <ContextMenu.Resources>
-                            <!-- Wpf.Ui не всегда рисует штатный check-glyph MenuItem в Popup.
-                                 Этот локальный шаблон применён только к трём исходным пунктам
-                                 выбора вида и показывает тот же Fluent CheckBox, что в меню
-                                 мини-плеера, не добавляя новых пунктов или состояний. -->
+                            <!-- Wpf.Ui не всегда рисует штатный check-glyph MenuItem в Popup: локальный шаблон для трёх пунктов выбора вида показывает
+                                 тот же Fluent CheckBox, что в меню мини-плеера, без новых пунктов и состояний. -->
                             <Style x:Key="MainViewToggleMenuItemStyle" TargetType="{x:Type MenuItem}">
                                 <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
                                 <Setter Property="Background" Value="Transparent" />
@@ -585,9 +514,7 @@
                                 </Setter>
                             </Style>
 
-                            <!-- Активный вид должен быть заметен и в Popup: не полагаемся на
-                                 системный шаблон CheckBox, а используем локальный акцент
-                                 Lumisense и белую галочку. -->
+                            <!-- Активный вид должен быть заметен и в Popup: вместо системного CheckBox — локальный акцент Lumisense и белая галочка. -->
                             <Style x:Key="MainViewAccentCheckBoxStyle" TargetType="{x:Type CheckBox}">
                                 <Setter Property="Width" Value="18" />
                                 <Setter Property="Height" Value="18" />
@@ -658,11 +585,8 @@
             <ui:TitleBar x:Name="AppTitleBar" Grid.Column="1" Title="" ShowMaximize="True" />
         </Grid>
 
-        <!-- Тело окна обёрнуто в ContentHost: при разворачивании окна в полный экран кнопкой
-             "Развернуть" в заголовке (WindowState -> Maximized) интерфейс не растягивается на
-             всю ширину монитора "простынёй", а аккуратно центрируется и увеличивается — размеры
-             считает ApplyFullscreenLayout()/UpdateContentMaxWidth() в MainWindow.xaml.cs по
-             событию StateChanged. В обычном окне ContentHost ведёт себя как раньше (без изменений). -->
+        <!-- ContentHost: при полном экране интерфейс не растягивается на весь монитор, а центрируется и увеличивается — размеры считают
+             ApplyFullscreenLayout()/UpdateContentMaxWidth() по StateChanged; в обычном окне ведёт себя как раньше. -->
         <Border Grid.Row="1" x:Name="ContentHost" HorizontalAlignment="Stretch" MaxWidth="440">
             <Grid x:Name="BodyGrid">
                 <Grid.RowDefinitions>
@@ -678,13 +602,10 @@
 
         <!-- Блок с обложкой и названием трека -->
         <StackPanel x:Name="AlbumArtPanel" Grid.Row="1" HorizontalAlignment="Center" Margin="0,8,0,8">
-            <!-- ClipToBounds="False": во время анимации смены обложки (см.
-                 MainWindow.AnimateAlbumArtTransition) старая и новая обложки временно уезжают
-                 за пределы своего 150x150 места — им нужно куда "вылетать"/"влетать". -->
+            <!-- ClipToBounds="False": при анимации смены обложки (AnimateAlbumArtTransition) старая и новая временно выходят за 150x150. -->
             <Grid x:Name="AlbumArtContainer" Width="150" Height="150" ClipToBounds="False">
-                <!-- "Улетающая" копия предыдущей обложки — накладывается поверх основной на
-                     время анимации и убирается после её завершения (см. AnimateAlbumArtTransition).
-                     IsHitTestVisible="False", чтобы не перехватывать клики/контекстное меню. -->
+                <!-- Копия предыдущей обложки поверх основной на время анимации (убирается по её завершению); IsHitTestVisible="False" —
+                     чтобы не перехватывать клики и контекстное меню. -->
                 <Border x:Name="AlbumArtGhostBorder" Width="150" Height="150" CornerRadius="16"
                         Visibility="Collapsed" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
                     <Border.RenderTransform>
@@ -789,7 +710,6 @@
             </Border>
         </StackPanel>
 
-        <!-- Прогресс воспроизведения -->
         <Grid Grid.Row="2" Margin="24,4,24,0">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
@@ -801,11 +721,8 @@
                         IsHitTestVisible="False" Minimum="0" Maximum="1" Value="0"
                         ValueChanged="ProgressSlider_ValueChanged" />
 
-                <!-- Альтернативный вид полосы — форма звука вместо сплошной заливки, см.
-                     AppSettings.ProgressBarStyle/MainWindow.ApplyProgressBarStyle. Показывается
-                     вместо ProgressSlider (Visibility переключается в коде), а не вместе с ним —
-                     но сам ProgressSlider всё равно остаётся источником истины для позиции
-                     (Value/Maximum) и перемотки, просто визуально скрыт. -->
+                <!-- Альтернативный вид полосы — форма звука (AppSettings.ProgressBarStyle/ApplyProgressBarStyle): показывается вместо ProgressSlider,
+                     который остаётся источником истины для позиции и перемотки, просто скрыт. -->
                 <local:WaveformView x:Name="ProgressWaveform" Height="28" IsHitTestVisible="False"
                                      Visibility="Collapsed"
                                      UnplayedBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
@@ -825,7 +742,6 @@
             </Grid>
         </Grid>
 
-        <!-- Кнопки управления воспроизведением -->
         <StackPanel x:Name="ControlsPanel" Grid.Row="3" Orientation="Horizontal"
                     HorizontalAlignment="Center" Margin="0,14,0,6">
 
@@ -853,11 +769,8 @@
                 </ui:Button.Icon>
             </ui:Button>
 
-            <!-- Appearance="Secondary", а не "Primary" — фон под текущий акцент красится
-                 вручную в коде (см. MainWindow.RefreshAccentDependentIcons/
-                 SetAccentButtonActive): у ControlAppearance.Primary в WPF-UI подтверждённый
-                 баг библиотеки — фон не обновляется вживую при смене акцента, только при
-                 перезапуске (см. github.com/lepoco/wpfui issues #965/#981). -->
+            <!-- Appearance="Secondary", а не "Primary": фон красится вручную (RefreshAccentDependentIcons/SetAccentButtonActive) — у Primary баг WPF-UI:
+                 фон не обновляется вживую при смене акцента (lepoco/wpfui #965/#981). -->
             <ui:Button x:Name="PlayPauseButton" Appearance="Secondary"
                        Width="54" Height="54" Margin="4,0"
                        Click="PlayPauseButton_Click" ToolTip="Пуск/Пауза">
@@ -1020,9 +933,7 @@
                     </Grid>
                     <TextBlock x:Name="QueueHintText" Text="Треки будут воспроизведены сверху вниз."
                                FontSize="11" Opacity="0.62" TextWrapping="Wrap" Margin="0,6,0,12" />
-                    <!-- Вертикальная компоновка даёт обоим контролам всю ширину Popup.
-                         Высота 40 DIP и явные внутренние отступы сохраняют глифы текста целиком
-                         при любом масштабе интерфейса/DPI. -->
+                    <!-- Вертикальная компоновка даёт обоим контролам всю ширину Popup; высота 40 DIP и явные отступы сохраняют глифы при любом масштабе/DPI. -->
                     <StackPanel x:Name="QueueToolsPanel" Margin="0,0,0,12">
                         <TextBlock Text="Поиск" FontSize="11" Opacity="0.68" Margin="0,0,0,4" />
                         <ui:TextBox x:Name="QueueSearchBox" Height="40" Padding="10,5"
@@ -1046,10 +957,8 @@
                                Text="Пусто. Правый клик по треку → «Играть следующим» или «Добавить в очередь»."
                                Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" TextWrapping="Wrap"
                                Margin="2,4,2,6" />
-                    <!-- Длинный путь не должен расширять Item за пределы Popup: он обрезается
-                         в центральной колонке, а кнопка удаления всегда остаётся справа. У ListBox
-                         используется собственный ScrollViewer: его scrollbar находится в отдельной
-                         правой колонке 16 DIP, а не рисуется overlay-полосой поверх карточек. -->
+                    <!-- Длинный путь не должен расширять Item за пределы Popup: обрезается в центральной колонке, кнопка удаления остаётся справа;
+                         scrollbar у собственного ScrollViewer — в отдельной колонке 16 DIP, а не поверх карточек. -->
                     <ListBox x:Name="QueueItemsList" MaxHeight="280" Background="Transparent"
                              BorderThickness="0" HorizontalContentAlignment="Stretch" Visibility="Collapsed">
                         <ListBox.Template>
@@ -1077,9 +986,7 @@
                                                                             ContentTemplateSelector="{TemplateBinding ContentTemplateSelector}"
                                                                             ContentStringFormat="{TemplateBinding ContentStringFormat}"
                                                                             SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" />
-                                                    <!-- Полоса начинается через 2 DIP после карточек. Визуальный
-                                                         track текущей темы имеет дополнительный внутренний верхний
-                                                         отступ, поэтому поднимаем весь ScrollBar на 8 DIP. -->
+                                                    <!-- Полоса начинается через 2 DIP после карточек; у track темы есть верхний отступ, поэтому ScrollBar поднят на 8 DIP. -->
                                                     <ScrollBar x:Name="PART_VerticalScrollBar" Grid.Column="1"
                                                                Width="5" Margin="2,-8,0,0" HorizontalAlignment="Left"
                                                                Orientation="Vertical"
@@ -1188,11 +1095,8 @@
             <TextBlock x:Name="PlaylistHeaderText" Grid.Column="1" Text="Плейлист" FontSize="14" FontWeight="SemiBold"
                        VerticalAlignment="Center" Opacity="0.85" />
 
-            <!-- Переключает показ обычного плейлиста на виртуальный плейлист "Избранное"
-                 (собирается на лету из треков, отмеченных сердечком, см. FavoritesManager) и
-                 обратно. Активное состояние подсвечено акцентным фоном (красится вручную, см.
-                 MainWindow.SetAccentButtonActive), как и у ShuffleButton/RepeatButton — см.
-                 MainWindow.SetFavoritesViewActive. -->
+            <!-- Переключает плейлист и виртуальное "Избранное" (собирается из треков с сердечком, FavoritesManager); активное состояние подсвечено
+                 акцентом вручную (SetAccentButtonActive), как ShuffleButton/RepeatButton (см. SetFavoritesViewActive). -->
             <ui:Button Grid.Column="2" x:Name="FavoritesButton" Appearance="Secondary"
                        Width="32" Height="32" Padding="0" Margin="4,0,0,0"
                        Click="FavoritesButton_Click" ToolTip="Избранное">
@@ -1201,9 +1105,7 @@
                 </ui:Button.Icon>
             </ui:Button>
 
-            <!-- Одна кнопка вместо прежних "Файлы"/"Папка": клик открывает её собственное
-                 контекстное меню с выбором, что именно добавлять. Скрыта, пока открыт
-                 виртуальный плейлист "Избранное" — добавлять файлы напрямую в него нельзя. -->
+            <!-- Одна кнопка вместо "Файлы"/"Папка" — по клику меню выбора; скрыта в виртуальном "Избранном", куда файлы напрямую не добавляются. -->
             <ui:Button Grid.Column="3" x:Name="AddButton" Appearance="Secondary"
                        Content="Добавить" Margin="4,0"
                        Click="AddButton_Click" ToolTip="Добавить файлы или папку">
@@ -1295,10 +1197,8 @@
             </Border>
         </Popup>
 
-        <!-- Плейлист: список групп (папок/отдельных файлов). Каждую группу можно включить
-             или выключить чекбоксом — выключенные пропускаются при воспроизведении,
-             но остаются видны в списке (полупрозрачные). Клик по шеврону сворачивает/
-             разворачивает список треков внутри группы. -->
+        <!-- Плейлист: список групп (папки/отдельные файлы); чекбокс выключает группу — она пропускается при воспроизведении, но остаётся
+             видна полупрозрачной; шеврон сворачивает/разворачивает треки группы. -->
         <Border x:Name="PlaylistBorder" Grid.Row="6" Margin="16,0,16,16" CornerRadius="10"
                 Background="{DynamicResource ControlFillColorDefaultBrush}">
             <Grid>
@@ -1312,10 +1212,8 @@
                     <ColumnDefinition Width="14" />
                 </Grid.ColumnDefinitions>
 
-                <!-- Поиск по плейлисту фильтрует имя файла без расширения, то есть тот же
-                     текст, что показан в строке. Он создаёт отдельный ItemsSource после короткого
-                     debounce и не меняет _folders: «Далее/Назад/Перемешать» всегда используют
-                     полный плейлист, а не временный список результатов. -->
+                <!-- Поиск фильтрует имя файла без расширения (как в строке): отдельный ItemsSource после debounce, _folders не меняется —
+                     «Далее/Назад/Перемешать» всегда работают с полным плейлистом, а не с результатами. -->
                 <ui:TextBox x:Name="PlaylistSearchBox" Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2"
                             Margin="8,8,8,4"
                             PlaceholderText="Поиск по плейлисту"
@@ -1398,53 +1296,8 @@
                     </Border>
                 </Popup>
 
-                <!-- ЕДИНЫЙ виртуализированный список на весь плейлист — заголовки папок и строки
-                     треков вперемешку в одном плоском ItemsSource (List<object> из PlaylistFolder
-                     и PlaylistTrackRow, см. MainWindow.RefreshPlaylistView), а какой DataTemplate
-                     показать для каждого элемента — решает PlaylistDisplayItemTemplateSelector
-                     (App.xaml/Converters.cs) по CLR-типу самого элемента.
-
-                     Раньше здесь был ItemsControl с ОТДЕЛЬНЫМ вложенным ListView треков НА
-                     КАЖДУЮ папку, а собственная прокрутка этих вложенных списков была отключена
-                     (ScrollViewer.VerticalScrollBarVisibility="Disabled") — весь скролл был общий,
-                     через отдельный внешний PlaylistScrollViewer. У этой схемы виртуализация была
-                     принципиально невозможна: ScrollViewer всегда измеряет своё содержимое с
-                     БЕСКОНЕЧНОЙ доступной высотой (иначе ему неоткуда узнать реальный Extent) — а
-                     значит и каждый вложенный, лишённый своего скролла ListView внутри него тоже
-                     измерялся с бесконечной высотой, и был вынужден реализовать (создать визуальные
-                     контейнеры) КАЖДУЮ строку целиком, а не только видимые, чтобы вообще посчитать
-                     свой итоговый размер. На 1000+ треках это было главной причиной заметной
-                     задержки перед тем, как плейлист полностью появлялся на экране при каждом
-                     запуске.
-
-                     Теперь это ОДИН настоящий ListView с НАСТОЯЩИМ собственным скроллом (не
-                     обёрнутый снаружи ещё одним ScrollViewer — именно тот внешний и вызывал
-                     бесконечное измерение выше) — VirtualizingPanel.IsVirtualizing="True" реально
-                     реализует только те строки, что физически видны сейчас плюс небольшой запас, и
-                     ничего больше, независимо от того, сколько всего треков в плейлисте.
-
-                     ScrollViewer.VerticalScrollBarVisibility="Hidden" (не "Disabled"!) — список
-                     по-прежнему честно скроллится (программно и колесом мыши), просто не показывает
-                     родной скроллбар — вместо него отрисован свой (PlaylistScrollTrack ниже),
-                     подключённый к тому же внутреннему ScrollViewer через SizeChanged/ScrollChanged
-                     и GetActivePlaylistScrollViewer() в code-behind.
-
-                     VirtualizationMode="Standard", а НЕ "Recycling" — здесь это важно: список
-                     показывает вперемешку РАЗНОРОДНЫЕ элементы (PlaylistFolder-заголовки и
-                     PlaylistTrackRow-строки), выбор шаблона под конкретный элемент решает
-                     ItemTemplateSelector. У Recycling есть известная особенность WPF: при
-                     переиспользовании уже отрисованного контейнера под НОВЫЙ элемент другого типа
-                     (например, был трек — стал заголовок папки, после пересборки списка при
-                     сворачивании/разворачивании других папок) шаблон контейнера иногда не
-                     пересчитывается заново под новый DataContext и остаётся от предыдущего
-                     элемента — на практике это выглядело как "у папки вдруг пропало название"
-                     (внутри неверно оставался TrackItemTemplate, у которого просто нет свойства
-                     DisplayName). Standard всё ещё полноценно виртуализирует (контейнеры для
-                     невидимых строк не создаются вовсе) — просто не переиспользует старые
-                     контейнеры под новые элементы, а создаёт для них новые, что стоит немного
-                     памяти/GC-нагрузки, но не воспроизводимо ломает выбор шаблона. FavoritesTrackListView
-                     ниже (без селектора, только один тип элемента — PlaylistTrackRow) от этой
-                     проблемы не страдает, там Recycling оставлен как есть. -->
+                <!-- Плоский ItemsSource (PlaylistFolder + PlaylistTrackRow, шаблон — PlaylistDisplayItemTemplateSelector); scrollbar Hidden (свой PlaylistScrollTrack).
+                     VirtualizationMode="Standard", не Recycling: при смене типа элемента контейнер сохранял чужой шаблон, и у папки пропадало название. -->
                 <ListView x:Name="PlaylistFoldersControl" Grid.Row="2" Grid.Column="0" Margin="4"
                           Background="Transparent" BorderThickness="0"
                           AlternationCount="100000"
@@ -1463,16 +1316,8 @@
                           PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel"
                           PreviewKeyDown="PlaylistTrackList_PreviewKeyDown" />
 
-                <!-- Виртуальный плейлист "Избранное" — отдельный, плоский список того же типа
-                     строк (PlaylistTrackRow, см. MainWindow.RefreshFavoritesTrackList), просто без
-                     группировки по папкам (чекбокс/пересканирование/удаление папки к нему не
-                     применимы, см. заголовок "Избранное" в тулбаре плейлиста вместо этого) —
-                     поэтому обычный ItemTemplate (а не селектор) сразу на TrackItemTemplate.
-                     Виртуализация у обычного ListBox/ListView включена по умолчанию самим WPF
-                     (в отличие от прежних вложенных списков выше, здесь никогда не было ни
-                     отключённого скролла, ни обёртки внешним ScrollViewer, так что этот список
-                     виртуализировался и раньше) — VirtualizingPanel.* ниже просто делают это
-                     явным, а не полагаются на дефолт. -->
+                <!-- Виртуальное "Избранное": плоский список тех же PlaylistTrackRow (RefreshFavoritesTrackList) без группировки, поэтому обычный ItemTemplate,
+                     а не селектор; VirtualizingPanel.* лишь делают явной виртуализацию, которая и так включена. -->
                 <ListView x:Name="FavoritesTrackListView" Grid.Row="2" Grid.Column="0" Margin="4"
                           Background="Transparent" BorderThickness="0"
                           AlternationCount="100000"
@@ -1492,20 +1337,8 @@
                           PreviewMouseWheel="PlaylistTrackList_PreviewMouseWheel"
                           PreviewKeyDown="PlaylistTrackList_PreviewKeyDown" />
 
-                <!-- Свой скроллбар с нуля: никаких ScrollBar/Track — просто дорожка (Grid) и
-                     ползунок (Border), позиция и размер которого целиком считаются вручную в
-                     MainWindow.xaml.cs (PlaylistScrollViewer_ScrollChanged / Update...Thumb).
-                     Клик по дорожке — мгновенный прыжок к месту клика, перетаскивание ползунка —
-                     обычный драг за мышью. Никакой зависимости от внутренностей WPF ScrollBar.
-
-                     Margin="0,4,0,4" — те же верхний/нижний отступы, что и у PlaylistScrollViewer
-                     слева (Margin="4" со всех сторон): раньше у дорожки отступов не было вовсе,
-                     из-за чего её ActualHeight была на 8px больше настоящей высоты видимой
-                     прокручиваемой области — координаты ползунка считались по завышенной шкале
-                     и на длинных плейлистах заметно "убегали" за пределы видимой дорожки.
-                     ClipToBounds="True" — подстраховка на случай любых будущих округлений:
-                     ползунок физически не может отрисоваться выше/ниже границ дорожки, даже
-                     если Margin/Height на долю пикселя выйдут за расчётный диапазон. -->
+                <!-- Свой скроллбар без ScrollBar/Track: дорожка (Grid) и ползунок (Border) считаются вручную в MainWindow.xaml.cs; клик по дорожке — прыжок.
+                     Margin="0,4,0,4" как у PlaylistScrollViewer: иначе дорожка на 8px выше видимой области, и ползунок «убегает»; ClipToBounds — страховка. -->
                 <Grid x:Name="PlaylistScrollTrack" Grid.Row="2" Grid.Column="1" Background="Transparent"
                       Margin="0,4,0,4" ClipToBounds="True"
                       SizeChanged="PlaylistScrollTrack_SizeChanged"
@@ -1544,18 +1377,15 @@
                         </StackPanel>
                     </Grid>
 
-                    <!-- Для LRC используем отдельный список строк: у каждой есть состояние
-                         IsActive, поэтому текущая строка может подсвечиваться и оставаться в
-                         видимой области по ходу воспроизведения. -->
+                    <!-- Для LRC отдельный список строк с состоянием IsActive: текущая строка подсвечивается и остаётся в видимой области. -->
                     <ListBox x:Name="LyricsPanelSyncedList" Grid.Row="1" Visibility="Collapsed"
                              Background="Transparent" BorderThickness="0" Cursor="Hand"
                              Focusable="False" PreviewMouseLeftButtonUp="LyricsPanelSyncedList_PreviewMouseLeftButtonUp"
                              ScrollViewer.CanContentScroll="False"
                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
-                        <!-- ListBox остаётся нужен для виртуализации и поиска контейнера строки,
-                             но выбор элемента не должен рисовать системную бирюзовую подложку:
-                             клик является командой перемотки, а не выбором текста. -->
+                        <!-- ListBox нужен для виртуализации и поиска контейнера, но выбор не должен рисовать системную бирюзовую подложку:
+                             клик — команда перемотки, а не выбор текста. -->
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="{x:Type ListBoxItem}">
                                 <Setter Property="Padding" Value="0" />
@@ -1614,12 +1444,8 @@
             </Grid>
         </Border>
 
-        <!-- Оверлей "перетащите файлы сюда" — виден только пока идёт активный drag&drop с
-             файлами/папками из Проводника (см. MainWindow_DragEnter/DragLeave/Drop). Grid.RowSpan
-             — перекрывает и заголовок, и тело окна целиком, а не только "тело" (Grid.Row="1"),
-             чтобы было явно видно, что бросить файл можно куда угодно на окне, а не только в
-             область плейлиста. IsHitTestVisible="False" — сам оверлей ничего не должен ловить,
-             все события drag&drop обрабатывает окно целиком (AllowDrop на самом ui:FluentWindow). -->
+        <!-- Оверлей "перетащите файлы сюда": виден при drag&drop из Проводника (MainWindow_DragEnter/DragLeave/Drop), Grid.RowSpan — на всё окно,
+             IsHitTestVisible="False" — все события drag&drop обрабатывает окно (AllowDrop на ui:FluentWindow). -->
         <Border x:Name="DragDropOverlay" Grid.Row="0" Grid.RowSpan="2"
                 Background="#B0000000" IsHitTestVisible="False" Visibility="Collapsed">
             <Border Background="{DynamicResource AccentFillColorDefaultBrush}" CornerRadius="12"

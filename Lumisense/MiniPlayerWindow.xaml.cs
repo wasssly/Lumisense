@@ -15,10 +15,8 @@ public partial class MiniPlayerWindow : Window
     private readonly MainWindow _mainWindow;
     private bool _isDraggingProgress;
 
-    // Отступы HeaderPanel в XAML — "10,8,10,2" (боковые 10, верхний 8, нижний 2): при видимой
-    // полосе прогресса нижний отступ намеренно меньше верхнего, утягивая заголовок к бару под
-    // ним. Без полосы это выглядит неровно, поэтому нижний отступ увеличивается до 10 при её
-    // скрытии — см. ApplyProgressBarVisibility.
+    // HeaderPanel в XAML имеет отступы "10,8,10,2": при видимой полосе прогресса нижний отступ меньше, чтобы утянуть заголовок к бару;
+    // без полосы он увеличивается до 10 (см. ApplyProgressBarVisibility).
     private const double HeaderHorizontalMargin = 10;
     private const double HeaderTopMargin = 8;
     private const double HeaderBottomMarginWithProgress = 2;
@@ -31,44 +29,34 @@ public partial class MiniPlayerWindow : Window
     // может быть выключена при включённом контуре и наоборот.
     private bool _showArtworkProgress;
 
-    // Вращение назначается непосредственно свойству Angle через AnimationClock, а не
-    // storyboard с поиском цели по namescope. Так анимация гарантированно живёт на transform
-    // самой обложки даже в отдельном transparent Window мини-плеера.
+    // Angle крутится через AnimationClock, а не storyboard с поиском цели по namescope — так анимация
+    // гарантированно живёт на transform обложки даже в отдельном transparent Window.
     private AnimationClock? _vinylRotationClock;
 
-    // Реальный замер (Measure), а не заранее подобранные константы под каждую комбинацию
-    // видимости строк — та комбинация слишком легко расходится с реальной раскладкой (Grid с
-    // рядами Auto отдаёт лишнее/недостающее место последнему ряду, а не распределяет поровну).
+    // Реальный Measure, а не константы под каждую комбинацию видимости строк: Grid с рядами Auto отдаёт лишнее/недостающее
+    // место последнему ряду, и константы расходятся с раскладкой.
     private double MeasureContentHeight()
     {
         ContentGrid.Measure(new System.Windows.Size(Width, double.PositiveInfinity));
         return ContentGrid.DesiredSize.Height;
     }
 
-    // ---------- Прилипание к краям экрана ----------
-    // Сама механика (перехват WM_MOVING, арифметика прилипания) — в WindowSnapHelper, общем
-    // для этого окна и MainWindow. Включение/выключение — AppSettings.MiniPlayerSnapToEdges
-    // (см. страницу "Мини-плеер" в настройках), по умолчанию включено — прежнее поведение до
-    // появления этой настройки.
+    // Прилипание к краям: механика в WindowSnapHelper (WM_MOVING), включается AppSettings.MiniPlayerSnapToEdges
+    // (по умолчанию включено — прежнее поведение).
 
     private static readonly IntPtr HWND_TOPMOST = WindowSnapHelper.HWND_TOPMOST;
     private const uint SWP_NOMOVE = WindowSnapHelper.SWP_NOMOVE;
     private const uint SWP_NOSIZE = WindowSnapHelper.SWP_NOSIZE;
     private const uint SWP_NOACTIVATE = WindowSnapHelper.SWP_NOACTIVATE;
 
-    // Windows иногда молча теряет топмост-состояние окна (флаг формально остаётся, а
-    // реальный Z-order — нет) — после полноэкранных игр, диалогов UAC, RDP, блокировки экрана
-    // и т.п. Раз в несколько секунд принудительно переустанавливаем окно поверх остальных
-    // через Win32 SetWindowPos — это чинит уже "отвалившийся" топмост, а не только поддерживает.
+    // Windows иногда молча теряет топмост (флаг остаётся, Z-order нет — после полноэкранных игр, UAC, RDP, блокировки экрана);
+    // раз в несколько секунд переустанавливаем окно поверх через Win32 SetWindowPos.
     private readonly DispatcherTimer _topmostTimer = new() { Interval = TimeSpan.FromSeconds(3) };
 
     private IntPtr _hwnd;
 
-    // Снимок состояния на момент начала текущего перетаскивания — позиция курсора и
-    // прямоугольник окна. Все расчёты внутри одного перетаскивания идут от этого снимка,
-    // а не от прямоугольника из предыдущего WM_MOVING — иначе окно, прижавшееся к краю,
-    // почти не удавалось оттащить обратно: каждое новое сообщение отталкивалось уже от
-    // прижатой позиции. Так позиция всегда — чистое смещение курсора от точки старта.
+    // Снимок на начало перетаскивания (позиция курсора и прямоугольник окна): расчёты идут от него, а не от предыдущего
+    // WM_MOVING, иначе прижатое к краю окно не оттащить: позиция — чистое смещение курсора от точки старта.
     private bool _isDragging;
     private WindowSnapHelper.POINT _dragStartCursor;
     private WindowSnapHelper.RECT _dragStartRect;
@@ -119,10 +107,8 @@ public partial class MiniPlayerWindow : Window
     public void ApplyAccessibilityPreferences() =>
         AccessibilityPreferences.ApplyToWindow(this, _mainWindow.Settings);
 
-    // См. комментарий у объявления _topmostTimer — периодически принудительно возвращаем
-    // окно в топмост через Win32, а не полагаемся на то, что WPF Topmost=true держится сам.
-    // Трогаем реальный Z-order только когда настройка "поверх окон" включена и мини-плеер
-    // не свёрнут — незачем дёргать SetWindowPos впустую.
+    // Возвращаем окно в топмост через Win32, а не полагаемся на Topmost=true (см. _topmostTimer), только при включённом
+    // "поверх окон" и не свёрнутом мини-плеере, чтобы не дёргать SetWindowPos впустую.
     private void TopmostTimer_Tick(object? sender, EventArgs e)
     {
         if (!Topmost || _hwnd == IntPtr.Zero || WindowState == WindowState.Minimized) return;
@@ -131,10 +117,8 @@ public partial class MiniPlayerWindow : Window
     }
 
 
-    // Перехватываем оконные сообщения на уровне Win32: это единственный способ подправить
-    // позицию окна прямо во время родного интерактивного перетаскивания (DragMove), не дожидаясь
-    // его завершения — за счёт этого прилипание к краю ощущается плавным и "магнитным", а не
-    // рывком после отпускания мыши.
+    // Перехватываем Win32-сообщения: только так можно править позицию прямо во время родного DragMove, чтобы
+    // прилипание было плавным, а не рывком после отпускания мыши.
     protected override void OnSourceInitialized(EventArgs e)
     {
         base.OnSourceInitialized(e);
@@ -153,10 +137,8 @@ public partial class MiniPlayerWindow : Window
         switch (msg)
         {
             case WindowSnapHelper.WM_ENTERSIZEMOVE:
-                // Начало нового перетаскивания — фиксируем точку отсчёта. GetWindowRect
-                // отдаёт физические пиксели — те же единицы, что и GetCursorPos и WM_MOVING,
-                // так что на мониторах с масштабированием (100% ≠ 125%/150% и т.д.) расчёт
-                // остаётся точным.
+                // Начало перетаскивания фиксирует точку отсчёта; GetWindowRect, GetCursorPos и WM_MOVING — в физических пикселях,
+                // поэтому расчёт точен и при масштабе 125%/150%.
                 _isDragging = true;
                 WindowSnapHelper.GetCursorPos(out _dragStartCursor);
                 WindowSnapHelper.GetWindowRect(_hwnd, out _dragStartRect);
@@ -196,10 +178,8 @@ public partial class MiniPlayerWindow : Window
         return IntPtr.Zero;
     }
 
-    // Сырые значения с последнего OnTrackInfoChanged/OnProgressChanged — нужны, чтобы
-    // UpdateSecondaryLine могла перерисовать вторую строку по актуальным данным в любой
-    // момент, а не только когда придёт следующее событие (например, сразу после того как
-    // пользователь переключил AppSettings.MiniPlayerInfoMode в настройках, см. ApplyInfoModeLive).
+    // Сырые значения последних OnTrackInfoChanged/OnProgressChanged — UpdateSecondaryLine перерисует вторую строку
+    // в любой момент (например, после смены MiniPlayerInfoMode в настройках, см. ApplyInfoModeLive).
     private string _lastArtist = "";
     private double _lastCurrentSeconds;
     private double _lastTotalSeconds;
@@ -209,11 +189,8 @@ public partial class MiniPlayerWindow : Window
         TitleText.Text = title;
         _lastArtist = artist;
 
-        // RaiseTrackInfoChanged сначала публикует PlaybackSnapshot, а затем уведомляет UI о
-        // новой обложке и тексте. Поэтому к этому моменту snapshot уже может содержать
-        // восстановленные position/duration. Не затираем их нулями: иначе при включённом
-        // контуре прогресса первый визуальный кадр будет пустым, а следующий тик резко
-        // перескочит к сохранённой позиции.
+        // RaiseTrackInfoChanged сначала публикует PlaybackSnapshot, так что position/duration уже могут быть восстановлены:
+        // не затираем их нулями, иначе первый кадр контура прогресса будет пустым, а следующий тик резко перескочит.
         var snapshot = _mainWindow.PlaybackState.Current;
         bool snapshotBelongsToTrack = snapshot.DurationSeconds > 0
             && string.Equals(snapshot.Title, title, StringComparison.Ordinal)
@@ -222,16 +199,13 @@ public partial class MiniPlayerWindow : Window
         _lastTotalSeconds = snapshotBelongsToTrack ? snapshot.DurationSeconds : 0;
         UpdateSecondaryLine();
 
-        // Новый трек — новое избранное-состояние; если сейчас выбран режим "Избранное" (см.
-        // SecondaryButtonMode), сердечко должно тут же отразить статус НОВОГО трека, а не
-        // донашивать вид предыдущего до следующего клика по нему где-либо ещё.
+        // Новый трек — новое состояние избранного: в режиме "Избранное" (SecondaryButtonMode) сердечко сразу отражает новый трек.
         if (SecondaryButtonMode == "Favorite") UpdateFavoriteSecondaryButtonVisual();
 
         if (art is ImageBrush { ImageSource: not null } imageBrush)
         {
-            // Не используем ImageBrush как Background для миниатюры: WPF может выбрать
-            // низкокачественное масштабирование фона. Image ниже рендерится с HighQuality
-            // и является тем же слоем в обычном и виниловом вариантах оформления.
+            // Не используем ImageBrush как Background: WPF может выбрать низкокачественное масштабирование; Image ниже рендерится
+            // с HighQuality и служит одним слоем для обычного и винилового оформления.
             ArtImage.Source = imageBrush.ImageSource;
             ArtImage.Visibility = Visibility.Visible;
             ArtBorder.Background = Brushes.Transparent;
@@ -251,12 +225,8 @@ public partial class MiniPlayerWindow : Window
         UpdateTitleMarquee();
     }
 
-    // Вторая строка заголовка (под названием трека, которое видно всегда независимо от
-    // режима) — что именно в ней показывать, выбирается в настройках (см.
-    // AppSettings.MiniPlayerInfoMode и страницу настроек "Мини-плеер"). Вызывается и на
-    // каждое обновление трека/прогресса, и сразу же при переключении самой настройки, пока
-    // мини-плеер уже открыт (см. ApplyInfoModeLive) — по той же схеме, что и
-    // UpdateSecondaryButton/ApplyButtonsLayoutMode для остального содержимого мини-плеера.
+    // Вторая строка заголовка (режим — AppSettings.MiniPlayerInfoMode, страница "Мини-плеер"); вызывается на каждое обновление
+    // трека/прогресса и сразу при смене настройки (ApplyInfoModeLive), как UpdateSecondaryButton/ApplyButtonsLayoutMode.
     private void UpdateSecondaryLine()
     {
         switch (_mainWindow.Settings.MiniPlayerInfoMode)
@@ -288,20 +258,11 @@ public partial class MiniPlayerWindow : Window
     // См. UpdateSecondaryLine — публичный вызов для MainWindow.ApplyMiniPlayerInfoModeLive.
     public void ApplyInfoModeLive() => UpdateSecondaryLine();
 
-    // ---------- Фон и тема мини-плеера ----------
-    //
-    // От Win32-блюра (SetWindowCompositionAttribute/ACCENT_ENABLE_ACRYLICBLURBEHIND) отказались:
-    // конфликтовал с тем, что окно уже само AllowsTransparency="True" (layered window со своим
-    // альфа-смешиванием), на части систем ползунок прозрачности переставал на что-либо влиять.
-    //
-    // Сейчас всё на одном слое: RootBorder заливается сплошным SolidColorBrush
-    // (MiniBackgroundBrush), альфа-канал которого и есть настройка "прозрачность мини-плеера" —
-    // WPF сам честно смешивает его с тем, что позади окна. Никакого Win32, никакой зависимости
-    // от DWM. Базовый RGB-цвет фона и цвета текста/иконок зависят от темы приложения (ApplyTheme).
+    // От Win32-блюра (ACCENT_ENABLE_ACRYLICBLURBEHIND) отказались: он конфликтовал с AllowsTransparency="True" и
+    // ломал ползунок прозрачности. Теперь RootBorder — SolidColorBrush (MiniBackgroundBrush), альфа = прозрачность.
 
-    // Базовые RGB для фона (альфа добавляется отдельно в ApplyBackground). Светлая тема —
-    // светло-серый, а не чистый белый: на полупрозрачном белом поверх произвольного рабочего
-    // стола тёмный текст читается плохо без хоть какой-то плотности цвета.
+    // Базовые RGB фона (альфа добавляется в ApplyBackground); светлая тема — светло-серая, а не белая: на
+    // полупрозрачном белом поверх произвольного рабочего стола тёмный текст читается плохо.
     private static readonly (byte R, byte G, byte B) DarkBackgroundRgb = (0x1C, 0x1C, 0x1E);
     private static readonly (byte R, byte G, byte B) LightBackgroundRgb = (0xF2, 0xF2, 0xF2);
 
@@ -317,10 +278,8 @@ public partial class MiniPlayerWindow : Window
     private SolidColorBrush? _controlStrongFillBrush;
     private SolidColorBrush? _controlStrokeBrush;
 
-    // Пересчитывает все цвета, зависящие от темы приложения (фон, текст, иконки, подложки
-    // кнопок) — вызывается один раз при открытии мини-плеера (см. OnSourceInitialized) и затем
-    // повторно, если пользователь переключил тему в настройках, пока мини-плеер уже открыт
-    // (см. ApplyThemeLive / MainWindow.ApplyMiniPlayerThemeLive).
+    // Пересчитывает цвета, зависящие от темы приложения: при открытии (OnSourceInitialized) и при смене темы на
+    // открытом мини-плеере (ApplyThemeLive / MainWindow.ApplyMiniPlayerThemeLive).
     private void ApplyTheme()
     {
         _textPrimaryBrush ??= (SolidColorBrush)FindResource("TextFillColorPrimaryBrush");
@@ -386,9 +345,8 @@ public partial class MiniPlayerWindow : Window
     // светлую/тёмную тему в настройках, пока мини-плеер уже открыт.
     public void ApplyThemeLive() => ApplyTheme();
 
-    // Default сохраняет привычную скруглённую квадратную обложку. Vinyl и StaticCircle
-    // превращают визуальный слой в круг; только Vinyl дополнительно вращается во время
-    // воспроизведения. Индикатор прогресса остаётся отдельным неподвижным слоем под обложкой.
+    // Default — скруглённая квадратная обложка; Vinyl и StaticCircle — круг, вращается только Vinyl во время воспроизведения;
+    // индикатор прогресса остаётся отдельным неподвижным слоем под обложкой.
     public void ApplyArtworkStyle()
     {
         string style = _mainWindow.Settings.MiniPlayerArtworkStyle;
@@ -421,9 +379,8 @@ public partial class MiniPlayerWindow : Window
 
     private void ApplyArtworkProgressClip(bool circle)
     {
-        // Контур находится под обложкой. Не обрезаем его по 42×42: небольшой внешний
-        // участок должен выступать за край и закрывать антиалиасинговые пиксели изображения;
-        // внутренний участок всё равно полностью закрывается ArtBorder.
+        // Контур лежит под обложкой и не обрезается по 42×42: внешний край закрывает антиалиасинговые пиксели изображения,
+        // а внутренняя часть полностью закрыта ArtBorder.
         ArtProgressOutline.Clip = null;
     }
 
@@ -460,17 +417,8 @@ public partial class MiniPlayerWindow : Window
         ArtRotateTransform.Angle = 0;
     }
 
-    // ---------- Бегущая строка названия трека ----------
-    // Название показывается статично, пока помещается в 140px. Если длиннее — бесконечная
-    // анимация TranslateTransform.X: пауза → проезд до конца → пауза → проезд обратно, по кругу,
-    // с постоянной скоростью (px/сек), а не фиксированным временем на весь текст.
-    //
-    // Ширина меряется через собственный Measure() у TitleText, а не ActualWidth (доступен
-    // только после layout). Раньше считалась через отдельный FormattedText с тем же Typeface,
-    // но тот разрешает шрифт (переменные шрифты вроде Segoe UI Variable) чуть иначе, чем рисует
-    // TextBlock — дистанция прокрутки получалась короче настоящей, и строка останавливалась, не
-    // докрутив текст. MarqueeEndBufferPx — запас на случай, если засечки/антиалиасинг выходят
-    // за расчётную ширину.
+    // Бегущая строка: название статично, пока помещается в 140px, иначе бесконечная анимация X с постоянной скоростью (px/сек).
+    // Ширина — Measure() у TitleText (FormattedText разрешал шрифт иначе и обрывал прокрутку); MarqueeEndBufferPx — запас.
     private const double MarqueePixelsPerSecond = 34.0;
     private const double MarqueeEdgePauseSeconds = 1.0;
     private const double DefaultTitleClipWidth = 120.0;
@@ -512,12 +460,8 @@ public partial class MiniPlayerWindow : Window
         TitleTranslate.BeginAnimation(TranslateTransform.XProperty, keyFrames);
     }
 
-    // ---------- Всплывающий индикатор процентов громкости ----------
-    //
-    // Показывается при любом изменении громкости, пока открыт мини-плеер — то есть как раз
-    // при регулировке хоткеями или скроллом (у мини-плеера нет собственного ползунка). Каждый
-    // вызов останавливает предыдущий прогон Storyboard и запускает новый с нуля, поэтому
-    // быстрые повторные нажатия хоткея просто продлевают показ, а не мигают.
+    // Индикатор громкости показывается при любом изменении, пока открыт мини-плеер (у него нет ползунка); каждый вызов
+    // перезапускает Storyboard, поэтому быстрые нажатия хоткея продлевают показ, а не мигают.
     private void OnVolumeChanged(double volume)
     {
         VolumeIndicatorText.Text = $"{(int)Math.Round(volume * 100)}%";
@@ -525,9 +469,8 @@ public partial class MiniPlayerWindow : Window
 
         if (_buttonsOverlayMode)
         {
-            // В Overlay-режиме при наведении ControlsPanel занимает ту же строку, что и
-            // HeaderPanel. На время volume indicator убираем кнопки, иначе процент громкости
-            // отображается одновременно с ними и элементы перекрываются.
+            // В Overlay-режиме ControlsPanel занимает ту же строку, что HeaderPanel: на время индикатора громкости
+            // убираем кнопки, чтобы элементы не перекрывались.
             _volumeOverlaySuppressedControls = ControlsPanel.Visibility == Visibility.Visible;
             if (_volumeOverlaySuppressedControls)
                 ControlsPanel.Visibility = Visibility.Collapsed;
@@ -614,9 +557,8 @@ public partial class MiniPlayerWindow : Window
     private void SettingsMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowSettingsWindow("MiniPlayer");
     private void NowPlayingMenuItem_Click(object sender, RoutedEventArgs e) => _mainWindow.ShowNowPlayingWindow();
 
-    // Не полагаемся на ControlAppearance.Primary у WPF-UI для "включённого" вида этих кнопок —
-    // тот же подтверждённый баг библиотеки, что и в MainWindow.SetAccentButtonActive (фон не
-    // обновляется вживую при смене акцента). Красим Background вручную тем же способом.
+    // Не полагаемся на ControlAppearance.Primary WPF-UI: тот же баг, что в MainWindow.SetAccentButtonActive (фон не обновляется
+    // при смене акцента), поэтому красим Background вручную.
     private void SetAccentButtonActive(Wpf.Ui.Controls.Button button, bool active)
     {
         button.Appearance = ControlAppearance.Secondary;
@@ -627,12 +569,8 @@ public partial class MiniPlayerWindow : Window
             button.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
     }
 
-    // Компактное окно мини-плеера — под кнопку повтора, кнопку "перемешать" и сердечко
-    // избранного одновременно места нет (в отличие от основного окна, где показаны все три),
-    // поэтому здесь всего одна "вторая" кнопка, а какую из трёх функций она выполняет,
-    // выбирается в настройках (см. AppSettings.MiniPlayerSecondaryButton и SettingsWindow,
-    // страница "Мини-плеер"). SecondaryButton в разметке — один и тот же элемент под все три
-    // функции, никогда не больше одной сразу.
+    // В компактном мини-плеере места хватает лишь на одну "вторую" кнопку (повтор/перемешать/сердечко); какую функцию
+    // она выполняет — AppSettings.MiniPlayerSecondaryButton (страница "Мини-плеер"), SecondaryButton в разметке один на все.
     private string SecondaryButtonMode => _mainWindow.Settings.MiniPlayerSecondaryButton;
 
     private void SecondaryButton_Click(object sender, RoutedEventArgs e)
@@ -651,12 +589,8 @@ public partial class MiniPlayerWindow : Window
         }
     }
 
-    // Синхронизирует вид кнопки повтора с фактическим режимом в основном окне — тот же набор
-    // иконок/акцента, что и у RepeatButton там (см. MainWindow.SetRepeatMode), просто в
-    // уменьшенном размере под мини-плеер. Применяется только если сейчас выбрана функция
-    // "Повтор" (см. SecondaryButtonMode) — иначе кнопка сейчас показывает что-то другое, и
-    // трогать её вид отсюда не нужно (когда пользователь переключит настройку обратно,
-    // UpdateSecondaryButton сама подставит актуальный режим повтора).
+    // Синхронизирует вид кнопки повтора с режимом в основном окне (как MainWindow.SetRepeatMode, но меньше); только если
+    // выбрана функция "Повтор" — иначе UpdateSecondaryButton сама подставит актуальный режим при переключении.
     private void OnRepeatModeChanged(string modeName)
     {
         if (SecondaryButtonMode != "Repeat") return;
@@ -690,13 +624,8 @@ public partial class MiniPlayerWindow : Window
         SetAccentButtonActive(SecondaryButton, enabled);
     }
 
-    // Третий вариант "второй кнопки" — избранное текущего трека. В отличие от повтора и
-    // перемешивания, у избранного нет отдельного события на MainWindow: FavoritesManager
-    // глобальный и статический, а на его изменения подписан FavoritesChangeNotifier.Instance
-    // (см. Favorites.cs) — тот же Epoch-приём, на котором держится сердечко в обычном
-    // плейлисте (IsFavoriteMultiConverter). Подписка идёт в конструкторе безусловно — сама
-    // проверка режима внутри дешевле, чем подписываться/отписываться при каждом переключении
-    // настройки.
+    // Избранное как вторая кнопка: у FavoritesManager нет события на MainWindow, изменения идут через FavoritesChangeNotifier
+    // (см. Favorites.cs); подписка безусловна — проверка режима внутри дешевле переподписки при смене настройки.
     private void OnFavoritesChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
     {
         if (SecondaryButtonMode != "Favorite") return;
@@ -713,11 +642,8 @@ public partial class MiniPlayerWindow : Window
         SetAccentButtonActive(SecondaryButton, isFavorite);
     }
 
-    // Вызывается при открытии мини-плеера (см. конструктор) и сразу же, если пользователь
-    // переключил настройку "какую функцию показывать" в окне настроек прямо сейчас, пока
-    // мини-плеер открыт (см. MainWindow.ApplyMiniPlayerSecondaryButtonLive) — перерисовывает
-    // SecondaryButton под актуально выбранную функцию, используя уже известное из основного
-    // окна текущее состояние (так же, как конструктор поступает с play/pause при открытии).
+    // Вызывается при открытии и при смене настройки "какую функцию показывать" на открытом мини-плеере
+    // (MainWindow.ApplyMiniPlayerSecondaryButtonLive): перерисовывает SecondaryButton по состоянию основного окна.
     public void UpdateSecondaryButton()
     {
         switch (SecondaryButtonMode)
@@ -734,10 +660,8 @@ public partial class MiniPlayerWindow : Window
         }
     }
 
-    // Вызывается из MainWindow.RefreshAccentDependentIcons при каждой смене акцента — сама
-    // by себе смена состояния (повтор/шафл вкл-выкл, играет/на паузе) уже красит кнопки через
-    // SetAccentButtonActive/OnPlaybackStateChanged выше, а тут нужно перекрасить их и тогда,
-    // когда состояние НЕ менялось, а сменился только сам цвет акцента.
+    // Вызывается из MainWindow.RefreshAccentDependentIcons: SetAccentButtonActive/OnPlaybackStateChanged красят кнопки только
+    // при смене состояния, а здесь нужно перекрасить их, когда сменился лишь цвет акцента.
     public void RefreshAccentButtons()
     {
         ApplyContextMenuAccent();
@@ -754,18 +678,11 @@ public partial class MiniPlayerWindow : Window
             SecondaryButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor());
     }
 
-    // Подставляем актуальное состояние настроек прямо перед показом меню — на случай, если
-    // закрепление/топмост поменяли в другом месте (например, в окне настроек) уже после
-    // того, как это меню было создано.
-    // Пока true — MiniOpacityContextSlider.Value выставляется программно (см.
-    // MiniPlayerContextMenu_Opened), и ValueChanged должен промолчать, а не воспринять это как
-    // движение слайдера пользователем и не запустить повторное, уже ненужное применение
-    // настройки (и тем более не уйти в цикл обновлений с окном настроек).
+    // Пока true — MiniOpacityContextSlider.Value выставляется программно (MiniPlayerContextMenu_Opened): ValueChanged
+    // должен промолчать, чтобы не применять настройку повторно и не зациклить обновления с окном настроек.
     private bool _isSyncingOpacitySlider;
 
-    // Пока true — идёт перетаскивание прозрачным Border'ом поверх MiniOpacityContextSlider (см.
-    // MiniOpacityContextOverlay_MouseLeftButtonDown/Up ниже) — тот же приём, что и у
-    // _isDraggingOpacityOverlay в SettingsWindow.xaml.cs.
+    // Идёт перетаскивание прозрачным Border поверх MiniOpacityContextSlider (как _isDraggingOpacityOverlay в SettingsWindow).
     private bool _isDraggingOpacityOverlay;
 
     // Контекстные скорость и тон получают программные значения при открытии меню. Этот флаг
@@ -783,10 +700,8 @@ public partial class MiniPlayerWindow : Window
         ApplyContextMenuAccent();
         SyncContextMenuToggleStates();
 
-        // App.xaml применяет локализацию к ContextMenu на том же событии Opened. WPF вызывает
-        // class handler после/до обычного обработчика в зависимости от источника открытия, и
-        // шаблон MenuItem иногда успевал отрисовать исходное пустое состояние. Второй проход в
-        // ContextIdle закрепляет визуальное значение уже после завершения layout/локализации.
+        // App.xaml локализует ContextMenu на том же Opened, и шаблон MenuItem иногда успевал отрисовать пустое состояние;
+        // второй проход на ContextIdle закрепляет значение после layout/локализации.
         Dispatcher.BeginInvoke(DispatcherPriority.ContextIdle, new Action(SyncContextMenuToggleStates));
 
         _isSyncingOpacitySlider = true;
@@ -809,17 +724,15 @@ public partial class MiniPlayerWindow : Window
         }
     }
 
-    // Меню закрылось (клик мимо, выбор пункта, Escape и т.п.) — если пользователь что-то
-    // редактировал, коммитим. До этого момента TextBox держит фокус, и никакое движение мыши
-    // по другим пунктам меню его не сбивает (см. MiniOpacityContextValueEditor_LostKeyboardFocus).
+    // Меню закрылось (клик мимо, выбор, Escape) — коммитим редактирование; до этого TextBox держит фокус, и движение мыши
+    // по другим пунктам его не сбивает (см. MiniOpacityContextValueEditor_LostKeyboardFocus).
     private void MiniPlayerContextMenu_Closed(object sender, RoutedEventArgs e)
     {
         if (_isEditingOpacityValue) CommitOpacityValueEdit();
     }
 
-    // Popup-контекст WPF образует отдельное дерево ресурсов. Локальный toggle в меню получает
-    // accent только из MiniPlayerMenuAccentBrush, поэтому не может откатиться к системному
-    // цвету Windows после смены темы или повторного открытия popup.
+    // Popup-контекст WPF — отдельное дерево ресурсов: toggle в меню берёт accent только из MiniPlayerMenuAccentBrush,
+    // поэтому не откатывается к системному цвету Windows после смены темы или повторного открытия.
     private void ApplyContextMenuAccent()
     {
         Color accent = _mainWindow.GetResolvedAccentColor();
@@ -834,9 +747,8 @@ public partial class MiniPlayerWindow : Window
         MiniPlayerContextMenu.Resources["AccentTextFillColorPrimaryBrush"] = accentBrush;
         MiniPlayerContextMenu.Resources["TextOnAccentFillColorPrimaryBrush"] = contrastBrush;
 
-        // Это точные DynamicResource ключи шаблона WPF-UI CheckBox 3.0.5. Без локального
-        // переопределения popup ContextMenu разрешает их из системной темы Windows, а не из
-        // выбранного акцента Lumisense.
+        // Точные DynamicResource-ключи шаблона WPF-UI CheckBox 3.0.5: без переопределения popup ContextMenu берёт их из
+        // системной темы Windows, а не из акцента Lumisense.
         MiniPlayerContextMenu.Resources["CheckBoxCheckBackgroundFillChecked"] = accentBrush;
         MiniPlayerContextMenu.Resources["CheckBoxCheckBackgroundFillCheckedPointerOver"] = accentBrush;
         MiniPlayerContextMenu.Resources["CheckBoxCheckBorderBrush"] = accentBrush;
@@ -1060,13 +972,8 @@ public partial class MiniPlayerWindow : Window
         SettingsManager.Save(_mainWindow.Settings);
     }
 
-    // Оверлей поверх MiniOpacityContextSlider (см. MiniPlayerWindow.xaml) — сам Slider
-    // IsHitTestVisible="False", мышь ловит этот прозрачный Border и сам вычисляет значение по
-    // X-координате клика/перетаскивания. Тот же приём, что и у MiniOpacitySlider в
-    // SettingsWindow.xaml (см. UpdateSliderValueFromMouse там) — здесь он нужен даже больше:
-    // Slider живёт внутри ContextMenu (отдельный Popup), где нативный захват мыши самим
-    // Thumb'ом при разворачивании из MenuItem ведёт себя нестабильно, а явный
-    // Border.CaptureMouse() от этого не зависит.
+    // Прозрачный Border поверх MiniOpacityContextSlider (IsHitTestVisible="False") считает значение по X клика/перетаскивания
+    // (как в SettingsWindow); в Popup ContextMenu нативный захват мыши Thumb нестабилен, Border.CaptureMouse() надёжнее.
     private void MiniOpacityContextOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         var overlay = (FrameworkElement)sender;
@@ -1109,12 +1016,8 @@ public partial class MiniPlayerWindow : Window
 
     private void MiniOpacityContextSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        // Может выстрелить ещё ВНУТРИ InitializeComponent(), до "_mainWindow = mainWindow;" в
-        // конструкторе: RangeBase.OnMinimumChanged коэрсит Value и синхронно поднимает
-        // ValueChanged прямо во время разбора XAML, когда поля вроде _mainWindow ещё не
-        // готовы. Value="1.0" в XAML снимает саму причину (уже больше Minimum="0.3"), проверка
-        // ниже — страховка. _mainWindow, а не флаг _isSyncingOpacitySlider — он не-null строго
-        // после InitializeComponent(), то есть надёжно гвардит именно этот момент.
+        // Может сработать ещё внутри InitializeComponent(), до _mainWindow = mainWindow: RangeBase.OnMinimumChanged коэрсит Value
+        // и синхронно поднимает ValueChanged. Value="1.0" в XAML убирает причину, проверка _mainWindow — страховка.
         if (_mainWindow == null) return;
         if (_isSyncingOpacitySlider) return;
 
@@ -1122,8 +1025,6 @@ public partial class MiniPlayerWindow : Window
             MiniOpacityContextValueText.Text = $"{(int)Math.Round(e.NewValue * 100)}%";
         _mainWindow.SetMiniPlayerOpacity(e.NewValue);
     }
-
-    // ---------- Редактирование числа прозрачности с клавиатуры ----------
 
     private void MiniOpacityContextValueText_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
@@ -1165,11 +1066,8 @@ public partial class MiniPlayerWindow : Window
         }
     }
 
-    // WPF у MenuItem при наведении мыши штатно забирает фокус (для клавиатурной навигации,
-    // без переписывания шаблона это не отключить) — коммитить в этот момент нельзя, пользователь
-    // ещё ничего не ввёл. Возвращаем фокус на TextBox через Dispatcher (внутри самого
-    // LostKeyboardFocus смена "в полёте" игнорируется). Настоящий коммит — только по Enter,
-    // Escape или закрытии меню (см. MiniPlayerContextMenu_Closed).
+    // MenuItem при наведении штатно забирает фокус (без переписывания шаблона не отключить), коммитить тут нельзя:
+    // возвращаем фокус TextBox через Dispatcher; коммит — по Enter, Escape или закрытию меню (…_Closed).
     private void MiniOpacityContextValueEditor_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         if (!_isEditingOpacityValue) return;
@@ -1243,30 +1141,21 @@ public partial class MiniPlayerWindow : Window
         if (!_mainWindow.Settings.MiniPlayerPinned && e.ButtonState == MouseButtonState.Pressed)
             DragMove();
 
-        // Помечаем событие обработанным независимо от того, сработал ли DragMove выше
-        // (не сработает, если закреплено) — иначе оно продолжит всплывать до RootBorder и
-        // вызовет RootBorder_MouseLeftButtonDown ещё раз поверх уже обработанного клика (см.
-        // комментарий у RootBorder_MouseLeftButtonDown ниже о том, зачем вообще нужен этот
-        // обработчик там, а не только здесь).
+        // Помечаем событие обработанным независимо от DragMove (при закреплении его нет), иначе оно всплывёт до RootBorder
+        // и вызовет RootBorder_MouseLeftButtonDown повторно (см. комментарий у него).
         e.Handled = true;
     }
 
-    // Общий обработчик перетаскивания — ловит клик в любом свободном месте окна, не
-    // перехваченном отдельным элементом (прогресс-бар, кнопки — они сами ставят
-    // e.Handled = true). Раньше висел только на HeaderPanel, но в режиме
-    // AppSettings.MiniPlayerButtonsLayout == "Overlay" при наведении HeaderPanel прячется
-    // (см. ApplyButtonsLayoutMode) и её место занимает ControlsPanel — окно переставало
-    // перетаскиваться ровно тогда, когда наводишь курсор, чтобы увидеть кнопки. Обработчик на
-    // RootBorder не завязан на то, какие элементы сейчас видимы.
+    // Перетаскивание за любое свободное место (прогресс-бар и кнопки сами ставят Handled). На HeaderPanel не работало:
+    // в Overlay-режиме она прячется при наведении; RootBorder от видимости элементов не зависит.
     private void RootBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
         if (!_mainWindow.Settings.MiniPlayerPinned && e.ButtonState == MouseButtonState.Pressed)
             DragMove();
     }
 
-    // DragMove блокирует поток до отпускания кнопки мыши, поэтому момент, когда окно
-    // реально сдвинулось с места, проще всего поймать через LocationChanged — оно
-    // срабатывает на каждое перемещение, включая последнее (итоговую позицию).
+    // DragMove блокирует поток до отпускания мыши, поэтому момент сдвига ловим через LocationChanged — оно срабатывает
+    // на каждое перемещение, включая итоговую позицию.
     protected override void OnLocationChanged(EventArgs e)
     {
         base.OnLocationChanged(e);
@@ -1274,21 +1163,10 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.SaveMiniPlayerPosition(Left, Top);
     }
 
-    // Применяет выбранный в настройках режим расположения кнопок управления (см.
-    // AppSettings.MiniPlayerButtonsLayout). Вызывается при открытии мини-плеера и повторно,
-    // если пользователь переключил настройку прямо сейчас, пока мини-плеер открыт (см.
-    // MainWindow.ApplyMiniPlayerButtonsLayoutLive) — по той же схеме, что и
-    // UpdateSecondaryButton для кнопки повтора/шафла.
-    //
-    // "Below" (по умолчанию): ControlsPanel — отдельная строка под прогресс-баром, окно
-    // подрастает при наведении (CollapsedHeight → ExpandedHeight). "Overlay": ControlsPanel
-    // переносится в ту же строку, что и HeaderPanel — при наведении HeaderPanel прячется и её
-    // место занимают кнопки, без роста окна. В режиме Below верхний отступ уменьшен,
-    // чтобы кнопки были ближе к информации о треке.
+    // Режим кнопок (AppSettings.MiniPlayerButtonsLayout): "Below" — ControlsPanel отдельной строкой, окно растёт при наведении;
+    // "Overlay" — кнопки на месте HeaderPanel, окно не растёт. Вызывается при открытии и смене настройки (…ButtonsLayoutLive).
     private static readonly Thickness ControlsPanelMarginBelow = new(0, 2, 0, 10);
-    // Не readonly: пересчитывается в UpdateControlsPanelOverlayMargin (см. там) каждый раз,
-    // когда меняется отступ HeaderPanel, — начальное значение здесь просто безопасный дефолт
-    // до первого вызова.
+    // Не readonly: пересчитывается в UpdateControlsPanelOverlayMargin при смене отступа HeaderPanel; здесь — безопасный дефолт.
     private Thickness ControlsPanelMarginOverlay = new(0, 8, 0, 0);
 
     public void ApplyButtonsLayoutMode()
@@ -1299,12 +1177,8 @@ public partial class MiniPlayerWindow : Window
         Grid.SetRow(ControlsPanel, _buttonsOverlayMode ? 0 : 2);
         ControlsPanel.Margin = _buttonsOverlayMode ? ControlsPanelMarginOverlay : ControlsPanelMarginBelow;
 
-        // Сбрасываем в состояние "курсор снаружи" — даже если мышь на самом деле сейчас
-        // висит над окном (маловероятно ровно в момент переключения настройки, но не
-        // невозможно): следующий RootBorder_MouseEnter/Leave сам всё поправит, а начинать
-        // с заведомо согласованного состояния (обложка видна, кнопки скрыты, окно свёрнуто)
-        // надёжнее, чем пытаться угадать, в каком из двух РАЗНЫХ по смыслу "развёрнутых"
-        // состояний старого и нового режима мы сейчас находимся.
+        // Сбрасываем в "курсор снаружи" даже если мышь над окном: следующий RootBorder_MouseEnter/Leave всё поправит, а старт
+        // с заведомо согласованного состояния надёжнее, чем угадывать, в каком из двух "развёрнутых" состояний мы были.
         _volumeOverlayRestoreTimer?.Stop();
         _volumeOverlayRestoreTimer = null;
         _volumeOverlaySuppressedControls = false;
@@ -1314,20 +1188,15 @@ public partial class MiniPlayerWindow : Window
         Height = MeasureContentHeight();
     }
 
-    // Показывает/прячет полосу прогресса (см. AppSettings.MiniPlayerShowProgress, страница
-    // "Мини-плеер" в настройках) — вызывается при открытии мини-плеера и повторно, если
-    // пользователь переключил настройку прямо сейчас, пока мини-плеер открыт (см.
-    // MainWindow.ApplyMiniPlayerProgressBarVisibilityLive), по той же схеме, что и
-    // ApplyButtonsLayoutMode выше.
+    // Показывает/прячет полосу прогресса (AppSettings.MiniPlayerShowProgress); при открытии и при смене настройки на открытом
+    // мини-плеере (MainWindow.ApplyMiniPlayerProgressBarVisibilityLive), как ApplyButtonsLayoutMode.
     public void ApplyProgressBarVisibility()
     {
         _showProgress = _mainWindow.Settings.MiniPlayerShowProgress;
         ProgressRow.Visibility = _showProgress ? Visibility.Visible : Visibility.Collapsed;
 
-        // См. комментарий у HeaderBottomMarginWithProgress/WithoutProgress выше — без полосы
-        // прогресса под заголовком увеличиваем его нижний отступ до того же значения, что и
-        // верхний (10,8,10,10 вместо 10,8,10,2), чтобы вокруг заголовка стало поровну места,
-        // а не заметно больше сверху, чем снизу.
+        // Без полосы прогресса нижний отступ заголовка равен верхнему (10,8,10,10 вместо 10,8,10,2), чтобы вокруг него было
+        // поровну места (см. HeaderBottomMarginWithProgress/WithoutProgress).
         HeaderPanel.Margin = new Thickness(HeaderHorizontalMargin, HeaderTopMargin, HeaderHorizontalMargin,
             _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress);
         UpdateControlsPanelOverlayMargin();
@@ -1335,12 +1204,8 @@ public partial class MiniPlayerWindow : Window
         Height = MeasureContentHeight();
     }
 
-    // В Overlay-режиме (см. ApplyButtonsLayoutMode) ControlsPanel делит Row 0 с HeaderPanel —
-    // без компенсации кнопки центрировались бы по высоте самого ControlsPanel, а не по факту
-    // занимаемого HeaderPanel места, и съезжали бы при переключении видимости полосы прогресса
-    // (её отсутствие меняет нижний отступ HeaderPanel, а вместе с ним и высоту всей строки).
-    // top − bottom здесь — не сама высота HeaderPanel, а именно та асимметрия отступов, которую
-    // нужно скомпенсировать, чтобы центр ControlsPanel остался на месте центра обложки.
+    // В Overlay-режиме ControlsPanel делит Row 0 с HeaderPanel: без компенсации кнопки центрировались бы по своей высоте,
+    // а не по занятому месту, и съезжали бы при смене видимости полосы; top − bottom — асимметрия отступов HeaderPanel.
     private void UpdateControlsPanelOverlayMargin()
     {
         double headerBottom = _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress;
@@ -1348,9 +1213,8 @@ public partial class MiniPlayerWindow : Window
         if (_buttonsOverlayMode) ControlsPanel.Margin = ControlsPanelMarginOverlay;
     }
 
-    // Показывает/скрывает тонкий акцентный контур вокруг обложки. В отличие от обычной
-    // полосы он не меняет высоту мини-плеера и не получает мышь: перемотка остаётся
-    // привязанной к существующей горизонтальной полосе.
+    // Тонкий акцентный контур вокруг обложки не меняет высоту мини-плеера и не получает мышь: перемотка остаётся
+    // на существующей горизонтальной полосе.
     public void ApplyArtworkProgressVisibility()
     {
         _showArtworkProgress = _mainWindow.Settings.MiniPlayerShowArtworkProgress;
@@ -1360,9 +1224,8 @@ public partial class MiniPlayerWindow : Window
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
     }
 
-    // Применяет толщину одновременно к фоновому треку и акцентному штриху. Геометрия
-    // пересчитывается после смены, чтобы наружная граница линии оставалась ровно на форме
-    // обложки без цветных фрагментов в углах.
+    // Толщина применяется к фоновому треку и акцентному штриху одновременно; геометрия пересчитывается, чтобы внешняя
+    // граница линии осталась на форме обложки без цветных фрагментов в углах.
     public void ApplyArtworkProgressThickness()
     {
         // Контур должен иметь центр линии ровно на границе обложки.
@@ -1388,9 +1251,8 @@ public partial class MiniPlayerWindow : Window
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
     }
 
-    // Применяет либо отдельный фиксированный цвет, либо фактически используемый сейчас
-    // акцент оформления. Цвет задаётся явной замороженной кистью, а не только DynamicResource:
-    // это надёжно обновляет уже созданный обычный WPF Window при смене акцента Wpf.Ui.
+    // Фиксированный цвет либо используемый акцент оформления; явная замороженная кисть (не только DynamicResource)
+    // надёжно обновляет уже созданное WPF Window при смене акцента Wpf.Ui.
     public void ApplyArtworkProgressColor()
     {
         Color color = _mainWindow.GetResolvedAccentColor();
@@ -1459,9 +1321,8 @@ public partial class MiniPlayerWindow : Window
         double bottom = offset + artworkSize;
         double topCenter = center;
 
-        // Build the rounded-square path explicitly so its FIRST point is
-        // exactly the center of the top edge. This avoids relying on the
-        // internal start point of RectangleGeometry.
+        // Build the rounded-square path explicitly so its first point is the center of the top edge,
+        // instead of relying on the internal start point of RectangleGeometry.
         var figure = new PathFigure
         {
             StartPoint = new Point(topCenter, top),
@@ -1538,11 +1399,8 @@ public partial class MiniPlayerWindow : Window
 
         if (_buttonsOverlayMode)
         {
-            // Hidden, а не Collapsed: Collapsed убирает HeaderPanel из расчёта высоты Row 0
-            // (Grid Auto-строка), и она схлопывается до высоты одного ControlsPanel — тот
-            // "прилипал" к верхнему краю окна вместо центра. Hidden сохраняет место в layout,
-            // не рисуя содержимое; IsHitTestVisible=false — чтобы невидимый HeaderPanel не
-            // перехватывал клики у ControlsPanel, который делит с ним ту же строку.
+            // Hidden, а не Collapsed: Collapsed убирает HeaderPanel из расчёта Auto-строки Row 0, и ControlsPanel прилипал бы
+            // к верхнему краю; IsHitTestVisible=false — чтобы невидимая HeaderPanel не перехватывала клики ControlsPanel.
             HeaderPanel.Visibility = Visibility.Hidden;
             HeaderPanel.IsHitTestVisible = false;
         }

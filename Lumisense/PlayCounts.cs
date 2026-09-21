@@ -18,10 +18,8 @@ public static class PlayCountManager
 
     public static int GetCount(string path) => _counts.TryGetValue(path, out int count) ? count : 0;
 
-    // Вызывается не при старте трека, а когда реально воспроизведена как минимум половина
-    // композиции (см. MainWindow.ProgressTimer_Tick и флаг _halfPlayCounted) — простой старт
-    // или короткое переключение трека прослушиванием не считается, как и восстановление
-    // последнего трека на паузе при запуске.
+    // Вызывается, когда реально проиграна хотя бы половина трека (_halfPlayCounted в
+    // MainWindow.ProgressTimer_Tick), а не при старте или коротком переключении.
     public static void Increment(string path)
     {
         if (string.IsNullOrWhiteSpace(path)) return;
@@ -33,10 +31,7 @@ public static class PlayCountManager
     // Копия, а не сам словарь — чтобы вызывающий код не мог испортить внутреннее состояние
     public static Dictionary<string, int> GetAll() => new(_counts);
 
-    // Полный сброс — используется окном статистики (см. StatisticsWindow.ResetStatsButton_Click)
-    // после подтверждения пользователем. Bump() уведомляет все привязанные к счётчику строки
-    // плейлиста (см. PlayCountChangeNotifier) — их бейджики с числом прослушиваний исчезнут
-    // сразу, без необходимости перестраивать весь список.
+    // Bump() сразу обновляет бейджики счётчика в строках плейлиста, не перестраивая список.
     public static void Reset()
     {
         _counts.Clear();
