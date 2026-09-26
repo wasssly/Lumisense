@@ -4122,6 +4122,7 @@ public partial class MainWindow : FluentWindow
 
         try
         {
+            // _isPlaying ещё true: предыдущий трек слышен, пока идёт fade-out. См. комментарий у TrackUserState.
             SetTrackUserState(TrackUserState.Loading);
 
             // Готовим граф следующего трека, пока текущий поток доигрывает fade/drain; новый WasapiPlayer не создаём —

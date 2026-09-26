@@ -3,6 +3,9 @@ namespace Lumisense;
 /// <summary>
 /// Owns the user-visible playback state and rejects impossible state transitions.
 /// </summary>
+/// <remarks>
+/// Not a proxy for the audio engine's actual playing/paused state — see the note on <see cref="TrackUserState"/>.
+/// </remarks>
 internal sealed class PlaybackStateMachine
 {
     private static readonly IReadOnlyDictionary<TrackUserState, IReadOnlySet<TrackUserState>> AllowedTransitions =
