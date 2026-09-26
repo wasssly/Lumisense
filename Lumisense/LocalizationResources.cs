@@ -27,6 +27,7 @@ public static class LocalizationKey
     public const string StatisticsListens = "statistics.listens";
 
     public const string PlaylistLooseFiles = "playlist.looseFiles";
+    public const string PlaylistFavorites = "playlist.favorites";
     public const string ApplicationVersion = "application.version";
     public const string UpdateImportant = "update.important";
     public const string UpdateFailureGeneric = "update.failure.generic";
@@ -173,6 +174,7 @@ internal static class LocalizationResources
         [LocalizationKey.StatisticsListens + ".other"] = "{0} прослушиваний",
 
         [LocalizationKey.PlaylistLooseFiles] = "Отдельные файлы",
+        [LocalizationKey.PlaylistFavorites] = "Избранное",
         [LocalizationKey.ApplicationVersion] = "Версия {0}",
         [LocalizationKey.UpdateImportant] = "Важно:",
         [LocalizationKey.UpdateFailureGeneric] = "Не удалось проверить обновления.",
@@ -318,6 +320,7 @@ internal static class LocalizationResources
         [LocalizationKey.StatisticsListens + ".other"] = "{0} listens",
 
         [LocalizationKey.PlaylistLooseFiles] = "Loose files",
+        [LocalizationKey.PlaylistFavorites] = "Favorites",
         [LocalizationKey.ApplicationVersion] = "Version {0}",
         [LocalizationKey.UpdateImportant] = "Important:",
         [LocalizationKey.UpdateFailureGeneric] = "Could not check for updates.",

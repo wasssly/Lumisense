@@ -21,7 +21,9 @@ public class PlaylistFolder : INotifyPropertyChanged
     // совместимость); имена пользовательских папок не меняются.
     public string DisplayName
     {
-        get => IsLooseFilesBucket ? LocalizationService.Get(LocalizationKey.PlaylistLooseFiles) : _persistedDisplayName;
+        get => IsLooseFilesBucket ? LocalizationService.Get(LocalizationKey.PlaylistLooseFiles)
+            : IsFavoritesGroup ? LocalizationService.Get(LocalizationKey.PlaylistFavorites)
+            : _persistedDisplayName;
         init => _persistedDisplayName = value;
     }
 

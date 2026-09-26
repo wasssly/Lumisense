@@ -1777,11 +1777,15 @@ public partial class MainWindow : FluentWindow
 
     // Имя файла по умолчанию в диалоге сохранения — название трека (если есть), иначе
     // просто "Обложка", с заменой символов, недопустимых в имени файла Windows.
+    //
+    // Раньше сравнивали TrackTitleText.Text с русским плейсхолдером "Файл не выбран" — на английском
+    // интерфейсе там "No file selected", и baseName ошибочно становился этим текстом. Проверяем сам
+    // факт загруженного трека (_currentTrackPath), а не текст в UI.
     private string SuggestAlbumArtFileName()
     {
-        string baseName = !string.IsNullOrWhiteSpace(TrackTitleText.Text) && TrackTitleText.Text != "Файл не выбран"
+        string baseName = _currentTrackPath != null && !string.IsNullOrWhiteSpace(TrackTitleText.Text)
             ? TrackTitleText.Text
-            : "Обложка";
+            : LocalizationService.Translate("Обложка");
 
         foreach (char c in Path.GetInvalidFileNameChars())
             baseName = baseName.Replace(c, '_');
@@ -1894,7 +1898,7 @@ public partial class MainWindow : FluentWindow
 
         UpdatePlaylistSurface();
         TogglePlaylistButton.Icon = IconResources.Make(_isPlaylistVisible ? "IconChevronDown" : "IconChevronRight");
-        TogglePlaylistButton.ToolTip = _isPlaylistVisible ? "Скрыть плейлист" : "Показать плейлист";
+        TogglePlaylistButton.ToolTip = LocalizationService.Translate(_isPlaylistVisible ? "Скрыть плейлист" : "Показать плейлист");
     }
 
     // Панель показывает одно из трёх представлений (плейлист, избранное, текст песни): выбор содержимого отделён от
@@ -3830,8 +3834,8 @@ public partial class MainWindow : FluentWindow
         string suffix = $" - speed {_runtimePlaybackRate:0.##}x pitch {_settings.PlaybackPitchSemitones:+0.##;-0.##;0}st";
         var dialog = new SaveFileDialog
         {
-            Title = "Сохранить обработанную копию",
-            Filter = "MP3-файл (*.mp3)|*.mp3",
+            Title = LocalizationService.Translate("Сохранить обработанную копию"),
+            Filter = LocalizationService.Translate("MP3-файл (*.mp3)|*.mp3"),
             DefaultExt = ".mp3",
             AddExtension = true,
             OverwritePrompt = false,
