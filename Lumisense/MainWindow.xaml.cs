@@ -26,7 +26,7 @@ namespace Lumisense;
 // показа, реальные операции (удаление и т.д.) всегда идут по FilePath.
 public sealed record QueueDisplayItem(string FilePath, string DisplayName, int Position);
 
-public partial class MainWindow : FluentWindow
+public partial class MainWindow : FluentWindow, IIntegrationHost
 {
     private enum RepeatMode { Off, All, One }
 
@@ -313,9 +313,7 @@ public partial class MainWindow : FluentWindow
     private const double DefaultWindowWidth = 440; // как задана ширина окна в XAML
     private double _lastNonZeroVolume = 0.3;
 
-    private GlobalMediaHotKeys? _mediaHotKeys;
-    private TrayIconManager? _trayIconManager;
-    private NowPlayingIntegration? _nowPlaying;
+    private readonly MainWindowIntegrationController _integrations = new();
     private readonly DiscordRichPresenceManager _discordRichPresence = new();
     private MiniPlayerWindow? _miniPlayerWindow;
 
@@ -408,6 +406,9 @@ public partial class MainWindow : FluentWindow
 
     public bool IsMiniMode => _isMiniMode;
     public AppSettings Settings => _settings;
+
+    // Явная реализация IIntegrationHost — доступно только через ссылку на этот интерфейс, не через window.IsPlaying.
+    bool IIntegrationHost.IsPlaying => _isPlaying;
 
     // Применяет изменённый масштаб/режим движения к уже открытым окнам, не создавая новых
     // экземпляров и не меняя состояние воспроизведения.
@@ -727,7 +728,7 @@ public partial class MainWindow : FluentWindow
 
             // Если стартовый вид — мини-плеер, EnterMiniMode уже показал значок в трее —
             // не перезатираем его повторным Show().
-            if (!_isMiniMode) _trayIconManager?.Show("Lumisense");
+            if (!_isMiniMode) _integrations.Tray?.Show("Lumisense");
         }
         else if (!_isMiniMode)
         {
@@ -978,93 +979,11 @@ public partial class MainWindow : FluentWindow
     {
         base.OnSourceInitialized(e);
 
-        InitializeMediaHotKeys();
-        InitializeNowPlayingIntegration();
-        InitializeTrayIcon();
+        _integrations.InitializeMediaHotKeys(this);
+        _integrations.InitializeNowPlayingIntegration(this);
+        _integrations.InitializeTrayIcon(this);
 
         ApplyPlaybackButtonsVisibility();
-    }
-
-    // Глобальные медиаклавиши работают без фокуса; в try/catch, потому что RegisterHotKey может отказать, если хоткей занят
-    // другим приложением, и необработанное исключение роняло плеер до первого показа.
-    private void InitializeMediaHotKeys()
-    {
-        try
-        {
-            _mediaHotKeys = new GlobalMediaHotKeys(this);
-            _mediaHotKeys.PlayPausePressed += () => Dispatcher.BeginInvoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.NextPressed += virtualKey => Dispatcher.BeginInvoke(() => HandleHotkeyNext(virtualKey));
-            _mediaHotKeys.PreviousPressed += virtualKey => Dispatcher.BeginInvoke(() => HandleHotkeyPrevious(virtualKey));
-            _mediaHotKeys.StopPressed += () => Dispatcher.BeginInvoke(() => StopButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.VolumeUpPressed += () => Dispatcher.BeginInvoke(() => ChangeVolumeBy(0.02));
-            _mediaHotKeys.VolumeDownPressed += () => Dispatcher.BeginInvoke(() => ChangeVolumeBy(-0.02));
-            _mediaHotKeys.MutePressed += () => Dispatcher.BeginInvoke(ToggleMute);
-            _mediaHotKeys.ShufflePressed += () => Dispatcher.BeginInvoke(() => ShuffleButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.RepeatPressed += () => Dispatcher.BeginInvoke(() => RepeatButton_Click(this, new RoutedEventArgs()));
-            _mediaHotKeys.DeleteTrackPressed += () => Dispatcher.BeginInvoke(DeleteCurrentTrackFromDiskHotkey);
-            _mediaHotKeys.SeekForwardPressed += () => Dispatcher.BeginInvoke(() => SeekBy(5));
-            _mediaHotKeys.SeekBackwardPressed += () => Dispatcher.BeginInvoke(() => SeekBy(-5));
-            _mediaHotKeys.ToggleFavoritePressed += () => Dispatcher.BeginInvoke(ExternalToggleFavoriteCurrentTrack);
-            _mediaHotKeys.ToggleLyricsPressed += () => Dispatcher.BeginInvoke(() => SetLyricsPanelActive(!_isLyricsPanelActive));
-            _mediaHotKeys.ToggleMiniPlayerPressed += () => Dispatcher.BeginInvoke(ToggleMiniPlayerHotkey);
-            _mediaHotKeys.ApplyCustomHotkeys(_settings);
-        }
-        catch (Exception ex)
-        {
-            Logger.Error("Не удалось зарегистрировать глобальные горячие клавиши — возможно, какая-то из комбинаций уже занята другим приложением", ex);
-            _mediaHotKeys = null;
-        }
-    }
-
-    // Интеграция с Now Playing Windows 11 (панель задач, блокировка экрана, наушники с кнопками)
-    private void InitializeNowPlayingIntegration()
-    {
-        try
-        {
-            _nowPlaying = new NowPlayingIntegration(this);
-            _nowPlaying.PlayRequested += () => Dispatcher.BeginInvoke(() =>
-            {
-                if (!_isPlaying) PlayPauseButton_Click(this, new RoutedEventArgs());
-            });
-            _nowPlaying.PauseRequested += () => Dispatcher.BeginInvoke(() =>
-            {
-                if (_isPlaying) PlayPauseButton_Click(this, new RoutedEventArgs());
-            });
-            _nowPlaying.NextRequested += () => Dispatcher.BeginInvoke(PlayNextTrack);
-            _nowPlaying.PreviousRequested += () => Dispatcher.BeginInvoke(() => PrevButton_Click(this, new RoutedEventArgs()));
-            _nowPlaying.StopRequested += () => Dispatcher.BeginInvoke(() => StopButton_Click(this, new RoutedEventArgs()));
-        }
-        catch (Exception ex)
-        {
-            // SMTC недоступен в некоторых окружениях (например, без нужного Windows SDK
-            // на машине сборки) — в этом случае просто отключаем интеграцию, плеер работает дальше
-            Logger.Error("Не удалось включить интеграцию с Now Playing (SMTC)", ex);
-            _nowPlaying = null;
-        }
-    }
-
-    // Трей тоже в try/catch: иконка не критична, а необработанное исключение уронило бы окно до первого показа.
-    private void InitializeTrayIcon()
-    {
-        try
-        {
-            _trayIconManager = new TrayIconManager(this);
-            _trayIconManager.OpenRequested += RestoreFromTray;
-            _trayIconManager.SettingsRequested += () => Dispatcher.BeginInvoke(() => ShowSettingsWindow());
-            _trayIconManager.ExitRequested += ExitApplicationCompletely;
-            _trayIconManager.PlayPauseRequested += () => Dispatcher.BeginInvoke(() => PlayPauseButton_Click(this, new RoutedEventArgs()));
-            _trayIconManager.NextRequested += () => Dispatcher.BeginInvoke(PlayNextTrack);
-            _trayIconManager.PreviousRequested += () => Dispatcher.BeginInvoke(() => PrevButton_Click(this, new RoutedEventArgs()));
-            PlaybackStateChanged += isPlaying => _trayIconManager?.SetPlayingState(isPlaying);
-            TrackInfoChanged += (title, artist, _) => _trayIconManager?.SetNowPlaying(title, artist, CurrentAlbumArtBytes);
-            _trayIconManager.SetPlayingState(_isPlaying);
-            _trayIconManager.ApplyTheme(isLight: _settings.IsLightThemeResolved());
-        }
-        catch (Exception ex)
-        {
-            Logger.Error("Не удалось создать значок в трее", ex);
-            _trayIconManager = null;
-        }
     }
 
     // Кнопки остаются видимыми и кликабельными, но без фона — виден только значок; ховер/нажатие у ui:Button — отдельный
@@ -1096,7 +1015,7 @@ public partial class MainWindow : FluentWindow
     }
 
     // WinForms-меню трея живёт в отдельном UI-стеке и не подхватывает тему WPF-UI: без явного вызова оставалось бы в прежней палитре.
-    public void ApplyTrayTheme(bool isLight) => _trayIconManager?.ApplyTheme(isLight);
+    public void ApplyTrayTheme(bool isLight) => _integrations.Tray?.ApplyTheme(isLight);
 
     // WPF-UI отдаёт клик по кнопке сворачивания в MinimizeActionOverride; не полагаемся на поведение TitleBar: «Свернуть» уводит главное
     // окно только в панель задач, а в мини-плеер — лишь отдельная кнопка/пункт вида или повторная активация ярлыка.
@@ -1119,6 +1038,9 @@ public partial class MainWindow : FluentWindow
         };
     }
 
+    // Явная реализация IIntegrationHost — доступ только через ссылку на интерфейс.
+    void IIntegrationHost.RestoreFromTray() => RestoreFromTray();
+
     private void RestoreFromTray()
     {
         Dispatcher.BeginInvoke(() =>
@@ -1134,9 +1056,11 @@ public partial class MainWindow : FluentWindow
             Show();
             WindowState = WindowState.Normal;
             ForceForeground(this);
-            _trayIconManager?.Hide();
+            _integrations.Tray?.Hide();
         });
     }
+
+    void IIntegrationHost.ExitApplicationCompletely() => ExitApplicationCompletely();
 
     private void ExitApplicationCompletely()
     {
@@ -1166,7 +1090,7 @@ public partial class MainWindow : FluentWindow
 
                 WindowState = WindowState.Normal;
                 ForceForeground(this);
-                _trayIconManager?.Hide();
+                _integrations.Tray?.Hide();
                 return;
             }
 
@@ -1181,7 +1105,7 @@ public partial class MainWindow : FluentWindow
         {
             e.Cancel = true;
             Hide();
-            _trayIconManager?.Show("Lumisense");
+            _integrations.Tray?.Show("Lumisense");
 
             // MinimizeToTrayOnClose включён по умолчанию, и закрытие крестиком идёт сюда, а не в OnClosed: без явного сохранения
             // позиция трека могла не обновляться месяцами (PersistPlaybackAndPlaylistState).
@@ -1927,6 +1851,8 @@ public partial class MainWindow : FluentWindow
         SetAccentButtonActive(FavoritesButton, _isFavoritesView && !showLyrics);
         LyricsPanelButton.Opacity = showLyrics ? 1.0 : 0.86;
     }
+
+    void IIntegrationHost.LyricsPanelButton_Click(object sender, RoutedEventArgs e) => LyricsPanelButton_Click(sender, e);
 
     private void LyricsPanelButton_Click(object sender, RoutedEventArgs e)
     {
@@ -2997,7 +2923,7 @@ public partial class MainWindow : FluentWindow
         var metadata = FileNameNormalizer.ResolveArtistAndTitle(
             _currentTrackPath, _currentTrackTaggedArtist, _currentTrackTaggedTitle, "—");
         SetTrackInfoText(metadata.Title, metadata.Artist);
-        _nowPlaying?.UpdateTrackInfo(metadata.Title, metadata.Artist);
+        _integrations.NowPlaying?.UpdateTrackInfo(metadata.Title, metadata.Artist);
         RaiseTrackInfoChanged(metadata.Title, metadata.Artist, CurrentArtBrush);
     }
 
@@ -3921,7 +3847,7 @@ public partial class MainWindow : FluentWindow
         if (tagsWindow.Saved && PathEquals(filePath, _currentTrackPath))
         {
             LoadAlbumArt(filePath);
-            _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
+            _integrations.NowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
             RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
         }
     }
@@ -3980,6 +3906,8 @@ public partial class MainWindow : FluentWindow
 
     // Хоткей удаления (AppSettings.HotkeyDeleteTrack) по умолчанию не назначен; удаляет текущий играющий трек тем же путём,
     // что пункт меню (DeleteTrackFromDiskMenuItem_Click): с подтверждением и через корзину.
+    void IIntegrationHost.DeleteCurrentTrackFromDiskHotkey() => DeleteCurrentTrackFromDiskHotkey();
+
     private void DeleteCurrentTrackFromDiskHotkey()
     {
         if (_currentTrackPath == null) return;
@@ -4211,7 +4139,7 @@ public partial class MainWindow : FluentWindow
             ProgressWaveform.Progress = _audioFile.TotalTime.TotalSeconds > 0
                 ? position.TotalSeconds / _audioFile.TotalTime.TotalSeconds
                 : 0;
-            _nowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
+            _integrations.NowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
             RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
             RaiseProgressChanged(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
 
@@ -4241,14 +4169,14 @@ public partial class MainWindow : FluentWindow
                 PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
                 _progressTimer.Start();
                 _playbackClock.Start();
-                _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
+                _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
                 RaisePlaybackStateChanged(true);
             }
             else
             {
                 _isPlaying = false;
                 PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
-                _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
+                _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
                 RaisePlaybackStateChanged(false);
             }
 
@@ -4718,6 +4646,8 @@ public partial class MainWindow : FluentWindow
         }
     }
 
+    void IIntegrationHost.PlayPauseButton_Click(object sender, RoutedEventArgs e) => PlayPauseButton_Click(sender, e);
+
     private void PlayPauseButton_Click(object sender, RoutedEventArgs e)
         => FireAndForget(TogglePlaybackAsync(), nameof(TogglePlaybackAsync));
 
@@ -4801,7 +4731,7 @@ public partial class MainWindow : FluentWindow
         // UI-таймер оставляем активным во время паузы: он продолжает подтверждать
         // текущую позицию и не оставляет устаревшее время до следующего Play.
         FlushPlaybackClock();
-        _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
+        _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
         RaisePlaybackStateChanged(false);
         SetTrackUserState(TrackUserState.Paused);
 
@@ -4831,10 +4761,12 @@ public partial class MainWindow : FluentWindow
         PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
         _progressTimer.Start();
         _playbackClock.Start();
-        _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
+        _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
         RaisePlaybackStateChanged(true);
         SetTrackUserState(TrackUserState.Playing);
     }
+
+    void IIntegrationHost.StopButton_Click(object sender, RoutedEventArgs e) => StopButton_Click(sender, e);
 
     private void StopButton_Click(object sender, RoutedEventArgs e) => StopPlayback();
 
@@ -5357,12 +5289,14 @@ public partial class MainWindow : FluentWindow
             CurrentTimeText.Text = "00:00";
             ProgressWaveform.Peaks = null;
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
-            _nowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Stopped);
+            _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Stopped);
             RaisePlaybackStateChanged(false);
             _discordRichPresence.ClearAndDispose();
             SetTrackUserState(TrackUserState.Stopped);
         }
     }
+
+    void IIntegrationHost.PrevButton_Click(object sender, RoutedEventArgs e) => PrevButton_Click(sender, e);
 
     private void PrevButton_Click(object sender, RoutedEventArgs e)
     {
@@ -5372,6 +5306,8 @@ public partial class MainWindow : FluentWindow
     }
 
     private void NextButton_Click(object sender, RoutedEventArgs e) => PlayNextTrack();
+
+    void IIntegrationHost.PlayNextTrack(TrackChangeOrigin changeOrigin) => PlayNextTrack(changeOrigin);
 
     private void PlayNextTrack(TrackChangeOrigin changeOrigin = TrackChangeOrigin.User)
     {
@@ -5471,7 +5407,11 @@ public partial class MainWindow : FluentWindow
     // а LoadAndPlay всё равно перепроверит конечный путь.
     private List<string>? _hotkeyAvailableTracksSnapshot;
 
+    void IIntegrationHost.HandleHotkeyNext(int virtualKey) => HandleHotkeyNext(virtualKey);
+
     private void HandleHotkeyNext(int virtualKey) => HandleHotkeyTrackStep(+1, virtualKey);
+
+    void IIntegrationHost.HandleHotkeyPrevious(int virtualKey) => HandleHotkeyPrevious(virtualKey);
 
     private void HandleHotkeyPrevious(int virtualKey) => HandleHotkeyTrackStep(-1, virtualKey);
 
@@ -5654,6 +5594,8 @@ public partial class MainWindow : FluentWindow
         return prev;
     }
 
+    void IIntegrationHost.ShuffleButton_Click(object sender, RoutedEventArgs e) => ShuffleButton_Click(sender, e);
+
     private void ShuffleButton_Click(object sender, RoutedEventArgs e) => SetShuffleEnabled(!_isShuffleEnabled);
 
     // Вынесено из ShuffleButton_Click, чтобы применять то же (состояние и иконка) при восстановлении на старте без эмуляции клика.
@@ -5818,6 +5760,8 @@ public partial class MainWindow : FluentWindow
             .ToList();
     }
 
+    void IIntegrationHost.RepeatButton_Click(object sender, RoutedEventArgs e) => RepeatButton_Click(sender, e);
+
     private void RepeatButton_Click(object sender, RoutedEventArgs e)
     {
         // Циклически переключаем: выключено -> повтор плейлиста -> повтор одного трека -> выключено
@@ -5863,6 +5807,8 @@ public partial class MainWindow : FluentWindow
 
     // Переключает в мини-плеер. Вызывается из SetPlayerViewMode — как по кнопке/пункту
     // меню, так и при восстановлении сохранённого состояния на старте.
+    void IIntegrationHost.ToggleMiniPlayerHotkey() => ToggleMiniPlayerHotkey();
+
     private void ToggleMiniPlayerHotkey()
     {
         SetPlayerViewMode(_isMiniMode ? _preMiniViewMode : PlayerViewMode.Mini);
@@ -5879,8 +5825,8 @@ public partial class MainWindow : FluentWindow
 
         // У мини-плеера ShowInTaskbar="False" (MiniPlayerWindow.xaml): иконку в трее показываем здесь, а не только в OnClosing, иначе
         // до него не добраться; делаем до показа окна, чтобы значок не отставал от видимого мини-плеера (ForceForeground небыстр).
-        Logger.Info($"EnterMiniMode: вызываю _trayIconManager.Show() (стартовый вызов={_isApplyingStartupSettings}).");
-        _trayIconManager?.Show("Lumisense");
+        Logger.Info($"EnterMiniMode: вызываю _integrations.Tray.Show() (стартовый вызов={_isApplyingStartupSettings}).");
+        _integrations.Tray?.Show("Lumisense");
 
         _miniPlayerWindow = new MiniPlayerWindow(this)
         {
@@ -5922,7 +5868,7 @@ public partial class MainWindow : FluentWindow
         Show();
         WindowState = WindowState.Normal;
         ForceForeground(this);
-        _trayIconManager?.Hide();
+        _integrations.Tray?.Hide();
 
         // Ширина/высота не менялись в мини-режиме и уже соответствуют прежнему виду: возвращаем лишь флаг вида (галочка меню и
         // настроек) без повторного SetPlayerViewMode и пересчёта размеров.
@@ -6363,7 +6309,7 @@ public partial class MainWindow : FluentWindow
 
     // Вызывается из окна настроек сразу после того, как пользователь записал новую
     // комбинацию клавиш (или очистил старую) — применяет её без перезапуска приложения
-    public void ReapplyHotkeys() => _mediaHotKeys?.ApplyCustomHotkeys(_settings);
+    public void ReapplyHotkeys() => _integrations.HotKeys?.ApplyCustomHotkeys(_settings);
 
     public void ExternalPlayPause() => PlayPauseButton_Click(this, new RoutedEventArgs());
     public void ExternalNext() => PlayNextTrack();
@@ -6431,7 +6377,9 @@ public partial class MainWindow : FluentWindow
     }
 
     // Общий шаг 5 секунд с клампингом по границам трека и обновлением UI для колеса над прогресс-баром и хоткеев
-    // (_mediaHotKeys.SeekForwardPressed/SeekBackwardPressed).
+    // (_integrations.HotKeys.SeekForwardPressed/SeekBackwardPressed).
+    void IIntegrationHost.SeekBy(double seconds) => SeekBy(seconds);
+
     private void SeekBy(double seconds)
     {
         if (_audioFile == null) return;
@@ -6580,6 +6528,8 @@ public partial class MainWindow : FluentWindow
     }
 
     // Двигает тот же VolumeSlider (хоткеи громкости), поэтому сохранение и подпись процентов работают как обычно.
+    void IIntegrationHost.ChangeVolumeBy(double delta) => ChangeVolumeBy(delta);
+
     private void ChangeVolumeBy(double delta)
     {
         VolumeSlider.Value = Math.Clamp(VolumeSlider.Value + delta, VolumeSlider.Minimum, VolumeSlider.Maximum);
@@ -6676,6 +6626,8 @@ public partial class MainWindow : FluentWindow
         ChangeVolumeBy(Math.Sign(e.Delta) * 0.02);
         e.Handled = true;
     }
+
+    void IIntegrationHost.ToggleMute() => ToggleMute();
 
     private void ToggleMute()
     {
@@ -7060,9 +7012,9 @@ public partial class MainWindow : FluentWindow
             _audioOutputEndpointMonitor = null;
         }
         _discordRichPresence.Dispose();
-        _mediaHotKeys?.Dispose();
-        _nowPlaying?.Dispose();
-        _trayIconManager?.Dispose();
+        _integrations.HotKeys?.Dispose();
+        _integrations.NowPlaying?.Dispose();
+        _integrations.Tray?.Dispose();
         _miniPlayerWindow?.Close();
         _settingsWindow?.Close();
         _statisticsWindow?.Close();
