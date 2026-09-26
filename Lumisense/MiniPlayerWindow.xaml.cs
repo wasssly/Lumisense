@@ -15,6 +15,21 @@ public partial class MiniPlayerWindow : Window
     private readonly MainWindow _mainWindow;
     private bool _isDraggingProgress;
 
+    // Тот же паттерн, что в MainWindow.FireAndForget / SettingsWindow.FireAndForget: без него исключение из
+    // SaveAsync терялось бы до сборки мусора (TaskScheduler.UnobservedTaskException) или не успевало бы всплыть
+    // до закрытия окна.
+    private static async void FireAndForget(Task task, string operationName)
+    {
+        try
+        {
+            await task;
+        }
+        catch (Exception ex)
+        {
+            Logger.Error($"Ошибка в фоновой операции \"{operationName}\"", ex);
+        }
+    }
+
     // HeaderPanel в XAML имеет отступы "10,8,10,2": при видимой полосе прогресса нижний отступ меньше, чтобы утянуть заголовок к бару;
     // без полосы он увеличивается до 10 (см. ApplyProgressBarVisibility).
     private const double HeaderHorizontalMargin = 10;
@@ -791,21 +806,21 @@ public partial class MiniPlayerWindow : Window
     private void SnapToEdgesMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _mainWindow.Settings.MiniPlayerSnapToEdges = MiniContextSnapToEdgesMenuItem.IsChecked;
-        SettingsManager.Save(_mainWindow.Settings);
+        FireAndForget(SettingsManager.SaveAsync(_mainWindow.Settings), "SaveSettingsAsync");
     }
 
     private void ShowProgressMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _mainWindow.Settings.MiniPlayerShowProgress = MiniContextShowProgressMenuItem.IsChecked;
         _mainWindow.ApplyMiniPlayerProgressBarVisibilityLive();
-        SettingsManager.Save(_mainWindow.Settings);
+        FireAndForget(SettingsManager.SaveAsync(_mainWindow.Settings), "SaveSettingsAsync");
     }
 
     private void ShowArtworkProgressMenuItem_Click(object sender, RoutedEventArgs e)
     {
         _mainWindow.Settings.MiniPlayerShowArtworkProgress = MiniContextShowArtworkProgressMenuItem.IsChecked;
         _mainWindow.ApplyMiniPlayerArtworkProgressVisibilityLive();
-        SettingsManager.Save(_mainWindow.Settings);
+        FireAndForget(SettingsManager.SaveAsync(_mainWindow.Settings), "SaveSettingsAsync");
     }
 
     // Клик по кругу переключает на следующий из 3 стилей — компактнее вложенного подменю.
@@ -819,7 +834,7 @@ public partial class MiniPlayerWindow : Window
         };
         MiniContextArtworkStyleMenuItem.Header = "Обложка: " + ArtworkStyleLabel(_mainWindow.Settings.MiniPlayerArtworkStyle);
         _mainWindow.ApplyMiniPlayerArtworkStyleLive();
-        SettingsManager.Save(_mainWindow.Settings);
+        FireAndForget(SettingsManager.SaveAsync(_mainWindow.Settings), "SaveSettingsAsync");
     }
 
     private void ButtonsLayoutMenuItem_Click(object sender, RoutedEventArgs e)
@@ -829,7 +844,7 @@ public partial class MiniPlayerWindow : Window
         MiniContextButtonsLayoutMenuItem.Header = "Кнопки: " +
             (_mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay" ? "поверх обложки" : "снизу");
         _mainWindow.ApplyMiniPlayerButtonsLayoutLive();
-        SettingsManager.Save(_mainWindow.Settings);
+        FireAndForget(SettingsManager.SaveAsync(_mainWindow.Settings), "SaveSettingsAsync");
     }
 
     private void MiniSecondaryContextButton_Click(object sender, RoutedEventArgs e)
@@ -969,7 +984,7 @@ public partial class MiniPlayerWindow : Window
     {
         _mainWindow.Settings.GameOverlayCompatibilityMode = OverlayCompatibilityMenuItem.IsChecked;
         _mainWindow.ApplyMiniPlayerOverlayCompatibilityLive(_mainWindow.EffectiveGameOverlayCompatibilityEnabled);
-        SettingsManager.Save(_mainWindow.Settings);
+        FireAndForget(SettingsManager.SaveAsync(_mainWindow.Settings), "SaveSettingsAsync");
     }
 
     // Прозрачный Border поверх MiniOpacityContextSlider (IsHitTestVisible="False") считает значение по X клика/перетаскивания
