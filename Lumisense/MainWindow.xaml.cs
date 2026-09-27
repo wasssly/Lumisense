@@ -4800,10 +4800,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost
                     if (drainDelayMilliseconds > 0)
                         await Task.Delay(drainDelayMilliseconds, token);
                 }
-                else
-                {
-                    Logger.Info($"Fade-out не получил callback; использован расчётный silent drain {fallbackDelayMilliseconds} ms.");
-                }
+                // else: FadeOutComplete не пришёл — ожидаемо при заполненном вперёд WASAPI-буфере, drain выше это уже покрывает.
             }
             finally
             {
