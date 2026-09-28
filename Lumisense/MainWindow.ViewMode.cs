@@ -93,6 +93,8 @@ public partial class MainWindow
             // Порядок важен: сначала крупный/обычный стиль, потом высота под плейлист — SetPlaylistVisibility замеряет
             // нужную высоту уже после увеличения контента. Плейлист по умолчанию остаётся открытым и в квадратном виде.
             ApplyContentScale(square || _isFullscreenLayout);
+            // Высота, запомненная при сворачивании плейлиста, относится к прежнему виду: иначе квадрат (860) перейдёт в прямоугольный.
+            _heightBeforeHidingPlaylist = 0;
             SetPlaylistVisibility(true);
 
             if (square)
