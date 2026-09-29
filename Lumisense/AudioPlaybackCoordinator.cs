@@ -10,6 +10,7 @@ internal sealed class AudioPlaybackCoordinator : IDisposable
     private readonly SemaphoreSlim _audioGate = new(1, 1);
     private CancellationTokenSource? _activeLoadCts;
     private int _generation;
+    private readonly object _startLock = new();
     private int _disposed;
 
     public int CurrentGeneration => Volatile.Read(ref _generation);
@@ -26,7 +27,16 @@ internal sealed class AudioPlaybackCoordinator : IDisposable
         ThrowIfDisposed();
 
         var loadCts = CancellationTokenSource.CreateLinkedTokenSource(lifetimeToken);
-        CancellationTokenSource? previous = Interlocked.Exchange(ref _activeLoadCts, loadCts);
+        CancellationTokenSource? previous;
+        int generation;
+        // Подмена CTS и выдача generation атомарны: иначе при параллельных запросах в _activeLoadCts может остаться
+        // не самый новый запрос, и отменятся все, включая финальный.
+        lock (_startLock)
+        {
+            previous = Interlocked.Exchange(ref _activeLoadCts, loadCts);
+            generation = Interlocked.Increment(ref _generation);
+        }
+
         // Освобождается владельцем предыдущего LoadOperation после завершения его finally.
         // До этого момента его CancellationToken может использоваться отменённой задачей.
         try
@@ -38,7 +48,6 @@ internal sealed class AudioPlaybackCoordinator : IDisposable
             // Предыдущая операция уже завершилась и освободила свой CTS.
         }
 
-        int generation = Interlocked.Increment(ref _generation);
         bool gateAcquired = false;
         try
         {
