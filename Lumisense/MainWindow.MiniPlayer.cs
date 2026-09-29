@@ -71,6 +71,7 @@ public partial class MainWindow
 
         Show();
         WindowState = WindowState.Normal;
+        CenterOnFirstShowIfNeeded();
         ForceForeground(this);
         _integrations.Tray?.Hide();
 

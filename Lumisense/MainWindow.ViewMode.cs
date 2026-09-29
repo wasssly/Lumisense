@@ -185,6 +185,28 @@ public partial class MainWindow
         Top = newTopLeft.Y;
     }
 
+    // Ставится в StartupPresent при скрытом старте (CenterScreen уже израсходован Show()+Hide()). Центрирует по рабочей
+    // области основного монитора; окно выше неё прижимается к её верху, а не уходит в минус.
+    private bool _centerOnNextShow;
+
+    private void CenterOnFirstShowIfNeeded()
+    {
+        if (!_centerOnNextShow) return;
+        _centerOnNextShow = false;
+
+        if (PresentationSource.FromVisual(this)?.CompositionTarget is not { } target) return;
+        if (System.Windows.Forms.Screen.PrimaryScreen?.WorkingArea is not { } work) return;
+
+        var fromDevice = target.TransformFromDevice;
+        var workTopLeft = fromDevice.Transform(new Point(work.Left, work.Top));
+        var workSize = fromDevice.Transform(new Point(work.Width, work.Height));
+        double width = ActualWidth > 0 ? ActualWidth : Width;
+        double height = ActualHeight > 0 ? ActualHeight : Height;
+
+        Left = workTopLeft.X + Math.Max(0, (workSize.X - width) / 2);
+        Top = workTopLeft.Y + Math.Max(0, (workSize.Y - height) / 2);
+    }
+
     // Обработчик всех трёх пунктов контекстного меню вида плеера — какой именно вид
     // выбран, определяется по Tag пункта меню ("Square"/"Rectangular"/"Mini").
     private void ViewModeMenuItem_Click(object sender, RoutedEventArgs e)

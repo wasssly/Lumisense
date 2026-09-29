@@ -531,10 +531,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost
         // композицию: backdrop None, Left/Top за экраном, Minimized, ShowActivated=false, Opacity=0. Видимому старту не нужно.
         if (!IsLoaded && startsHidden)
         {
-            double originalLeft = Left;
-            double originalTop = Top;
             double originalOpacity = Opacity;
-            WindowStartupLocation originalStartupLocation = WindowStartupLocation;
             bool originalShowActivated = ShowActivated;
             Wpf.Ui.Controls.WindowBackdropType originalBackdrop = WindowBackdropType;
 
@@ -551,9 +548,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost
             Hide();
 
             Opacity = originalOpacity;
-            Left = originalLeft;
-            Top = originalTop;
-            WindowStartupLocation = originalStartupLocation;
+            // Show() выше израсходовал CenterScreen из XAML, а Left/Top остались за экраном: центрируем при первом
+            // настоящем показе (CenterOnFirstShowIfNeeded), когда известен фактический размер окна.
+            _centerOnNextShow = true;
             // WindowState остаётся Minimized: у скрытого окна WPF не меняет состояние HWND, и Normal
             // оставил бы его свёрнутым — Show() не вывел бы окно. Разворачивает WindowState = Normal.
             ShowActivated = originalShowActivated;
@@ -838,6 +835,16 @@ public partial class MainWindow : FluentWindow, IIntegrationHost
 
     private void RestoreFromTray()
     {
+        // Базовый NotifyIconService после OnLeftClick сам делает WindowState=Normal и Show(): у скрытого Minimized-окна это
+        // рассинхронизирует WindowState и HWND (окно только в панели задач), поэтому разворачиваем до него.
+        if (!IsVisible && Dispatcher.CheckAccess())
+        {
+            Show();
+            WindowState = WindowState.Normal;
+            CenterOnFirstShowIfNeeded();
+            Logger.Info($"RestoreFromTray: окно было скрыто, развёрнуто синхронно (State={WindowState}, Left={Left:0}, Top={Top:0}, Mini={_isMiniMode}).");
+        }
+
         Dispatcher.BeginInvoke(() =>
         {
             // Если активен мини-плеер, главное окно скрыто (EnterMiniMode): обычный Show() показал бы его поверх мини-плеера, поэтому
@@ -850,6 +857,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost
 
             Show();
             WindowState = WindowState.Normal;
+            CenterOnFirstShowIfNeeded();
             ForceForeground(this);
             _integrations.Tray?.Hide();
         });
@@ -884,6 +892,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost
                     Show();
 
                 WindowState = WindowState.Normal;
+                CenterOnFirstShowIfNeeded();
                 ForceForeground(this);
                 _integrations.Tray?.Hide();
                 return;
