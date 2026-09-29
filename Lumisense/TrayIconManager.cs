@@ -94,8 +94,6 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
     // недоступен для переопределения) — дублируем OpenRequested, чтобы мини-плеер закрылся следом.
     protected override void OnLeftClick() => OpenRequested?.Invoke();
 
-    protected override void OnLeftDoubleClick() => OpenRequested?.Invoke();
-
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
     {
         if (_disposed) return;
