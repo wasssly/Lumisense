@@ -250,9 +250,50 @@ public partial class MainWindow
     private void ApplyPlaylistSearchResult(IEnumerable<object> items, bool favoritesView)
     {
         if (favoritesView)
+        {
             FavoritesTrackListView.ItemsSource = items;
+            ReapplyCurrentTrackSelection(FavoritesTrackListView);
+        }
         else
+        {
             PlaylistFoldersControl.ItemsSource = items;
+            ReapplyCurrentTrackSelection(PlaylistFoldersControl);
+        }
+    }
+
+    // Замена ItemsSource (пересбор плейлиста, поиск) создаёт новые PlaylistTrackRow и сбрасывает выделение: возвращаем подсветку
+    // проигрываемого трека (без прокрутки), если он есть в новом списке.
+    private void ReapplyCurrentTrackSelection(System.Windows.Controls.ListView listView)
+    {
+        string? path = _currentTrackPath;
+        if (string.IsNullOrEmpty(path)) return;
+
+        foreach (var item in listView.Items)
+        {
+            if (item is PlaylistTrackRow row && PathEquals(row.FilePath, path))
+            {
+                listView.SelectedItem = row;
+                return;
+            }
+        }
+    }
+
+    // Пока окно скрыто, список не проходил раскладку: ScrollIntoView мажет мимо, выделение слетает. После показа повторяем
+    // подсветку и прокрутку к проигрываемому треку; свёрнутую пользователем папку не раскрываем.
+    private void SyncPlaylistToCurrentTrackAfterShow()
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            string? path = _currentTrackPath;
+            if (string.IsNullOrEmpty(path)) return;
+
+            PlaylistFolder? folder = _isFavoritesView
+                ? (_favoritesFolder.Tracks.Contains(path) ? _favoritesFolder : null)
+                : _folders.FirstOrDefault(f => f.Tracks.Contains(path));
+            if (folder is null || (!_isFavoritesView && !folder.IsExpanded)) return;
+
+            HighlightAndScrollToTrack(folder, path);
+        }), DispatcherPriority.ContextIdle);
     }
 
     // Плейлист — смешанный список заголовков и строк: при поиске заголовок остаётся только у папки с совпадениями, "Избранное"

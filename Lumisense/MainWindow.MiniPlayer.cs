@@ -72,6 +72,7 @@ public partial class MainWindow
         Show();
         WindowState = WindowState.Normal;
         CenterOnFirstShowIfNeeded();
+        SyncPlaylistToCurrentTrackAfterShow();
         ForceForeground(this);
         _integrations.Tray?.Hide();
 

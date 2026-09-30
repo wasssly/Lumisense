@@ -858,6 +858,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost
             Show();
             WindowState = WindowState.Normal;
             CenterOnFirstShowIfNeeded();
+            SyncPlaylistToCurrentTrackAfterShow();
             ForceForeground(this);
             _integrations.Tray?.Hide();
         });
@@ -893,6 +894,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost
 
                 WindowState = WindowState.Normal;
                 CenterOnFirstShowIfNeeded();
+                SyncPlaylistToCurrentTrackAfterShow();
                 ForceForeground(this);
                 _integrations.Tray?.Hide();
                 return;
