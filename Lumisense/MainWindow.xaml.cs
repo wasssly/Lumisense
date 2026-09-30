@@ -26,7 +26,7 @@ namespace Lumisense;
 // показа, реальные операции (удаление и т.д.) всегда идут по FilePath.
 public sealed record QueueDisplayItem(string FilePath, string DisplayName, int Position);
 
-public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHost, IMiniPlayerHost
+public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHost, IMiniPlayerHost, ISettingsHost
 {
     private enum RepeatMode { Off, All, One }
 

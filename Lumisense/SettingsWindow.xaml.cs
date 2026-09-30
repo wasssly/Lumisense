@@ -21,7 +21,7 @@ public partial class SettingsWindow : FluentWindow
     private enum HotkeyTarget { None, PlayPause, Next, Previous, Stop, VolumeUp, VolumeDown, Mute, Shuffle, Repeat, ToggleFavorite, ToggleLyrics, ToggleMiniPlayer, DeleteTrack, SeekForward, SeekBackward }
 
     private readonly AppSettings _settings;
-    private readonly MainWindow _owner;
+    private readonly ISettingsHost _owner;
     private bool _isInitializing = true;
     private bool _interfaceScaleRestartNoticeShown;
     private bool _isRefreshingOutputDevices;
@@ -104,7 +104,7 @@ public partial class SettingsWindow : FluentWindow
         ApplyWindowBackdrop(_settings);
     }
 
-    public SettingsWindow(AppSettings settings, MainWindow owner, string? initialPage = null)
+    internal SettingsWindow(AppSettings settings, ISettingsHost owner, string? initialPage = null)
     {
         InitializeComponent();
         _autoScrollTimer.Tick += AutoScrollTimer_Tick;
@@ -364,7 +364,7 @@ public partial class SettingsWindow : FluentWindow
 
     // CenterOwner не подходит (Owner не выставляется), центрируем вручную; двигавшееся окно открываем на прежнем месте
     // (SettingsWindowLeft/Top). Вместе с ShowInTaskbar это чинит окно, унесённое отключённым монитором за экран.
-    private void RestoreOrCenterPosition(Window owner)
+    private void RestoreOrCenterPosition(ISettingsHost owner)
     {
         if (_settings.SettingsWindowLeft is double savedLeft && _settings.SettingsWindowTop is double savedTop
             && IsPositionOnAnyScreen(savedLeft, savedTop))
