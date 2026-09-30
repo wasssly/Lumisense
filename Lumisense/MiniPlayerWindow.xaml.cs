@@ -12,7 +12,7 @@ namespace Lumisense;
 
 public partial class MiniPlayerWindow : Window
 {
-    private readonly MainWindow _mainWindow;
+    private readonly IMiniPlayerHost _mainWindow;
     private bool _isDraggingProgress;
 
     // Тот же паттерн, что в MainWindow.FireAndForget / SettingsWindow.FireAndForget: без него исключение из
@@ -86,7 +86,7 @@ public partial class MiniPlayerWindow : Window
     // (см. BeginOpacityValueEdit) — гвардит слайдер/фокус от вмешательства во время ввода.
     private bool _isEditingOpacityValue;
 
-    public MiniPlayerWindow(MainWindow mainWindow)
+    internal MiniPlayerWindow(IMiniPlayerHost mainWindow)
     {
         InitializeComponent();
 
