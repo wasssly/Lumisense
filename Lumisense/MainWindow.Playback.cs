@@ -399,9 +399,18 @@ public partial class MainWindow
                         !string.Equals(stoppedPath, _currentTrackPath, StringComparison.Ordinal))
                         return;
 
-                    if (playbackError is not null)
+                    Exception? failure = playbackError;
+                    if (failure is not null && IsExclusiveEndOfStreamBufferError(failure))
                     {
-                        RecoverOutputDeviceAfterFailure(playbackError, resumePlayback: _isPlaying);
+                        // NAudio 3.x в эксклюзивном режиме на конце потока отдаёт Release(0, Silent), и драйвер отвечает AUDCLNT_E_BUFFER_SIZE_ERROR.
+                        // Трек дочитан — это обычное окончание, а не сбой: восстановление перезапускало бы трек и подменяло устройство.
+                        Logger.Info($"Эксклюзивный режим: драйвер отклонил release пустого буфера в конце трека ({failure.Message}); считаем трек завершённым.");
+                        failure = null;
+                    }
+
+                    if (failure is not null)
+                    {
+                        RecoverOutputDeviceAfterFailure(failure, resumePlayback: _isPlaying);
                         return;
                     }
 
@@ -423,6 +432,11 @@ public partial class MainWindow
             Logger.Error("Не удалось поставить PlaybackStopped callback в Dispatcher", ex);
         }
     }
+
+    // AUDCLNT_E_BUFFER_SIZE_ERROR, пришедший, когда reader уже дочитан до конца (тот же порог, что у естественного окончания ниже).
+    private bool IsExclusiveEndOfStreamBufferError(Exception error) =>
+        error.HResult == unchecked((int)0x88890016) &&
+        _audioFile != null && _audioFile.TotalTime - _audioFile.CurrentTime <= TimeSpan.FromMilliseconds(750);
 
     private void HandleTrackFinishedNaturally()
     {
