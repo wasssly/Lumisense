@@ -425,6 +425,16 @@ public partial class MainWindow
 
         bool wasEmptyBeforeAdd = FlattenAll().Count == 0;
 
+        var allExisting = FlattenAll();
+        var actuallyNew = newTracks.Where(f => !allExisting.Contains(f)).ToList();
+        if (actuallyNew.Count == 0)
+        {
+            // Всё уже в плейлисте (например, файл лежит в добавленной папке): дубликат не создаём, но показываем, где трек,
+            // и не заводим пустую группу «Отдельные файлы».
+            RevealExistingTrack(newTracks[0]);
+            return;
+        }
+
         var looseFolder = _folders.FirstOrDefault(f => f.IsLooseFilesBucket);
         if (looseFolder == null)
         {
@@ -437,10 +447,6 @@ public partial class MainWindow
             _folders.Add(looseFolder);
         }
 
-        var allExisting = FlattenAll();
-        var actuallyNew = newTracks.Where(f => !allExisting.Contains(f)).ToList();
-        if (actuallyNew.Count == 0) return;
-
         looseFolder.Tracks.AddRange(actuallyNew);
         RefreshPlaylistView();
 
@@ -448,6 +454,21 @@ public partial class MainWindow
         {
             LoadAndPlay(actuallyNew[0]);
         }
+    }
+
+    // Раскрывает папку с уже имеющимся треком и подсвечивает его: так видно, что перетащенный/выбранный файл уже в плейлисте.
+    private void RevealExistingTrack(string filePath)
+    {
+        var folder = _folders.FirstOrDefault(f => f.Tracks.Contains(filePath));
+        if (folder == null) return;
+
+        if (_isFavoritesView)
+            SetFavoritesViewActive(false);
+        if (!folder.IsExpanded)
+            folder.IsExpanded = true;
+        RefreshPlaylistView();
+        Dispatcher.BeginInvoke(new Action(() => HighlightAndScrollToTrack(folder, filePath)),
+            DispatcherPriority.Loaded);
     }
 
     // Нормализация имён — только вручную (настройки для всех файлов или меню для одного трека): сначала предпросмотр по тегам,
