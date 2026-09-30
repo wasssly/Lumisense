@@ -35,7 +35,7 @@ public partial class NowPlayingWindow : Window
         public double OpacityPhase { get; init; }
     }
 
-    private readonly MainWindow _owner;
+    private readonly INowPlayingHost _owner;
     private readonly ObservableCollection<LyricLine> _syncedLines = new();
     private readonly ObservableCollection<OnlineLyricsResult> _onlineResults = new();
     private CancellationTokenSource? _lyricsLoadCts;
@@ -50,7 +50,7 @@ public partial class NowPlayingWindow : Window
     private string? _lyricsTrackPath;
     private int _activeLyricIndex = -2;
 
-    public NowPlayingWindow(MainWindow owner)
+    internal NowPlayingWindow(INowPlayingHost owner)
     {
         _owner = owner;
         InitializeComponent();
