@@ -1278,9 +1278,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private bool _isDraggingProgressOverlay;
     private bool _isDraggingVolumeOverlay;
 
-    // Раз в ~10 секунд игры (40 тиков по 250 мс) сохраняем трек/позицию: при аварийном завершении позиция потеряется
-    // не более чем на секунды (см. PersistPlaybackAndPlaylistState).
-    private const int AutoSaveEveryNTicks = 40;
+    // Раз в ~30 секунд игры (120 тиков по 250 мс) сохраняем трек/позицию: при аварийном завершении позиция потеряется
+    // не более чем на ~30 секунд (пауза, смена трека и выход сохраняют сразу, см. PersistPlaybackAndPlaylistState).
+    private const int AutoSaveEveryNTicks = 120;
     private int _ticksSinceLastAutoSave;
 
     // Обновляет Rich Presence единым снимком аудиосостояния; длительность и позиция берутся только из AudioFileReader,
