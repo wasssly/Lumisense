@@ -117,10 +117,10 @@ public partial class CoverArtSearchWindow : FluentWindow
                 return;
             }
 
-            await Task.WhenAll(searchTasks);
+            var results = await Task.WhenAll(searchTasks);
             token.ThrowIfCancellationRequested();
 
-            var entries = MergeAndDedupe(searchTasks.Select(t => t.Result).ToList());
+            var entries = MergeAndDedupe(results.ToList());
 
             if (entries.Count == 0)
             {
