@@ -54,10 +54,12 @@ public partial class MainWindow
         _favoritesFolder.Tracks.Clear();
         FavoritesManager.Reset();
         PlayCountManager.Reset();
+        _playbackQueue.Clear();
 
         LumiProfileIO.ResetToDefaults(_settings);
         _settings.SavedPlaylistFolders = new List<SavedPlaylistFolder>();
         _settings.SavedPlaylist = null;
+        _settings.SavedQueue = new List<string>();
         _settings.FavoriteTracks = new List<string>();
         _settings.PinnedFavoriteTracks = new List<string>();
         _settings.PlayCounts = new Dictionary<string, int>();
@@ -104,6 +106,13 @@ public partial class MainWindow
         SetTrackUserState(TrackUserState.NoTrack);
         TotalTimeText.Text = "00:00";
         ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
+
+        // Сброс очищает очередь, поэтому после отката возвращаем её из снимка (как при запуске).
+        if (_settings.SaveQueueBetweenRestarts)
+        {
+            _playbackQueue.LoadFrom(_settings.SavedQueue);
+            _playbackQueue.PruneMissing();
+        }
 
         SetShuffleEnabled(_settings.IsShuffleEnabled, resetSessionHistory: false);
         RepeatMode restoredRepeatMode = Enum.TryParse(_settings.RepeatMode, ignoreCase: true, out RepeatMode parsedRepeatMode)
