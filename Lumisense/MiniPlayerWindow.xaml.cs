@@ -216,7 +216,10 @@ public partial class MiniPlayerWindow : Window
         {
             ArtImage.Source = null;
             ArtImage.Visibility = Visibility.Collapsed;
-            ArtBorder.Background = art ?? (Brush)FindResource("ControlFillColorSecondaryBrush");
+            if (art is null)
+                ArtBorder.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "ControlFillColorSecondaryBrush");
+            else
+                ArtBorder.Background = art;
             ArtIcon.Visibility = art is null ? Visibility.Visible : Visibility.Collapsed;
         }
 
@@ -270,48 +273,41 @@ public partial class MiniPlayerWindow : Window
     private bool _isLightTheme;
     private bool _overlayCompatibilityMode;
 
-    // Кисти получаются через FindResource по x:Key и кэшируются один раз, чтобы не искать
-    // их в дереве ресурсов при каждом обновлении темы/прозрачности
-    private SolidColorBrush? _textPrimaryBrush;
-    private SolidColorBrush? _textSecondaryBrush;
-    private SolidColorBrush? _controlFillBrush;
-    private SolidColorBrush? _controlFillSecondaryBrush;
-    private SolidColorBrush? _controlStrongFillBrush;
-    private SolidColorBrush? _controlStrokeBrush;
-
     // Пересчитывает цвета, зависящие от темы приложения: при открытии (OnSourceInitialized) и при смене темы на
     // открытом мини-плеере (ApplyThemeLive / MainWindow.ApplyMiniPlayerThemeLive).
     private void ApplyTheme()
     {
-        _textPrimaryBrush ??= (SolidColorBrush)FindResource("TextFillColorPrimaryBrush");
-        _textSecondaryBrush ??= (SolidColorBrush)FindResource("TextFillColorSecondaryBrush");
-        _controlFillBrush ??= (SolidColorBrush)FindResource("ControlFillColorDefaultBrush");
-        _controlFillSecondaryBrush ??= (SolidColorBrush)FindResource("ControlFillColorSecondaryBrush");
-        _controlStrongFillBrush ??= (SolidColorBrush)FindResource("ControlStrongFillColorDefaultBrush");
-        _controlStrokeBrush ??= (SolidColorBrush)FindResource("ControlStrokeColorDefaultBrush");
-
         _isLightTheme = _mainWindow.Settings.IsLightThemeResolved();
 
+        // Кисти из Window.Resources после первого применения стилей и шаблонов (DynamicResource) становятся только для чтения,
+        // поэтому Color у них не меняем, а подставляем новые кисти под те же ключи: DynamicResource подхватит их сам.
         if (_isLightTheme)
         {
-            _textPrimaryBrush.Color = Color.FromArgb(0xFF, 0x1A, 0x1A, 0x1A);
-            _textSecondaryBrush.Color = Color.FromArgb(0xB0, 0x1A, 0x1A, 0x1A);
-            _controlFillBrush.Color = Color.FromArgb(0x14, 0x00, 0x00, 0x00);
-            _controlFillSecondaryBrush.Color = Color.FromArgb(0x1A, 0x00, 0x00, 0x00);
-            _controlStrongFillBrush.Color = Color.FromArgb(0x30, 0x00, 0x00, 0x00);
-            _controlStrokeBrush.Color = Color.FromArgb(0x26, 0x00, 0x00, 0x00);
+            SetThemeBrush("TextFillColorPrimaryBrush", Color.FromArgb(0xFF, 0x1A, 0x1A, 0x1A));
+            SetThemeBrush("TextFillColorSecondaryBrush", Color.FromArgb(0xB0, 0x1A, 0x1A, 0x1A));
+            SetThemeBrush("ControlFillColorDefaultBrush", Color.FromArgb(0x14, 0x00, 0x00, 0x00));
+            SetThemeBrush("ControlFillColorSecondaryBrush", Color.FromArgb(0x1A, 0x00, 0x00, 0x00));
+            SetThemeBrush("ControlStrongFillColorDefaultBrush", Color.FromArgb(0x30, 0x00, 0x00, 0x00));
+            SetThemeBrush("ControlStrokeColorDefaultBrush", Color.FromArgb(0x26, 0x00, 0x00, 0x00));
         }
         else
         {
-            _textPrimaryBrush.Color = Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF);
-            _textSecondaryBrush.Color = Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF);
-            _controlFillBrush.Color = Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF);
-            _controlFillSecondaryBrush.Color = Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF);
-            _controlStrongFillBrush.Color = Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF);
-            _controlStrokeBrush.Color = Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF);
+            SetThemeBrush("TextFillColorPrimaryBrush", Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
+            SetThemeBrush("TextFillColorSecondaryBrush", Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF));
+            SetThemeBrush("ControlFillColorDefaultBrush", Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF));
+            SetThemeBrush("ControlFillColorSecondaryBrush", Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
+            SetThemeBrush("ControlStrongFillColorDefaultBrush", Color.FromArgb(0x4D, 0xFF, 0xFF, 0xFF));
+            SetThemeBrush("ControlStrokeColorDefaultBrush", Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF));
         }
 
         ApplyBackground();
+    }
+
+    private void SetThemeBrush(string key, Color color)
+    {
+        var brush = new SolidColorBrush(color);
+        brush.Freeze();
+        Resources[key] = brush;
     }
 
     // Альфа-канал фона — это и есть настройка "прозрачность мини-плеера" (0.3..1.0 в UI, см.
