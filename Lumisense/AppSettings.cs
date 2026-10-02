@@ -431,20 +431,32 @@ public static class SettingsManager
     private static long LastWrittenRevision;
     private static string? LastObservedSettingsJson;
     private static int CheckpointInProgress;
-    private static readonly string SettingsFilePath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Lumisense", "settings.json");
+    private static readonly string DefaultStorageDirectory = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lumisense");
+
+    // Пути не readonly только ради тестов: UseStorageDirectoryForTests переключает их на временную папку.
+    private static string SettingsFilePath = Path.Combine(DefaultStorageDirectory, "settings.json");
 
     // Резервный снимок создаётся только из состояния с пользовательскими данными и, в отличие от settings.json,
     // защищает не только пути плейлиста, но и избранное, закрепления, счётчики, время и последнее воспроизведение.
-    private static readonly string UserDataRecoveryBackupPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Lumisense", "settings.user-data-backup.json");
+    private static string UserDataRecoveryBackupPath = Path.Combine(DefaultStorageDirectory, "settings.user-data-backup.json");
 
     // Сохраняем прежнее имя параллельно для уже созданных копий и понятной ручной диагностики.
-    private static readonly string PlaylistRecoveryBackupPath = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "Lumisense", "settings.playlist-backup.json");
+    private static string PlaylistRecoveryBackupPath = Path.Combine(DefaultStorageDirectory, "settings.playlist-backup.json");
+
+    // Только для тестов: переносит settings.json и его резервные копии в указанную папку (null возвращает %AppData%\Lumisense)
+    // и сбрасывает внутреннее состояние сохранения. В приложении не вызывается.
+    internal static void UseStorageDirectoryForTests(string? directory)
+    {
+        string target = directory ?? DefaultStorageDirectory;
+        SettingsFilePath = Path.Combine(target, "settings.json");
+        UserDataRecoveryBackupPath = Path.Combine(target, "settings.user-data-backup.json");
+        PlaylistRecoveryBackupPath = Path.Combine(target, "settings.playlist-backup.json");
+        Interlocked.Exchange(ref NextSaveRevision, 0);
+        Interlocked.Exchange(ref LastWrittenRevision, 0);
+        Interlocked.Exchange(ref CheckpointInProgress, 0);
+        Volatile.Write(ref LastObservedSettingsJson, null);
+    }
 
     // true, если файл настроек уже сохранялся: отличает первый запуск (открываем квадратный вид) от старых настроек,
     // где вид подбирается по IsPlaylistVisible/WasMiniPlayerOnClose, чтобы после обновления ничего не переключилось.
