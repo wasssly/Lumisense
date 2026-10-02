@@ -7,6 +7,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Threading;
 using Wpf.Ui.Controls;
+using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
@@ -14,21 +15,6 @@ public partial class MiniPlayerWindow : Window
 {
     private readonly IMiniPlayerHost _mainWindow;
     private bool _isDraggingProgress;
-
-    // Тот же паттерн, что в MainWindow.FireAndForget / SettingsWindow.FireAndForget: без него исключение из
-    // SaveAsync терялось бы до сборки мусора (TaskScheduler.UnobservedTaskException) или не успевало бы всплыть
-    // до закрытия окна.
-    private static async void FireAndForget(Task task, string operationName)
-    {
-        try
-        {
-            await task;
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Ошибка в фоновой операции \"{operationName}\"", ex);
-        }
-    }
 
     // HeaderPanel в XAML имеет отступы "10,8,10,2": при видимой полосе прогресса нижний отступ меньше, чтобы утянуть заголовок к бару;
     // без полосы он увеличивается до 10 (см. ApplyProgressBarVisibility).

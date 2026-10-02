@@ -18,6 +18,7 @@ using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 

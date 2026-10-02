@@ -19,6 +19,7 @@ using NAudio.Wave.SampleProviders;
 
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
@@ -350,20 +351,6 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
     // Пути Windows нечувствительны к регистру: один и тот же файл из разных плейлистов мог не опознаться как текущий трек.
     private static bool PathEquals(string? a, string? b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
-
-    // Оборачивает fire-and-forget async-вызовы логированием исключения сразу: TaskScheduler.UnobservedTaskException
-    // (App.xaml.cs) сработает лишь после сборки мусора, а иногда и вовсе не успеет до закрытия процесса.
-    private static async void FireAndForget(Task task, string operationName)
-    {
-        try
-        {
-            await task;
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Ошибка в фоновой операции \"{operationName}\"", ex);
-        }
-    }
 
     private void SettingsCheckpointTimer_Tick(object? sender, EventArgs e)
     {

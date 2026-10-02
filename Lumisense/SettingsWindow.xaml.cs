@@ -13,6 +13,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
@@ -49,19 +50,6 @@ public partial class SettingsWindow : FluentWindow
 
     private readonly List<SettingsSearchEntry> _searchIndex = new();
     private readonly ObservableCollection<SettingsSearchEntry> _searchResults = new();
-
-    // Копия MainWindow.FireAndForget: иначе исключение из SaveAsync не попадает в лог до сборки мусора.
-    private static async void FireAndForget(Task task, string operationName)
-    {
-        try
-        {
-            await task;
-        }
-        catch (Exception ex)
-        {
-            Logger.Error($"Ошибка в фоновой операции \"{operationName}\"", ex);
-        }
-    }
 
     // Переключает страницу по ключу: при первом открытии и при повторном открытии уже висящего окна
     // (например, "Настройки" из меню мини-плеера ведут на "Мини-плеер", см. MainWindow.ShowSettingsWindow).
