@@ -53,24 +53,10 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private readonly TrackExportService _trackExportService = new();
     private bool _trackExportInProgress;
     private AudioOutputEndpointMonitor? _audioOutputEndpointMonitor;
-    private string? _activeOutputFormat;
-    private long _lastOutputInitializationMilliseconds;
-    private int _outputRecoveryCount;
-    private string? _lastOutputRecoveryReason;
-    private int _meaningfulOutputDeviceEventCount;
-    private AudioOutputEndpointChangeKind? _lastOutputDeviceEventKind;
-    private string? _lastOutputDeviceEventEndpointId;
+    private readonly AudioOutputDiagnostics _outputDiagnostics = new();
     private string? _pendingSystemDefaultEndpointId;
     private const int OutputRecoveryCooldownMilliseconds = 1500;
     private const int SystemDefaultEndpointDebounceMilliseconds = 180;
-
-    // Отдельно от settings.json храним то, что реально открыл WASAPI: так Settings объяснит fallback после отключения
-    // USB/Bluetooth-устройства, и пользователь не гадает, куда идёт звук.
-    private string _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
-    private string? _outputDeviceFallbackFrom;
-    // Реально применённый режим WASAPI ("Shared"/"Exclusive") — может отличаться от
-    // _settings.WasapiMode сразу после автоматического отката в EnsureOutputDevice.
-    private string _activeWasapiMode = "Shared";
 
     // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
     // громкость (AudioFileReader.Volume) применяется ДО эквалайзера, он только красит частоты.

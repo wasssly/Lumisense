@@ -42,8 +42,8 @@ public partial class MainWindow
             Logger.Error("Не удалось инициализировать выбранное устройство вывода; используется системное устройство", ex);
             string failedDeviceKey = _settings.OutputDeviceName;
             DisposeOutputDeviceSafely();
-            _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
-            _outputDeviceFallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(failedDeviceKey, usedFallback: true);
+            _outputDiagnostics.ActiveDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
+            _outputDiagnostics.FallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(failedDeviceKey, usedFallback: true);
             _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
             _ = SettingsManager.SaveAsync(_settings);
             _settingsWindow?.RefreshOutputDeviceSelection();
@@ -57,12 +57,12 @@ public partial class MainWindow
         var initializationTimer = Stopwatch.StartNew();
         _audioOutputSession.Initialize(sampleProvider);
         initializationTimer.Stop();
-        _lastOutputInitializationMilliseconds = initializationTimer.ElapsedMilliseconds;
+        _outputDiagnostics.LastInitializationMilliseconds = initializationTimer.ElapsedMilliseconds;
 
         if (_outputDevice is WasapiPlayer wasapiPlayer)
         {
             WaveFormat format = wasapiPlayer.OutputWaveFormat;
-            _activeOutputFormat = $"{format.SampleRate / 1000.0:0.#} kHz · {format.Channels} ch · {format.BitsPerSample}-bit";
+            _outputDiagnostics.ActiveFormat = $"{format.SampleRate / 1000.0:0.#} kHz · {format.Channels} ch · {format.BitsPerSample}-bit";
         }
     }
 
@@ -72,13 +72,12 @@ public partial class MainWindow
 
         string requestedDeviceKey = _settings.OutputDeviceName;
         AudioOutputDeviceService.ResolvedEndpoint resolved = _audioOutputDeviceManager.Resolve(requestedDeviceKey);
-        _activeOutputFormat = null;
-        _lastOutputInitializationMilliseconds = 0;
-        _activeOutputDeviceKey = resolved.ActiveDeviceKey;
+        _outputDiagnostics.ResetForNewEndpoint();
+        _outputDiagnostics.ActiveDeviceKey = resolved.ActiveDeviceKey;
 
         if (resolved.UsedFallback)
         {
-            _outputDeviceFallbackFrom = requestedDeviceKey;
+            _outputDiagnostics.FallbackFrom = requestedDeviceKey;
             Logger.Warn($"Выбранное WASAPI-устройство недоступно: {requestedDeviceKey}. Используется системное устройство Windows.");
             _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
             _ = SettingsManager.SaveAsync(_settings);
@@ -86,7 +85,7 @@ public partial class MainWindow
         }
         else
         {
-            _outputDeviceFallbackFrom = null;
+            _outputDiagnostics.FallbackFrom = null;
             // Старые WaveOut-ключи мигрируют к устойчивому endpoint-ID без сброса выбора.
             if (AudioOutputDeviceManager.ShouldPersistActiveKey(
                     requestedDeviceKey, resolved.ActiveDeviceKey, resolved.UsedFallback))
@@ -104,7 +103,7 @@ public partial class MainWindow
             try
             {
                 _outputDevice = BuildWasapiPlayer(_outputEndpoint, wantsExclusiveMode);
-                _activeWasapiMode = wantsExclusiveMode ? "Exclusive" : "Shared";
+                _outputDiagnostics.ActiveWasapiMode = wantsExclusiveMode ? "Exclusive" : "Shared";
             }
             catch (Exception ex) when (wantsExclusiveMode)
             {
@@ -115,7 +114,7 @@ public partial class MainWindow
                 _ = SettingsManager.SaveAsync(_settings);
                 _settingsWindow?.RefreshWasapiModeSelection();
                 _outputDevice = BuildWasapiPlayer(_outputEndpoint, useExclusiveMode: false);
-                _activeWasapiMode = "Shared";
+                _outputDiagnostics.ActiveWasapiMode = "Shared";
             }
             _audioOutputSession.Attach(_outputDevice!, _outputEndpoint!);
         }
@@ -146,25 +145,25 @@ public partial class MainWindow
     internal AudioOutputRuntimeStatus GetOutputDeviceRuntimeStatus()
     {
         WasapiPlayer? player = _outputDevice as WasapiPlayer;
-        string activeKey = _outputDevice is null ? _settings.OutputDeviceName : _activeOutputDeviceKey;
+        string activeKey = _outputDevice is null ? _settings.OutputDeviceName : _outputDiagnostics.ActiveDeviceKey;
         string? activeEndpointId = player?.DeviceId ?? TryGetActiveOutputEndpointId();
         return new AudioOutputRuntimeStatus(
             AudioOutputDeviceService.GetDisplayName(activeKey),
-            string.IsNullOrWhiteSpace(_outputDeviceFallbackFrom) ? null : AudioOutputDeviceService.GetDisplayName(_outputDeviceFallbackFrom),
+            string.IsNullOrWhiteSpace(_outputDiagnostics.FallbackFrom) ? null : AudioOutputDeviceService.GetDisplayName(_outputDiagnostics.FallbackFrom),
             _outputDevice is not null,
-            $"WASAPI {_activeWasapiMode} · WasapiPlayer",
+            $"WASAPI {_outputDiagnostics.ActiveWasapiMode} · WasapiPlayer",
             WasapiRequestedLatencyMilliseconds,
             player?.LatencyMilliseconds,
-            _activeOutputFormat,
+            _outputDiagnostics.ActiveFormat,
             activeEndpointId,
             GetOutputPlaybackState(_outputDevice),
             AudioOutputRecoveryPolicy.FollowsSystemDefault(_settings.OutputDeviceName),
-            _lastOutputInitializationMilliseconds,
-            _outputRecoveryCount,
-            _lastOutputRecoveryReason,
-            _meaningfulOutputDeviceEventCount,
-            _lastOutputDeviceEventKind,
-            _lastOutputDeviceEventEndpointId);
+            _outputDiagnostics.LastInitializationMilliseconds,
+            _outputDiagnostics.RecoveryCount,
+            _outputDiagnostics.LastRecoveryReason,
+            _outputDiagnostics.MeaningfulDeviceEventCount,
+            _outputDiagnostics.LastDeviceEventKind,
+            _outputDiagnostics.LastDeviceEventEndpointId);
     }
 
     // Отчёт формируется только по явному действию пользователя для clipboard. Он не включает
@@ -200,7 +199,7 @@ public partial class MainWindow
     {
         if (_isExiting) return;
 
-        _outputDeviceFallbackFrom = null;
+        _outputDiagnostics.FallbackFrom = null;
         string? currentPath = _currentTrackPath;
         TimeSpan position = _audioFile?.CurrentTime ?? TimeSpan.Zero;
         bool wasPlaying = _isPlaying;
@@ -258,9 +257,7 @@ public partial class MainWindow
 
     private void RecordMeaningfulOutputDeviceEvent(AudioOutputEndpointChangedEventArgs e)
     {
-        _meaningfulOutputDeviceEventCount++;
-        _lastOutputDeviceEventKind = e.Kind;
-        _lastOutputDeviceEventEndpointId = e.EndpointId;
+        _outputDiagnostics.RecordDeviceEvent(e.Kind, e.EndpointId);
     }
 
     private void QueueSystemDefaultEndpointRecovery(string? changedDefaultEndpointId)
@@ -339,8 +336,8 @@ public partial class MainWindow
             return;
 
         SetTrackUserState(TrackUserState.Loading);
-        _outputRecoveryCount = execution.RecoveryCount;
-        _lastOutputRecoveryReason = expectedDeviceEvent
+        _outputDiagnostics.RecoveryCount = execution.RecoveryCount;
+        _outputDiagnostics.LastRecoveryReason = expectedDeviceEvent
             ? error.Message
             : "Ошибка WASAPI при инициализации или воспроизведении";
         if (!execution.Completed)
@@ -370,8 +367,8 @@ public partial class MainWindow
         StopPlayback(disposeOnly: true);
         string failedDeviceKey = snapshot.SavedDeviceKey ?? string.Empty;
         DisposeOutputDeviceSafely();
-        _activeOutputDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
-        _outputDeviceFallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(
+        _outputDiagnostics.ActiveDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
+        _outputDiagnostics.FallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(
             failedDeviceKey, usedFallback: true);
         _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
         _ = SettingsManager.SaveAsync(_settings);
