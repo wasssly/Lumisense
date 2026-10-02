@@ -161,20 +161,16 @@ public partial class MainWindow
         if (_settings.RememberVolume)
             _settings.SavedVolume = VolumeSlider.Value;
 
-        // Не затираем сохранённый плейлист пустой коллекцией, пока конструктор ещё не
-        // завершил его восстановление. Это особенно важно, если старт прерван исключением.
-        if (_playlistRestoreCompleted)
+        // Пустой коллекцией сохранённый плейлист не затрём: ранний return выше пропускает всё, пока восстановление не завершено.
+        _settings.SavedPlaylistFolders = _folders.Select(f => new SavedPlaylistFolder
         {
-            _settings.SavedPlaylistFolders = _folders.Select(f => new SavedPlaylistFolder
-            {
-                DisplayName = f.PersistedDisplayName,
-                SourcePath = f.SourcePath,
-                IsEnabled = f.IsEnabled,
-                IsExpanded = f.IsExpanded,
-                Tracks = f.Tracks.ToList(),
-                IsLooseFilesBucket = f.IsLooseFilesBucket
-            }).ToList();
-        }
+            DisplayName = f.PersistedDisplayName,
+            SourcePath = f.SourcePath,
+            IsEnabled = f.IsEnabled,
+            IsExpanded = f.IsExpanded,
+            Tracks = f.Tracks.ToList(),
+            IsLooseFilesBucket = f.IsLooseFilesBucket
+        }).ToList();
 
         _settings.LastTrackPath = GetCurrentTrackPath();
         _settings.LastPositionSeconds = _audioFile?.CurrentTime.TotalSeconds ?? _settings.LastPositionSeconds;
