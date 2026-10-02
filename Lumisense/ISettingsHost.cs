@@ -2,10 +2,16 @@ using System.Windows;
 
 namespace Lumisense;
 
-// Всё, что SettingsWindow берёт у MainWindow: окно зависит от этого интерфейса, а не от всего MainWindow.
-internal interface ISettingsHost
+// Всё, что SettingsWindow берёт у MainWindow, по темам. ISettingsHost объединяет их: окно настроек зависит от него,
+// а не от всего MainWindow.
+internal interface ISettingsHost : ISettingsAppearanceHost, ISettingsAudioHost, ISettingsEqualizerHost,
+    ISettingsMiniPlayerHost, ISettingsPlaylistHost, ISettingsIntegrationsHost, ISettingsProfileHost
 {
-    // Оформление и окно
+}
+
+// Окно, тема и оформление: то, что страницы настроек применяют к MainWindow и мини-плееру на лету.
+internal interface ISettingsAppearanceHost
+{
     bool Topmost { get; set; }
     double Left { get; }
     double Top { get; }
@@ -26,15 +32,21 @@ internal interface ISettingsHost
     void ApplyWindowBackdrop(bool forceReapply = false);
     void ApplySyncedLyricsAppearance();
     void ApplyProgressBarStyle();
+}
 
-    // Звук и устройство вывода
+// Звук и устройство вывода.
+internal interface ISettingsAudioHost
+{
     void RefreshVolumeCurve();
     void RefreshReplayGain();
     void ApplyOutputDeviceSelection();
     AudioOutputRuntimeStatus GetOutputDeviceRuntimeStatus();
     string BuildAudioDiagnosticsReport();
+}
 
-    // Эквалайзер
+// Эквалайзер и его пресеты.
+internal interface ISettingsEqualizerHost
+{
     bool IsEqualizerEnabled { get; }
     bool IsEqualizerBypass { get; }
     IReadOnlyList<EqualizerPreset> EqualizerPresets { get; }
@@ -48,8 +60,11 @@ internal interface ISettingsHost
     void DeleteEqualizerPreset(EqualizerPreset preset);
     void ExportEqualizerPreset(EqualizerPreset preset, string filePath);
     EqualizerPreset? ImportEqualizerPresetFromFile(string filePath);
+}
 
-    // Мини-плеер и оверлей игр
+// Настройки мини-плеера и совместимость с оверлеями игр.
+internal interface ISettingsMiniPlayerHost
+{
     bool EffectiveGameOverlayCompatibilityEnabled { get; }
     bool IsMiniPlayerContextMenuActionDisabled(string actionId);
     void SetMiniPlayerContextMenuActionDisabled(string actionId, bool disabled);
@@ -66,19 +81,28 @@ internal interface ISettingsHost
     void ApplyMiniPlayerArtworkProgressThicknessLive();
     void ApplyMiniPlayerArtworkProgressColorLive();
     void ApplyMiniPlayerInfoModeLive();
+}
 
-    // Контекстное меню треков, очередь и плейлист
+// Меню треков, очередь и плейлист.
+internal interface ISettingsPlaylistHost
+{
     bool IsTrackContextMenuActionDisabled(string actionId);
     void SetTrackContextMenuActionDisabled(string actionId, bool disabled);
     void ResetShuffleState();
     void SetSaveQueueBetweenRestarts(bool enabled);
     Task<FileNameNormalizer.RenameResult?> NormalizePlaylistFileNamesAsync(Window dialogOwner);
+}
 
-    // Интеграции
+// Интеграции (Discord, горячие клавиши).
+internal interface ISettingsIntegrationsHost
+{
     void ApplyDiscordRichPresenceSettingsLive();
     void ReapplyHotkeys();
+}
 
-    // Профиль, сброс и служебные окна
+// Профиль: импорт, сброс данных, служебные окна.
+internal interface ISettingsProfileHost
+{
     void ApplyImportedSettingsLive();
     bool TryRestoreLastSettingsReset();
     void ResetAllUserData();

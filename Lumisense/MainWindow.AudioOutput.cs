@@ -171,8 +171,8 @@ public partial class MainWindow
     internal string BuildAudioDiagnosticsReport() =>
         AudioDiagnosticsReportFormatter.Format(UpdateChecker.GetCurrentVersion(), GetOutputDeviceRuntimeStatus());
 
-    AudioOutputRuntimeStatus ISettingsHost.GetOutputDeviceRuntimeStatus() => GetOutputDeviceRuntimeStatus();
-    string ISettingsHost.BuildAudioDiagnosticsReport() => BuildAudioDiagnosticsReport();
+    AudioOutputRuntimeStatus ISettingsAudioHost.GetOutputDeviceRuntimeStatus() => GetOutputDeviceRuntimeStatus();
+    string ISettingsAudioHost.BuildAudioDiagnosticsReport() => BuildAudioDiagnosticsReport();
 
     private string? TryGetActiveOutputEndpointId()
     {
