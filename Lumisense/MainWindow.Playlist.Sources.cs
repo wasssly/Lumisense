@@ -366,6 +366,11 @@ public partial class MainWindow
             Logger.Warn($"Не удалось просканировать папку {folderPath}: {ex.Message}");
             return false;
         }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException)
+        {
+            Logger.Warn($"Неподдерживаемый путь папки {folderPath}: {ex.Message}");
+            return false;
+        }
     }
 
     // Добавляет группу без дубликата; новые файлы подхватываются автоматически, исчезнувшие остаются как «Файл недоступен»:
