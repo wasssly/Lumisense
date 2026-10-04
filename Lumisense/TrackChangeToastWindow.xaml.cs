@@ -46,6 +46,7 @@ public partial class TrackChangeToastWindow : Window
         ApplySizePreset(size);
         ApplyWidth(width, size);
         ApplyLayout(artSide, textAlignment);
+        ApplyThemeBrushes(isLightTheme);
 
         if (art is ImageBrush { ImageSource: not null } imageBrush)
         {
@@ -88,6 +89,25 @@ public partial class TrackChangeToastWindow : Window
 
         RootBorder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, FadeDuration));
         _hideTimer.Start();
+    }
+
+    // Ресурсы тоста локальные, поэтому смена темы приложения сама по себе их не обновляет.
+    // Заменяем объекты кистей, а не меняем Color у возможной frozen-кисти; DynamicResource
+    // на уже созданном окне получает корректные цвета при каждом новом показе.
+    private void ApplyThemeBrushes(bool isLightTheme)
+    {
+        if (isLightTheme)
+        {
+            Resources["TextFillColorPrimaryBrush"] = new SolidColorBrush(Color.FromArgb(0xFF, 0x1A, 0x1A, 0x1A));
+            Resources["TextFillColorSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0xB0, 0x1A, 0x1A, 0x1A));
+            Resources["ControlFillColorSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0x1A, 0x00, 0x00, 0x00));
+        }
+        else
+        {
+            Resources["TextFillColorPrimaryBrush"] = new SolidColorBrush(Color.FromArgb(0xFF, 0xFF, 0xFF, 0xFF));
+            Resources["TextFillColorSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0xC5, 0xFF, 0xFF, 0xFF));
+            Resources["ControlFillColorSecondaryBrush"] = new SolidColorBrush(Color.FromArgb(0x1A, 0xFF, 0xFF, 0xFF));
+        }
     }
 
     // В compatibility mode toast остаётся простым непрозрачным слоем без DropShadow и

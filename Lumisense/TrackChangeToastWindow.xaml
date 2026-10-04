@@ -45,6 +45,7 @@
                            RenderOptions.EdgeMode="Unspecified"
                            SnapsToDevicePixels="True" UseLayoutRounding="True" />
                     <local:SvgPathIcon x:Name="ArtIcon" Icon="IconMusicNote" Size="20" Opacity="0.5"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Grid>
             </Border>
