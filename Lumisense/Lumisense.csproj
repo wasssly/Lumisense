@@ -48,7 +48,7 @@
     <!-- Локальный Discord IPC / Rich Presence; фиксированная версия делает восстановление сборки воспроизводимым. -->
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
     <!-- Прототип delta-обновлений; CLI vpk в workflow закреплён на ту же версию. -->
-    <PackageReference Include="Velopack" Version="1.2.0" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
 
   <ItemGroup>

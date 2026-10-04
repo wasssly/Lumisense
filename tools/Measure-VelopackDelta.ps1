@@ -43,11 +43,11 @@ if ($env:Path -notlike "*$toolPath*") {
 
 $existing = Get-Command vpk -ErrorAction SilentlyContinue
 if ($null -eq $existing) {
-    dotnet tool install --global vpk --version 1.2.0
+    dotnet tool install --global vpk --version 1.2.161
 }
 
-# У vpk 1.2.0 нет команды --version; факт наличия CLI уже проверен выше.
-Write-Host 'Using Velopack CLI vpk 1.2.0'
+# У vpk 1.2.161 нет команды --version; факт наличия CLI уже проверен выше.
+Write-Host 'Using Velopack CLI vpk 1.2.161'
 
 New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 

@@ -44,7 +44,7 @@ jobs:
       - name: Install pinned Velopack CLI
         shell: pwsh
         run: |
-          dotnet tool install --global vpk --version 1.2.0
+          dotnet tool install --global vpk --version 1.2.161
           "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
           vpk -h
 
