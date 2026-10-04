@@ -1,0 +1,55 @@
+<Window x:Class="Lumisense.UpdateMirrorWarningDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Lumisense"
+        Width="460"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Border Margin="8"
+            Padding="26,22,26,20"
+            CornerRadius="16"
+            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+            BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.32" />
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock x:Name="TitleText" Grid.Row="0"
+                       FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+
+            <TextBlock x:Name="MessageText" Grid.Row="1" Margin="0,18,0,16"
+                       TextWrapping="Wrap" FontSize="14" LineHeight="21"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+            <CheckBox x:Name="DontAskAgainCheckBox" Grid.Row="2" Margin="0,0,0,20" />
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="StayButton" MinWidth="140" Height="36"
+                        Margin="0,0,10,0" Padding="18,0" IsDefault="True"
+                        Click="StayButton_Click" />
+                <Button x:Name="UseMirrorButton" MinWidth="160" Height="36"
+                        Padding="18,0"
+                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                        Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                        Click="UseMirrorButton_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

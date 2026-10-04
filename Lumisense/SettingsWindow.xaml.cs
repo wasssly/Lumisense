@@ -790,9 +790,53 @@ public partial class SettingsWindow : FluentWindow
     private void UpdateSourceRadio_Checked(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
-        if (sender is not System.Windows.Controls.RadioButton { Tag: string key }) return;
+        if (sender is not System.Windows.Controls.RadioButton { Tag: string key } radio) return;
+        if (key != "GitHub" && _settings.UpdateDownloadSource == "GitHub")
+        {
+            // Диалог внутри Checked оставлял обе радиокнопки отмеченными, поэтому показываем его после обработчика.
+            Dispatcher.BeginInvoke(() => ConfirmAndApplyMirror(radio, key));
+            return;
+        }
+        ApplyUpdateSource(key);
+    }
+
+    private void ConfirmAndApplyMirror(System.Windows.Controls.RadioButton mirrorRadio, string key)
+    {
+        if (ConfirmMirrorUse())
+        {
+            ApplyUpdateSource(key);
+            return;
+        }
+
+        // Откат без повторного срабатывания Checked и без записи выбора в настройки.
+        _isInitializing = true;
+        try
+        {
+            mirrorRadio.IsChecked = false;
+            UpdateSourceGitHubRadio.IsChecked = true;
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
+    }
+
+    private void ApplyUpdateSource(string key)
+    {
         _settings.UpdateDownloadSource = key;
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // Предупреждаем только при переходе с GitHub на зеркало; переключение между зеркалами уже подтверждено.
+    private bool ConfirmMirrorUse()
+    {
+        if (_settings.UpdateMirrorWarningSuppressed) return true;
+
+        var dialog = new UpdateMirrorWarningDialog(this);
+        if (dialog.ShowDialog() != true) return false;
+
+        _settings.UpdateMirrorWarningSuppressed = dialog.DontAskAgain;
+        return true;
     }
 
     private void ProbeUpdateSourcesButton_Click(object sender, RoutedEventArgs e)

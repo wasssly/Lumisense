@@ -30,6 +30,7 @@ public sealed class LumiProfileSettingsCoverageTests
         nameof(AppSettings.ForwardCompatibleProperties),                 // неизвестные поля из более новых версий
         nameof(AppSettings.SaveQueueBetweenRestarts),                    // сброс настроек его не трогает (решение 0026)
         nameof(AppSettings.SkippedUpdateVersion),                        // относится к этой установке
+        nameof(AppSettings.UpdateMirrorWarningSuppressed),               // подтверждение пользователя на этой установке
         nameof(AppSettings.HklmWildcardContextMenuCleanupAttempted),     // служебная отметка этой машины
         nameof(AppSettings.TrackLoadTraceEnabled),                       // локальная диагностика
         nameof(AppSettings.EqualizerPresets)                             // у пресетов свой импорт и экспорт (.json)

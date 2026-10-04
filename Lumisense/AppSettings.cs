@@ -387,6 +387,9 @@ public class AppSettings
     // проверка версии (api.github.com) всегда идёт напрямую.
     public string UpdateDownloadSource { get; set; } = "GitHub";
 
+    // «Больше не спрашивать» в предупреждении о зеркале загрузки (SettingsWindow.ConfirmMirrorUse).
+    public bool UpdateMirrorWarningSuppressed { get; set; }
+
     // 10 ISO-полос графического EQ (EqualizerSampleProvider); при другой длине сохранённого массива SettingsWindow и
     // MainWindow подстраиваются под BandFrequencies, а не доверяют длине массива.
     public bool EqualizerEnabled { get; set; }
