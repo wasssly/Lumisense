@@ -99,14 +99,21 @@ public partial class MiniPlayerWindow : Window
 
         // Название могло быть длинным ещё до открытия мини-плеера — пересчитываем бегущую
         // строку после первого прохода layout, когда TitleClipBorder.ActualWidth уже известен.
-        Loaded += (_, _) => UpdateTitleMarquee();
+        Loaded += (_, _) =>
+        {
+            UpdateTitleMarquee();
+            RefreshArtistMarquee();
+        };
 
         _topmostTimer.Tick += TopmostTimer_Tick;
         _topmostTimer.Start();
     }
 
-    public void ApplyAccessibilityPreferences() =>
+    public void ApplyAccessibilityPreferences()
+    {
         AccessibilityPreferences.ApplyToWindow(this, _mainWindow.Settings);
+        RefreshArtistMarquee();
+    }
 
     // Возвращаем окно в топмост через Win32, а не полагаемся на Topmost=true (см. _topmostTimer), только при включённом
     // "поверх окон" и не свёрнутом мини-плеере, чтобы не дёргать SetWindowPos впустую.
@@ -249,6 +256,7 @@ public partial class MiniPlayerWindow : Window
                 ArtistText.Text = _lastArtist;
                 break;
         }
+        UpdateArtistMarquee();
     }
 
     private static string FormatRemaining(double currentSeconds, double totalSeconds)
@@ -260,7 +268,11 @@ public partial class MiniPlayerWindow : Window
     }
 
     // См. UpdateSecondaryLine — публичный вызов для MainWindow.ApplyMiniPlayerInfoModeLive.
-    public void ApplyInfoModeLive() => UpdateSecondaryLine();
+    public void ApplyInfoModeLive()
+    {
+        UpdateSecondaryLine();
+        RefreshArtistMarquee();
+    }
 
     // От Win32-блюра (ACCENT_ENABLE_ACRYLICBLURBEHIND) отказались: он конфликтовал с AllowsTransparency="True" и
     // ломал ползунок прозрачности. Теперь RootBorder — SolidColorBrush (MiniBackgroundBrush), альфа = прозрачность.
@@ -330,6 +342,7 @@ public partial class MiniPlayerWindow : Window
     public void ApplyOverlayCompatibilityLive(bool enabled)
     {
         _overlayCompatibilityMode = enabled;
+        RefreshArtistMarquee();
         if (enabled)
             StopVinylRotation();
         else
@@ -427,13 +440,52 @@ public partial class MiniPlayerWindow : Window
         TitleTranslate.X = 0;
 
         if (string.IsNullOrEmpty(TitleText.Text)) return;
+        StartMarquee(TitleText, TitleClipBorder, TitleTranslate);
+    }
 
-        double clipWidth = TitleClipBorder.ActualWidth > 0 ? TitleClipBorder.ActualWidth : DefaultTitleClipWidth;
+    // Состояние бегущей строки исполнителя: пересобираем анимацию только при смене текста или режима,
+    // потому что UpdateSecondaryLine вызывается на каждый тик прогресса и иначе перезапускал бы прокрутку каждую секунду.
+    private string? _artistMarqueeState;
 
-        TitleText.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
-        double textWidth = TitleText.DesiredSize.Width;
+    private bool ShouldScrollArtist() =>
+        _mainWindow.Settings.MiniPlayerArtistMarquee
+        && _mainWindow.Settings.MiniPlayerInfoMode == "TitleArtist"
+        && ArtistText.Visibility == Visibility.Visible
+        && !_overlayCompatibilityMode
+        && !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
 
-        double distance = textWidth - clipWidth;
+    private void UpdateArtistMarquee()
+    {
+        bool scroll = ShouldScrollArtist();
+        string state = scroll ? ArtistText.Text : "";
+        if (state == _artistMarqueeState) return;
+        _artistMarqueeState = state;
+
+        ArtistTranslate.BeginAnimation(TranslateTransform.XProperty, null);
+        ArtistTranslate.X = 0;
+
+        // Без прокрутки сохраняем прежнее поведение: длинное имя обрезается многоточием.
+        double clipWidth = ArtistClipBorder.ActualWidth > 0 ? ArtistClipBorder.ActualWidth : DefaultTitleClipWidth;
+        ArtistText.TextTrimming = scroll ? TextTrimming.None : TextTrimming.CharacterEllipsis;
+        ArtistText.Width = scroll ? double.NaN : clipWidth;
+
+        if (scroll && !string.IsNullOrEmpty(ArtistText.Text))
+            StartMarquee(ArtistText, ArtistClipBorder, ArtistTranslate);
+    }
+
+    // Сбрасывает кэш состояния и пересчитывает бегущую строку исполнителя (смена настроек, режима совместимости).
+    private void RefreshArtistMarquee()
+    {
+        _artistMarqueeState = null;
+        UpdateArtistMarquee();
+    }
+
+    private static void StartMarquee(System.Windows.Controls.TextBlock text, Border clip, TranslateTransform translate)
+    {
+        double clipWidth = clip.ActualWidth > 0 ? clip.ActualWidth : DefaultTitleClipWidth;
+
+        text.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double distance = text.DesiredSize.Width - clipWidth;
         if (distance <= 0) return; // помещается целиком — статичный текст, анимация не нужна
 
         distance += MarqueeEndBufferPx;
@@ -454,7 +506,7 @@ public partial class MiniPlayerWindow : Window
         keyFrames.KeyFrames.Add(new LinearDoubleKeyFrame(-distance, KeyTime.FromTimeSpan(t3)));
         keyFrames.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromTimeSpan(t4)));
 
-        TitleTranslate.BeginAnimation(TranslateTransform.XProperty, keyFrames);
+        translate.BeginAnimation(TranslateTransform.XProperty, keyFrames);
     }
 
     // Индикатор громкости показывается при любом изменении, пока открыт мини-плеер (у него нет ползунка); каждый вызов

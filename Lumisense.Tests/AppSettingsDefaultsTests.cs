@@ -15,6 +15,23 @@ public sealed class AppSettingsDefaultsTests
     }
 
     [Fact]
+    public void NewProfile_KeepsMiniPlayerArtistMarqueeOff()
+    {
+        Assert.False(new AppSettings().MiniPlayerArtistMarquee);
+    }
+
+    [Fact]
+    public void LumiProfile_TransfersMiniPlayerArtistMarquee()
+    {
+        var source = new AppSettings { MiniPlayerArtistMarquee = true };
+        var target = new AppSettings();
+
+        LumiProfileIO.Apply(source, target);
+
+        Assert.True(target.MiniPlayerArtistMarquee);
+    }
+
+    [Fact]
     public void NewProfile_ShowsOnlyEssentialMiniPlayerContextMenuActions()
     {
         var settings = new AppSettings();

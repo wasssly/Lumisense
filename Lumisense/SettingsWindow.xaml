@@ -2021,6 +2021,10 @@
                                              GroupName="MiniInfoMode" Checked="MiniInfoModeRadio_Changed" Margin="0,0,0,12" />
                                 <RadioButton x:Name="MiniInfoRemainingRadio" Content="Оставшееся время трека"
                                              GroupName="MiniInfoMode" Checked="MiniInfoModeRadio_Changed" />
+                                <CheckBox x:Name="MiniArtistMarqueeCheckBox" Content="Прокручивать длинного исполнителя"
+                                          Checked="MiniArtistMarqueeCheckBox_Changed"
+                                          Unchecked="MiniArtistMarqueeCheckBox_Changed"
+                                          Margin="0,14,0,0" />
                                 <TextBlock Text="Эта настройка меняет только вторую строку: название трека остаётся видимым всегда."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>

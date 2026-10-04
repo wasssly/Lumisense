@@ -254,6 +254,9 @@ public class AppSettings
     // Вторая строка заголовка мини-плеера: "TitleArtist" (по умолчанию) — исполнитель, "TitleOnly" — строка скрыта,
     // "TitleRemaining" — оставшееся время (см. MiniPlayerWindow.UpdateSecondaryLine).
     public string MiniPlayerInfoMode { get; set; } = "TitleArtist";
+    // Бегущая строка для исполнителя в мини-плеере. По умолчанию выключена, чтобы не добавлять
+    // постоянную анимацию пользователям, которым достаточно статичной второй строки.
+    public bool MiniPlayerArtistMarquee { get; set; }
 
     // Устойчивый WASAPI endpoint-ID выбранного устройства (`wasapi:{...}`); пусто — системный endpoint Windows,
     // который после отключения USB/Bluetooth-наушников может уйти на новое устройство. Старые WaveOut-имена мигрируют.

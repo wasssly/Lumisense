@@ -199,6 +199,7 @@ public partial class SettingsWindow : FluentWindow
         MiniInfoRemainingRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleRemaining";
         MiniInfoArtistRadio.IsChecked = !MiniInfoOnlyTitleRadio.IsChecked.GetValueOrDefault()
                                          && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
+        MiniArtistMarqueeCheckBox.IsChecked = _settings.MiniPlayerArtistMarquee;
 
         FileNameNormalizationTemplateTextBox.Text = string.IsNullOrWhiteSpace(_settings.FileNameNormalizationTemplate)
             ? FileNameNormalizer.DefaultTemplate
@@ -1066,6 +1067,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Закрепить положение (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniPinnedCheckBox, "закрепить перетаскивание pin мини плеер");
         Add("Прилипание к краям экрана (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniSnapToEdgesCheckBox, "прилипание магнит края экран snap edge мини плеер");
         Add("Вторая кнопка в мини-плеере", "Мини-плеер", "MiniPlayer", MiniSecondaryRepeatRadio, "вторая кнопка повтор перемешать избранное сердечко favorite shuffle repeat мини плеер");
+        Add("Прокручивать длинного исполнителя", "Мини-плеер", "MiniPlayer", MiniArtistMarqueeCheckBox, "исполнитель артист прокрутка бегущая строка marquee мини плеер");
         Add("Отображение обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkVinylRadio, "обложка винил пластинка вращение круглая artwork vinyl rotate мини плеер");
         Add("Показывать полосу прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowProgressCheckBox, "полоса прогресс progress bar скрыть мини плеер");
         Add("Прогресс вокруг обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowArtworkProgressCheckBox, "контур скруглённый квадрат прогресс обложка арт мини плеер artwork outline");
@@ -2407,6 +2409,13 @@ public partial class SettingsWindow : FluentWindow
         _settings.MiniPlayerInfoMode = MiniInfoOnlyTitleRadio.IsChecked == true ? "TitleOnly"
             : MiniInfoRemainingRadio.IsChecked == true ? "TitleRemaining"
             : "TitleArtist";
+        _owner.ApplyMiniPlayerInfoModeLive();
+    }
+
+    private void MiniArtistMarqueeCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _settings.MiniPlayerArtistMarquee = MiniArtistMarqueeCheckBox.IsChecked == true;
         _owner.ApplyMiniPlayerInfoModeLive();
     }
 

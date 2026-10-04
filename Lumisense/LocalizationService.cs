@@ -411,6 +411,7 @@ public static class LocalizationService
         ["Исполнитель"] = "Artist",
         ["Ничего (только название трека)"] = "Nothing (track name only)",
         ["Оставшееся время трека"] = "Remaining track time",
+        ["Прокручивать длинного исполнителя"] = "Scroll long artist name",
         ["Работают из любого окна, даже когда плеер свёрнут. Нажмите на комбинацию и введите новую — Esc отменяет запись."] = "They work from any window, even when the player is minimized. Click the shortcut and enter a new one — Esc cancels.",
         ["Очистить"] = "Clear",
         ["Следующий трек"] = "Next track",

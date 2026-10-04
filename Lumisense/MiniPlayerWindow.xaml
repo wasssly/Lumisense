@@ -450,8 +450,17 @@
                             </TextBlock>
                         </Canvas>
                     </Border>
-                    <TextBlock x:Name="ArtistText" Text="—" FontSize="11"
-                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    <Border x:Name="ArtistClipBorder" Width="120" ClipToBounds="True" HorizontalAlignment="Left">
+                        <Canvas Height="16">
+                            <TextBlock x:Name="ArtistText" Text="—" FontSize="11"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" Width="120">
+                                <TextBlock.RenderTransform>
+                                    <TranslateTransform x:Name="ArtistTranslate" X="0" />
+                                </TextBlock.RenderTransform>
+                            </TextBlock>
+                        </Canvas>
+                    </Border>
                 </StackPanel>
             </StackPanel>
 

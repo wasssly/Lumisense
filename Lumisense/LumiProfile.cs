@@ -189,6 +189,7 @@ public static class LumiProfileIO
         target.MiniPlayerSnapToEdges = source.MiniPlayerSnapToEdges;
         target.MiniPlayerSecondaryButton = source.MiniPlayerSecondaryButton;
         target.MiniPlayerInfoMode = source.MiniPlayerInfoMode;
+        target.MiniPlayerArtistMarquee = source.MiniPlayerArtistMarquee;
         target.OutputDeviceName = source.OutputDeviceName;
         target.LyricsSearchPolicy = source.LyricsSearchPolicy;
         target.ShowTrackChangeToast = source.ShowTrackChangeToast;
