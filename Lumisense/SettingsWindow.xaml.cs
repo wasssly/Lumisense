@@ -209,7 +209,8 @@ public partial class SettingsWindow : FluentWindow
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
-        ProgressBarSliderRadio.IsChecked = !ProgressBarWaveformRadio.IsChecked.GetValueOrDefault();
+        ProgressBarMaterialRadio.IsChecked = _settings.ProgressBarStyle == "Material";
+        ProgressBarSliderRadio.IsChecked = _settings.ProgressBarStyle is not ("Waveform" or "Material");
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
         DiscordRichPresenceEnabledCheckBox.IsChecked = _settings.DiscordRichPresenceEnabled;
         DiscordRichPresenceShowTrackInfoCheckBox.IsChecked = _settings.DiscordRichPresenceShowTrackInfo;
@@ -2651,7 +2652,9 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.ProgressBarStyle = ProgressBarWaveformRadio.IsChecked == true ? "Waveform" : "Slider";
+        _settings.ProgressBarStyle = ProgressBarWaveformRadio.IsChecked == true ? "Waveform"
+            : ProgressBarMaterialRadio.IsChecked == true ? "Material"
+            : "Slider";
         _owner.ApplyProgressBarStyle();
     }
 

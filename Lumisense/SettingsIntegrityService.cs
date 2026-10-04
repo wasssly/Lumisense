@@ -227,7 +227,7 @@ internal static class SettingsIntegrityService
             ? settings.AccentColorHex ?? defaults.AccentColorHex
             : defaults.AccentColorHex;
         settings.WindowBackdropType = Allowed(settings.WindowBackdropType, defaults.WindowBackdropType, "Mica", "Acrylic");
-        settings.ProgressBarStyle = Allowed(settings.ProgressBarStyle, defaults.ProgressBarStyle, "Slider", "Waveform");
+        settings.ProgressBarStyle = Allowed(settings.ProgressBarStyle, defaults.ProgressBarStyle, "Slider", "Waveform", "Material");
         settings.SyncedLyricsHighlightEffect = Allowed(settings.SyncedLyricsHighlightEffect, defaults.SyncedLyricsHighlightEffect, "None", "Glow");
         settings.SyncedLyricsFontSize = ClampFinite(settings.SyncedLyricsFontSize, 11, 28, defaults.SyncedLyricsFontSize);
         settings.InterfaceScale = ClampFinite(settings.InterfaceScale, 0.85, 1.35, defaults.InterfaceScale);

@@ -727,6 +727,12 @@
                                      Visibility="Collapsed"
                                      UnplayedBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
 
+                <!-- Третий вид полосы — Material (AppSettings.ProgressBarStyle == "Material"): волнистая линия,
+                     тоже только рисует, позиция и перемотка остаются у ProgressSlider. -->
+                <local:MaterialProgressView x:Name="ProgressMaterial" Height="24" IsHitTestVisible="False"
+                                            Visibility="Collapsed"
+                                            TrackBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+
                 <!-- Прозрачный слой поверх слайдера: сам обрабатывает мышь целиком,
                      чтобы не зависеть от того, куда именно попал клик — на трек или на шарик -->
                 <Border Background="Transparent" Height="24"

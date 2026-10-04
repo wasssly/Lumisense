@@ -299,6 +299,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
     private void RaisePlaybackStateChanged(bool isPlaying)
     {
+        ProgressMaterial.IsWaving = isPlaying;
         PublishPlaybackSnapshot();
         PlaybackStateChanged?.Invoke(isPlaying);
     }
@@ -916,9 +917,13 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     public void ApplyProgressBarStyle()
     {
         bool isWaveform = _settings.ProgressBarStyle == "Waveform";
+        bool isMaterial = _settings.ProgressBarStyle == "Material";
 
-        ProgressSlider.Visibility = isWaveform ? Visibility.Collapsed : Visibility.Visible;
+        ProgressSlider.Visibility = isWaveform || isMaterial ? Visibility.Collapsed : Visibility.Visible;
         ProgressWaveform.Visibility = isWaveform ? Visibility.Visible : Visibility.Collapsed;
+        ProgressMaterial.Visibility = isMaterial ? Visibility.Visible : Visibility.Collapsed;
+        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+        ProgressMaterial.IsWaving = _isPlaying;
 
         if (isWaveform)
             FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");

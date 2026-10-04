@@ -122,7 +122,8 @@ public class AppSettings
     // StatisticsWindow — мелкие диалоги открываются слишком быстро, чтобы разница была заметна.
     public string WindowBackdropType { get; set; } = "Mica";
 
-    // "Slider" (по умолчанию) или "Waveform" (форма звука, см. WaveformView/WaveformGenerator); на мини-плеер не
+    // "Slider" (по умолчанию), "Waveform" (форма звука, см. WaveformView/WaveformGenerator) или "Material"
+    // (волнистая линия, см. MaterialProgressView); на мини-плеер не
     // влияет — при высоте полосы 4px волна неразличима.
     public string ProgressBarStyle { get; set; } = "Slider";
 

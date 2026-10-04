@@ -171,7 +171,9 @@ public partial class MainWindow
         CurrentTimeText.Text = TimeSpan.FromSeconds(e.NewValue).ToString(@"mm\:ss");
 
         // Общая точка любого изменения позиции (перемотка, таймер, SeekBy): проще синхронизировать waveform здесь, чем дублировать.
-        ProgressWaveform.Progress = ProgressSlider.Maximum > 0 ? e.NewValue / ProgressSlider.Maximum : 0;
+        double progressRatio = ProgressSlider.Maximum > 0 ? e.NewValue / ProgressSlider.Maximum : 0;
+        ProgressWaveform.Progress = progressRatio;
+        ProgressMaterial.Progress = progressRatio;
         UpdateMainWindowSyncedLyrics(TimeSpan.FromSeconds(e.NewValue));
 
         // Пропускаем seek, если это сам таймер обновил слайдер под текущую позицию воспроизведения —

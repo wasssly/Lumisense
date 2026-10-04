@@ -329,6 +329,7 @@ public static class LocalizationService
         ["Полоса воспроизведения"] = "Playback bar",
         ["Обычная (по умолчанию)"] = "Normal (default)",
         ["Waveform (форма звука, как в SoundCloud)"] = "Waveform (audio waveform, like on SoundCloud)",
+        ["Material (волнистая линия, как в Android)"] = "Material (wavy line, like on Android)",
         ["Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую."] = "The waveform is computed once when the track is loaded and kept in memory while the player is open — for long files (FLAC/WAV) the initial calculation may take a second or two.",
         ["Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."] = "Equalizes perceived loudness between tracks using the REPLAYGAIN_TRACK_GAIN tags, if present — without this, quieter-mastered tracks will sound noticeably quieter when mixed with louder ones in the same playlist. Tracks without such tags are unchanged.",
         ["Подключение внешних сервисов, параметры приватности и диагностика."] = "External service connections, privacy, and diagnostics.",

@@ -30,6 +30,7 @@ public partial class MainWindow
     public void ApplyAccessibilityPreferences()
     {
         AccessibilityPreferences.ApplyToWindow(this, _settings);
+        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
         _settingsWindow?.ApplyAccessibilityPreferences();
         _miniPlayerWindow?.ApplyAccessibilityPreferences();
         _nowPlayingWindow?.ApplyAccessibilityPreferences();
@@ -288,6 +289,7 @@ public partial class MainWindow
         PlayPauseButton.Icon = IconResources.MakeOnAccent(_isPlaying ? "IconPause" : "IconPlay", 15);
         PlayPauseButton.Background = new SolidColorBrush(GetResolvedAccentColor()); // всегда акцентная, не переключается
         ProgressWaveform.PlayedBrush = new SolidColorBrush(GetResolvedAccentColor());
+        ProgressMaterial.PlayedBrush = new SolidColorBrush(GetResolvedAccentColor());
 
         SetAccentButtonActive(ShuffleButton, _shuffleSession.IsEnabled);
         IconResources.SetOnAccent(ShuffleIcon, _shuffleSession.IsEnabled);
