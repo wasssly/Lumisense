@@ -121,7 +121,10 @@ public partial class MainWindow
         System.Windows.Clipboard.SetText(Path.GetFileNameWithoutExtension(row.FilePath));
     }
 
-    private async void ExportProcessedCopyMenuItem_Click(object sender, RoutedEventArgs e)
+    private void ExportProcessedCopyMenuItem_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ExportProcessedCopyMenuItem_ClickAsync(sender, e), nameof(ExportProcessedCopyMenuItem_Click));
+
+    private async Task ExportProcessedCopyMenuItem_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (_trackExportInProgress || sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
         if (!File.Exists(row.FilePath)) return;
@@ -222,7 +225,10 @@ public partial class MainWindow
         }
     }
 
-    private async void NormalizeTrackFileNameMenuItem_Click(object sender, RoutedEventArgs e)
+    private void NormalizeTrackFileNameMenuItem_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(NormalizeTrackFileNameMenuItem_ClickAsync(sender, e), nameof(NormalizeTrackFileNameMenuItem_Click));
+
+    private async Task NormalizeTrackFileNameMenuItem_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
 

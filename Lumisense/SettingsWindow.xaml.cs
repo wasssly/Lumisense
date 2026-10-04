@@ -600,7 +600,10 @@ public partial class SettingsWindow : FluentWindow
         LegacyInnoCleanupStatusText.Text = LocalizationService.Get(statusKey);
     }
 
-    private async void RemoveLegacyInnoButton_Click(object sender, RoutedEventArgs e)
+    private void RemoveLegacyInnoButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(RemoveLegacyInnoButton_ClickAsync(sender, e), nameof(RemoveLegacyInnoButton_Click));
+
+    private async Task RemoveLegacyInnoButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (!_isVelopackManagedInstall || _isLegacyInnoCleanupRunning ||
             !LegacyInnoCleanupService.TryFind(out LegacyInnoCleanupService.LegacyInnoInstall? legacyInstall) ||
@@ -685,7 +688,10 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    private async void PrepareVelopackBasePackageButton_Click(object sender, RoutedEventArgs e)
+    private void PrepareVelopackBasePackageButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(PrepareVelopackBasePackageButton_ClickAsync(sender, e), nameof(PrepareVelopackBasePackageButton_Click));
+
+    private async Task PrepareVelopackBasePackageButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (_basePackagePlan?.Status != VelopackBasePackageStatus.Available)
             return;
@@ -728,7 +734,10 @@ public partial class SettingsWindow : FluentWindow
 
     // Ручная проверка (кнопка на странице "О плеере"), в отличие от тихой на старте (MainWindow.CheckForUpdatesOnStartupAsync),
     // всегда показывает результат и не учитывает SkippedUpdateVersion: пользователь явно хочет знать статус.
-    private async void CheckUpdatesButton_Click(object sender, RoutedEventArgs e)
+    private void CheckUpdatesButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(CheckUpdatesButton_ClickAsync(sender, e), nameof(CheckUpdatesButton_Click));
+
+    private async Task CheckUpdatesButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         CheckUpdatesButton.IsEnabled = false;
         CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate("Проверяем…");
@@ -785,7 +794,10 @@ public partial class SettingsWindow : FluentWindow
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
-    private async void ProbeUpdateSourcesButton_Click(object sender, RoutedEventArgs e)
+    private void ProbeUpdateSourcesButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ProbeUpdateSourcesButton_ClickAsync(sender, e), nameof(ProbeUpdateSourcesButton_Click));
+
+    private async Task ProbeUpdateSourcesButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (!ProbeUpdateSourcesButton.IsEnabled) return;
 
@@ -922,7 +934,10 @@ public partial class SettingsWindow : FluentWindow
     private IReadOnlyList<ReleaseListItem>? _loadedReleases;
 
     // Список грузится лениво — при первом раскрытии аккордеона и один раз за жизнь окна, чтобы не бить по сети зря.
-    private async void AllVersionsExpander_Expanded(object sender, RoutedEventArgs e)
+    private void AllVersionsExpander_Expanded(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(AllVersionsExpander_ExpandedAsync(sender, e), nameof(AllVersionsExpander_Expanded));
+
+    private async Task AllVersionsExpander_ExpandedAsync(object sender, RoutedEventArgs e)
     {
         if (_allVersionsLoaded) return;
         _allVersionsLoaded = true;
@@ -1624,7 +1639,10 @@ public partial class SettingsWindow : FluentWindow
             : LocalizationService.Translate("Trace подготовки трека выключен");
     }
 
-    private async void ClearArtworkCacheButton_Click(object sender, RoutedEventArgs e)
+    private void ClearArtworkCacheButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ClearArtworkCacheButton_ClickAsync(sender, e), nameof(ClearArtworkCacheButton_Click));
+
+    private async Task ClearArtworkCacheButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         var confirmation = LocalizedMessageBox.Show(this,
             "Удалить локально сохранённые интернет-обложки?\n\nПри следующем поиске нужные изображения будут скачаны заново.",
@@ -2625,7 +2643,10 @@ public partial class SettingsWindow : FluentWindow
         FileNameNormalizationResultText.Visibility = Visibility.Collapsed;
     }
 
-    private async void NormalizePlaylistFileNamesButton_Click(object sender, RoutedEventArgs e)
+    private void NormalizePlaylistFileNamesButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(NormalizePlaylistFileNamesButton_ClickAsync(sender, e), nameof(NormalizePlaylistFileNamesButton_Click));
+
+    private async Task NormalizePlaylistFileNamesButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
 
@@ -2944,7 +2965,10 @@ public partial class SettingsWindow : FluentWindow
 
     // Загружает аватар один раз и сохраняет его локально, чтобы последующие открытия Settings
     // не зависели от сети и не создавали новый HTTP-запрос каждый раз.
-    private async void LoadDeveloperAvatar()
+    private void LoadDeveloperAvatar()
+        => BackgroundTask.FireAndForget(LoadDeveloperAvatarAsync(), nameof(LoadDeveloperAvatar));
+
+    private async Task LoadDeveloperAvatarAsync()
     {
         const string avatarUrl = "https://github.com/wasssly.png?size=96";
         string cacheDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Lumisense", "Cache");

@@ -42,7 +42,10 @@ public partial class MainWindow
         DragDropOverlay.Visibility = Visibility.Collapsed;
     }
 
-    private async void MainWindow_Drop(object sender, System.Windows.DragEventArgs e)
+    private void MainWindow_Drop(object sender, System.Windows.DragEventArgs e)
+        => BackgroundTask.FireAndForget(MainWindow_DropAsync(sender, e), nameof(MainWindow_Drop));
+
+    private async Task MainWindow_DropAsync(object sender, System.Windows.DragEventArgs e)
     {
         DragDropOverlay.Visibility = Visibility.Collapsed;
 
@@ -260,7 +263,10 @@ public partial class MainWindow
         }
     }
 
-    private async void FolderRefreshDebounceTimer_Tick(object? sender, EventArgs e)
+    private void FolderRefreshDebounceTimer_Tick(object? sender, EventArgs e)
+        => BackgroundTask.FireAndForget(FolderRefreshDebounceTimer_TickAsync(sender, e), nameof(FolderRefreshDebounceTimer_Tick));
+
+    private async Task FolderRefreshDebounceTimer_TickAsync(object? sender, EventArgs e)
     {
         _folderRefreshDebounceTimer.Stop();
         if (_isExiting || !_settings.AutoRefreshPlaylistFolders || _pendingFolderRefreshPaths.Count == 0)
@@ -304,7 +310,10 @@ public partial class MainWindow
         }
     }
 
-    private async void AddFolderMenuItem_Click(object sender, RoutedEventArgs e)
+    private void AddFolderMenuItem_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(AddFolderMenuItem_ClickAsync(sender, e), nameof(AddFolderMenuItem_Click));
+
+    private async Task AddFolderMenuItem_ClickAsync(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFolderDialog
         {

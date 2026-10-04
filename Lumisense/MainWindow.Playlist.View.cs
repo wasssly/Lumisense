@@ -98,7 +98,10 @@ public partial class MainWindow
 
     // Ручное обновление — запасной вариант для сетевых папок и ФС без событий FileSystemWatcher; как и автообновление,
     // использует AddFolderPathAsync и добавляет только отсутствующие файлы.
-    private async void RescanFolderButton_Click(object sender, RoutedEventArgs e)
+    private void RescanFolderButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(RescanFolderButton_ClickAsync(sender, e), nameof(RescanFolderButton_Click));
+
+    private async Task RescanFolderButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: PlaylistFolder folder }) return;
         if (folder.SourcePath == null) return;

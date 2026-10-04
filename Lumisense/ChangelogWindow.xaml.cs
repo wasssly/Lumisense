@@ -56,7 +56,10 @@ public partial class ChangelogWindow : FluentWindow
         RefreshVisible(query);
     }
 
-    private async void ChangelogWindow_Loaded(object sender, RoutedEventArgs e)
+    private void ChangelogWindow_Loaded(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ChangelogWindow_LoadedAsync(sender, e), nameof(ChangelogWindow_Loaded));
+
+    private async Task ChangelogWindow_LoadedAsync(object sender, RoutedEventArgs e)
     {
         Loaded -= ChangelogWindow_Loaded;
         _releaseAvailabilityCts = new System.Threading.CancellationTokenSource();

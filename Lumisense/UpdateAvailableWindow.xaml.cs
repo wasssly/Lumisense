@@ -320,7 +320,10 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
     }
 
-    private async void InstallButton_Click(object sender, RoutedEventArgs e)
+    private void InstallButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(InstallButton_ClickAsync(sender, e), nameof(InstallButton_Click));
+
+    private async Task InstallButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (_isDownloading)
         {
@@ -343,7 +346,10 @@ public partial class UpdateAvailableWindow : FluentWindow
             await InstallViaExeAsync();
     }
 
-    private async void PauseDownloadButton_Click(object sender, RoutedEventArgs e)
+    private void PauseDownloadButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(PauseDownloadButton_ClickAsync(sender, e), nameof(PauseDownloadButton_Click));
+
+    private async Task PauseDownloadButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (!_isDownloading) return;
 
@@ -466,7 +472,10 @@ public partial class UpdateAvailableWindow : FluentWindow
         _downloadCts?.Cancel();
     }
 
-    private async void MigrateToMsiButton_Click(object sender, RoutedEventArgs e)
+    private void MigrateToMsiButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(MigrateToMsiButton_ClickAsync(sender, e), nameof(MigrateToMsiButton_Click));
+
+    private async Task MigrateToMsiButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (_isDownloading)
         {

@@ -746,13 +746,19 @@ public partial class NowPlayingWindow : Window
         LyricsSearchQueryTextBox.SelectAll();
     }
 
-    private async void RunLyricsSearchButton_Click(object sender, RoutedEventArgs e)
+    private void RunLyricsSearchButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(RunLyricsSearchButton_ClickAsync(sender, e), nameof(RunLyricsSearchButton_Click));
+
+    private async Task RunLyricsSearchButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (!TryGetCurrentTrackPath(out string trackPath)) return;
         await SearchLyricsAsync(trackPath);
     }
 
-    private async void LyricsSearchQueryTextBox_KeyDown(object sender, KeyEventArgs e)
+    private void LyricsSearchQueryTextBox_KeyDown(object sender, KeyEventArgs e)
+        => BackgroundTask.FireAndForget(LyricsSearchQueryTextBox_KeyDownAsync(sender, e), nameof(LyricsSearchQueryTextBox_KeyDown));
+
+    private async Task LyricsSearchQueryTextBox_KeyDownAsync(object sender, KeyEventArgs e)
     {
         if (e.Key != Key.Enter) return;
         e.Handled = true;
@@ -867,7 +873,10 @@ public partial class NowPlayingWindow : Window
     private void OpenGeniusSearchButton_Click(object sender, RoutedEventArgs e) =>
         OpenExternalLyricsSearch("https://genius.com/search?q=");
 
-    private async void PasteLyricsFromClipboardButton_Click(object sender, RoutedEventArgs e)
+    private void PasteLyricsFromClipboardButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(PasteLyricsFromClipboardButton_ClickAsync(sender, e), nameof(PasteLyricsFromClipboardButton_Click));
+
+    private async Task PasteLyricsFromClipboardButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         if (!TryGetCurrentTrackPath(out string trackPath)) return;
 
@@ -941,7 +950,10 @@ public partial class NowPlayingWindow : Window
         }
     }
 
-    private async void OnlineLyricsResultsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void OnlineLyricsResultsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        => BackgroundTask.FireAndForget(OnlineLyricsResultsList_MouseDoubleClickAsync(sender, e), nameof(OnlineLyricsResultsList_MouseDoubleClick));
+
+    private async Task OnlineLyricsResultsList_MouseDoubleClickAsync(object sender, MouseButtonEventArgs e)
     {
         if (OnlineLyricsResultsList.SelectedItem is not OnlineLyricsResult result) return;
         string? trackPath = _owner.CurrentTrackPath;
@@ -981,7 +993,10 @@ public partial class NowPlayingWindow : Window
         LyricsSearchQueryTextBox.IsEnabled = true;
     }
 
-    private async void ImportLyricsButton_Click(object sender, RoutedEventArgs e)
+    private void ImportLyricsButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ImportLyricsButton_ClickAsync(sender, e), nameof(ImportLyricsButton_Click));
+
+    private async Task ImportLyricsButton_ClickAsync(object sender, RoutedEventArgs e)
     {
         string? trackPath = _owner.CurrentTrackPath;
         if (string.IsNullOrWhiteSpace(trackPath) || !File.Exists(trackPath))
