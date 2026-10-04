@@ -43,7 +43,7 @@ public sealed class WaveformGeneratorTests : IDisposable
     {
         string path = WriteWav((0.8, 1.0), (0.2, 1.0));
 
-        float[]? peaks = await WaveformGenerator.GenerateAsync(path);
+        float[]? peaks = await WaveformGenerator.GenerateAsync(path, TestContext.Current.CancellationToken);
 
         Assert.NotNull(peaks);
         Assert.Equal(WaveformGenerator.BucketCount, peaks!.Length);
@@ -56,7 +56,7 @@ public sealed class WaveformGeneratorTests : IDisposable
     {
         string path = WriteWav((0.8, 1.0), (0.2, 1.0));
 
-        float[]? peaks = await WaveformGenerator.GenerateAsync(path);
+        float[]? peaks = await WaveformGenerator.GenerateAsync(path, TestContext.Current.CancellationToken);
 
         Assert.NotNull(peaks);
         Assert.True(peaks![10] > 0.9f, "начало громкое");
@@ -68,7 +68,7 @@ public sealed class WaveformGeneratorTests : IDisposable
     {
         string path = WriteWav((0.0, 1.0));
 
-        float[]? peaks = await WaveformGenerator.GenerateAsync(path);
+        float[]? peaks = await WaveformGenerator.GenerateAsync(path, TestContext.Current.CancellationToken);
 
         Assert.NotNull(peaks);
         Assert.Equal(WaveformGenerator.BucketCount, peaks!.Length);
@@ -80,7 +80,7 @@ public sealed class WaveformGeneratorTests : IDisposable
     {
         string path = WriteWav((0.5, 0.01));
 
-        float[]? peaks = await WaveformGenerator.GenerateAsync(path);
+        float[]? peaks = await WaveformGenerator.GenerateAsync(path, TestContext.Current.CancellationToken);
 
         Assert.NotNull(peaks);
         Assert.Equal(WaveformGenerator.BucketCount, peaks!.Length);
@@ -89,7 +89,8 @@ public sealed class WaveformGeneratorTests : IDisposable
     [Fact]
     public async Task GenerateAsync_MissingFile_ReturnsNull()
     {
-        float[]? peaks = await WaveformGenerator.GenerateAsync(Path.Combine(_directory, "missing.wav"));
+        float[]? peaks = await WaveformGenerator.GenerateAsync(
+            Path.Combine(_directory, "missing.wav"), TestContext.Current.CancellationToken);
 
         Assert.Null(peaks);
     }
@@ -98,9 +99,9 @@ public sealed class WaveformGeneratorTests : IDisposable
     public async Task GenerateAsync_CorruptFile_ReturnsNull()
     {
         string path = Path.Combine(_directory, "corrupt.wav");
-        await File.WriteAllBytesAsync(path, new byte[] { 1, 2, 3, 4, 5 });
+        await File.WriteAllBytesAsync(path, new byte[] { 1, 2, 3, 4, 5 }, TestContext.Current.CancellationToken);
 
-        float[]? peaks = await WaveformGenerator.GenerateAsync(path);
+        float[]? peaks = await WaveformGenerator.GenerateAsync(path, TestContext.Current.CancellationToken);
 
         Assert.Null(peaks);
     }
