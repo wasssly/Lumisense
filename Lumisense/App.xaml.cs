@@ -180,10 +180,12 @@ public partial class App : Application
         Logger.Info("Главное окно создано и показано — запуск завершён успешно.");
 
         // Дешёвая проверка реестра, без влияния на время запуска (см. RepairContextMenuScopeIfBroken).
-        Task.Run(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken);
+        BackgroundTask.FireAndForget(Task.Run(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken),
+            nameof(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken));
         // Отдельный, гораздо более редкий случай (см. метод) — свой Task.Run, чтобы UAC-промпт
         // (если он вообще понадобится) не блокировал очередь выше.
-        Task.Run(LegacyIntegrationRepairService.TryCleanupLegacyHklmWildcardContextMenu);
+        BackgroundTask.FireAndForget(Task.Run(LegacyIntegrationRepairService.TryCleanupLegacyHklmWildcardContextMenu),
+            nameof(LegacyIntegrationRepairService.TryCleanupLegacyHklmWildcardContextMenu));
 
         // Этот вызов возможен лишь после успешного создания MSI-окна. Он одноразово обрабатывает
         // marker Velopack и только при точном обнаружении legacy Inno Setup предлагает cleanup.
