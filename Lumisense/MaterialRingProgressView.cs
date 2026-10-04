@@ -85,7 +85,7 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
 
     protected override double Wavelength => _wavelength;
 
-    protected override double WaveSpeed => 28.0;
+    protected override double WaveSpeed => 18.0;
 
     private static void OnShapeChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
     {
