@@ -255,6 +255,7 @@
                                 <ListBox x:Name="SyncedLyricsList" BorderThickness="0" Background="Transparent" Padding="0,0,18,0"
                                          ItemContainerStyle="{StaticResource LyricsLineStyle}"
                                          SelectionChanged="SyncedLyricsList_SelectionChanged"
+                                         PreviewMouseLeftButtonUp="SyncedLyricsList_PreviewMouseLeftButtonUp"
                                          ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>

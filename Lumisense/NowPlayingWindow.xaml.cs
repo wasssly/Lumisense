@@ -8,6 +8,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Win32;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
@@ -1075,7 +1076,25 @@ public partial class NowPlayingWindow : Window
         }
     }
 
-    // Клик по строке лишь фиксирует её в прокрутке: чтение текста не меняет позицию трека.
+    private void SyncedLyricsList_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_lyrics.Kind != LyricsKind.Synced || _owner.CurrentTrackDurationSeconds <= 0)
+            return;
+
+        if (ItemsControl.ContainerFromElement(SyncedLyricsList, e.OriginalSource as DependencyObject)
+            is not ListBoxItem { DataContext: LyricLine line })
+            return;
+
+        double ratio = Math.Clamp(line.Time.TotalSeconds / _owner.CurrentTrackDurationSeconds, 0.0, 1.0);
+        _owner.ExternalSeekRatio(ratio);
+        // UpdateProgress переустанавливает выделение только при смене активной строки — сбрасываем индекс,
+        // иначе после клика подсветка текущей строки не вернулась бы до следующей смены строки.
+        _activeLyricIndex = -2;
+        SyncedLyricsList.SelectedItem = null;
+        e.Handled = true;
+    }
+
+    // Программное изменение SelectionChanged используется только для подсветки и автопрокрутки.
     private void SyncedLyricsList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
     }
