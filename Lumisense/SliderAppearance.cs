@@ -53,6 +53,6 @@ public sealed class SliderMaterialConverter : IMultiValueConverter
         return values.Length > 0 && values[0] is true;
     }
 
-    public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture) =>
+    public object[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture) =>
         throw new NotSupportedException();
 }
