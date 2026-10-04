@@ -58,10 +58,11 @@ Source: "..\Lumisense\Icons\app\lumisense.ico"; DestDir: "{app}"; Flags: ignorev
 [Tasks]
 ; Флажок отмечен по умолчанию, но пользователь может его снять; ярлык в [Icons]
 ; ставится только при выбранной задаче desktopicon.
+Name: "startmenuicon"; Description: "{cm:CreateStartMenuIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Icons]
-Name: "{group}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"
+Name: "{group}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"; Tasks: startmenuicon
 Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"; Tasks: desktopicon
 Name: "{group}\{cm:UninstallLumisense}"; Filename: "{uninstallexe}"
 
@@ -101,11 +102,13 @@ Type: filesandordirs; Name: "{app}"
 
 [CustomMessages]
 english.CreateDesktopIcon=Create a desktop shortcut
+english.CreateStartMenuIcon=Create a Start Menu shortcut
 english.AdditionalIcons=Additional shortcuts:
 english.UninstallLumisense=Uninstall Lumisense
 english.OpenInLumisense=Open in Lumisense
 english.LaunchLumisense=Launch Lumisense
 russian.CreateDesktopIcon=Создать значок на рабочем столе
+russian.CreateStartMenuIcon=Создать ярлык в меню «Пуск»
 russian.AdditionalIcons=Дополнительные значки:
 russian.UninstallLumisense=Удалить Lumisense
 russian.OpenInLumisense=Открыть в Lumisense
