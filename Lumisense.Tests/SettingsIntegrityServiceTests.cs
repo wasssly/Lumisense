@@ -159,6 +159,27 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
         Assert.Equal("Light", settings!.Theme);
     }
 
+    [Theory]
+    [InlineData("Slider")]
+    [InlineData("Waveform")]
+    [InlineData("Material")]
+    public void TryLoad_ProgressBarStyle_KnownValuesArePreserved(string style)
+    {
+        bool result = TryLoad("{\"ProgressBarStyle\": \"" + style + "\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(style, settings!.ProgressBarStyle);
+    }
+
+    [Fact]
+    public void TryLoad_UnknownProgressBarStyle_FallsBackToSlider()
+    {
+        bool result = TryLoad("{\"ProgressBarStyle\": \"Rainbow\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal("Slider", settings!.ProgressBarStyle);
+    }
+
     [Fact]
     public void TryLoad_InvalidAccentColorHex_FallsBackToDefault()
     {
