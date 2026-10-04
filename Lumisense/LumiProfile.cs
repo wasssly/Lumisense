@@ -83,6 +83,7 @@ public static class LumiProfileIO
             (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.SliderStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkStyle?.Length ?? 0) > 32 ||
+            (settings.MiniPlayerProgressStyle?.Length ?? 0) > 32 || (settings.MiniPlayerArtworkProgressStyle?.Length ?? 0) > 32 ||
             (settings.OutputDeviceName?.Length ?? 0) > 128 ||
             (settings.LyricsSearchPolicy?.Length ?? 0) > 32 ||
             (settings.TrackChangeToastPolicy?.Length ?? 0) > 32 ||
@@ -169,6 +170,8 @@ public static class LumiProfileIO
         target.AlbumArtGesturesEnabled = source.AlbumArtGesturesEnabled;
         target.MiniPlayerOpacity = source.MiniPlayerOpacity;
         target.MiniPlayerArtworkStyle = source.MiniPlayerArtworkStyle;
+        target.MiniPlayerProgressStyle = source.MiniPlayerProgressStyle;
+        target.MiniPlayerArtworkProgressStyle = source.MiniPlayerArtworkProgressStyle;
         target.MiniPlayerAlwaysOnTop = source.MiniPlayerAlwaysOnTop;
         target.MiniPlayerPinned = source.MiniPlayerPinned;
         target.MiniPlayerSnapToEdges = source.MiniPlayerSnapToEdges;

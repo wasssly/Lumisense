@@ -428,6 +428,11 @@
                           StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
                           SnapsToDevicePixels="False" UseLayoutRounding="False"
                           Visibility="Collapsed" IsHitTestVisible="False" />
+                    <!-- Material-вид кольца (AppSettings.MiniPlayerArtworkProgressStyle) заменяет ArtProgressOutline. -->
+                    <local:MaterialRingProgressView x:Name="ArtProgressMaterial" Width="50" Height="50"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                    TrackBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                                    Visibility="Collapsed" IsHitTestVisible="False" />
                 </Grid>
 
                 <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
@@ -453,11 +458,17 @@
             <!-- Прогресс: полоса + прозрачный слой для перемотки; скрывается через Visibility (строка Auto схлопывается), а окно
                  уменьшается на ProgressRowHeight в ApplyProgressBarVisibility (AppSettings.MiniPlayerShowProgress). -->
             <Grid x:Name="ProgressRow" Grid.Row="1" Margin="10,4,10,0" Height="20">
-                <Border Height="4" CornerRadius="2" VerticalAlignment="Center"
+                <Border x:Name="ProgressTrackBorder" Height="4" CornerRadius="2" VerticalAlignment="Center"
                         Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
                 <Border x:Name="ProgressFill" Height="4" CornerRadius="2" Width="0"
                         HorizontalAlignment="Left" VerticalAlignment="Center"
                         Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                <!-- Material-виды полосы (AppSettings.MiniPlayerProgressStyle): только рисуют, мышь ловит слой ниже. -->
+                <local:MaterialProgressView x:Name="ProgressMaterial" IsHitTestVisible="False" Visibility="Collapsed"
+                                            TrackBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                <local:MaterialSliderVisual x:Name="ProgressMaterialSlider" IsHitTestVisible="False" Visibility="Collapsed"
+                                            ActiveBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                            InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
                 <Border Background="Transparent"
                         MouseLeftButtonDown="Progress_MouseLeftButtonDown"
                         MouseMove="Progress_MouseMove"

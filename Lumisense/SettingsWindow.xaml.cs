@@ -210,7 +210,13 @@ public partial class SettingsWindow : FluentWindow
         SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
         ProgressBarMaterialRadio.IsChecked = _settings.ProgressBarStyle == "Material";
-        ProgressBarSliderRadio.IsChecked = _settings.ProgressBarStyle is not ("Waveform" or "Material");
+        ProgressBarMaterialSliderRadio.IsChecked = _settings.ProgressBarStyle == "MaterialSlider";
+        ProgressBarSliderRadio.IsChecked = _settings.ProgressBarStyle is not ("Waveform" or "Material" or "MaterialSlider");
+        MiniProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerProgressStyle == "Material";
+        MiniProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerProgressStyle == "MaterialSlider";
+        MiniProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerProgressStyle is not ("Material" or "MaterialSlider");
+        MiniArtworkProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "Material";
+        MiniArtworkProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle != "Material";
         SliderStyleMaterialRadio.IsChecked = _settings.SliderStyle == "Material";
         SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
@@ -2252,6 +2258,26 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyMiniPlayerProgressBarVisibilityLive();
     }
 
+    // См. AppSettings.MiniPlayerProgressStyle; ApplyProgressBarVisibility в мини-плеере заодно применяет и вид.
+    private void MiniProgressStyleRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerProgressStyle = MiniProgressStyleMaterialRadio.IsChecked == true ? "Material"
+            : MiniProgressStyleMaterialSliderRadio.IsChecked == true ? "MaterialSlider"
+            : "Default";
+        _owner.ApplyMiniPlayerProgressBarVisibilityLive();
+    }
+
+    // См. AppSettings.MiniPlayerArtworkProgressStyle.
+    private void MiniArtworkProgressStyleRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerArtworkProgressStyle = MiniArtworkProgressStyleMaterialRadio.IsChecked == true ? "Material" : "Default";
+        _owner.ApplyMiniPlayerArtworkProgressVisibilityLive();
+    }
+
     private void MiniShowArtworkProgressCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -2656,6 +2682,7 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.ProgressBarStyle = ProgressBarWaveformRadio.IsChecked == true ? "Waveform"
             : ProgressBarMaterialRadio.IsChecked == true ? "Material"
+            : ProgressBarMaterialSliderRadio.IsChecked == true ? "MaterialSlider"
             : "Slider";
         _owner.ApplyProgressBarStyle();
     }

@@ -69,14 +69,35 @@ public partial class NowPlayingWindow : Window
         _owner.PlaybackState.Changed += Owner_PlaybackSnapshotChanged;
 
         InitializeAmbientAnimation();
+        ApplyProgressBarStyle();
         RefreshTrackPresentation();
         Owner_PlaybackSnapshotChanged(_owner.PlaybackState.Current);
         UpdateLyricsLayout();
     }
 
+    // Вид полосы (AppSettings.ProgressBarStyle): Material и MaterialSlider рисуют свои элементы, всё остальное (включая Waveform) — обычная полоса.
+    public void ApplyProgressBarStyle()
+    {
+        string style = _owner.Settings.ProgressBarStyle;
+        bool wave = style == "Material";
+        bool slider = style == "MaterialSlider";
+
+        ArtworkProgressBar.Visibility = wave || slider ? Visibility.Hidden : Visibility.Visible;
+        ArtworkProgressMaterial.Visibility = wave ? Visibility.Visible : Visibility.Collapsed;
+        ArtworkProgressMaterialSlider.Visibility = slider ? Visibility.Visible : Visibility.Collapsed;
+
+        var accent = new SolidColorBrush(_owner.GetResolvedAccentColor());
+        accent.Freeze();
+        ArtworkProgressMaterial.PlayedBrush = accent;
+        ArtworkProgressMaterialSlider.ActiveBrush = accent;
+        ArtworkProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        ArtworkProgressMaterial.IsWaving = _owner.IsPlayingNow;
+    }
+
     public void ApplyAccessibilityPreferences()
     {
         AccessibilityPreferences.ApplyToWindow(this, _owner.Settings);
+        ApplyProgressBarStyle();
 
         if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
         {
@@ -507,6 +528,7 @@ public partial class NowPlayingWindow : Window
 
     private void UpdatePlaybackState(bool isPlaying)
     {
+        ArtworkProgressMaterial.IsWaving = isPlaying;
         UpdateAmbientAnimation(isPlaying);
         string icon = isPlaying ? "IconPause" : "IconPlay";
         string toolTip = LocalizationService.Translate(isPlaying ? "Пауза" : "Воспроизвести");
@@ -670,6 +692,9 @@ public partial class NowPlayingWindow : Window
         PlaybackDurationText.Text = TimeSpan.FromSeconds(total).ToString(@"mm\:ss");
         ArtworkProgressBar.Maximum = total > 0 ? total : 1;
         ArtworkProgressBar.Value = Math.Min(current, ArtworkProgressBar.Maximum);
+        double ratio = total > 0 ? Math.Clamp(current / total, 0.0, 1.0) : 0.0;
+        ArtworkProgressMaterial.Progress = ratio;
+        ArtworkProgressMaterialSlider.Progress = ratio;
 
         if (_lyrics.Kind != LyricsKind.Synced) return;
         int index = LyricsService.FindActiveLineIndex(_lyrics.Lines, TimeSpan.FromSeconds(current));
@@ -683,10 +708,10 @@ public partial class NowPlayingWindow : Window
 
     private void ArtworkProgressBar_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        if (ArtworkProgressBar.ActualWidth <= 0 || _owner.CurrentTrackDurationSeconds <= 0) return;
+        if (ArtworkProgressHost.ActualWidth <= 0 || _owner.CurrentTrackDurationSeconds <= 0) return;
 
-        double clickX = e.GetPosition(ArtworkProgressBar).X;
-        double ratio = Math.Clamp(clickX / ArtworkProgressBar.ActualWidth, 0.0, 1.0);
+        double clickX = e.GetPosition(ArtworkProgressHost).X;
+        double ratio = Math.Clamp(clickX / ArtworkProgressHost.ActualWidth, 0.0, 1.0);
         _owner.ExternalSeekRatio(ratio);
         e.Handled = true;
     }

@@ -5,20 +5,18 @@ namespace Lumisense;
 
 // Полоса воспроизведения в стиле Material 3 Expressive: волнистая проигранная часть, зазор, дорожка и точка в конце.
 // Только рисует; клики и перетаскивание обрабатывает Border поверх (как у WaveformView).
-public sealed class MaterialProgressView : FrameworkElement
+public sealed class MaterialProgressView : MaterialWaveElement
 {
     // Толщина, зазор и точка в конце — 4 dp по документации Material (ProgressIndicator).
     private const double Thickness = 4.0;
     private const double GapSize = 4.0;
     private const double StopDotSize = 4.0;
 
-    // Длина волны, амплитуда и скорость подобраны на глаз под ширину полосы плеера.
-    private const double Wavelength = 40.0;
+    // Длина волны, амплитуда и скорость подобраны на глаз под ширину полосы плеера (скорость 28 — в базовом классе через WaveSpeed).
     private const double WaveAmplitude = 3.0;
-    private const double WaveSpeed = 24.0;
+    private const double WavelengthValue = 40.0;
 
     // За это время амплитуда плавно доходит до нуля (пауза) или до максимума (воспроизведение).
-    private const double AmplitudeEaseSeconds = 0.4;
 
     // Шаг точек ломаной, которой рисуется синусоида.
     private const double WaveStep = 2.0;
@@ -56,99 +54,10 @@ public sealed class MaterialProgressView : FrameworkElement
         set => SetValue(TrackBrushProperty, value);
     }
 
-    public static readonly DependencyProperty IsWavingProperty = DependencyProperty.Register(
-        nameof(IsWaving), typeof(bool), typeof(MaterialProgressView),
-        new FrameworkPropertyMetadata(false, OnAnimationInputChanged));
-
-    // true — трек играет: волна есть и бежит; false — пауза или остановка: волна плавно выпрямляется.
-    public bool IsWaving
-    {
-        get => (bool)GetValue(IsWavingProperty);
-        set => SetValue(IsWavingProperty, value);
-    }
-
-    public static readonly DependencyProperty IsAnimationEnabledProperty = DependencyProperty.Register(
-        nameof(IsAnimationEnabled), typeof(bool), typeof(MaterialProgressView),
-        new FrameworkPropertyMetadata(true, OnAnimationInputChanged));
-
-    // false при «Меньше анимации»: волна не движется, форма меняется сразу.
-    public bool IsAnimationEnabled
-    {
-        get => (bool)GetValue(IsAnimationEnabledProperty);
-        set => SetValue(IsAnimationEnabledProperty, value);
-    }
-
-    private double _amplitudeFactor;
-    private double _phase;
-    private TimeSpan _lastFrame;
-    private bool _isRendering;
     private Pen? _playedPen;
     private Pen? _trackPen;
 
-    public MaterialProgressView()
-    {
-        Loaded += (_, _) => UpdateAnimationState();
-        Unloaded += (_, _) => StopRendering();
-        IsVisibleChanged += (_, _) => UpdateAnimationState();
-    }
-
-    private static void OnAnimationInputChanged(DependencyObject d, DependencyPropertyChangedEventArgs e) =>
-        ((MaterialProgressView)d).UpdateAnimationState();
-
-    // Кадры нужны только пока окно видно и волна бежит или выпрямляется: на паузе элемент ничего не тратит.
-    private void UpdateAnimationState()
-    {
-        double target = IsWaving ? 1.0 : 0.0;
-
-        if (IsAnimationEnabled && IsLoaded && IsVisible && (IsWaving || _amplitudeFactor > 0.001))
-        {
-            StartRendering();
-            return;
-        }
-
-        _amplitudeFactor = target;
-        StopRendering();
-        InvalidateVisual();
-    }
-
-    private void StartRendering()
-    {
-        if (_isRendering) return;
-        _isRendering = true;
-        _lastFrame = TimeSpan.Zero;
-        CompositionTarget.Rendering += OnRendering;
-    }
-
-    private void StopRendering()
-    {
-        if (!_isRendering) return;
-        CompositionTarget.Rendering -= OnRendering;
-        _isRendering = false;
-        _lastFrame = TimeSpan.Zero;
-    }
-
-    private void OnRendering(object? sender, EventArgs e)
-    {
-        TimeSpan now = ((RenderingEventArgs)e).RenderingTime;
-
-        // WPF может вызвать событие несколько раз за один кадр.
-        if (now == _lastFrame) return;
-
-        double dt = _lastFrame == TimeSpan.Zero ? 0.0 : Math.Min((now - _lastFrame).TotalSeconds, 0.1);
-        _lastFrame = now;
-
-        double target = IsWaving ? 1.0 : 0.0;
-        double step = dt / AmplitudeEaseSeconds;
-        _amplitudeFactor = _amplitudeFactor < target
-            ? Math.Min(target, _amplitudeFactor + step)
-            : Math.Max(target, _amplitudeFactor - step);
-
-        _phase = (_phase + WaveSpeed * dt) % Wavelength;
-        InvalidateVisual();
-
-        if (!IsWaving && _amplitudeFactor <= 0.001)
-            UpdateAnimationState();
-    }
+    protected override double Wavelength => WavelengthValue;
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -175,13 +84,13 @@ public sealed class MaterialProgressView : FrameworkElement
 
         if (progress > 0)
         {
-            double amplitude = WaveAmplitude * _amplitudeFactor;
+            double amplitude = WaveAmplitude * AmplitudeFactor;
             if (activeEnd - left < 0.5)
                 dc.DrawEllipse(PlayedBrush, null, new Point(left, cy), half, half);
             else if (amplitude < 0.05)
                 dc.DrawLine(playedPen, new Point(left, cy), new Point(activeEnd, cy));
             else
-                dc.DrawGeometry(null, playedPen, BuildWave(left, activeEnd, cy, amplitude, _phase));
+                dc.DrawGeometry(null, playedPen, BuildWave(left, activeEnd, cy, amplitude, Phase));
         }
 
         if (trackStart <= right)
@@ -194,7 +103,7 @@ public sealed class MaterialProgressView : FrameworkElement
     // Волна привязана к абсолютному x, а сдвигается только phase: при росте прогресса рисунок не дёргается.
     private static StreamGeometry BuildWave(double x0, double x1, double cy, double amplitude, double phase)
     {
-        double k = 2 * Math.PI / Wavelength;
+        double k = 2 * Math.PI / WavelengthValue;
         var geometry = new StreamGeometry();
         using (StreamGeometryContext ctx = geometry.Open())
         {

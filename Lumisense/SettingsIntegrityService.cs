@@ -227,7 +227,7 @@ internal static class SettingsIntegrityService
             ? settings.AccentColorHex ?? defaults.AccentColorHex
             : defaults.AccentColorHex;
         settings.WindowBackdropType = Allowed(settings.WindowBackdropType, defaults.WindowBackdropType, "Mica", "Acrylic");
-        settings.ProgressBarStyle = Allowed(settings.ProgressBarStyle, defaults.ProgressBarStyle, "Slider", "Waveform", "Material");
+        settings.ProgressBarStyle = Allowed(settings.ProgressBarStyle, defaults.ProgressBarStyle, "Slider", "Waveform", "Material", "MaterialSlider");
         settings.SliderStyle = Allowed(settings.SliderStyle, defaults.SliderStyle, "Default", "Material");
         settings.SyncedLyricsHighlightEffect = Allowed(settings.SyncedLyricsHighlightEffect, defaults.SyncedLyricsHighlightEffect, "None", "Glow");
         settings.SyncedLyricsFontSize = ClampFinite(settings.SyncedLyricsFontSize, 11, 28, defaults.SyncedLyricsFontSize);
@@ -244,6 +244,8 @@ internal static class SettingsIntegrityService
 
         settings.PlayerViewMode = AllowedOrNull(settings.PlayerViewMode, "Square", "Rectangular", "Mini");
         settings.RepeatMode = Allowed(settings.RepeatMode, defaults.RepeatMode, "Off", "All", "One");
+        settings.MiniPlayerProgressStyle = Allowed(settings.MiniPlayerProgressStyle, defaults.MiniPlayerProgressStyle, "Default", "Material", "MaterialSlider");
+        settings.MiniPlayerArtworkProgressStyle = Allowed(settings.MiniPlayerArtworkProgressStyle, defaults.MiniPlayerArtworkProgressStyle, "Default", "Material");
         settings.MiniPlayerArtworkStyle = Allowed(settings.MiniPlayerArtworkStyle, defaults.MiniPlayerArtworkStyle, "Default", "Vinyl");
         settings.MiniPlayerSecondaryButton = Allowed(settings.MiniPlayerSecondaryButton, defaults.MiniPlayerSecondaryButton, "Repeat", "Shuffle", "Favorite");
         settings.MiniPlayerInfoMode = Allowed(settings.MiniPlayerInfoMode, defaults.MiniPlayerInfoMode, "TitleArtist", "TitleOnly", "TitleRemaining");

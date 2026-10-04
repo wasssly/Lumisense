@@ -122,9 +122,9 @@ public class AppSettings
     // StatisticsWindow — мелкие диалоги открываются слишком быстро, чтобы разница была заметна.
     public string WindowBackdropType { get; set; } = "Mica";
 
-    // "Slider" (по умолчанию), "Waveform" (форма звука, см. WaveformView/WaveformGenerator) или "Material"
-    // (волнистая линия, см. MaterialProgressView); на мини-плеер не
-    // влияет — при высоте полосы 4px волна неразличима.
+    // "Slider" (по умолчанию), "Waveform" (форма звука, см. WaveformView/WaveformGenerator), "Material"
+    // (волнистая линия, см. MaterialProgressView) или "MaterialSlider" (ползунок Material, см. MaterialSliderVisual).
+    // Относится к главному окну и Now Playing (там Waveform заменяется обычной полосой); мини-плеер настраивается отдельно.
     public string ProgressBarStyle { get; set; } = "Slider";
 
     // "Default" (по умолчанию) или "Material" (тонкая ручка и зазор, см. MaterialSliderVisual) — вид всех ползунков
@@ -316,6 +316,12 @@ public class AppSettings
     // Акцентный прогресс вокруг обложки; независим от горизонтальной полосы, можно включить оба индикатора.
     // Выключен по умолчанию, чтобы не менять вид существующих мини-плееров.
     public bool MiniPlayerShowArtworkProgress { get; set; } = false;
+
+    // Вид полосы прогресса мини-плеера: "Default", "Material" (волна) или "MaterialSlider" (ползунок Material).
+    public string MiniPlayerProgressStyle { get; set; } = "Default";
+
+    // Вид кольца вокруг обложки: "Default" или "Material" (волна вдоль контура).
+    public string MiniPlayerArtworkProgressStyle { get; set; } = "Default";
 
     // Цвет контура: "Accent" — акцент из «Оформления», "Fixed" — MiniPlayerArtworkProgressColorHex;
     // Accent — безопасный дефолт и поведение первой версии функции.

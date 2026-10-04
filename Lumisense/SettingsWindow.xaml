@@ -264,7 +264,9 @@
                             <!-- Material-вид (AppSettings.SliderStyle): рисует всё сам, поэтому обычные части ниже в этом режиме скрываются триггером. -->
                             <local:MaterialSliderVisual x:Name="PART_MaterialVisual" Visibility="Collapsed" IsHitTestVisible="False"
                                                          ActiveBrush="{DynamicResource AccentFillColorDefaultBrush}"
-                                                         InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                         InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                                         ActiveTickBrush="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                         InactiveTickBrush="{DynamicResource TextFillColorSecondaryBrush}" />
                             <!-- Overlay расположен после Track, поэтому точки видны и поверх
                                  акцентной части дорожки, но активный шаг остаётся за Thumb. -->
                             <local:SliderMilestoneOverlay x:Name="PART_MilestoneOverlay"
@@ -273,7 +275,13 @@
                                                           SnapsToDevicePixels="True" />
                         </Grid>
                         <ControlTemplate.Triggers>
-                            <DataTrigger Binding="{Binding Source={x:Static local:SliderAppearance.Instance}, Path=IsMaterial}" Value="True">
+                            <DataTrigger Value="True">
+                                    <DataTrigger.Binding>
+                                        <MultiBinding Converter="{x:Static local:SliderMaterialConverter.Instance}">
+                                            <Binding Source="{x:Static local:SliderAppearance.Instance}" Path="IsMaterial" />
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="(local:SliderAppearance.Override)" />
+                                        </MultiBinding>
+                                    </DataTrigger.Binding>
                                 <Setter TargetName="PART_MaterialVisual" Property="Visibility" Value="Visible" />
                                 <Setter TargetName="PART_MilestoneRail" Property="Visibility" Value="Hidden" />
                                 <Setter TargetName="PART_MilestoneOverlay" Property="Visibility" Value="Hidden" />
@@ -342,10 +350,18 @@
                             <!-- Material-вид (AppSettings.SliderStyle): рисует всё сам, поэтому обычные части ниже в этом режиме скрываются триггером. -->
                             <local:MaterialSliderVisual x:Name="PART_MaterialVisual" Visibility="Collapsed" IsHitTestVisible="False" IsCentered="True"
                                                          ActiveBrush="{DynamicResource AccentFillColorDefaultBrush}"
-                                                         InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                         InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                                         ActiveTickBrush="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                         InactiveTickBrush="{DynamicResource TextFillColorSecondaryBrush}" />
                         </Grid>
                         <ControlTemplate.Triggers>
-                            <DataTrigger Binding="{Binding Source={x:Static local:SliderAppearance.Instance}, Path=IsMaterial}" Value="True">
+                            <DataTrigger Value="True">
+                                    <DataTrigger.Binding>
+                                        <MultiBinding Converter="{x:Static local:SliderMaterialConverter.Instance}">
+                                            <Binding Source="{x:Static local:SliderAppearance.Instance}" Path="IsMaterial" />
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="(local:SliderAppearance.Override)" />
+                                        </MultiBinding>
+                                    </DataTrigger.Binding>
                                 <Setter TargetName="PART_MaterialVisual" Property="Visibility" Value="Visible" />
                                 <Setter TargetName="LegacyRail" Property="Visibility" Value="Hidden" />
                                 <Setter TargetName="LegacyFill" Property="Opacity" Value="0" />
@@ -1382,6 +1398,8 @@
                                              GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,12" />
                                 <RadioButton x:Name="ProgressBarMaterialRadio" Content="Material (волнистая линия, как в Android)"
                                              GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ProgressBarMaterialSliderRadio" Content="Material Slider (ползунок с зазором, как в Android)"
+                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,12" />
                                 <TextBlock Text="Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
@@ -1895,12 +1913,25 @@
                                           Checked="MiniShowProgressCheckBox_Changed" Unchecked="MiniShowProgressCheckBox_Changed" />
                                 <TextBlock Text="Окно мини-плеера становится немного компактнее, если полоса не нужна. Перемотка кликом по обложке/названию по-прежнему недоступна — только сама полоса."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Вид полосы прогресса" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <RadioButton x:Name="MiniProgressStyleDefaultRadio" Content="Обычная (по умолчанию)"
+                                             GroupName="MiniPlayerProgressStyle" Checked="MiniProgressStyleRadio_Changed" />
+                                <RadioButton x:Name="MiniProgressStyleMaterialRadio" Content="Material (волнистая линия, как в Android)"
+                                             GroupName="MiniPlayerProgressStyle" Checked="MiniProgressStyleRadio_Changed" />
+                                <RadioButton x:Name="MiniProgressStyleMaterialSliderRadio" Content="Material Slider (ползунок с зазором, как в Android)"
+                                             GroupName="MiniPlayerProgressStyle" Checked="MiniProgressStyleRadio_Changed" />
                                 <CheckBox x:Name="MiniShowArtworkProgressCheckBox" Content="Показывать прогресс вокруг обложки"
                                           Checked="MiniShowArtworkProgressCheckBox_Changed"
                                           Unchecked="MiniShowArtworkProgressCheckBox_Changed"
                                           Margin="0,14,0,0" />
                                 <TextBlock Text="Тонкий акцентный контур повторяет скруглённую форму обложки и показывает прогресс текущего трека. Его можно включить отдельно от обычной полосы прогресса."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+
+                                <TextBlock Text="Вид контура" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <RadioButton x:Name="MiniArtworkProgressStyleDefaultRadio" Content="Обычный (по умолчанию)"
+                                             GroupName="MiniPlayerArtworkProgressStyle" Checked="MiniArtworkProgressStyleRadio_Changed" />
+                                <RadioButton x:Name="MiniArtworkProgressStyleMaterialRadio" Content="Material (волнистая линия, как в Android)"
+                                             GroupName="MiniPlayerArtworkProgressStyle" Checked="MiniArtworkProgressStyleRadio_Changed" />
 
                                 <Grid Margin="0,14,0,0">
                                     <Grid.ColumnDefinitions>

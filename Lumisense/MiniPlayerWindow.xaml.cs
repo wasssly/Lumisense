@@ -534,8 +534,7 @@ public partial class MiniPlayerWindow : Window
         if (_isDraggingProgress || totalSeconds <= 0) return;
 
         double ratio = Math.Clamp(currentSeconds / totalSeconds, 0.0, 1.0);
-        double trackWidth = Math.Max(ActualWidth - 20, 0); // 20 = отступы слева/справа (10+10)
-        ProgressFill.Width = trackWidth * ratio;
+        SetStripProgress(ratio);
         UpdateArtworkProgressOutline(ratio);
     }
 
@@ -543,6 +542,8 @@ public partial class MiniPlayerWindow : Window
     private void OnPlaybackStateChanged(bool isPlaying)
     {
         PlayPauseButton.Icon = IconResources.MakeOnAccent(isPlaying ? "IconPause" : "IconPlay");
+        ProgressMaterial.IsWaving = isPlaying;
+        ArtProgressMaterial.IsWaving = isPlaying;
         PlayPauseButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor()); // всегда акцентная
         UpdateVinylRotation(isPlaying);
     }
@@ -1191,6 +1192,7 @@ public partial class MiniPlayerWindow : Window
     {
         _showProgress = _mainWindow.Settings.MiniPlayerShowProgress;
         ProgressRow.Visibility = _showProgress ? Visibility.Visible : Visibility.Collapsed;
+        ApplyProgressStyle();
 
         // Без полосы прогресса нижний отступ заголовка равен верхнему (10,8,10,10 вместо 10,8,10,2), чтобы вокруг него было
         // поровну места (см. HeaderBottomMarginWithProgress/WithoutProgress).
@@ -1199,6 +1201,38 @@ public partial class MiniPlayerWindow : Window
         UpdateControlsPanelOverlayMargin();
 
         Height = MeasureContentHeight();
+    }
+
+    // Вид полосы (AppSettings.MiniPlayerProgressStyle): обычная, волна Material или ползунок Material; перемотка везде через слой поверх.
+    private void ApplyProgressStyle()
+    {
+        string style = _mainWindow.Settings.MiniPlayerProgressStyle;
+        bool wave = style == "Material";
+        bool slider = style == "MaterialSlider";
+        var defaultVisibility = wave || slider ? Visibility.Collapsed : Visibility.Visible;
+
+        ProgressTrackBorder.Visibility = defaultVisibility;
+        ProgressFill.Visibility = defaultVisibility;
+        ProgressMaterial.Visibility = wave ? Visibility.Visible : Visibility.Collapsed;
+        ProgressMaterialSlider.Visibility = slider ? Visibility.Visible : Visibility.Collapsed;
+
+        // Акцент берём из GetResolvedAccentColor: ручной акцент не попадает в ресурсы темы.
+        var accent = new SolidColorBrush(_mainWindow.GetResolvedAccentColor());
+        accent.Freeze();
+        ProgressMaterial.PlayedBrush = accent;
+        ProgressMaterialSlider.ActiveBrush = accent;
+        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
+        ProgressMaterial.IsWaving = _mainWindow.IsPlayingNow;
+
+        double ratio = _lastTotalSeconds > 0 ? Math.Clamp(_lastCurrentSeconds / _lastTotalSeconds, 0.0, 1.0) : 0.0;
+        SetStripProgress(ratio);
+    }
+
+    private void SetStripProgress(double ratio)
+    {
+        ProgressFill.Width = Math.Max(ActualWidth - 20, 0) * ratio;
+        ProgressMaterial.Progress = ratio;
+        ProgressMaterialSlider.Progress = ratio;
     }
 
     // В Overlay-режиме ControlsPanel делит Row 0 с HeaderPanel: без компенсации кнопки центрировались бы по своей высоте,
@@ -1216,8 +1250,12 @@ public partial class MiniPlayerWindow : Window
     {
         _showArtworkProgress = _mainWindow.Settings.MiniPlayerShowArtworkProgress;
         var visibility = _showArtworkProgress ? Visibility.Visible : Visibility.Collapsed;
+        bool materialRing = _mainWindow.Settings.MiniPlayerArtworkProgressStyle == "Material";
         ArtProgressTrack.Visibility = visibility;
-        ArtProgressOutline.Visibility = visibility;
+        ArtProgressOutline.Visibility = _showArtworkProgress && !materialRing ? Visibility.Visible : Visibility.Collapsed;
+        ArtProgressMaterial.Visibility = _showArtworkProgress && materialRing ? Visibility.Visible : Visibility.Collapsed;
+        ArtProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
+        ArtProgressMaterial.IsWaving = _mainWindow.IsPlayingNow;
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
     }
 
@@ -1244,6 +1282,7 @@ public partial class MiniPlayerWindow : Window
             : new CornerRadius(8.0);
         ArtProgressTrack.BorderThickness = new Thickness(0);
         ArtProgressOutline.StrokeThickness = thickness;
+        ArtProgressMaterial.Thickness = thickness;
 
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
     }
@@ -1270,6 +1309,8 @@ public partial class MiniPlayerWindow : Window
         var brush = new SolidColorBrush(color);
         brush.Freeze();
         ArtProgressOutline.Stroke = brush;
+        ArtProgressMaterial.PlayedBrush = brush;
+        ApplyProgressStyle(); // полоса берёт акцент оформления, он мог смениться вместе с этим вызовом
     }
 
     private void UpdateArtworkProgressOutline(double currentSeconds, double totalSeconds)
@@ -1282,6 +1323,10 @@ public partial class MiniPlayerWindow : Window
 
     private void UpdateArtworkProgressOutline(double ratio)
     {
+        ArtProgressMaterial.IsCircle = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal)
+                                       || string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "StaticCircle", StringComparison.Ordinal);
+        ArtProgressMaterial.Progress = ratio;
+
         if (!_showArtworkProgress || ratio <= 0.0001)
         {
             ArtProgressOutline.Data = null;
@@ -1461,7 +1506,7 @@ public partial class MiniPlayerWindow : Window
         if (width <= 0) return;
 
         double ratio = Math.Clamp(x / width, 0.0, 1.0);
-        ProgressFill.Width = Math.Max(ActualWidth - 20, 0) * ratio;
+        SetStripProgress(ratio);
         UpdateArtworkProgressOutline(ratio);
         _mainWindow.ExternalSeekRatio(ratio);
     }

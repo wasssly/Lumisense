@@ -18,6 +18,7 @@ internal interface INowPlayingHost
     double CurrentPlaybackSeconds { get; }
     double CurrentTrackDurationSeconds { get; }
     AudioLevelSampleProvider? AudioLevelMeter { get; }
+    Color GetResolvedAccentColor();
 
     void ExternalSeekRatio(double ratio);
     void ExternalPlayPause();

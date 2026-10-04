@@ -193,10 +193,18 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <TextBlock x:Name="PlaybackTimeText" Text="00:00" Foreground="#D9FFFFFF" FontSize="13" VerticalAlignment="Center" />
-                        <ProgressBar x:Name="ArtworkProgressBar" Grid.Column="1" Height="8" Margin="12,0" Minimum="0" Maximum="1"
-                                     Value="0" VerticalAlignment="Center" Cursor="Hand"
-                                     ToolTip="Нажмите, чтобы перейти к выбранному месту трека"
-                                     PreviewMouseLeftButtonDown="ArtworkProgressBar_PreviewMouseLeftButtonDown" />
+                        <!-- Хост ловит клик для всех видов полосы (AppSettings.ProgressBarStyle); Waveform здесь заменяется обычной полосой. -->
+                        <Grid x:Name="ArtworkProgressHost" Grid.Column="1" Height="24" Margin="12,0" VerticalAlignment="Center"
+                              Background="Transparent" Cursor="Hand"
+                              ToolTip="Нажмите, чтобы перейти к выбранному месту трека"
+                              PreviewMouseLeftButtonDown="ArtworkProgressBar_PreviewMouseLeftButtonDown">
+                            <ProgressBar x:Name="ArtworkProgressBar" Height="8" Minimum="0" Maximum="1"
+                                         Value="0" VerticalAlignment="Center" IsHitTestVisible="False" />
+                            <local:MaterialProgressView x:Name="ArtworkProgressMaterial" Visibility="Collapsed" IsHitTestVisible="False"
+                                                        TrackBrush="#40FFFFFF" />
+                            <local:MaterialSliderVisual x:Name="ArtworkProgressMaterialSlider" Visibility="Collapsed" IsHitTestVisible="False"
+                                                        InactiveBrush="#40FFFFFF" />
+                        </Grid>
                         <TextBlock x:Name="PlaybackDurationText" Grid.Column="2" Text="00:00" Foreground="#D9FFFFFF" FontSize="13" VerticalAlignment="Center" />
                     </Grid>
                 </StackPanel>

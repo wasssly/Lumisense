@@ -137,7 +137,9 @@
                                 <!-- Material-вид (AppSettings.SliderStyle): рисует всё сам, поэтому обычные части ниже в этом режиме скрываются триггером. -->
                                 <local:MaterialSliderVisual x:Name="PART_MaterialVisual" Visibility="Collapsed" IsHitTestVisible="False"
                                                              ActiveBrush="{DynamicResource AccentFillColorDefaultBrush}"
-                                                             InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                             InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                                             ActiveTickBrush="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                                                             InactiveTickBrush="{DynamicResource TextFillColorSecondaryBrush}" />
                                 <!-- Точки рисуются только у Slider с SliderMilestoneMarkers.IsEnabled; Overlay после Track, поэтому виден на заполненной и незаполненной частях. -->
                                 <local:SliderMilestoneOverlay x:Name="PART_MilestoneOverlay"
                                                               MarkerBrush="{DynamicResource TextFillColorSecondaryBrush}"
@@ -145,7 +147,13 @@
                                                               SnapsToDevicePixels="True" />
                             </Grid>
                             <ControlTemplate.Triggers>
-                                <DataTrigger Binding="{Binding Source={x:Static local:SliderAppearance.Instance}, Path=IsMaterial}" Value="True">
+                                <DataTrigger Value="True">
+                                    <DataTrigger.Binding>
+                                        <MultiBinding Converter="{x:Static local:SliderMaterialConverter.Instance}">
+                                            <Binding Source="{x:Static local:SliderAppearance.Instance}" Path="IsMaterial" />
+                                            <Binding RelativeSource="{RelativeSource TemplatedParent}" Path="(local:SliderAppearance.Override)" />
+                                        </MultiBinding>
+                                    </DataTrigger.Binding>
                                     <Setter TargetName="PART_MaterialVisual" Property="Visibility" Value="Visible" />
                                     <Setter TargetName="LegacyRail" Property="Visibility" Value="Hidden" />
                                     <Setter TargetName="PART_MilestoneOverlay" Property="Visibility" Value="Hidden" />

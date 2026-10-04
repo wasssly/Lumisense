@@ -920,11 +920,16 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         bool isWaveform = _settings.ProgressBarStyle == "Waveform";
         bool isMaterial = _settings.ProgressBarStyle == "Material";
 
+        // Вид самого ползунка полосы задаётся только этой настройкой, а не общим «Видом ползунков».
+        SliderAppearance.SetOverride(ProgressSlider, _settings.ProgressBarStyle == "MaterialSlider");
+
         ProgressSlider.Visibility = isWaveform || isMaterial ? Visibility.Collapsed : Visibility.Visible;
         ProgressWaveform.Visibility = isWaveform ? Visibility.Visible : Visibility.Collapsed;
         ProgressMaterial.Visibility = isMaterial ? Visibility.Visible : Visibility.Collapsed;
         ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
         ProgressMaterial.IsWaving = _isPlaying;
+
+        _nowPlayingWindow?.ApplyProgressBarStyle();
 
         if (isWaveform)
             FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
