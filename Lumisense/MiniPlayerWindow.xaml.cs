@@ -1350,8 +1350,25 @@ public partial class MiniPlayerWindow : Window
         if (circle)
         {
             double radius = artworkSize / 2.0;
-            ArtProgressOutline.Data = new EllipseGeometry(
-                new Point(center, center), radius, radius);
+
+            // EllipseGeometry начинается справа (3 часа), а прогресс должен идти от верхней точки, как у квадратной обложки;
+            // поэтому окружность строится явно двумя дугами от центра верхней стороны.
+            var circleFigure = new PathFigure
+            {
+                StartPoint = new Point(center, offset),
+                IsClosed = true,
+                IsFilled = false
+            };
+            circleFigure.Segments.Add(new ArcSegment(
+                new Point(center, offset + artworkSize), new Size(radius, radius),
+                0, false, SweepDirection.Clockwise, true));
+            circleFigure.Segments.Add(new ArcSegment(
+                new Point(center, offset), new Size(radius, radius),
+                0, false, SweepDirection.Clockwise, true));
+
+            var circleGeometry = new PathGeometry();
+            circleGeometry.Figures.Add(circleFigure);
+            ArtProgressOutline.Data = circleGeometry;
 
             double circumference = 2.0 * Math.PI * radius;
             ApplyArtworkProgressDash(ratio, circumference, startOffset: 0.0);
