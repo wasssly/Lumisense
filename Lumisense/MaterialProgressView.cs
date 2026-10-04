@@ -12,7 +12,7 @@ public sealed class MaterialProgressView : MaterialWaveElement
     private const double GapSize = 4.0;
     private const double StopDotSize = 4.0;
 
-    // Длина волны, амплитуда и скорость подобраны на глаз под ширину полосы плеера (скорость задаёт WaveFrequency в базовом классе).
+    // Длина волны, амплитуда и скорость подобраны на глаз под ширину полосы плеера (скорость 32 px/с).
     private const double WaveAmplitude = 3.0;
     private const double WavelengthValue = 40.0;
 
@@ -58,6 +58,8 @@ public sealed class MaterialProgressView : MaterialWaveElement
     private Pen? _trackPen;
 
     protected override double Wavelength => WavelengthValue;
+
+    protected override double WaveSpeed => 32.0;
 
     protected override void OnRender(DrawingContext dc)
     {
