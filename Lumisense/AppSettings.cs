@@ -320,7 +320,7 @@ public class AppSettings
     // Вид полосы прогресса мини-плеера: "Default", "Material" (волна) или "MaterialSlider" (ползунок Material).
     public string MiniPlayerProgressStyle { get; set; } = "Default";
 
-    // Вид кольца вокруг обложки: "Default" или "Material" (волна вдоль контура).
+    // Вид кольца вокруг обложки: "Default", "Material" (волна вдоль контура) или "MaterialSlider" (ручка вдоль контура).
     public string MiniPlayerArtworkProgressStyle { get; set; } = "Default";
 
     // Цвет контура: "Accent" — акцент из «Оформления», "Fixed" — MiniPlayerArtworkProgressColorHex;

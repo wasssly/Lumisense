@@ -48,6 +48,17 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
         set => SetValue(IsCircleProperty, value);
     }
 
+    public static readonly DependencyProperty IsSliderLookProperty = DependencyProperty.Register(
+        nameof(IsSliderLook), typeof(bool), typeof(MaterialRingProgressView),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // true — вид Material Slider: без волны, с тонкой ручкой на конце проигранной части и зазором вокруг неё.
+    public bool IsSliderLook
+    {
+        get => (bool)GetValue(IsSliderLookProperty);
+        set => SetValue(IsSliderLookProperty, value);
+    }
+
     public static readonly DependencyProperty PlayedBrushProperty = DependencyProperty.Register(
         nameof(PlayedBrush), typeof(Brush), typeof(MaterialRingProgressView),
         new FrameworkPropertyMetadata(Brushes.White, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -137,6 +148,12 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
         var trackPen = MakePen(TrackBrush, thickness);
         var playedPen = MakePen(PlayedBrush, thickness);
 
+        if (IsSliderLook)
+        {
+            RenderSliderLook(dc, activeLength, thickness, trackPen, playedPen);
+            return;
+        }
+
         // Зазор с обеих сторон активной части; у полного кольца зазора нет.
         bool full = progress >= 0.9999;
         double gap = full ? 0.0 : GapSize + thickness;
@@ -158,6 +175,32 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
             if (trackEnd - trackStart > 0.5)
                 dc.DrawGeometry(null, trackPen, BuildPolyline(trackStart, trackEnd, 0.0, wavy: false));
         }
+    }
+
+    // Как MaterialSliderVisual, но вдоль контура: активная дуга, зазор, ручка поперёк линии, зазор, дорожка; на стыке у старта тоже зазор.
+    private void RenderSliderLook(DrawingContext dc, double s, double thickness, Pen trackPen, Pen playedPen)
+    {
+        double wrapHalf = (GapSize + thickness) / 2;
+        double handleWidth = Math.Max(2.0, thickness * 0.8);
+        double handleGap = handleWidth / 2 + GapSize + thickness / 2;
+        double lowest = wrapHalf;
+        double highest = _perimeter - wrapHalf;
+        double handleAt = Math.Clamp(s, lowest, highest);
+
+        double activeEnd = handleAt - handleGap;
+        if (activeEnd - lowest > 0.5)
+            dc.DrawGeometry(null, playedPen, BuildPolyline(lowest, activeEnd, 0.0, wavy: false));
+
+        double trackStart = handleAt + handleGap;
+        if (highest - trackStart > 0.5)
+            dc.DrawGeometry(null, trackPen, BuildPolyline(trackStart, highest, 0.0, wavy: false));
+
+        // Ручка: короткая линия поперёк контура; длина ограничена запасом холста вокруг обложки (4 px с каждой стороны).
+        _outline!.GetPointAtFractionLength(handleAt / _perimeter, out Point p, out Point tangent);
+        double half = Math.Min(thickness * 2.2, 8.0) / 2;
+        var handlePen = MakePen(PlayedBrush, handleWidth);
+        dc.DrawLine(handlePen, new Point(p.X + tangent.Y * half, p.Y - tangent.X * half),
+            new Point(p.X - tangent.Y * half, p.Y + tangent.X * half));
     }
 
     private void DrawDot(DrawingContext dc, double s, double thickness)

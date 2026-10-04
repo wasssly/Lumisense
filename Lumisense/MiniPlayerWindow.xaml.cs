@@ -543,7 +543,7 @@ public partial class MiniPlayerWindow : Window
     {
         PlayPauseButton.Icon = IconResources.MakeOnAccent(isPlaying ? "IconPause" : "IconPlay");
         ProgressMaterial.IsWaving = isPlaying;
-        ArtProgressMaterial.IsWaving = isPlaying;
+        ArtProgressMaterial.IsWaving = isPlaying && !ArtProgressMaterial.IsSliderLook;
         PlayPauseButton.Background = new SolidColorBrush(_mainWindow.GetResolvedAccentColor()); // всегда акцентная
         UpdateVinylRotation(isPlaying);
     }
@@ -1250,12 +1250,14 @@ public partial class MiniPlayerWindow : Window
     {
         _showArtworkProgress = _mainWindow.Settings.MiniPlayerShowArtworkProgress;
         var visibility = _showArtworkProgress ? Visibility.Visible : Visibility.Collapsed;
-        bool materialRing = _mainWindow.Settings.MiniPlayerArtworkProgressStyle == "Material";
+        string ringStyle = _mainWindow.Settings.MiniPlayerArtworkProgressStyle;
+        bool materialRing = ringStyle is "Material" or "MaterialSlider";
+        ArtProgressMaterial.IsSliderLook = ringStyle == "MaterialSlider";
         ArtProgressTrack.Visibility = visibility;
         ArtProgressOutline.Visibility = _showArtworkProgress && !materialRing ? Visibility.Visible : Visibility.Collapsed;
         ArtProgressMaterial.Visibility = _showArtworkProgress && materialRing ? Visibility.Visible : Visibility.Collapsed;
         ArtProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
-        ArtProgressMaterial.IsWaving = _mainWindow.IsPlayingNow;
+        ArtProgressMaterial.IsWaving = _mainWindow.IsPlayingNow && !ArtProgressMaterial.IsSliderLook;
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
     }
 

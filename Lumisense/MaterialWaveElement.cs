@@ -4,11 +4,12 @@ using System.Windows.Media;
 namespace Lumisense;
 
 // Общая анимация «бегущей волны» для Material-индикаторов: амплитуда плавно растёт при воспроизведении и спадает на паузе,
-// фаза бежит со скоростью WaveSpeed. Кадры подписываются только пока элемент виден и волна движется или выпрямляется.
+// фаза бежит с частотой WaveFrequency. Кадры подписываются только пока элемент виден и волна движется или выпрямляется.
 public abstract class MaterialWaveElement : FrameworkElement
 {
-    // Скорость бега волны (px/с) и время выхода амплитуды на максимум или в ноль.
-    protected const double WaveSpeed = 28.0;
+    // Скорость бега волны задаётся частотой (периодов в секунду), а не px/с: у полосы и кольца вокруг обложки разная длина волны,
+    // и при одной скорости в px/с кольцо казалось бы быстрее. 2 периода/с — темп кольца мини-плеера.
+    protected const double WaveFrequency = 2.0;
     private const double AmplitudeEaseSeconds = 0.4;
 
     // Длина волны задаётся потомком (для кольца подгоняется под периметр, чтобы шов замыкался).
@@ -99,7 +100,7 @@ public abstract class MaterialWaveElement : FrameworkElement
             ? Math.Min(target, AmplitudeFactor + step)
             : Math.Max(target, AmplitudeFactor - step);
 
-        Phase = (Phase + WaveSpeed * dt) % Wavelength;
+        Phase = (Phase + Wavelength * WaveFrequency * dt) % Wavelength;
         InvalidateVisual();
 
         if (!IsWaving && AmplitudeFactor <= 0.001)

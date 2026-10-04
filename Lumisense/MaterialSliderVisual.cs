@@ -83,9 +83,6 @@ public sealed class MaterialSliderVisual : FrameworkElement
         set => SetValue(ProgressProperty, value);
     }
 
-    // Не больше стольких точек от шага SnapToTick: у плотных шкал точки слились бы в линию.
-    private const int MaxTicks = 40;
-
     private Slider? _slider;
 
     public MaterialSliderVisual()
@@ -240,7 +237,7 @@ public sealed class MaterialSliderVisual : FrameworkElement
         if (!enabled) dc.Pop();
     }
 
-    // Точки-ориентиры: там, где они включены явно (SliderMilestoneMarkers), и на слайдерах с шагом (IsSnapToTick), как stop indicators Material.
+    // Точки-ориентиры только там, где они включены явно (SliderMilestoneMarkers); у слайдеров скорости и тона их нет.
     // Возвращает true, если хоть одна точка нарисована.
     private bool DrawTicks(DrawingContext dc, Slider slider, double thumbLength, double usable, double handleX,
         double gapHalf, double p1, double p2, double dotRadius)
@@ -251,10 +248,6 @@ public sealed class MaterialSliderVisual : FrameworkElement
         {
             frequency = SliderMilestoneMarkers.GetMarkerFrequency(slider);
             if (frequency <= 0) frequency = slider.TickFrequency;
-        }
-        else if (slider.IsSnapToTickEnabled && slider.TickFrequency > 0 && range / slider.TickFrequency <= MaxTicks)
-        {
-            frequency = slider.TickFrequency;
         }
 
         if (frequency <= 0 || range <= 0) return false;

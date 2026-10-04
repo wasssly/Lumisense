@@ -225,6 +225,7 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     [Theory]
     [InlineData("Default")]
     [InlineData("Material")]
+    [InlineData("MaterialSlider")]
     public void TryLoad_MiniPlayerArtworkProgressStyle_KnownValuesArePreserved(string style)
     {
         bool result = TryLoad("{\"MiniPlayerArtworkProgressStyle\": \"" + style + "\"}", out AppSettings? settings, out _);
@@ -236,7 +237,7 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     [Fact]
     public void TryLoad_UnknownMiniPlayerArtworkProgressStyle_FallsBackToDefault()
     {
-        bool result = TryLoad("{\"MiniPlayerArtworkProgressStyle\": \"MaterialSlider\"}", out AppSettings? settings, out _);
+        bool result = TryLoad("{\"MiniPlayerArtworkProgressStyle\": \"Neon\"}", out AppSettings? settings, out _);
 
         Assert.True(result);
         Assert.Equal("Default", settings!.MiniPlayerArtworkProgressStyle);

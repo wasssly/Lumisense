@@ -1932,6 +1932,8 @@
                                              GroupName="MiniPlayerArtworkProgressStyle" Checked="MiniArtworkProgressStyleRadio_Changed" />
                                 <RadioButton x:Name="MiniArtworkProgressStyleMaterialRadio" Content="Material (волнистая линия, как в Android)"
                                              GroupName="MiniPlayerArtworkProgressStyle" Checked="MiniArtworkProgressStyleRadio_Changed" />
+                                <RadioButton x:Name="MiniArtworkProgressStyleMaterialSliderRadio" Content="Material Slider (ползунок с зазором, как в Android)"
+                                             GroupName="MiniPlayerArtworkProgressStyle" Checked="MiniArtworkProgressStyleRadio_Changed" />
 
                                 <Grid Margin="0,14,0,0">
                                     <Grid.ColumnDefinitions>

@@ -216,7 +216,8 @@ public partial class SettingsWindow : FluentWindow
         MiniProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerProgressStyle == "MaterialSlider";
         MiniProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerProgressStyle is not ("Material" or "MaterialSlider");
         MiniArtworkProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "Material";
-        MiniArtworkProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle != "Material";
+        MiniArtworkProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "MaterialSlider";
+        MiniArtworkProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle is not ("Material" or "MaterialSlider");
         SliderStyleMaterialRadio.IsChecked = _settings.SliderStyle == "Material";
         SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
@@ -2274,7 +2275,9 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.MiniPlayerArtworkProgressStyle = MiniArtworkProgressStyleMaterialRadio.IsChecked == true ? "Material" : "Default";
+        _settings.MiniPlayerArtworkProgressStyle = MiniArtworkProgressStyleMaterialRadio.IsChecked == true ? "Material"
+            : MiniArtworkProgressStyleMaterialSliderRadio.IsChecked == true ? "MaterialSlider"
+            : "Default";
         _owner.ApplyMiniPlayerArtworkProgressVisibilityLive();
     }
 
