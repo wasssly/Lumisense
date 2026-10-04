@@ -46,6 +46,8 @@ public sealed class LumiProfileTests : IDisposable
         settings.ShuffleBag = new List<string> { @"C:\Music\b.mp3" };
         settings.SavedQueue = new List<string> { @"C:\Music\c.mp3" };
         settings.PlayCounts = new Dictionary<string, int> { [@"C:\Music\a.mp3"] = 5 };
+        settings.TotalListenSeconds = 3600;
+        settings.StatsStartedAt = "2026-01-01T00:00:00.0000000Z";
         return settings;
     }
 
@@ -84,6 +86,8 @@ public sealed class LumiProfileTests : IDisposable
         Assert.Empty(exported.ShuffleBag);
         Assert.Empty(exported.SavedQueue);
         Assert.Empty(exported.PlayCounts);
+        Assert.Equal(0, exported.TotalListenSeconds);
+        Assert.Null(exported.StatsStartedAt);
     }
 
     [Fact]
@@ -99,6 +103,7 @@ public sealed class LumiProfileTests : IDisposable
         Assert.Equal(42, live.LastPositionSeconds);
         Assert.Single(live.SavedQueue);
         Assert.Equal(5, live.PlayCounts[@"C:\Music\a.mp3"]);
+        Assert.Equal(3600, live.TotalListenSeconds);
     }
 
     [Fact]

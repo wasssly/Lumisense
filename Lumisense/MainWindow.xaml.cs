@@ -1336,6 +1336,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         MiniPlayerContextMenuActions.Instance.Initialize(_settings.DisabledMiniPlayerContextMenuActions);
         ApplyPlaybackRateLive(_settings.PlaybackSpeed);
         ApplyPlaybackPitchLive(_settings.PlaybackPitchSemitones);
+        IconPacks.SetCurrent(_settings.IconPack);
+        AppIcons.SetCurrent(_settings.AppIcon);
     }
 
 }

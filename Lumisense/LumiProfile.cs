@@ -53,6 +53,8 @@ public static class LumiProfileIO
         clone.ShuffleBag = new List<string>();
         clone.SavedQueue = new List<string>();
         clone.PlayCounts = new Dictionary<string, int>();
+        clone.TotalListenSeconds = 0;
+        clone.StatsStartedAt = null;
 
         return clone;
     }
@@ -89,7 +91,9 @@ public static class LumiProfileIO
             (settings.TrackChangeToastPolicy?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkProgressColorMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkProgressColorHex?.Length ?? 0) > 32 ||
-            (settings.FileNameNormalizationTemplate?.Length ?? 0) > 180)
+            (settings.FileNameNormalizationTemplate?.Length ?? 0) > 180 ||
+            (settings.IconPack?.Length ?? 0) > 32 || (settings.AppIcon?.Length ?? 0) > 32 || (settings.WasapiMode?.Length ?? 0) > 32 ||
+            (settings.TrackChangeToastArtSide?.Length ?? 0) > 32 || (settings.TrackChangeToastTextAlignment?.Length ?? 0) > 32)
             return false;
 
         if (settings.TrackChangeToastPolicy is not "EveryTrackChange" and not "PlaybackOnly" and not "ManualOnly")
@@ -110,32 +114,40 @@ public static class LumiProfileIO
         if ((settings.EqualizerPresets?.Count ?? int.MaxValue) > 100 ||
             (settings.SavedPlaylistFolders?.Count ?? int.MaxValue) > 100 ||
             (settings.DisabledTrackContextMenuActions?.Count ?? int.MaxValue) > 20 ||
-            (settings.HotkeyPlayPause?.Key?.Length ?? 0) > 64 || (settings.HotkeyNext?.Key?.Length ?? 0) > 64 ||
-            (settings.HotkeyPrevious?.Key?.Length ?? 0) > 64 || (settings.HotkeyStop?.Key?.Length ?? 0) > 64)
+            (settings.DisabledMiniPlayerContextMenuActions?.Count ?? int.MaxValue) > 20 ||
+            HasOverlongHotkey(settings))
             return false;
 
         return settings.EqualizerPresets is not null && settings.DisabledTrackContextMenuActions is not null &&
                settings.DisabledTrackContextMenuActions.All(action => (action?.Length ?? int.MaxValue) <= 64) &&
+               settings.DisabledMiniPlayerContextMenuActions is not null &&
+               settings.DisabledMiniPlayerContextMenuActions.All(action => (action?.Length ?? int.MaxValue) <= 64) &&
                settings.EqualizerPresets.All(p =>
                    p is not null && (p.Name?.Length ?? int.MaxValue) <= 200 && p.GainsDb is not null &&
                    p.GainsDb.Length <= 32 && p.GainsDb.All(double.IsFinite) && p.GainsDb.All(g => g >= -100 && g <= 100));
     }
 
+    // Все горячие клавиши (HotkeyBinding) проверяются одним правилом, чтобы новая клавиша не осталась без проверки.
+    private static bool HasOverlongHotkey(AppSettings settings) =>
+        typeof(AppSettings).GetProperties()
+            .Where(property => property.PropertyType == typeof(HotkeyBinding))
+            .Any(property => ((HotkeyBinding?)property.GetValue(settings))?.Key?.Length > 64);
+
     // Явный allowlist намеренно не использует reflection: добавление нового свойства в
     // AppSettings не должно автоматически сделать его импортируемым или сбрасываемым.
     public static void Apply(AppSettings imported, AppSettings live)
     {
-        CopyTransferableSettings(imported, live, preserveRuntimeData: true);
+        CopyTransferableSettings(imported, live);
     }
 
     // Сбрасывает только настройки поведения и интерфейса, сохраняя пользовательские данные,
     // статистику, пресеты и состояние текущего сеанса.
     public static void ResetToDefaults(AppSettings live)
     {
-        CopyTransferableSettings(new AppSettings(), live, preserveRuntimeData: true);
+        CopyTransferableSettings(new AppSettings(), live);
     }
 
-    private static void CopyTransferableSettings(AppSettings source, AppSettings target, bool preserveRuntimeData)
+    private static void CopyTransferableSettings(AppSettings source, AppSettings target)
     {
         target.Theme = source.Theme;
         target.Language = source.Language;
@@ -212,13 +224,30 @@ public static class LumiProfileIO
         target.EqualizerEnabled = source.EqualizerEnabled;
         target.EqualizerBypass = source.EqualizerBypass;
         target.EqualizerBandGainsDb = source.EqualizerBandGainsDb.ToArray();
+        target.DiscordRichPresenceShowCoverArt = source.DiscordRichPresenceShowCoverArt;
+        target.AutoRefreshPlaylistFolders = source.AutoRefreshPlaylistFolders;
+        target.GameOverlayCompatibilityMode = source.GameOverlayCompatibilityMode;
+        target.GameOverlayCompatibilityAutoDetect = source.GameOverlayCompatibilityAutoDetect;
+        target.HotkeyToggleFavorite = source.HotkeyToggleFavorite;
+        target.HotkeyToggleLyrics = source.HotkeyToggleLyrics;
+        target.HotkeyToggleMiniPlayer = source.HotkeyToggleMiniPlayer;
+        target.DisabledMiniPlayerContextMenuActions = MiniPlayerContextMenuActions.NormalizeDisabledActions(source.DisabledMiniPlayerContextMenuActions);
+
+        // Строковые значения и число принимаем только допустимые (профиль мог прийти из другой версии), иначе остаётся текущее.
+        if (IconPacks.IsKnown(source.IconPack))
+            target.IconPack = source.IconPack;
+        if (AppIcons.IsKnown(source.AppIcon))
+            target.AppIcon = source.AppIcon;
+        if (source.WasapiMode is "Shared" or "Exclusive")
+            target.WasapiMode = source.WasapiMode;
+        if (source.TrackChangeToastArtSide is "Left" or "Right")
+            target.TrackChangeToastArtSide = source.TrackChangeToastArtSide;
+        if (source.TrackChangeToastTextAlignment is "Left" or "Center" or "Right")
+            target.TrackChangeToastTextAlignment = source.TrackChangeToastTextAlignment;
+        if (double.IsFinite(source.MiniPlayerArtworkProgressThickness))
+            target.MiniPlayerArtworkProgressThickness = Math.Clamp(source.MiniPlayerArtworkProgressThickness, 2.0, 4.0);
+
         target.FileNameNormalizationTemplate = FileNameNormalizer.NormalizeTemplate(source.FileNameNormalizationTemplate);
         target.DisabledTrackContextMenuActions = TrackContextMenuActions.NormalizeDisabledActions(source.DisabledTrackContextMenuActions);
-
-        if (!preserveRuntimeData)
-        {
-            target.WasMiniPlayerOnClose = source.WasMiniPlayerOnClose;
-            target.SkippedUpdateVersion = source.SkippedUpdateVersion;
-        }
     }
 }

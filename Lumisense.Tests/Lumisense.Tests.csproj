@@ -12,6 +12,9 @@
     <OutputType>Exe</OutputType>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
+    <!-- Как в проекте приложения: предупреждения компилятора и анализаторов xUnit считаются ошибками, аудит уязвимостей NuGet (NU1901-NU1904) остаётся предупреждением. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>

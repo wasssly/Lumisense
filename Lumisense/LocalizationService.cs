@@ -484,6 +484,7 @@ public static class LocalizationService
         ["Найти в интернете…"] = "Search the web…",
         ["Поиск обложки по исполнителю и названию трека"] = "Search for cover by artist and track title",
         ["Удалить обложку"] = "Remove cover",
+        ["Выберите хотя бы один источник обложек."] = "Select at least one cover source.",
         ["Название"] = "Title",
         ["Альбом"] = "Album",
         ["Год"] = "Year",
@@ -1017,6 +1018,11 @@ public static class LocalizationService
         if (lastDigit is >= 2 and <= 4 && (lastTwoDigits < 12 || lastTwoDigits > 14)) return "few";
         return "many";
     }
+
+    // Нужен тестам: есть ли у русской фразы английский перевод (точная запись или шаблон с подстановками).
+    internal static bool HasEnglishTranslation(string russian) =>
+        EnglishByRussian.ContainsKey(russian)
+        || !string.Equals(TranslateTemplate(russian, EnglishTemplates), russian, StringComparison.Ordinal);
 
     public static string Translate(string value)
     {

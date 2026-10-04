@@ -42,31 +42,11 @@ public partial class MainWindow
     {
         if (!File.Exists(filePath))
         {
-            LocalizedMessageBox.Show(
-                this,
-                LocalizationService.Translate("Не удалось открыть трек: файл недоступен."),
-                LocalizationService.Translate("Недоступные файлы"),
-                System.Windows.MessageBoxButton.OK,
-                System.Windows.MessageBoxImage.Warning);
-            RefreshPlaylistView();
-            if (_isFavoritesView) RefreshFavoritesTrackList();
-            _pendingNavigationAutoPlay = false;
+            HandleMissingTrackFile();
             return;
         }
 
-        // FadeOutBeforeTrackChangeAsync останавливает промежуточный output и сбрасывает _isPlaying: при быстром Next/Previous
-        // следующая заявка читала false и грузила последний трек на паузе, поэтому сохраняем исходное намерение пользователя.
-        if (preservePendingPlaybackState)
-        {
-            if (_pendingNavigationAutoPlay)
-                autoPlay = true;
-            else
-                _pendingNavigationAutoPlay = autoPlay;
-        }
-        else
-        {
-            _pendingNavigationAutoPlay = false;
-        }
+        autoPlay = ResolveAutoPlay(autoPlay, preservePendingPlaybackState);
 
         var previousGain = Interlocked.Exchange(ref _replayGainCts, null);
         previousGain?.Cancel();
@@ -91,27 +71,7 @@ public partial class MainWindow
             // _isPlaying ещё true: предыдущий трек слышен, пока идёт fade-out. См. комментарий у TrackUserState.
             SetTrackUserState(TrackUserState.Loading);
 
-            // Готовим граф следующего трека, пока текущий поток доигрывает fade/drain; новый WasapiPlayer не создаём —
-            // endpoint останавливается только после нулевого хвоста в его буфере.
-            double volumeSliderValue = VolumeSlider.Value;
-            bool replayGainEnabled = _settings.ReplayGainEnabled;
-            bool equalizerEnabled = _settings.EqualizerEnabled;
-            double[] equalizerGains = (double[])_settings.EqualizerBandGainsDb.Clone();
-            double playbackSpeed = _runtimePlaybackRate;
-            double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
-            bool traceTrackPreparation = _settings.TrackLoadTraceEnabled;
-            preparationTask = _trackPreparationService.PrepareAsync(
-                filePath,
-                new TrackPreparationOptions(
-                    volumeSliderValue,
-                    _settings.UseLogarithmicVolume,
-                    replayGainEnabled,
-                    equalizerEnabled,
-                    equalizerGains,
-                    playbackSpeed,
-                    playbackPitch,
-                    traceTrackPreparation),
-                operation.CancellationToken);
+            preparationTask = StartTrackPreparation(filePath, operation.CancellationToken);
 
             await FadeOutBeforeTrackChangeAsync(operation.CancellationToken);
             performance.MarkStage("fade-out");
@@ -134,48 +94,13 @@ public partial class MainWindow
             if (!operation.IsCurrent || _isExiting)
                 return;
 
-            _audioFile = prepared.AudioFile;
-            _tempoProvider = prepared.TempoProvider;
-            ApplyPlaybackRateToCurrentStream();
-            _equalizer = prepared.Equalizer;
-            _replayGainFactor = prepared.ReplayGainFactor;
-            PreparedTrack loaded = prepared;
+            PreparedTrack loaded = AttachPreparedTrack(prepared);
             prepared = null;
 
-            _currentTrackTaggedTitle = loaded.Title;
-            _currentTrackTaggedArtist = loaded.Artist;
-            var metadata = FileNameNormalizer.ResolveArtistAndTitle(
-                filePath, _currentTrackTaggedArtist, _currentTrackTaggedTitle, "—");
-            SetTrackInfoText(metadata.Title, metadata.Artist);
-            TotalTimeText.Text = _audioFile.TotalTime.ToString(@"mm\:ss");
-            ProgressSlider.Maximum = Math.Max(_audioFile.TotalTime.TotalSeconds, 0.01);
-            _currentTrackPath = filePath;
-            // Ручной выбор строки — новая отправная точка обычного шаффла, иначе «Следующий» продолжил бы старую историю и вернул
-            // пройденную последовательность; кнопки, hotkey и автопереход явно передают preserveShuffleSession=true.
-            if (!preserveShuffleSession && changeOrigin == TrackChangeOrigin.User)
-                _shuffleSession.StartStandardSession(filePath, _settings.UseImprovedShuffle);
-
-            _halfPlayCounted = false;
-            _actuallyPlayedSeconds = 0;
-            _lastTickPositionSeconds = -1;
-            ApplyPreparedAlbumArt(loaded, albumArtDirection);
+            ApplyLoadedTrack(loaded, filePath, albumArtDirection, changeOrigin, preserveShuffleSession);
             performance.MarkStage("apply-track-ui");
 
-            if (_settings.ProgressBarStyle == "Waveform")
-                FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
-
-            var position = startPosition.HasValue && startPosition.Value < _audioFile.TotalTime
-                ? startPosition.Value
-                : TimeSpan.Zero;
-            _audioFile.CurrentTime = position;
-            ProgressSlider.Value = position.TotalSeconds;
-            CurrentTimeText.Text = position.ToString(@"mm\:ss");
-            ProgressWaveform.Progress = _audioFile.TotalTime.TotalSeconds > 0
-                ? position.TotalSeconds / _audioFile.TotalTime.TotalSeconds
-                : 0;
-            _integrations.NowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
-            RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
-            RaiseProgressChanged(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
+            ApplyInitialPosition(startPosition);
 
             // Сохраняем shuffle-сессию сразу после применения трека: периодического checkpoint мало — при быстром переключении
             // и выходе история/колода остались бы устаревшими.
@@ -187,34 +112,8 @@ public partial class MainWindow
             if (_isLyricsPanelActive)
                 FireAndForget(LoadMainWindowLyricsAsync(filePath), "LoadMainWindowLyricsAsync");
 
-            _audioLevelMeter = new AudioLevelSampleProvider(_equalizer!);
-            var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
-            fadeIn.BeginFadeIn(70);
-            _activeFade = fadeIn;
-            InitializeOutputDevice(fadeIn);
-            _settingsWindow?.RefreshOutputDeviceRuntimeStatus();
-            performance.MarkStage("initialize-output");
-            _outputDevice!.PlaybackStopped += OutputDevice_PlaybackStopped;
-            ReapplySavedPlaybackRateAfterTrackReady(generation);
-            if (autoPlay)
-            {
-                _outputDevice.Play();
-                _isPlaying = true;
-                PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
-                _progressTimer.Start();
-                _playbackClock.Start();
-                _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
-                RaisePlaybackStateChanged(true);
-            }
-            else
-            {
-                _isPlaying = false;
-                PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
-                _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
-                RaisePlaybackStateChanged(false);
-            }
-
-            SetTrackUserState(autoPlay ? TrackUserState.Playing : TrackUserState.Paused);
+            StartOutputChain(generation, performance);
+            ApplyPlaybackStartState(autoPlay);
 
             // Причина и факт запуска передаются политике уведомлений явно: так автопереход,
             // выбор трека на паузе и восстановление сессии не маскируются друг под друга.
@@ -231,16 +130,7 @@ public partial class MainWindow
         {
             performance.MarkStage("failed");
             performance.Complete(succeeded: false);
-            StopPlayback();
-            DisposeOutputDeviceSafely();
-            _currentTrackPath = null;
-            _replayGainFactor = 1.0;
-            SetTrackInfoText("Файл не выбран", "—");
-            TotalTimeText.Text = "00:00";
-            ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
-            SetTrackUserState(TrackUserState.Error);
-            if (!_isExiting)
-                PlaybackErrorExperience.Show(this, filePath, ex);
+            HandleTrackLoadFailure(filePath, ex);
         }
         finally
         {
@@ -255,6 +145,166 @@ public partial class MainWindow
                 _pendingNavigationAutoPlay = false;
             operation.Dispose();
         }
+    }
+
+    private Task<PreparedTrack> StartTrackPreparation(string filePath, CancellationToken cancellationToken)
+    {
+        // Готовим граф следующего трека, пока текущий поток доигрывает fade/drain; новый WasapiPlayer не создаём —
+        // endpoint останавливается только после нулевого хвоста в его буфере.
+        double volumeSliderValue = VolumeSlider.Value;
+        bool replayGainEnabled = _settings.ReplayGainEnabled;
+        bool equalizerEnabled = _settings.EqualizerEnabled;
+        double[] equalizerGains = (double[])_settings.EqualizerBandGainsDb.Clone();
+        double playbackSpeed = _runtimePlaybackRate;
+        double playbackPitch = Math.Clamp(_settings.PlaybackPitchSemitones, -12.0, 12.0);
+        bool traceTrackPreparation = _settings.TrackLoadTraceEnabled;
+        return _trackPreparationService.PrepareAsync(
+            filePath,
+            new TrackPreparationOptions(
+                volumeSliderValue,
+                _settings.UseLogarithmicVolume,
+                replayGainEnabled,
+                equalizerEnabled,
+                equalizerGains,
+                playbackSpeed,
+                playbackPitch,
+                traceTrackPreparation),
+            cancellationToken);
+    }
+
+    private PreparedTrack AttachPreparedTrack(PreparedTrack prepared)
+    {
+        _audioFile = prepared.AudioFile;
+        _tempoProvider = prepared.TempoProvider;
+        ApplyPlaybackRateToCurrentStream();
+        _equalizer = prepared.Equalizer;
+        _replayGainFactor = prepared.ReplayGainFactor;
+        return prepared;
+    }
+
+    private void StartOutputChain(int generation, TrackLoadPerformanceMeasurement performance)
+    {
+        _audioLevelMeter = new AudioLevelSampleProvider(_equalizer!);
+        var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
+        fadeIn.BeginFadeIn(70);
+        _activeFade = fadeIn;
+        InitializeOutputDevice(fadeIn);
+        _settingsWindow?.RefreshOutputDeviceRuntimeStatus();
+        performance.MarkStage("initialize-output");
+        _outputDevice!.PlaybackStopped += OutputDevice_PlaybackStopped;
+        ReapplySavedPlaybackRateAfterTrackReady(generation);
+    }
+
+    private void HandleMissingTrackFile()
+    {
+        LocalizedMessageBox.Show(
+            this,
+            LocalizationService.Translate("Не удалось открыть трек: файл недоступен."),
+            LocalizationService.Translate("Недоступные файлы"),
+            System.Windows.MessageBoxButton.OK,
+            System.Windows.MessageBoxImage.Warning);
+        RefreshPlaylistView();
+        if (_isFavoritesView) RefreshFavoritesTrackList();
+        _pendingNavigationAutoPlay = false;
+    }
+
+    private bool ResolveAutoPlay(bool autoPlay, bool preservePendingPlaybackState)
+    {
+        // FadeOutBeforeTrackChangeAsync останавливает промежуточный output и сбрасывает _isPlaying: при быстром Next/Previous
+        // следующая заявка читала false и грузила последний трек на паузе, поэтому сохраняем исходное намерение пользователя.
+        if (preservePendingPlaybackState)
+        {
+            if (_pendingNavigationAutoPlay)
+                autoPlay = true;
+            else
+                _pendingNavigationAutoPlay = autoPlay;
+        }
+        else
+        {
+            _pendingNavigationAutoPlay = false;
+        }
+
+        return autoPlay;
+    }
+
+    private void ApplyLoadedTrack(PreparedTrack loaded, string filePath, AlbumArtTransitionDirection albumArtDirection,
+        TrackChangeOrigin changeOrigin, bool preserveShuffleSession)
+    {
+        var audioFile = _audioFile!;
+        _currentTrackTaggedTitle = loaded.Title;
+        _currentTrackTaggedArtist = loaded.Artist;
+        var metadata = FileNameNormalizer.ResolveArtistAndTitle(
+            filePath, _currentTrackTaggedArtist, _currentTrackTaggedTitle, "—");
+        SetTrackInfoText(metadata.Title, metadata.Artist);
+        TotalTimeText.Text = audioFile.TotalTime.ToString(@"mm\:ss");
+        ProgressSlider.Maximum = Math.Max(audioFile.TotalTime.TotalSeconds, 0.01);
+        _currentTrackPath = filePath;
+        // Ручной выбор строки — новая отправная точка обычного шаффла, иначе «Следующий» продолжил бы старую историю и вернул
+        // пройденную последовательность; кнопки, hotkey и автопереход явно передают preserveShuffleSession=true.
+        if (!preserveShuffleSession && changeOrigin == TrackChangeOrigin.User)
+            _shuffleSession.StartStandardSession(filePath, _settings.UseImprovedShuffle);
+
+        _halfPlayCounted = false;
+        _actuallyPlayedSeconds = 0;
+        _lastTickPositionSeconds = -1;
+        ApplyPreparedAlbumArt(loaded, albumArtDirection);
+    }
+
+    private void ApplyInitialPosition(TimeSpan? startPosition)
+    {
+        var audioFile = _audioFile!;
+        if (_settings.ProgressBarStyle == "Waveform")
+            FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
+
+        var position = startPosition.HasValue && startPosition.Value < audioFile.TotalTime
+            ? startPosition.Value
+            : TimeSpan.Zero;
+        audioFile.CurrentTime = position;
+        ProgressSlider.Value = position.TotalSeconds;
+        CurrentTimeText.Text = position.ToString(@"mm\:ss");
+        ProgressWaveform.Progress = audioFile.TotalTime.TotalSeconds > 0
+            ? position.TotalSeconds / audioFile.TotalTime.TotalSeconds
+            : 0;
+        _integrations.NowPlaying?.UpdateTrackInfo(TrackTitleText.Text, TrackArtistText.Text);
+        RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
+        RaiseProgressChanged(position.TotalSeconds, audioFile.TotalTime.TotalSeconds);
+    }
+
+    private void ApplyPlaybackStartState(bool autoPlay)
+    {
+        if (autoPlay)
+        {
+            _outputDevice!.Play();
+            _isPlaying = true;
+            PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
+            _progressTimer.Start();
+            _playbackClock.Start();
+            _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
+            RaisePlaybackStateChanged(true);
+        }
+        else
+        {
+            _isPlaying = false;
+            PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
+            _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
+            RaisePlaybackStateChanged(false);
+        }
+
+        SetTrackUserState(autoPlay ? TrackUserState.Playing : TrackUserState.Paused);
+    }
+
+    private void HandleTrackLoadFailure(string filePath, Exception ex)
+    {
+        StopPlayback();
+        DisposeOutputDeviceSafely();
+        _currentTrackPath = null;
+        _replayGainFactor = 1.0;
+        SetTrackInfoText("Файл не выбран", "—");
+        TotalTimeText.Text = "00:00";
+        ResetAlbumArtPlaceholder(AlbumArtTransitionDirection.None);
+        SetTrackUserState(TrackUserState.Error);
+        if (!_isExiting)
+            PlaybackErrorExperience.Show(this, filePath, ex);
     }
 
     private static async Task DisposeUnusedPreparedTrackAsync(Task<PreparedTrack> task)
