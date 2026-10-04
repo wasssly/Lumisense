@@ -32,7 +32,7 @@ InternalCompressLevel=ultra64
 MinVersion=0,6.1.7600
 PrivilegesRequired=admin
 
-SetupIconFile=..\Lumisense\Icons\app\lumisense.ico
+SetupIconFile=..\Lumisense\Icons\app\lumisense-aurora.ico
 UninstallDisplayIcon={app}\Lumisense.exe
 
 WizardStyle=modern
@@ -53,7 +53,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Source: "..\Lumisense\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Иконка отдельно (если не попала в publish)
-Source: "..\Lumisense\Icons\app\lumisense.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\Lumisense\Icons\app\lumisense-aurora.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Tasks]
 ; Флажок отмечен по умолчанию, но пользователь может его снять; ярлык в [Icons]
@@ -62,8 +62,8 @@ Name: "startmenuicon"; Description: "{cm:CreateStartMenuIcon}"; GroupDescription
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Icons]
-Name: "{group}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"; Tasks: startmenuicon
-Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense.ico"; Tasks: desktopicon
+Name: "{group}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense-aurora.ico"; Tasks: startmenuicon
+Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense-aurora.ico"; Tasks: desktopicon
 Name: "{group}\{cm:UninstallLumisense}"; Filename: "{uninstallexe}"
 
 [Registry]

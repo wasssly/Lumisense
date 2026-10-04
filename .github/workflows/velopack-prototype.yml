@@ -98,7 +98,7 @@ jobs:
             --channel prototype `
             --packTitle Lumisense `
             --packAuthors wasssly `
-            --icon Lumisense\Icons\app\lumisense.ico `
+            --icon Lumisense\Icons\app\lumisense-aurora.ico `
             --noPortable true `
             --msi true `
             --instLocation PerMachine

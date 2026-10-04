@@ -835,7 +835,7 @@
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Значок приложения" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Применяется сразу ко всем открытым окнам и значку в трее."
+                                <TextBlock Text="Применяется сразу ко всем открытым окнам и значку в трее. Значок файла Lumisense.exe, ярлыков и диспетчера задач задаётся сборкой (Aurora) и здесь не меняется."
                                            FontSize="12" Opacity="0.6" Margin="0,-4,0,16" TextWrapping="Wrap" />
 
                                 <WrapPanel>

@@ -12,7 +12,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Icons\app\lumisense.ico</ApplicationIcon>
+    <ApplicationIcon>Icons\app\lumisense-aurora.ico</ApplicationIcon>
     <RootNamespace>Lumisense</RootNamespace>
     <AssemblyName>Lumisense</AssemblyName>
     <!-- Velopack должен обработать hooks до WPF App; generated App.Main не используется. -->

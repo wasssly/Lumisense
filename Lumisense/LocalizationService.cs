@@ -25,6 +25,7 @@ public static class LocalizationService
         ["Найдено: {0} из {1}"] = "Found: {0} of {1}",
         ["Зеркало увидит ваш IP-адрес и факт скачивания обновления, но не может подменить файл: SHA-256 установщика сверяется с данными GitHub до запуска. Вернуться на GitHub можно в любой момент в этом же разделе."] = "The mirror will see your IP address and the fact that the update is being downloaded, but it cannot swap the file: the installer's SHA-256 is checked against GitHub data before launch. You can switch back to GitHub at any time in this section.",
         ["Больше не спрашивать"] = "Don't ask again",
+        ["Применяется сразу ко всем открытым окнам и значку в трее. Значок файла Lumisense.exe, ярлыков и диспетчера задач задаётся сборкой (Aurora) и здесь не меняется."] = "Applied immediately to all open windows and the tray icon. The icon of Lumisense.exe, shortcuts and Task Manager is set by the build (Aurora) and is not changed here.",
         ["Остаться на GitHub"] = "Stay on GitHub",
         ["Использовать зеркало"] = "Use the mirror",
         ["Скачивание через зеркало"] = "Download via mirror",
