@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
         xmlns:local="clr-namespace:Lumisense"
-        Title="Список изменений"
+        Title="История изменений"
         Icon="{Binding Current, Source={x:Static local:AppIconContext.Instance}}"
         Height="680" Width="820"
         MinHeight="480" MinWidth="660"
@@ -14,7 +14,7 @@
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">
 
-    <!-- Окно "Список изменений": слева поиск, фильтр по типу (чипы), сортировка и список версий, справа — подробности выбранной
+    <!-- Окно "История изменений": слева поиск, фильтр по типу (чипы), сортировка и список версий, справа — подробности выбранной
          версии (ElementName-биндинг на VersionsListBox.SelectedItem, тип — иконкой и цветом, ChangeTypeCatalog); code-behind верстку не трогает. -->
 
     <ui:FluentWindow.Resources>
@@ -153,7 +153,7 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <ui:TitleBar Grid.Row="0" Title="Список изменений" ShowMaximize="True" />
+        <ui:TitleBar Grid.Row="0" Title="История изменений" ShowMaximize="True" />
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>

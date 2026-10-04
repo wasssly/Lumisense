@@ -24,7 +24,7 @@ public static class LocalizationService
         ["Выберите язык Lumisense. Изменение применяется сразу ко всем открытым окнам."] = "Choose the language for Lumisense. The change is applied immediately to all open windows.",
         ["Найдено: {0} из {1}"] = "Found: {0} of {1}",
         ["Версий в истории: {0}"] = "Versions in history: {0}",
-        ["Список изменений"] = "Changelog",
+        ["История изменений"] = "Change history",
         ["Релизы Lumisense"] = "Lumisense Releases",
         ["Добавлено"] = "Added",
         ["Изменено"] = "Changed",

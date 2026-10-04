@@ -1105,7 +1105,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Все версии", "Обновления", "Updates", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
         Add("Проверить обновления", "Обновления", "Updates", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Удалить старую EXE-копию", "Обновления", "Updates", RemoveLegacyInnoButton, "удалить uninstall деинсталлятор старая exe msi migration cleanup compact updates");
-        Add("Список изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
+        Add("История изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
         Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты аватар");
         Add("Открыть папку с логами", "О плеере", "About", OpenLogsButton, "логи log ошибка краш crash диагностика");
     }

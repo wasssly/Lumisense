@@ -2752,8 +2752,8 @@
                             </Grid>
                         </ui:Button>
 
-                        <!-- 3. "Список изменений" — в самом низу страницы -->
-                        <TextBlock Text="Список изменений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
+                        <!-- 3. "История изменений" — в самом низу страницы -->
+                        <TextBlock Text="История изменений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
 
                         <ui:Button x:Name="ChangelogButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
@@ -2772,7 +2772,7 @@
                                 </Border>
 
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Text="Список изменений" FontWeight="SemiBold" />
+                                    <TextBlock Text="История изменений" FontWeight="SemiBold" />
                                     <TextBlock Text="Что нового в текущей версии" FontSize="12" Opacity="0.6" />
                                 </StackPanel>
                             </Grid>
