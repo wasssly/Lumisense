@@ -163,6 +163,7 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     [InlineData("Slider")]
     [InlineData("Waveform")]
     [InlineData("Material")]
+    [InlineData("MaterialSlider")]
     public void TryLoad_ProgressBarStyle_KnownValuesArePreserved(string style)
     {
         bool result = TryLoad("{\"ProgressBarStyle\": \"" + style + "\"}", out AppSettings? settings, out _);
@@ -198,6 +199,47 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
 
         Assert.True(result);
         Assert.Equal("Default", settings!.SliderStyle);
+    }
+
+    [Theory]
+    [InlineData("Default")]
+    [InlineData("Material")]
+    [InlineData("MaterialSlider")]
+    public void TryLoad_MiniPlayerProgressStyle_KnownValuesArePreserved(string style)
+    {
+        bool result = TryLoad("{\"MiniPlayerProgressStyle\": \"" + style + "\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(style, settings!.MiniPlayerProgressStyle);
+    }
+
+    [Fact]
+    public void TryLoad_UnknownMiniPlayerProgressStyle_FallsBackToDefault()
+    {
+        bool result = TryLoad("{\"MiniPlayerProgressStyle\": \"Neon\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal("Default", settings!.MiniPlayerProgressStyle);
+    }
+
+    [Theory]
+    [InlineData("Default")]
+    [InlineData("Material")]
+    public void TryLoad_MiniPlayerArtworkProgressStyle_KnownValuesArePreserved(string style)
+    {
+        bool result = TryLoad("{\"MiniPlayerArtworkProgressStyle\": \"" + style + "\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(style, settings!.MiniPlayerArtworkProgressStyle);
+    }
+
+    [Fact]
+    public void TryLoad_UnknownMiniPlayerArtworkProgressStyle_FallsBackToDefault()
+    {
+        bool result = TryLoad("{\"MiniPlayerArtworkProgressStyle\": \"MaterialSlider\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal("Default", settings!.MiniPlayerArtworkProgressStyle);
     }
 
     [Fact]
