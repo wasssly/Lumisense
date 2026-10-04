@@ -299,7 +299,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         if (!_isMsiMigrationOnly && _settings != null && _result.LatestVersion != null)
         {
             _settings.SkippedUpdateVersion = _result.LatestVersion;
-            SettingsManager.Save(_settings);
+            BackgroundTask.FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         }
 
         Close();
@@ -456,7 +456,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         // Сохраняем выбор сразу, как и в настройках. Следующая операция и последующие обновления
         // используют новый источник; текущий .part не переиспользуется между разными URL.
         _settings.UpdateDownloadSource = sourceKey;
-        SettingsManager.Save(_settings);
+        BackgroundTask.FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         _restartLegacyDownloadFromNewSource = true;
         PauseDownloadButton.IsEnabled = false;
         ChangeDownloadSourceButton.IsEnabled = false;

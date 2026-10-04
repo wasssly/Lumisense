@@ -183,7 +183,7 @@ public partial class StatisticsWindow : FluentWindow
 
         PlayCountManager.Reset();
         _settings.PlayCounts = PlayCountManager.GetAll();
-        SettingsManager.Save(_settings);
+        BackgroundTask.FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
 
         _ = LoadAsync();
     }
@@ -207,7 +207,7 @@ public partial class StatisticsWindow : FluentWindow
         _settings.TotalListenSeconds = 0;
         _settings.StatsStartedAt = null;
         _settings.PlayCounts = PlayCountManager.GetAll();
-        SettingsManager.Save(_settings);
+        BackgroundTask.FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
 
         _ = LoadAsync();
     }

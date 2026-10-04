@@ -782,7 +782,7 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
         if (sender is not System.Windows.Controls.RadioButton { Tag: string key }) return;
         _settings.UpdateDownloadSource = key;
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private async void ProbeUpdateSourcesButton_Click(object sender, RoutedEventArgs e)
@@ -2763,7 +2763,7 @@ public partial class SettingsWindow : FluentWindow
         LumiProfileIO.Apply(profile.Settings, _settings);
         LocalizationService.ChangeLanguage(_settings, _settings.Language);
         _owner.ApplyImportedSettingsLive();
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
 
         LocalizedMessageBox.Show(this,
             "Настройки импортированы.\n\nЧасть из них (хоткеи, эквалайзер, поведение трея и мини-плеера) применится полностью после перезапуска плеера.",
@@ -2795,7 +2795,7 @@ public partial class SettingsWindow : FluentWindow
         LumiProfileIO.ResetToDefaults(_settings);
         LocalizationService.ChangeLanguage(_settings, _settings.Language);
         _owner.ApplyImportedSettingsLive();
-        SettingsManager.Save(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
 
         LocalizedMessageBox.Show(this,
             "Плеер сброшен к исходным настройкам.\n\nЧасть из них (хоткеи, эквалайзер, поведение трея и мини-плеера, размер и положение окна) применится полностью после перезапуска плеера.",
