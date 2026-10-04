@@ -80,7 +80,7 @@ public static class LumiProfileIO
     private static bool IsSafeSettings(AppSettings settings)
     {
         if ((settings.Language?.Length ?? 0) > 8 || (settings.AccentColorHex?.Length ?? 0) > 32 || (settings.WindowBackdropType?.Length ?? 0) > 32 ||
-            (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
+            (settings.ProgressBarStyle?.Length ?? 0) > 32 || (settings.SliderStyle?.Length ?? 0) > 32 || (settings.RepeatMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerSecondaryButton?.Length ?? 0) > 32 || (settings.MiniPlayerInfoMode?.Length ?? 0) > 32 ||
             (settings.MiniPlayerArtworkStyle?.Length ?? 0) > 32 ||
             (settings.OutputDeviceName?.Length ?? 0) > 128 ||
@@ -147,6 +147,7 @@ public static class LumiProfileIO
         target.CoverBaseFromCover = source.CoverBaseFromCover;
         target.WindowBackdropType = source.WindowBackdropType;
         target.ProgressBarStyle = source.ProgressBarStyle;
+        target.SliderStyle = source.SliderStyle;
         target.AlwaysOnTop = source.AlwaysOnTop;
         target.RememberVolume = source.RememberVolume;
         target.SavedVolume = source.SavedVolume;

@@ -32,6 +32,7 @@ internal interface ISettingsAppearanceHost
     void ApplyWindowBackdrop(bool forceReapply = false);
     void ApplySyncedLyricsAppearance();
     void ApplyProgressBarStyle();
+    void ApplySliderStyle();
 }
 
 // Звук и устройство вывода.

@@ -423,7 +423,7 @@
                                 </Track.IncreaseRepeatButton>
 
                                 <Track.Thumb>
-                                    <Thumb Width="14" Height="14" Cursor="Hand"
+                                    <Thumb x:Name="LegacyThumb" Width="14" Height="14" Cursor="Hand"
                                            SnapsToDevicePixels="True" UseLayoutRounding="True">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
@@ -436,7 +436,18 @@
                                     </Thumb>
                                 </Track.Thumb>
                             </Track>
+                            <!-- Material-вид (AppSettings.SliderStyle): рисует всё сам, поэтому обычные части ниже в этом режиме скрываются триггером. -->
+                            <local:MaterialSliderVisual x:Name="PART_MaterialVisual" Visibility="Collapsed" IsHitTestVisible="False"
+                                                         ActiveBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                                         InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Source={x:Static local:SliderAppearance.Instance}, Path=IsMaterial}" Value="True">
+                                <Setter TargetName="PART_MaterialVisual" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="PART_TrackRenderer" Property="Visibility" Value="Hidden" />
+                                <Setter TargetName="LegacyThumb" Property="Opacity" Value="0" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>

@@ -243,11 +243,11 @@
                                 <Track x:Name="PART_Track" VerticalAlignment="Center" Orientation="{TemplateBinding Orientation}"
                                        SnapsToDevicePixels="True" UseLayoutRounding="True">
                                 <Track.DecreaseRepeatButton>
-                                    <RepeatButton Style="{StaticResource AccentSliderDecreaseRepeatButtonStyle}"
+                                    <RepeatButton x:Name="LegacyFill" Style="{StaticResource AccentSliderDecreaseRepeatButtonStyle}"
                                                   Command="Slider.DecreaseLarge" />
                                 </Track.DecreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb Width="14" Height="14" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                                    <Thumb x:Name="LegacyThumb" Width="14" Height="14" SnapsToDevicePixels="True" UseLayoutRounding="True">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
                                                 <Ellipse Fill="{DynamicResource AccentFillColorDefaultBrush}"
@@ -261,6 +261,10 @@
                                                   Command="Slider.IncreaseLarge" />
                                 </Track.IncreaseRepeatButton>
                             </Track>
+                            <!-- Material-вид (AppSettings.SliderStyle): рисует всё сам, поэтому обычные части ниже в этом режиме скрываются триггером. -->
+                            <local:MaterialSliderVisual x:Name="PART_MaterialVisual" Visibility="Collapsed" IsHitTestVisible="False"
+                                                         ActiveBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                                         InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
                             <!-- Overlay расположен после Track, поэтому точки видны и поверх
                                  акцентной части дорожки, но активный шаг остаётся за Thumb. -->
                             <local:SliderMilestoneOverlay x:Name="PART_MilestoneOverlay"
@@ -268,6 +272,15 @@
                                                           Opacity="0.88" IsHitTestVisible="False"
                                                           SnapsToDevicePixels="True" />
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Source={x:Static local:SliderAppearance.Instance}, Path=IsMaterial}" Value="True">
+                                <Setter TargetName="PART_MaterialVisual" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="PART_MilestoneRail" Property="Visibility" Value="Hidden" />
+                                <Setter TargetName="PART_MilestoneOverlay" Property="Visibility" Value="Hidden" />
+                                <Setter TargetName="LegacyFill" Property="Opacity" Value="0" />
+                                <Setter TargetName="LegacyThumb" Property="Opacity" Value="0" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -281,7 +294,7 @@
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
                         <Grid Margin="5,0" SnapsToDevicePixels="True" UseLayoutRounding="True">
-                            <Border Width="5" CornerRadius="2.5"
+                            <Border x:Name="LegacyRail" Width="5" CornerRadius="2.5"
                                     Background="{DynamicResource ControlFillColorTertiaryBrush}"
                                     HorizontalAlignment="Center" VerticalAlignment="Stretch"
                                     IsHitTestVisible="False" SnapsToDevicePixels="True"
@@ -291,7 +304,7 @@
                                    HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                    SnapsToDevicePixels="True" UseLayoutRounding="True">
                                 <Track.DecreaseRepeatButton>
-                                    <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
+                                    <RepeatButton x:Name="LegacyFill" Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
                                         <RepeatButton.Template>
                                             <ControlTemplate TargetType="RepeatButton">
                                                 <!-- Внешнее (нижнее) начало заполнения округлено;
@@ -305,7 +318,7 @@
                                     </RepeatButton>
                                 </Track.DecreaseRepeatButton>
                                 <Track.Thumb>
-                                    <Thumb Width="14" Height="14" Cursor="Hand"
+                                    <Thumb x:Name="LegacyThumb" Width="14" Height="14" Cursor="Hand"
                                            SnapsToDevicePixels="True" UseLayoutRounding="True">
                                         <Thumb.Template>
                                             <ControlTemplate TargetType="Thumb">
@@ -326,7 +339,19 @@
                                     </RepeatButton>
                                 </Track.IncreaseRepeatButton>
                             </Track>
+                            <!-- Material-вид (AppSettings.SliderStyle): рисует всё сам, поэтому обычные части ниже в этом режиме скрываются триггером. -->
+                            <local:MaterialSliderVisual x:Name="PART_MaterialVisual" Visibility="Collapsed" IsHitTestVisible="False" IsCentered="True"
+                                                         ActiveBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                                         InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
                         </Grid>
+                        <ControlTemplate.Triggers>
+                            <DataTrigger Binding="{Binding Source={x:Static local:SliderAppearance.Instance}, Path=IsMaterial}" Value="True">
+                                <Setter TargetName="PART_MaterialVisual" Property="Visibility" Value="Visible" />
+                                <Setter TargetName="LegacyRail" Property="Visibility" Value="Hidden" />
+                                <Setter TargetName="LegacyFill" Property="Opacity" Value="0" />
+                                <Setter TargetName="LegacyThumb" Property="Opacity" Value="0" />
+                            </DataTrigger>
+                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -1358,6 +1383,19 @@
                                 <RadioButton x:Name="ProgressBarMaterialRadio" Content="Material (волнистая линия, как в Android)"
                                              GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,12" />
                                 <TextBlock Text="Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. AppSettings.SliderStyle / MaterialSliderVisual. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Вид ползунков" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="SliderStyleDefaultRadio" Content="Обычный (по умолчанию)"
+                                             GroupName="SliderStyle" Checked="SliderStyleRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="SliderStyleMaterialRadio" Content="Material (тонкая ручка с зазором, как в Android)"
+                                             GroupName="SliderStyle" Checked="SliderStyleRadio_Changed" Margin="0,0,0,12" />
+                                <TextBlock Text="Меняет вид всех ползунков: громкость, скорость, эквалайзер и настройки."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>

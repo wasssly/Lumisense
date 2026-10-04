@@ -57,7 +57,7 @@
                             <Grid HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent">
                                 <!-- Фоновая полоса трека: тонкая поперёк оси движения, на всю длину вдоль неё;
                                      оси зависят от Slider.Orientation, отсюда триггер. -->
-                                <Border CornerRadius="2.5" Background="{DynamicResource ControlStrongFillColorDefaultBrush}">
+                                <Border x:Name="LegacyRail" CornerRadius="2.5" Background="{DynamicResource ControlStrongFillColorDefaultBrush}">
                                     <Border.Style>
                                         <Style TargetType="Border">
                                             <Setter Property="Height" Value="5" />
@@ -80,7 +80,7 @@
                                 <Track x:Name="PART_Track" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                                        Orientation="{TemplateBinding Orientation}">
                                     <Track.DecreaseRepeatButton>
-                                        <RepeatButton Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
+                                        <RepeatButton x:Name="LegacyFill" Command="Slider.DecreaseLarge" Background="Transparent" BorderThickness="0">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
                                                     <!-- Как у фоновой полосы: заполненная часть трека тонкая поперёк оси движения и растянута вдоль неё. -->
@@ -123,7 +123,7 @@
                                     </Track.IncreaseRepeatButton>
 
                                     <Track.Thumb>
-                                        <Thumb Width="16" Height="16" Cursor="Hand">
+                                        <Thumb x:Name="LegacyThumb" Width="16" Height="16" Cursor="Hand">
                                             <Thumb.Template>
                                                 <ControlTemplate TargetType="Thumb">
                                                     <Ellipse Fill="{DynamicResource AccentFillColorDefaultBrush}"
@@ -134,12 +134,25 @@
                                         </Thumb>
                                     </Track.Thumb>
                                 </Track>
+                                <!-- Material-вид (AppSettings.SliderStyle): рисует всё сам, поэтому обычные части ниже в этом режиме скрываются триггером. -->
+                                <local:MaterialSliderVisual x:Name="PART_MaterialVisual" Visibility="Collapsed" IsHitTestVisible="False"
+                                                             ActiveBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                                             InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
                                 <!-- Точки рисуются только у Slider с SliderMilestoneMarkers.IsEnabled; Overlay после Track, поэтому виден на заполненной и незаполненной частях. -->
                                 <local:SliderMilestoneOverlay x:Name="PART_MilestoneOverlay"
                                                               MarkerBrush="{DynamicResource TextFillColorSecondaryBrush}"
                                                               Opacity="0.88" IsHitTestVisible="False"
                                                               SnapsToDevicePixels="True" />
                             </Grid>
+                            <ControlTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Source={x:Static local:SliderAppearance.Instance}, Path=IsMaterial}" Value="True">
+                                    <Setter TargetName="PART_MaterialVisual" Property="Visibility" Value="Visible" />
+                                    <Setter TargetName="LegacyRail" Property="Visibility" Value="Hidden" />
+                                    <Setter TargetName="PART_MilestoneOverlay" Property="Visibility" Value="Hidden" />
+                                    <Setter TargetName="LegacyFill" Property="Opacity" Value="0" />
+                                    <Setter TargetName="LegacyThumb" Property="Opacity" Value="0" />
+                                </DataTrigger>
+                            </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>

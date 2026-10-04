@@ -211,6 +211,8 @@ public partial class SettingsWindow : FluentWindow
         ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
         ProgressBarMaterialRadio.IsChecked = _settings.ProgressBarStyle == "Material";
         ProgressBarSliderRadio.IsChecked = _settings.ProgressBarStyle is not ("Waveform" or "Material");
+        SliderStyleMaterialRadio.IsChecked = _settings.SliderStyle == "Material";
+        SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
         DiscordRichPresenceEnabledCheckBox.IsChecked = _settings.DiscordRichPresenceEnabled;
         DiscordRichPresenceShowTrackInfoCheckBox.IsChecked = _settings.DiscordRichPresenceShowTrackInfo;
@@ -2656,6 +2658,15 @@ public partial class SettingsWindow : FluentWindow
             : ProgressBarMaterialRadio.IsChecked == true ? "Material"
             : "Slider";
         _owner.ApplyProgressBarStyle();
+    }
+
+    // См. AppSettings.SliderStyle: переключение применяется ко всем окнам сразу через SliderAppearance.
+    private void SliderStyleRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.SliderStyle = SliderStyleMaterialRadio.IsChecked == true ? "Material" : "Default";
+        _owner.ApplySliderStyle();
     }
 
     // См. AppSettings.ReplayGainEnabled / ReplayGainReader.

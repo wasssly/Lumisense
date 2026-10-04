@@ -887,6 +887,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             ApplyAccentColor();
             ApplyWindowBackdrop();
             ApplyProgressBarStyle();
+            ApplySliderStyle();
 
             if (_settings.AlwaysOnTop)
                 Topmost = true;
@@ -928,6 +929,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         if (isWaveform)
             FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
     }
+
+    // Вид всех Slider (AppSettings.SliderStyle): шаблоны подписаны на SliderAppearance, поэтому открытые окна обновляются сами.
+    public void ApplySliderStyle() => SliderAppearance.Instance.Apply(_settings.SliderStyle);
 
     // Считает (или берёт из кэша) волну загруженного трека: из LoadAndPlay при режиме "Waveform" и из ApplyProgressBarStyle
     // при переключении на него на уже играющем треке.

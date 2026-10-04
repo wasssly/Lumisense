@@ -127,6 +127,10 @@ public class AppSettings
     // влияет — при высоте полосы 4px волна неразличима.
     public string ProgressBarStyle { get; set; } = "Slider";
 
+    // "Default" (по умолчанию) или "Material" (тонкая ручка и зазор, см. MaterialSliderVisual) — вид всех ползунков
+    // в приложении, включая вертикальные в эквалайзере.
+    public string SliderStyle { get; set; } = "Default";
+
     public bool AlwaysOnTop { get; set; }                  // Держать окно поверх остальных
     public bool RememberVolume { get; set; } = true;       // Запоминать громкость между запусками
     // Только для чистого профиля: существующий SavedVolume из settings.json не перезаписывается.
