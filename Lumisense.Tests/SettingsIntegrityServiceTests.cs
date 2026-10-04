@@ -180,6 +180,26 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
         Assert.Equal("Slider", settings!.ProgressBarStyle);
     }
 
+    [Theory]
+    [InlineData("Default")]
+    [InlineData("Material")]
+    public void TryLoad_SliderStyle_KnownValuesArePreserved(string style)
+    {
+        bool result = TryLoad("{\"SliderStyle\": \"" + style + "\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(style, settings!.SliderStyle);
+    }
+
+    [Fact]
+    public void TryLoad_UnknownSliderStyle_FallsBackToDefault()
+    {
+        bool result = TryLoad("{\"SliderStyle\": \"Neon\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal("Default", settings!.SliderStyle);
+    }
+
     [Fact]
     public void TryLoad_InvalidAccentColorHex_FallsBackToDefault()
     {
