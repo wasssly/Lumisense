@@ -246,7 +246,7 @@ internal static class SettingsIntegrityService
         settings.RepeatMode = Allowed(settings.RepeatMode, defaults.RepeatMode, "Off", "All", "One");
         settings.MiniPlayerProgressStyle = Allowed(settings.MiniPlayerProgressStyle, defaults.MiniPlayerProgressStyle, "Default", "Material", "MaterialSlider");
         settings.MiniPlayerArtworkProgressStyle = Allowed(settings.MiniPlayerArtworkProgressStyle, defaults.MiniPlayerArtworkProgressStyle, "Default", "Material", "MaterialSlider");
-        settings.MiniPlayerArtworkStyle = Allowed(settings.MiniPlayerArtworkStyle, defaults.MiniPlayerArtworkStyle, "Default", "Vinyl");
+        settings.MiniPlayerArtworkStyle = Allowed(settings.MiniPlayerArtworkStyle, defaults.MiniPlayerArtworkStyle, "Default", "Vinyl", "StaticCircle");
         settings.MiniPlayerSecondaryButton = Allowed(settings.MiniPlayerSecondaryButton, defaults.MiniPlayerSecondaryButton, "Repeat", "Shuffle", "Favorite");
         settings.MiniPlayerInfoMode = Allowed(settings.MiniPlayerInfoMode, defaults.MiniPlayerInfoMode, "TitleArtist", "TitleOnly", "TitleRemaining");
         settings.MiniPlayerButtonsLayout = Allowed(settings.MiniPlayerButtonsLayout, defaults.MiniPlayerButtonsLayout, "Below", "Overlay");

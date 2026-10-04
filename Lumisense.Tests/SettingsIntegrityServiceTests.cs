@@ -243,6 +243,18 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
         Assert.Equal("Default", settings!.MiniPlayerArtworkProgressStyle);
     }
 
+    [Theory]
+    [InlineData("Default")]
+    [InlineData("Vinyl")]
+    [InlineData("StaticCircle")]
+    public void TryLoad_MiniPlayerArtworkStyle_KnownValuesArePreserved(string style)
+    {
+        bool result = TryLoad("{\"MiniPlayerArtworkStyle\": \"" + style + "\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(style, settings!.MiniPlayerArtworkStyle);
+    }
+
     [Fact]
     public void TryLoad_InvalidAccentColorHex_FallsBackToDefault()
     {
