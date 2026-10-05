@@ -67,13 +67,13 @@ Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: 
 Name: "{group}\{cm:UninstallLumisense}"; Filename: "{uninstallexe}"
 
 [Registry]
-Root: HKCR; Subkey: ".mp3"; ValueType: string; ValueName: ""; ValueData: "Lumisense.AudioFile"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".wav"; ValueType: string; ValueName: ""; ValueData: "Lumisense.AudioFile"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".flac"; ValueType: string; ValueName: ""; ValueData: "Lumisense.AudioFile"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".m4a"; ValueType: string; ValueName: ""; ValueData: "Lumisense.AudioFile"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".aac"; ValueType: string; ValueName: ""; ValueData: "Lumisense.AudioFile"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".ogg"; ValueType: string; ValueName: ""; ValueData: "Lumisense.AudioFile"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: ".wma"; ValueType: string; ValueName: ""; ValueData: "Lumisense.AudioFile"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".mp3\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".wav\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".flac\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".m4a\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".aac\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".ogg\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".wma\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
 
 Root: HKCR; Subkey: "Lumisense.AudioFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Lumisense.exe,0"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "Lumisense.AudioFile\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
