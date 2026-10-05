@@ -103,16 +103,19 @@ internal static class LegacyIntegrationRepairService
         }
     }
 
-    /// <summary>A wildcard leftover under HKLM (pre-dating the installer's fix) needs elevation, so this asks
-    /// via UAC once and never retries.</summary>
-    public static void TryCleanupLegacyHklmWildcardContextMenu()
+    /// <summary>True only the first time on this machine; the caller must save the settings before running the cleanup.</summary>
+    public static bool TryClaimLegacyHklmWildcardCleanup(AppSettings settings)
     {
-        AppSettings settings = SettingsManager.Load();
-        if (settings.HklmWildcardContextMenuCleanupAttempted) return;
+        if (settings.HklmWildcardContextMenuCleanupAttempted) return false;
 
+        // Флаг ставится в объекте главного окна: отдельная копия настроек затиралась бы его checkpoint-сохранением.
         settings.HklmWildcardContextMenuCleanupAttempted = true;
-        SettingsManager.Save(settings);
+        return true;
+    }
 
+    /// <summary>A wildcard leftover under HKLM (pre-dating the installer's fix) needs elevation, so this asks via UAC.</summary>
+    public static void CleanupLegacyHklmWildcardContextMenu()
+    {
         try
         {
             using RegistryKey? wildcardShellKey = Registry.LocalMachine.OpenSubKey(@"Software\Classes\*\shell");

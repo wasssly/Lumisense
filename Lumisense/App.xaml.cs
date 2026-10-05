@@ -184,8 +184,12 @@ public partial class App : Application
             nameof(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken));
         // Отдельный, гораздо более редкий случай (см. метод) — свой Task.Run, чтобы UAC-промпт
         // (если он вообще понадобится) не блокировал очередь выше.
-        BackgroundTask.FireAndForget(Task.Run(LegacyIntegrationRepairService.TryCleanupLegacyHklmWildcardContextMenu),
-            nameof(LegacyIntegrationRepairService.TryCleanupLegacyHklmWildcardContextMenu));
+        if (LegacyIntegrationRepairService.TryClaimLegacyHklmWildcardCleanup(window.Settings))
+        {
+            BackgroundTask.FireAndForget(SettingsManager.SaveAsync(window.Settings), "SaveSettingsAsync");
+            BackgroundTask.FireAndForget(Task.Run(LegacyIntegrationRepairService.CleanupLegacyHklmWildcardContextMenu),
+                nameof(LegacyIntegrationRepairService.CleanupLegacyHklmWildcardContextMenu));
+        }
 
         // Этот вызов возможен лишь после успешного создания MSI-окна. Он одноразово обрабатывает
         // marker Velopack и только при точном обнаружении legacy Inno Setup предлагает cleanup.

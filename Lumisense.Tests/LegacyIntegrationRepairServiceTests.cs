@@ -58,4 +58,14 @@ public sealed class LegacyIntegrationRepairServiceTests
 
         Assert.False(result);
     }
+
+    [Fact]
+    public void TryClaimLegacyHklmWildcardCleanup_SucceedsOnceAndMarksSettings()
+    {
+        var settings = new AppSettings();
+
+        Assert.True(LegacyIntegrationRepairService.TryClaimLegacyHklmWildcardCleanup(settings));
+        Assert.True(settings.HklmWildcardContextMenuCleanupAttempted);
+        Assert.False(LegacyIntegrationRepairService.TryClaimLegacyHklmWildcardCleanup(settings));
+    }
 }
