@@ -207,8 +207,9 @@ public static class UpdateChecker
         // Этот лимит относится к установлению HTTP-ответа и API-запросам. Для тела большого
         // установщика используется ResponseHeadersRead и отдельный read-idle timeout ниже.
         var client = new HttpClient { Timeout = System.TimeSpan.FromSeconds(30) };
-        // GitHub API отклоняет запросы без User-Agent
-        client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Lumisense", "1.0"));
+        // GitHub API требует User-Agent; при нестандартной строке версии остаёмся на запасном значении.
+        if (!client.DefaultRequestHeaders.UserAgent.TryParseAdd($"Lumisense/{GetCurrentVersion()}"))
+            client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("Lumisense", "1.0"));
         client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
         return client;
     }

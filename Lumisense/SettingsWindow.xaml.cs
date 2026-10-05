@@ -3059,7 +3059,7 @@ public partial class SettingsWindow : FluentWindow
             else
             {
                 using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(10) };
-                client.DefaultRequestHeaders.UserAgent.ParseAdd("Lumisense/1.0");
+                client.DefaultRequestHeaders.UserAgent.ParseAdd(LyricsNetworkIdentity.UserAgentValue);
                 bytes = await client.GetByteArrayAsync(avatarUrl);
                 if (bytes.Length == 0 || bytes.Length > 2 * 1024 * 1024) return;
 
