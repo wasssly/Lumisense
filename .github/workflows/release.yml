@@ -140,7 +140,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Velopack package creation failed." }
 
       - name: Install Inno Setup
-        run: choco install innosetup --no-progress -y
+        run: choco install innosetup --version=6.7.1 --no-progress -y
 
       - name: Build versioned Inno Setup installer
         shell: pwsh
