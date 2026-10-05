@@ -16,6 +16,9 @@ on:
 
 permissions:
   contents: write
+  id-token: write
+  attestations: write
+  artifact-metadata: write
 
 jobs:
   release:
@@ -152,6 +155,14 @@ jobs:
           if (-not (Test-Path $source)) { throw "Inno Setup output '$source' was not found." }
           Move-Item -Path $source -Destination $target -Force
           Write-Host "Prepared versioned Inno Setup asset: $target"
+
+      - name: Attest build provenance of the installers
+        if: github.event_name != 'workflow_dispatch'
+        uses: actions/attest@1e69f48acb82d1966a394da916b4c1698aa569d6 # v4.2.2
+        with:
+          subject-path: |
+            Lumisense-${{ steps.ver.outputs.version }}-Setup.exe
+            VelopackReleases/Wasssly.Lumisense-win.msi
 
       - name: Create GitHub Release
         id: release
