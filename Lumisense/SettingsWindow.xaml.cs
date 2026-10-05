@@ -40,6 +40,7 @@ public partial class SettingsWindow : FluentWindow
     // См. LoadDeveloperAvatar — держит BitmapImage живым на время асинхронной загрузки, чтобы
     // его не собрал GC до того, как скачивание завершится.
     private BitmapImage? _developerAvatarBitmap;
+    private bool _developerAvatarRequested;
 
     // Пока не None — окно "слушает" следующее нажатие клавиш и запишет его как новую комбинацию
     private HotkeyTarget _recordingTarget = HotkeyTarget.None;
@@ -274,7 +275,6 @@ public partial class SettingsWindow : FluentWindow
         BuildSearchIndex();
 
         RefreshAppVersionText();
-        LoadDeveloperAvatar();
         RefreshLyricsCacheInfo();
         RefreshResetRecoveryButton();
         RefreshUpdateSourceProbePresentation();
@@ -2966,6 +2966,8 @@ public partial class SettingsWindow : FluentWindow
         PageAbout.Visibility = key == "About" ? Visibility.Visible : Visibility.Collapsed;
         if (key == "Updates" && IsLoaded && _basePackagePlan is null)
             _ = RefreshVelopackBasePackagePlanAsync();
+        if (key == "About")
+            LoadDeveloperAvatar();
 
         // Один ScrollViewer на все страницы (см. SettingsWindow.xaml) без сброса помнил бы прокрутку прошлой вкладки;
         // SearchResultItem_Click позже отложенно прокрутит к найденному элементу и просто переопределит позицию.
@@ -3027,10 +3029,16 @@ public partial class SettingsWindow : FluentWindow
 
     private void OpenLogsButton_Click(object sender, RoutedEventArgs e) => Logger.OpenLogsFolder();
 
-    // Загружает аватар один раз и сохраняет его локально, чтобы последующие открытия Settings
-    // не зависели от сети и не создавали новый HTTP-запрос каждый раз.
+    // Загружается при первом показе страницы «О плеере» и кэшируется локально, чтобы последующие
+    // открытия Settings не зависели от сети и не создавали новый HTTP-запрос каждый раз.
     private void LoadDeveloperAvatar()
-        => BackgroundTask.FireAndForget(LoadDeveloperAvatarAsync(), nameof(LoadDeveloperAvatar));
+    {
+        // Одна попытка на окно: повторные переключения вкладок не должны повторять неудавшийся запрос.
+        if (_developerAvatarRequested) return;
+
+        _developerAvatarRequested = true;
+        BackgroundTask.FireAndForget(LoadDeveloperAvatarAsync(), nameof(LoadDeveloperAvatar));
+    }
 
     private async Task LoadDeveloperAvatarAsync()
     {
