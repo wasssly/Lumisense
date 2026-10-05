@@ -2193,7 +2193,18 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        StartupManager.SetEnabled(LaunchOnStartupCheckBox.IsChecked == true);
+        if (StartupManager.SetEnabled(LaunchOnStartupCheckBox.IsChecked == true)) return;
+
+        // Реестр не изменился — возвращаем флажок к фактическому состоянию.
+        _isInitializing = true;
+        try
+        {
+            LaunchOnStartupCheckBox.IsChecked = StartupManager.IsEnabled();
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
     }
 
     private void StartHiddenInTrayCheckBox_Changed(object sender, RoutedEventArgs e)
