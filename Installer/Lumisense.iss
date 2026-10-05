@@ -127,9 +127,31 @@ begin
   RegDeleteKeyIncludingSubkeys(HKEY_CLASSES_ROOT, '*\\shell\\LumisenseOpen');
 end;
 
+procedure RemoveLegacyDefaultAssociation(const Extension: String);
+var
+  Current: String;
+begin
+  // Ранние версии записывали Lumisense.AudioFile обработчиком по умолчанию у класса расширения; сейчас регистрация
+  // идёт через OpenWithProgids, а чужое значение трогать нельзя, поэтому удаляем только своё.
+  if RegQueryStringValue(HKEY_CLASSES_ROOT, Extension, '', Current) and (Current = 'Lumisense.AudioFile') then
+    RegDeleteValue(HKEY_CLASSES_ROOT, Extension, '');
+end;
+
+procedure RemoveLegacyDefaultAssociations;
+begin
+  RemoveLegacyDefaultAssociation('.mp3');
+  RemoveLegacyDefaultAssociation('.wav');
+  RemoveLegacyDefaultAssociation('.flac');
+  RemoveLegacyDefaultAssociation('.m4a');
+  RemoveLegacyDefaultAssociation('.aac');
+  RemoveLegacyDefaultAssociation('.ogg');
+  RemoveLegacyDefaultAssociation('.wma');
+end;
+
 function InitializeSetup(): Boolean;
 begin
   RemoveLegacyWildcardContextMenu;
+  RemoveLegacyDefaultAssociations;
   Result := True;
 end;
 
