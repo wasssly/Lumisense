@@ -182,6 +182,7 @@ public partial class App : Application
         // Дешёвая проверка реестра, без влияния на время запуска (см. RepairContextMenuScopeIfBroken).
         BackgroundTask.FireAndForget(Task.Run(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken),
             nameof(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken));
+        BackgroundTask.FireAndForget(Task.Run(StartupManager.RepairStalePath), nameof(StartupManager.RepairStalePath));
         // Отдельный, гораздо более редкий случай (см. метод) — свой Task.Run, чтобы UAC-промпт
         // (если он вообще понадобится) не блокировал очередь выше.
         if (LegacyIntegrationRepairService.TryClaimLegacyHklmWildcardCleanup(window.Settings))

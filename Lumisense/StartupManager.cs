@@ -1,3 +1,4 @@
+using System.IO;
 using Microsoft.Win32;
 
 namespace Lumisense;
@@ -53,5 +54,37 @@ public static class StartupManager
             Logger.Warn($"Не удалось изменить автозапуск: {ex.Message}");
             return false;
         }
+    }
+
+    // Ключ Run хранит путь на момент включения: после переноса папки или переустановки в другое место он остаётся
+    // старым, и автозапуск молча перестаёт работать.
+    public static void RepairStalePath()
+    {
+        try
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(RunKeyPath, writable: true);
+            if (key?.GetValue(RunValueName) is not string runValue) return;
+
+            string? currentExePath = System.Environment.ProcessPath;
+            if (!ShouldRepoint(runValue, currentExePath, File.Exists)) return;
+
+            key.SetValue(RunValueName, $"\"{currentExePath}\"");
+            Logger.Info("Автозапуск перепривязан на текущий путь Lumisense: прежний файл не найден.");
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось проверить путь автозапуска: {ex.Message}");
+        }
+    }
+
+    // Перепривязываем только если прежнего файла уже нет: иначе запуск второй копии (например, portable) увёл бы автозапуск.
+    internal static bool ShouldRepoint(string runValue, string? currentExePath, Func<string, bool> fileExists)
+    {
+        if (string.IsNullOrEmpty(currentExePath)) return false;
+
+        string? registeredPath = LegacyIntegrationRepairService.ExtractExecutablePath(runValue);
+        return registeredPath is not null &&
+               !string.Equals(registeredPath, currentExePath, StringComparison.OrdinalIgnoreCase) &&
+               !fileExists(registeredPath);
     }
 }
