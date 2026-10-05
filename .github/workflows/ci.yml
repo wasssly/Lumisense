@@ -38,13 +38,13 @@ jobs:
       - name: Build Windows application
         run: dotnet build Lumisense/Lumisense.csproj --configuration Release --no-restore
 
-      - name: Run tests when a test project exists
+      - name: Run tests
         shell: pwsh
         run: |
           $projects = Get-ChildItem -Recurse -Filter '*Tests.csproj' | Select-Object -ExpandProperty FullName
           if ($projects.Count -eq 0) {
-            Write-Host "No test project exists yet; build validation completed."
-            exit 0
+            Write-Error "No *Tests.csproj found; refusing to pass CI without tests."
+            exit 1
           }
           # xUnit v3 uses Microsoft Testing Platform. The repository global.json selects MTP
           # for .NET 10 SDKs, which run this candidate's xUnit v3 tests through MTP.

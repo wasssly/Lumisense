@@ -63,6 +63,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Build of Lumisense.csproj failed." }
 
           $projects = Get-ChildItem -Recurse -Filter '*Tests.csproj' | Select-Object -ExpandProperty FullName
+          if ($projects.Count -eq 0) { throw "No *Tests.csproj found; refusing to release without tests." }
           # xUnit v3 uses Microsoft Testing Platform. The repository global.json selects MTP
           # for .NET 10 SDKs, avoiding the unsupported fallback to VSTest during release tests.
           foreach ($project in $projects) {
