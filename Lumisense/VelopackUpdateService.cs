@@ -1,6 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Velopack;
@@ -68,15 +71,34 @@ internal sealed class VelopackUpdateService
 
         try
         {
-            UpdateInfo? update = await _manager.CheckForUpdatesAsync();
+            // CheckForUpdatesAsync не принимает токен: WaitAsync хотя бы освобождает вызывающего при отмене.
+            UpdateInfo? update = await _manager.CheckForUpdatesAsync().WaitAsync(cancellationToken);
             return update is null
                 ? VelopackProbeResult.UpToDate()
                 : VelopackProbeResult.UpdateAvailable(update);
         }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return VelopackProbeResult.Failed("Проверка отменена.", UpdateFailureKind.Unknown);
+        }
         catch (Exception ex)
         {
-            return VelopackProbeResult.Failed(ex.Message);
+            Logger.Warn($"Velopack не смог проверить обновление: {ex.Message}");
+            return VelopackProbeResult.Failed(ex.Message, ClassifyFailure(ex));
         }
+    }
+
+    internal static UpdateFailureKind ClassifyFailure(Exception exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            if (current is HttpRequestException or SocketException or TimeoutException or TaskCanceledException)
+                return UpdateFailureKind.Network;
+            if (current is JsonException or FormatException or InvalidDataException)
+                return UpdateFailureKind.InvalidResponse;
+        }
+
+        return UpdateFailureKind.Unknown;
     }
 
     public async Task DownloadAsync(
@@ -177,21 +199,28 @@ internal enum VelopackProbeStatus
 
 internal sealed class VelopackProbeResult
 {
-    private VelopackProbeResult(VelopackProbeStatus status, UpdateInfo? update = null, string? technicalDetail = null)
+    private VelopackProbeResult(
+        VelopackProbeStatus status,
+        UpdateInfo? update = null,
+        string? technicalDetail = null,
+        UpdateFailureKind failureKind = UpdateFailureKind.None)
     {
         Status = status;
         Update = update;
         TechnicalDetail = technicalDetail;
+        FailureKind = failureKind;
     }
 
     public VelopackProbeStatus Status { get; }
     public UpdateInfo? Update { get; }
     public string? TechnicalDetail { get; }
+    public UpdateFailureKind FailureKind { get; }
 
     public static VelopackProbeResult LegacyInstall() => new(VelopackProbeStatus.LegacyInstall);
     public static VelopackProbeResult UpToDate() => new(VelopackProbeStatus.UpToDate);
     public static VelopackProbeResult UpdateAvailable(UpdateInfo update) => new(VelopackProbeStatus.UpdateAvailable, update);
-    public static VelopackProbeResult Failed(string technicalDetail) => new(VelopackProbeStatus.Error, technicalDetail: technicalDetail);
+    public static VelopackProbeResult Failed(string technicalDetail, UpdateFailureKind failureKind) =>
+        new(VelopackProbeStatus.Error, technicalDetail: technicalDetail, failureKind: failureKind);
 }
 
 internal enum VelopackBasePackageStatus

@@ -18,7 +18,7 @@ public enum UpdateDeliveryKind { LegacyInnoSetup, Velopack }
 
 // Причина ошибки передаётся из сетевого слоя без локализованного текста. UI формирует
 // понятное RU/EN-сообщение в UpdateFailureExperience, а TechnicalDetail остаётся для журнала.
-public enum UpdateFailureKind { None, HttpStatus, InvalidResponse, MissingInstallerChecksum, Network }
+public enum UpdateFailureKind { None, HttpStatus, InvalidResponse, MissingInstallerChecksum, Network, Unknown }
 
 // Результат обращения к GitHub — см. UpdateChecker.CheckAsync
 public sealed class UpdateCheckResult
@@ -246,7 +246,7 @@ public static class UpdateChecker
                     Status = UpdateCheckStatus.Error,
                     DeliveryKind = UpdateDeliveryKind.Velopack,
                     CurrentVersion = currentVersion,
-                    FailureKind = UpdateFailureKind.Network,
+                    FailureKind = probe.FailureKind,
                     TechnicalDetail = probe.TechnicalDetail
                 }
             };
