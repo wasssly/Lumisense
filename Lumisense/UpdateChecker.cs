@@ -868,7 +868,7 @@ public static class UpdateChecker
         }
     }
 
-    private static void TryDelete(string path)
+    internal static void TryDelete(string path)
     {
         try { if (File.Exists(path)) File.Delete(path); }
         catch { /* cleanup is best-effort after cancellation/failure */ }

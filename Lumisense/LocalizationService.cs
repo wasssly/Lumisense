@@ -801,6 +801,8 @@ public static class LocalizationService
         ["Не удалось найти .exe-установщик в этом релизе."] = "Could not find an .exe installer in this release.",
         ["Не удалось скачать установщик: {ex.Message}"] = "Failed to download installer: {ex.Message}",
         ["Скачивание…"] = "Downloading…",
+        ["Запуск установщика отменён."] = "Starting the installer was cancelled.",
+        ["Не удалось запустить установщик."] = "Could not start the installer.",
         ["Скачивается {received} из {FormatBytes(info.TotalBytes!.Value)} ({info.Fraction:P0})"] = "Downloading {received} of {FormatBytes(info.TotalBytes!.Value)} ({info.Fraction:P0})",
         ["Скачивается {received}"] = "Downloading {received}",
         [" — {FormatBytes((long)info.BytesPerSecond)}/с"] = " — {FormatBytes((long)info.BytesPerSecond)}/s",

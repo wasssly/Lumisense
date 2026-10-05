@@ -1,5 +1,7 @@
 using System;
+using System.ComponentModel;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading;
@@ -675,18 +677,7 @@ public partial class UpdateAvailableWindow : FluentWindow
                 ? await UpdateChecker.DownloadMsiAsync(downloadUrl, expectedSha256, progress, _pauseController, _downloadCts.Token)
                 : await UpdateChecker.DownloadInstallerAsync(downloadUrl, expectedSha256, progress, _pauseController, _downloadCts.Token);
 
-            if (isMsi)
-            {
-                SetPreparingForMsiMigration();
-                UpdateChecker.LaunchMsiAndExit(installerPath, expectedSha256);
-            }
-            else
-            {
-                // Перед запуском самого установщика тоже показываем «Подготовка…», чтобы полоса
-                // прогресса не выглядела зависшей между 100% и передачей управления Windows.
-                SetPreparing(isVelopack: false);
-                UpdateChecker.LaunchInstallerAndExit(installerPath, expectedSha256);
-            }
+            LaunchLegacyAsset(isMsi, installerPath, expectedSha256);
         }
         catch (OperationCanceledException) when (_restartLegacyDownloadFromNewSource && IsLoaded)
         {
@@ -704,6 +695,36 @@ public partial class UpdateAvailableWindow : FluentWindow
             ShowError(isMsi
                 ? $"{LocalizationService.Get(LocalizationKey.UpdateMsiMigrationDownloadFailed)}\n\n{ex.Message}"
                 : $"Не удалось скачать установщик: {ex.Message}");
+        }
+    }
+
+    // Отдельный try: отказ от UAC после успешной загрузки не должен выглядеть как ошибка скачивания.
+    private void LaunchLegacyAsset(bool isMsi, string installerPath, string expectedSha256)
+    {
+        try
+        {
+            if (isMsi)
+            {
+                SetPreparingForMsiMigration();
+                UpdateChecker.LaunchMsiAndExit(installerPath, expectedSha256);
+            }
+            else
+            {
+                // Перед запуском самого установщика тоже показываем «Подготовка…», чтобы полоса
+                // прогресса не выглядела зависшей между 100% и передачей управления Windows.
+                SetPreparing(isVelopack: false);
+                UpdateChecker.LaunchInstallerAndExit(installerPath, expectedSha256);
+            }
+        }
+        catch (Exception ex) when (ex is Win32Exception or InvalidDataException or IOException)
+        {
+            UpdateChecker.TryDelete(installerPath);
+            SetDownloading(false);
+            Logger.Warn($"Не удалось запустить {(isMsi ? "MSI для перехода" : "EXE-установщик")}: {ex.Message}");
+            const int ErrorCancelled = 1223;
+            ShowError(ex is Win32Exception { NativeErrorCode: ErrorCancelled }
+                ? LocalizationService.Translate("Запуск установщика отменён.")
+                : $"{LocalizationService.Translate("Не удалось запустить установщик.")}\n\n{ex.Message}");
         }
     }
 
