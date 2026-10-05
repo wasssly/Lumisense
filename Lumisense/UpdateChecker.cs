@@ -196,7 +196,7 @@ public static class UpdateChecker
     private static readonly System.TimeSpan DownloadReadIdleTimeout = System.TimeSpan.FromSeconds(90);
     private static readonly HashSet<string> TrustedDownloadHosts = new(StringComparer.OrdinalIgnoreCase)
     {
-        "github.com", "objects.githubusercontent.com", "gh-proxy.org", "v4.gh-proxy.org",
+        "github.com", "gh-proxy.org", "v4.gh-proxy.org",
         "v6.gh-proxy.org", "cdn.gh-proxy.org", "gh-proxy.com", "ghfast.top"
     };
 
