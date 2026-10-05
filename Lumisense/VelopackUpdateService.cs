@@ -174,17 +174,21 @@ internal sealed class VelopackUpdateService
         _manager.ApplyUpdatesAndRestart(update);
     }
 
-    private static bool HasSufficientDiskSpace(string? packagesDirectory, long requiredBytes)
+    // Если свободное место определить нельзя (сетевой путь и т.п.), не блокируем загрузку: настоящая ошибка
+    // диска лучше, чем ложное «недостаточно места».
+    internal static bool HasSufficientDiskSpace(string? packagesDirectory, long requiredBytes)
     {
         try
         {
-            if (string.IsNullOrWhiteSpace(packagesDirectory)) return false;
-            string? root = Path.GetPathRoot(packagesDirectory);
-            return !string.IsNullOrWhiteSpace(root) && new DriveInfo(root).AvailableFreeSpace >= requiredBytes;
+            string? root = string.IsNullOrWhiteSpace(packagesDirectory) ? null : Path.GetPathRoot(packagesDirectory);
+            if (string.IsNullOrWhiteSpace(root)) return true;
+
+            return new DriveInfo(root).AvailableFreeSpace >= requiredBytes;
         }
-        catch
+        catch (Exception ex) when (ex is IOException or ArgumentException or UnauthorizedAccessException)
         {
-            return false;
+            Logger.Warn($"Не удалось определить свободное место для базового пакета: {ex.Message}");
+            return true;
         }
     }
 }

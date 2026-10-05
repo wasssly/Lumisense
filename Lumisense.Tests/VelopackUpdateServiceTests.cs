@@ -1,3 +1,4 @@
+using System.IO;
 using System.Net.Http;
 using Lumisense;
 using Xunit;
@@ -36,5 +37,21 @@ public sealed class VelopackUpdateServiceTests
     {
         Assert.Equal(UpdateFailureKind.Unknown,
             VelopackUpdateService.ClassifyFailure(new UnauthorizedAccessException()));
+    }
+
+    [Fact]
+    public void HasSufficientDiskSpace_DoesNotBlockWhenFreeSpaceCannotBeDetermined()
+    {
+        Assert.True(VelopackUpdateService.HasSufficientDiskSpace(null, long.MaxValue));
+        Assert.True(VelopackUpdateService.HasSufficientDiskSpace("  ", long.MaxValue));
+    }
+
+    [Fact]
+    public void HasSufficientDiskSpace_ComparesAgainstFreeSpaceOfTheDrive()
+    {
+        string directory = Path.GetTempPath();
+
+        Assert.True(VelopackUpdateService.HasSufficientDiskSpace(directory, 0));
+        Assert.False(VelopackUpdateService.HasSufficientDiskSpace(directory, long.MaxValue));
     }
 }
