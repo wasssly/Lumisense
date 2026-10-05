@@ -671,13 +671,15 @@ public static class UpdateChecker
         CancellationToken ct) =>
         DownloadReleaseAssetAsync(downloadUrl, expectedSha256, ".msi", progress, pauseController, ct);
 
-    private static async Task<string> DownloadReleaseAssetAsync(
+    // client нужен тестам, чтобы подставить HttpMessageHandler; в приложении всегда используется общий Http.
+    internal static async Task<string> DownloadReleaseAssetAsync(
         string downloadUrl,
         string expectedSha256,
         string extension,
         System.IProgress<DownloadProgressInfo>? progress,
         DownloadPauseController? pauseController,
-        CancellationToken ct)
+        CancellationToken ct,
+        HttpClient? client = null)
     {
         if (!TryValidateDownloadUrl(downloadUrl, out var uri))
             throw new InvalidOperationException("Источник обновления не входит в список доверенных HTTPS-адресов.");
@@ -691,7 +693,7 @@ public static class UpdateChecker
         {
             try
             {
-                return await DownloadReleaseAssetOnceAsync(uri, expectedHash, extension, progress, pauseController, ct);
+                return await DownloadReleaseAssetOnceAsync(client ?? Http, uri, expectedHash, extension, progress, pauseController, ct);
             }
             catch (OperationCanceledException) when (ct.IsCancellationRequested)
             {
@@ -712,6 +714,7 @@ public static class UpdateChecker
     }
 
     private static async Task<string> DownloadReleaseAssetOnceAsync(
+        HttpClient client,
         Uri uri,
         byte[] expectedHash,
         string extension,
@@ -724,7 +727,7 @@ public static class UpdateChecker
         try
         {
             using var sha256 = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-            using var response = await Http.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var response = await client.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, ct);
             response.EnsureSuccessStatusCode();
 
             long? totalBytes = response.Content.Headers.ContentLength;
