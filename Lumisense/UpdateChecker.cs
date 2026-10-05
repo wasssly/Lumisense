@@ -478,7 +478,7 @@ public static class UpdateChecker
         return current?.Version ?? "0.0.0";
     }
 
-    private static bool IsNewer(string latest, string current)
+    internal static bool IsNewer(string latest, string current)
     {
         if (!SemanticVersion.TryParse(latest, out var latestVersion) ||
             !SemanticVersion.TryParse(current, out var currentVersion))
@@ -834,7 +834,7 @@ public static class UpdateChecker
                uri.AbsolutePath.StartsWith("/wasssly/Lumisense/", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool TryValidateDownloadUrl(string value, out Uri uri)
+    internal static bool TryValidateDownloadUrl(string value, out Uri uri)
     {
         if (!Uri.TryCreate(value, UriKind.Absolute, out uri!) || uri.Scheme != Uri.UriSchemeHttps ||
             !TrustedDownloadHosts.Contains(uri.Host))
@@ -848,7 +848,7 @@ public static class UpdateChecker
                uri.Host.Equals("ghfast.top", StringComparison.OrdinalIgnoreCase);
     }
 
-    private static bool TryParseSha256(string? value, out byte[] hash)
+    internal static bool TryParseSha256(string? value, out byte[] hash)
     {
         hash = Array.Empty<byte>();
         const string prefix = "sha256:";
