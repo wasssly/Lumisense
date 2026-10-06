@@ -82,9 +82,13 @@
                                 <local:SvgPathIcon Icon="IconSearch" Size="13" />
                             </ui:Button.Icon>
                         </ui:Button>
-                        <ui:Button x:Name="RemoveCoverButton" Content="Удалить обложку" Appearance="Transparent"
-                                   HorizontalAlignment="Left" Padding="0,2"
-                                   Click="RemoveCoverButton_Click" Visibility="Collapsed" />
+                        <ui:Button x:Name="RemoveCoverButton" Content="Удалить обложку" Appearance="Secondary"
+                                   HorizontalAlignment="Left"
+                                   Click="RemoveCoverButton_Click" Visibility="Collapsed">
+                            <ui:Button.Icon>
+                                <local:SvgPathIcon Icon="IconDelete" Size="13" />
+                            </ui:Button.Icon>
+                        </ui:Button>
                     </StackPanel>
                 </Grid>
 

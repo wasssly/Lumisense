@@ -35,7 +35,7 @@ public partial class TrackChangeToastWindow : Window
     // MainWindow.ResolveToastScreen; остальные параметры — см. AppSettings.TrackChangeToast*.
     public void ShowToast(string title, string artist, Brush? art, bool isLightTheme,
         System.Windows.Forms.Screen screen, string position, string size, double width,
-        string artSide, string textAlignment)
+        string artSide, string textAlignment, bool artNextToText, double backgroundOpacity = 1.0)
     {
         ToastTitleText.Text = title;
 
@@ -45,7 +45,7 @@ public partial class TrackChangeToastWindow : Window
 
         ApplySizePreset(size);
         ApplyWidth(width, size);
-        ApplyLayout(artSide, textAlignment);
+        ApplyLayout(artSide, textAlignment, artNextToText);
         ApplyThemeBrushes(isLightTheme);
 
         if (art is ImageBrush { ImageSource: not null } imageBrush)
@@ -64,7 +64,9 @@ public partial class TrackChangeToastWindow : Window
             ArtIcon.Visibility = art is null ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        ToastBackgroundBrush.Color = isLightTheme ? LightBackground : DarkBackground;
+        Color background = isLightTheme ? LightBackground : DarkBackground;
+        byte alpha = (byte)Math.Round(255 * Math.Clamp(backgroundOpacity, 0.3, 1.0));
+        ToastBackgroundBrush.Color = Color.FromArgb(alpha, background.R, background.G, background.B);
 
         // Останавливаем и таймер, и идущую анимацию: иначе Completed fade-out предыдущего трека сработал бы после
         // показа нового уведомления и спрятал бы его раньше времени.
@@ -196,7 +198,7 @@ public partial class TrackChangeToastWindow : Window
 
     // artSide — какой стороне докается обложка; отступ текстовой колонки — на противоположную
     // сторону. textAlignment — где колонка сидит в оставшемся (LastChildFill) месте.
-    private void ApplyLayout(string artSide, string textAlignment)
+    private void ApplyLayout(string artSide, string textAlignment, bool artNextToText)
     {
         bool artOnRight = artSide == "Right";
         DockPanel.SetDock(ArtBorder, artOnRight ? Dock.Right : Dock.Left);
@@ -217,6 +219,11 @@ public partial class TrackChangeToastWindow : Window
         };
         ToastTitleText.TextAlignment = textAlign;
         ToastArtistText.TextAlignment = textAlign;
+        // Только для «По центру»: DockPanel по центру сжимается до обложки и текста, и они двигаются как одна группа;
+        // иначе панель растянута на карточку, а текст центруется в оставшемся за обложкой месте.
+        ToastContentPanel.HorizontalAlignment = artNextToText && textAlignment == "Center"
+            ? HorizontalAlignment.Center
+            : HorizontalAlignment.Stretch;
     }
 
     // Рабочая область Screen — в физических пикселях: берём DPI именно выбранного монитора и позиционируем

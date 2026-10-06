@@ -827,6 +827,24 @@
                                                        FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                         </StackPanel>
                                     </Border>
+
+                                    <Border x:Name="IconPackCardFontAwesome" Tag="FontAwesome" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
+                                            MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
+                                        <StackPanel>
+                                            <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                                <local:SvgPathIcon Pack="FontAwesome" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="FontAwesome" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                                <local:SvgPathIcon Pack="FontAwesome" Icon="IconSettings" Size="22" />
+                                            </StackPanel>
+                                            <TextBlock Text="Font Awesome" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Плотные силуэты (Free)" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
                                 </WrapPanel>
                             </StackPanel>
                         </Border>
@@ -835,7 +853,7 @@
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Значок приложения" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Применяется сразу ко всем открытым окнам и значку в трее. Значок файла Lumisense.exe, ярлыков и диспетчера задач задаётся сборкой (Aurora) и здесь не меняется."
+                                <TextBlock Text="Применяется сразу ко всем открытым окнам и значку в трее. Значок файла Lumisense.exe и диспетчера задач задаётся сборкой (Aurora) и здесь не меняется; ярлыки на рабочем столе и в меню «Пуск» обновляются автоматически."
                                            FontSize="12" Opacity="0.6" Margin="0,-4,0,16" TextWrapping="Wrap" />
 
                                 <WrapPanel>
@@ -1013,6 +1031,57 @@
                                                    Style="{StaticResource SettingsHelperTextStyle}" Margin="0,10,0,0" />
                                     </StackPanel>
                                 </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Выравнивание текста песни" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Относится к тексту песни в панели главного окна и в режиме Now Playing, и к синхронному, и к обычному."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                                <WrapPanel>
+                                    <RadioButton x:Name="LyricsAlignLeftRadio" Content="Слева"
+                                                 GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="LyricsAlignCenterRadio" Content="По центру"
+                                                 GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="LyricsAlignRightRadio" Content="Справа"
+                                                 GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
+                                                 Margin="0" VerticalAlignment="Center" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Панель текста песни" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <CheckBox x:Name="HideCoverInLyricsCheckBox" Content="Скрывать обложку при открытом тексте песни"
+                                          Checked="HideCoverInLyricsCheckBox_Changed" Unchecked="HideCoverInLyricsCheckBox_Changed" />
+                                <TextBlock Text="Название и исполнитель остаются, а освободившееся место отдаётся тексту. Обложка возвращается, когда панель закрыта."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Анимация избранного" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Показывается при добавлении трека в избранное кнопкой-сердечком в плейлисте и в мини-плеере. При включённом «Меньше анимации» не воспроизводится."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                                <WrapPanel>
+                                    <RadioButton x:Name="FavoriteHeartFillRadio" Content="Заливка"
+                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="FavoriteHeartSparksRadio" Content="Искры"
+                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="FavoriteHeartRingRadio" Content="Кольцо"
+                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="FavoriteHeartNoneRadio" Content="Без анимации"
+                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
+                                                 Margin="0" VerticalAlignment="Center" />
+                                </WrapPanel>
                             </StackPanel>
                         </Border>
 
@@ -1570,6 +1639,13 @@
                                 </WrapPanel>
                                 <TextBlock Text="Выравнивание — в свободном месте карточки рядом с обложкой."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,-10,0,16" TextWrapping="Wrap" />
+                                <!-- Зависит от выравнивания «По центру» (см. ToastTextAlignmentRadio_Changed). -->
+                                <StackPanel x:Name="ToastArtNextToTextPanel" Margin="0,0,0,16" Visibility="Collapsed">
+                                    <CheckBox x:Name="ToastArtNextToTextCheckBox" Content="Прижать обложку к тексту"
+                                              Checked="ToastArtNextToTextCheckBox_Changed" Unchecked="ToastArtNextToTextCheckBox_Changed" />
+                                    <TextBlock Text="Обложка и текст располагаются вместе по центру карточки, обложка стоит вплотную к названию."
+                                               Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
 
                                 <!-- См. AppSettings.TrackChangeToastWidth — независимо от размера выше,
                                      только ширина карточки (и то, сколько текста влезает в строку). -->
@@ -1588,6 +1664,21 @@
                                         local:SliderMilestoneMarkers.MarkerFrequency="50"
                                         IsSnapToTickEnabled="True"
                                         ValueChanged="ToastWidthSlider_ValueChanged" Margin="0,0,0,16" />
+
+                                <!-- См. AppSettings.TrackChangeToastOpacity: прозрачность фона, как у мини-плеера; текст остаётся непрозрачным. -->
+                                <TextBlock Text="Прозрачность фона" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="1" x:Name="ToastOpacityValueText" Text="100%"
+                                               Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                </Grid>
+                                <Slider x:Name="ToastOpacitySlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        Minimum="30" Maximum="100" Value="100" TickFrequency="5"
+                                        IsSnapToTickEnabled="True"
+                                        ValueChanged="ToastOpacitySlider_ValueChanged" Margin="0,0,0,16" />
 
                                 <TextBlock Text="Монитор" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <ComboBox x:Name="ToastMonitorCombo" SelectionChanged="ToastMonitorCombo_SelectionChanged"
@@ -2008,6 +2099,21 @@
                                         </ui:Button.Icon>
                                     </ui:Button>
                                 </WrapPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. AppSettings.MiniPlayerSizePreset/MiniPlayerWindow.ApplySizePreset: размер получается масштабом раскладки. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Размер мини-плеера" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="MiniSizeClassicRadio" Content="Классический — 220×97, как в версии 1.21" GroupName="MiniPlayerSizePreset"
+                                             Checked="MiniSizePresetRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="MiniSizeCurrentRadio" Content="Текущий — 200×88" GroupName="MiniPlayerSizePreset"
+                                             Checked="MiniSizePresetRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="MiniSizeCompactRadio" Content="Компактный — 180×79" GroupName="MiniPlayerSizePreset"
+                                             Checked="MiniSizePresetRadio_Changed" Margin="0,0,0,0" />
+                                <TextBlock Text="Меняется масштаб всего мини-плеера, положение левого верхнего угла сохраняется."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 

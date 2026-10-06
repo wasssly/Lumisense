@@ -623,6 +623,11 @@
         <StackPanel x:Name="AlbumArtPanel" Grid.Row="1" HorizontalAlignment="Center" Margin="0,8,0,8">
             <!-- ClipToBounds="False": при анимации смены обложки (AnimateAlbumArtTransition) старая и новая временно выходят за 150x150. -->
             <Grid x:Name="AlbumArtContainer" Width="150" Height="150" ClipToBounds="False">
+                <!-- Сжатие обложки при открытой панели текста песни (UpdateCoverForLyrics): LayoutTransform меняет и размер в раскладке,
+                     поэтому освободившееся место достаётся тексту, а название не накладывается на обложку. -->
+                <Grid.LayoutTransform>
+                    <ScaleTransform x:Name="AlbumArtCollapseScale" ScaleX="1" ScaleY="1" />
+                </Grid.LayoutTransform>
                 <!-- Копия предыдущей обложки поверх основной на время анимации (убирается по её завершению); IsHitTestVisible="False" —
                      чтобы не перехватывать клики и контекстное меню. -->
                 <Border x:Name="AlbumArtGhostBorder" Width="150" Height="150" CornerRadius="16"

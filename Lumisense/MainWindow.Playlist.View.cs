@@ -94,6 +94,7 @@ public partial class MainWindow
         ClearPlaylistButton.Visibility = showPlaylist ? Visibility.Visible : Visibility.Collapsed;
         SetAccentButtonActive(FavoritesButton, _isFavoritesView && !showLyrics);
         LyricsPanelButton.Opacity = showLyrics ? 1.0 : 0.86;
+        UpdateCoverForLyrics(showLyrics);
     }
 
     // Ручное обновление — запасной вариант для сетевых папок и ФС без событий FileSystemWatcher; как и автообновление,
@@ -388,8 +389,10 @@ public partial class MainWindow
     // DataContext строки (PlaylistTrackRow, см. TrackItemTemplate в MainWindow.xaml).
     private void FavoriteButton_Click(object sender, RoutedEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: PlaylistTrackRow row }) return;
+        if (sender is not FrameworkElement { DataContext: PlaylistTrackRow row } button) return;
+        HeartAnimation.HeartAnchor? anchor = HeartAnimation.Capture(button, this);
         ToggleFavoriteAndRefresh(row.FilePath);
+        if (FavoritesManager.IsFavorite(row.FilePath)) HeartAnimation.Play(anchor, _settings);
     }
 
     private void FavoriteMenuItem_Click(object sender, RoutedEventArgs e)

@@ -375,8 +375,64 @@ public partial class MainWindow
     // не используем, чтобы текст оставался нейтральным при любой теме.
     public void ApplySyncedLyricsAppearance()
     {
+        ApplyLyricsTextAlignment();
+        UpdateCoverForLyrics(_isPlaylistVisible && _isLyricsPanelActive);
+        _nowPlayingWindow?.ApplyLyricsAppearance();
         for (int index = 0; index < _mainWindowSyncedLyrics.Count; index++)
             ApplySyncedLyricsLineAppearance(_mainWindowSyncedLyrics[index], index == _activeMainWindowLyricIndex, animate: true);
+    }
+
+    private bool _isCoverCollapsedForLyrics;
+
+    // Пока открыта панель «Текст песни», обложка сжимается до нуля, а текст получает её высоту; название, исполнитель и
+    // состояние остаются. Включается настройкой HideCoverInLyricsPanel; при «Меньше анимации» — без анимации.
+    private void UpdateCoverForLyrics(bool lyricsVisible)
+    {
+        bool collapse = lyricsVisible && _settings.HideCoverInLyricsPanel;
+        if (collapse == _isCoverCollapsedForLyrics) return;
+        _isCoverCollapsedForLyrics = collapse;
+
+        // Нулевой масштаб даёт вырожденную матрицу, поэтому анимируем до малого значения и затем скрываем элемент.
+        const double collapsed = 0.001;
+        double target = collapse ? collapsed : 1.0;
+        if (!collapse) AlbumArtContainer.Visibility = Visibility.Visible;
+
+        void Finish()
+        {
+            AlbumArtCollapseScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
+            AlbumArtCollapseScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+            AlbumArtCollapseScale.ScaleX = target;
+            AlbumArtCollapseScale.ScaleY = target;
+            if (_isCoverCollapsedForLyrics == collapse && collapse)
+                AlbumArtContainer.Visibility = Visibility.Collapsed;
+        }
+
+        if (AccessibilityPreferences.ShouldReduceMotion(_settings) || !IsLoaded)
+        {
+            Finish();
+            return;
+        }
+
+        var duration = new Duration(TimeSpan.FromMilliseconds(240));
+        var ease = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        var scaleX = new DoubleAnimation(AlbumArtCollapseScale.ScaleX, target, duration) { EasingFunction = ease };
+        var scaleY = new DoubleAnimation(AlbumArtCollapseScale.ScaleY, target, duration) { EasingFunction = ease };
+        scaleY.Completed += (_, _) =>
+        {
+            // Если за время анимации состояние сменилось обратно, итог уже другой — не затираем его.
+            if (_isCoverCollapsedForLyrics == collapse) Finish();
+        };
+        AlbumArtCollapseScale.BeginAnimation(ScaleTransform.ScaleXProperty, scaleX, HandoffBehavior.SnapshotAndReplace);
+        AlbumArtCollapseScale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleY, HandoffBehavior.SnapshotAndReplace);
+    }
+
+    // Выравнивание текста песни (AppSettings.LyricsTextAlignment): у списка синхронного текста оно задаётся через
+    // TextBlock.TextAlignment на ListBox, TextBlock в шаблоне строки наследует его; обычный текст — прямо у TextBlock.
+    private void ApplyLyricsTextAlignment()
+    {
+        TextAlignment alignment = LyricsTextAlignmentMode.ToTextAlignment(_settings.LyricsTextAlignment);
+        LyricsPanelSyncedList.SetValue(System.Windows.Controls.TextBlock.TextAlignmentProperty, alignment);
+        LyricsPanelText.TextAlignment = alignment;
     }
 
     private void ApplySyncedLyricsLineAppearance(MainWindowLyricLine line, bool active, bool animate)

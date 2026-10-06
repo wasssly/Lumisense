@@ -114,6 +114,18 @@ public class AppSettings
     public double SyncedLyricsFontSize { get; set; } = 14.0;
     public string SyncedLyricsHighlightEffect { get; set; } = "Glow";
 
+    // Выравнивание текста песни в панели главного окна и в Now Playing: "Left" | "Center" | "Right".
+    public string LyricsTextAlignment { get; set; } = "Left";
+
+    // Анимация сердечка при добавлении в избранное: "None" | "Sparks" | "Fill" | "Ring".
+    public string FavoriteHeartAnimation { get; set; } = "Fill";
+
+    // Размер мини-плеера: "Compact" | "Current" | "Classic" (по умолчанию размер версии 1.21.0).
+    public string MiniPlayerSizePreset { get; set; } = "Classic";
+
+    // Прятать обложку, пока открыта панель «Текст песни», чтобы тексту хватало места.
+    public bool HideCoverInLyricsPanel { get; set; } = true;
+
     // Независимо от AccentColorMode подмешивает к основе окна приглушённый цвет обложки: можно оставить системный
     // акцент с цветной основой или взять акцент от обложки без изменения основы.
     public bool CoverBaseFromCover { get; set; }
@@ -300,6 +312,9 @@ public class AppSettings
     // сколько текста влезает до многоточия. 300 — ширина пресета "Средний", прежнее поведение до появления ползунка.
     public double TrackChangeToastWidth { get; set; } = 300.0;
 
+    // Непрозрачность фона уведомления (0.3–1.0); текст и обложка всегда непрозрачны.
+    public double TrackChangeToastOpacity { get; set; } = 1.0;
+
     // С какой стороны карточки показывать обложку — "Left" (по умолчанию, как было всегда) или
     // "Right" (см. TrackChangeToastWindow.ApplyLayout).
     public string TrackChangeToastArtSide { get; set; } = "Left";
@@ -307,6 +322,9 @@ public class AppSettings
     // Как выравнивать название/исполнителя в оставшемся месте карточки относительно обложки —
     // "Left" (по умолчанию), "Center" или "Right" (см. ApplyLayout).
     public string TrackChangeToastTextAlignment { get; set; } = "Left";
+
+    // При выравнивании текста "Center": обложка и текст центрируются вместе, обложка стоит вплотную к тексту.
+    public bool TrackChangeToastArtNextToText { get; set; }
 
     // Кнопки мини-плеера при наведении: "Below" (по умолчанию) — окно подрастает вниз, кнопки отдельной строкой;
     // "Overlay" — кнопки поверх обложки и текста, высота окна не меняется (MiniPlayerWindow.ApplyButtonsLayoutMode).

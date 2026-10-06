@@ -357,10 +357,15 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         // То же самое для Icon окна (см. AppIconContext, на который биндится Icon в XAML).
         AppIcons.Initialize(_settings);
 
+        // Установщик и обновление пересоздают ярлыки со значком Aurora — возвращаем выбранный пользователем.
+        if (AppIcons.Current != AppIcons.Aurora)
+            BackgroundTask.FireAndForget(ShortcutIconSync.SyncAsync(AppIcons.Current), "ShortcutIconSync");
+
         _audioOutputRecoveryService = new(
             _audioOutputRecoveryCoordinator, TimeSpan.FromMilliseconds(OutputRecoveryCooldownMilliseconds));
         InitializeComponent();
         AccessibilityPreferences.ApplyToWindow(this, _settings);
+        ApplyLyricsTextAlignment();
         LyricsPanelSyncedList.ItemsSource = _mainWindowSyncedLyrics;
         LocalizationService.Initialize(_settings, _isFirstLaunch);
         LocalizationService.Apply(this);

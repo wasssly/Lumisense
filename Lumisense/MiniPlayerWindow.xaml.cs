@@ -36,10 +36,24 @@ public partial class MiniPlayerWindow : Window
 
     // Реальный Measure, а не константы под каждую комбинацию видимости строк: Grid с рядами Auto отдаёт лишнее/недостающее
     // место последнему ряду, и константы расходятся с раскладкой.
+    // Масштаб раскладки по пресету размера (MiniPlayerSizePreset). LayoutTransform меняет размер в раскладке, поэтому внутри
+    // окна все размеры остаются «логическими» (как для 200x88), а окно получает их, умноженные на масштаб.
+    private double _sizeScale = 1.0;
+
+    // Применяет пресет: масштаб раскладки, ширину и высоту окна. Левый верхний угол остаётся на месте.
+    public void ApplySizePreset()
+    {
+        _sizeScale = MiniPlayerSizePreset.ScaleOf(_mainWindow.Settings.MiniPlayerSizePreset);
+        if (Content is FrameworkElement root)
+            root.LayoutTransform = _sizeScale == 1.0 ? System.Windows.Media.Transform.Identity : new System.Windows.Media.ScaleTransform(_sizeScale, _sizeScale);
+        Width = Math.Round(MiniPlayerSizePreset.BaseWidth * _sizeScale);
+        Height = MeasureContentHeight();
+    }
+
     private double MeasureContentHeight()
     {
-        ContentGrid.Measure(new System.Windows.Size(Width, double.PositiveInfinity));
-        return ContentGrid.DesiredSize.Height;
+        ContentGrid.Measure(new System.Windows.Size(MiniPlayerSizePreset.BaseWidth, double.PositiveInfinity));
+        return Math.Round(ContentGrid.DesiredSize.Height * _sizeScale);
     }
 
     // Прилипание к краям: механика в WindowSnapHelper (WM_MOVING), включается AppSettings.MiniPlayerSnapToEdges
@@ -85,6 +99,7 @@ public partial class MiniPlayerWindow : Window
         _mainWindow.ShuffleStateChanged += OnShuffleStateChanged;
         FavoritesChangeNotifier.Instance.PropertyChanged += OnFavoritesChanged;
 
+        ApplySizePreset();
         ApplyButtonsLayoutMode();
         ApplyProgressBarVisibility();
         ApplyArtworkProgressVisibility();
@@ -631,8 +646,13 @@ public partial class MiniPlayerWindow : Window
                 _mainWindow.ExternalToggleShuffle();
                 break;
             case "Favorite":
+            {
+                HeartAnimation.HeartAnchor? anchor = HeartAnimation.Capture(SecondaryButton, this);
                 _mainWindow.ExternalToggleFavoriteCurrentTrack();
+                if (_mainWindow.CurrentTrackPath is { } path && FavoritesManager.IsFavorite(path))
+                    HeartAnimation.Play(anchor, _mainWindow.Settings);
                 break;
+            }
             default:
                 _mainWindow.ExternalToggleRepeat();
                 break;
@@ -1282,7 +1302,7 @@ public partial class MiniPlayerWindow : Window
 
     private void SetStripProgress(double ratio)
     {
-        ProgressFill.Width = Math.Max(ActualWidth - 20, 0) * ratio;
+        ProgressFill.Width = Math.Max(MiniPlayerSizePreset.BaseWidth - 20, 0) * ratio;
         ProgressMaterial.Progress = ratio;
         ProgressMaterialSlider.Progress = ratio;
     }

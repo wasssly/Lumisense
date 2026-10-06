@@ -237,6 +237,7 @@ internal static class SettingsIntegrityService
         settings.PlaybackPitchSemitones = ClampFinite(settings.PlaybackPitchSemitones, -12, 12, defaults.PlaybackPitchSemitones);
         settings.MiniPlayerOpacity = ClampFinite(settings.MiniPlayerOpacity, 0.2, 1.0, defaults.MiniPlayerOpacity);
         settings.TrackChangeToastWidth = ClampFinite(settings.TrackChangeToastWidth, 220, 560, defaults.TrackChangeToastWidth);
+        settings.TrackChangeToastOpacity = ClampFinite(settings.TrackChangeToastOpacity, 0.3, 1.0, defaults.TrackChangeToastOpacity);
         settings.MiniPlayerArtworkProgressThickness = ClampFinite(
             settings.MiniPlayerArtworkProgressThickness, 2.0, 4.0, defaults.MiniPlayerArtworkProgressThickness);
         settings.TotalListenSeconds = Math.Max(0, double.IsFinite(settings.TotalListenSeconds) ? settings.TotalListenSeconds : 0);
@@ -262,6 +263,12 @@ internal static class SettingsIntegrityService
         settings.TrackChangeToastSize = Allowed(settings.TrackChangeToastSize, defaults.TrackChangeToastSize, "Small", "Medium", "Large");
         settings.TrackChangeToastPolicy = Allowed(settings.TrackChangeToastPolicy, defaults.TrackChangeToastPolicy,
             "EveryTrackChange", "PlaybackOnly", "ManualOnly");
+        settings.MiniPlayerSizePreset = Allowed(settings.MiniPlayerSizePreset, defaults.MiniPlayerSizePreset,
+            "Compact", "Current", "Classic");
+        settings.FavoriteHeartAnimation = Allowed(settings.FavoriteHeartAnimation, defaults.FavoriteHeartAnimation,
+            "None", "Sparks", "Fill", "Ring");
+        settings.LyricsTextAlignment = Allowed(settings.LyricsTextAlignment, defaults.LyricsTextAlignment,
+            "Left", "Center", "Right");
         settings.UpdateDownloadSource = Allowed(settings.UpdateDownloadSource, defaults.UpdateDownloadSource,
             "GitHub", "GhProxy", "GhProxyV4", "GhProxyV6", "GhProxyCdn", "GhProxyCom", "GhFast");
 

@@ -78,6 +78,7 @@ internal interface ISettingsMiniPlayerHost
     void ApplyMiniPlayerButtonsLayoutLive();
     void ApplyMiniPlayerArtworkStyleLive();
     void ApplyMiniPlayerProgressBarVisibilityLive();
+    void ApplyMiniPlayerSizePresetLive();
     void ApplyMiniPlayerArtworkProgressVisibilityLive();
     void ApplyMiniPlayerArtworkProgressThicknessLive();
     void ApplyMiniPlayerArtworkProgressColorLive();

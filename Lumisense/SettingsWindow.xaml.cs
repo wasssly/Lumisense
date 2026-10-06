@@ -148,6 +148,17 @@ public partial class SettingsWindow : FluentWindow
         SyncedLyricsEffectNoneRadio.IsChecked = _settings.SyncedLyricsHighlightEffect == "None";
         // Старые значения Scale/GlowScale после обновления корректно воспринимаются как Glow.
         SyncedLyricsEffectGlowRadio.IsChecked = !SyncedLyricsEffectNoneRadio.IsChecked.GetValueOrDefault();
+        HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
+        FavoriteHeartSparksRadio.IsChecked = _settings.FavoriteHeartAnimation == "Sparks";
+        FavoriteHeartRingRadio.IsChecked = _settings.FavoriteHeartAnimation == "Ring";
+        FavoriteHeartNoneRadio.IsChecked = _settings.FavoriteHeartAnimation == "None";
+        FavoriteHeartFillRadio.IsChecked = !FavoriteHeartSparksRadio.IsChecked.GetValueOrDefault()
+                                           && !FavoriteHeartRingRadio.IsChecked.GetValueOrDefault()
+                                           && !FavoriteHeartNoneRadio.IsChecked.GetValueOrDefault();
+        LyricsAlignCenterRadio.IsChecked = _settings.LyricsTextAlignment == "Center";
+        LyricsAlignRightRadio.IsChecked = _settings.LyricsTextAlignment == "Right";
+        LyricsAlignLeftRadio.IsChecked = !LyricsAlignCenterRadio.IsChecked.GetValueOrDefault()
+                                         && !LyricsAlignRightRadio.IsChecked.GetValueOrDefault();
         LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
         LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
         LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
@@ -197,6 +208,10 @@ public partial class SettingsWindow : FluentWindow
             ? Visibility.Visible : Visibility.Collapsed;
         RefreshMiniArtworkProgressColorSwatchSelection();
         MiniInfoOnlyTitleRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleOnly";
+        MiniSizeCurrentRadio.IsChecked = _settings.MiniPlayerSizePreset == MiniPlayerSizePreset.Current;
+        MiniSizeCompactRadio.IsChecked = _settings.MiniPlayerSizePreset == MiniPlayerSizePreset.Compact;
+        MiniSizeClassicRadio.IsChecked = !MiniSizeCurrentRadio.IsChecked.GetValueOrDefault()
+                                         && !MiniSizeCompactRadio.IsChecked.GetValueOrDefault();
         MiniInfoRemainingRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleRemaining";
         MiniInfoArtistRadio.IsChecked = !MiniInfoOnlyTitleRadio.IsChecked.GetValueOrDefault()
                                          && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
@@ -1138,6 +1153,11 @@ public partial class SettingsWindow : FluentWindow
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
         Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
+        Add("Выравнивание текста песни", "Оформление", "Appearance", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
+        Add("Скрывать обложку при тексте песни", "Оформление", "Appearance", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
+        Add("Анимация избранного", "Оформление", "Appearance", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
+        Add("Размер мини-плеера", "Мини-плеер", "MiniPlayer", MiniSizeClassicRadio, "размер мини плеер компактный классический текущий 1.21 size preset");
+        Add("Прозрачность уведомления", "Уведомления", "Notifications", ToastOpacitySlider, "прозрачность фона уведомление тост opacity transparency toast");
         Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
         Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
@@ -1308,6 +1328,7 @@ public partial class SettingsWindow : FluentWindow
             (IconPackCardBold, IconPacks.Bold),
             (IconPackCardFill, IconPacks.Fill),
             (IconPackCardThin, IconPacks.Thin),
+            (IconPackCardFontAwesome, IconPacks.FontAwesome),
         };
 
         foreach (var (card, pack) in cards)
@@ -1334,6 +1355,7 @@ public partial class SettingsWindow : FluentWindow
 
         AppIcons.SetCurrent(icon);
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        FireAndForget(ShortcutIconSync.SyncAsync(icon), "ShortcutIconSync");
     }
 
     // Подсвечивает рамкой карточку значка, совпадающего с _settings.AppIcon — по аналогии с
@@ -1628,6 +1650,37 @@ public partial class SettingsWindow : FluentWindow
         _settings.LyricsSearchPolicy = LyricsPolicyLocalOnlyRadio.IsChecked == true ? "LocalOnly"
             : LyricsPolicyManualOnlyRadio.IsChecked == true ? "ManualOnly"
             : "AutoExact";
+    }
+
+    private void LyricsTextAlignmentRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.LyricsTextAlignment = LyricsAlignCenterRadio.IsChecked == true ? "Center"
+            : LyricsAlignRightRadio.IsChecked == true ? "Right"
+            : "Left";
+        _owner.ApplySyncedLyricsAppearance();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void HideCoverInLyricsCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.HideCoverInLyricsPanel = HideCoverInLyricsCheckBox.IsChecked == true;
+        _owner.ApplySyncedLyricsAppearance();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void FavoriteHeartAnimationRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.FavoriteHeartAnimation = FavoriteHeartSparksRadio.IsChecked == true ? HeartAnimation.Sparks
+            : FavoriteHeartRingRadio.IsChecked == true ? HeartAnimation.Ring
+            : FavoriteHeartNoneRadio.IsChecked == true ? HeartAnimation.None
+            : HeartAnimation.Fill;
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void SyncedLyricsEffectRadio_Changed(object sender, RoutedEventArgs e)
@@ -2080,7 +2133,12 @@ public partial class SettingsWindow : FluentWindow
         ToastTextLeftRadio.IsChecked = !ToastTextCenterRadio.IsChecked.GetValueOrDefault()
                                         && !ToastTextRightRadio.IsChecked.GetValueOrDefault();
 
+        ToastArtNextToTextCheckBox.IsChecked = _settings.TrackChangeToastArtNextToText;
+        ToastArtNextToTextPanel.Visibility = ToastTextCenterRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+
         ToastWidthSlider.Value = Math.Clamp(_settings.TrackChangeToastWidth, ToastWidthSlider.Minimum, ToastWidthSlider.Maximum);
+        ToastOpacitySlider.Value = Math.Clamp(Math.Round(_settings.TrackChangeToastOpacity * 100), ToastOpacitySlider.Minimum, ToastOpacitySlider.Maximum);
+        UpdateToastOpacityValueText();
         UpdateToastWidthValueText();
     }
 
@@ -2157,6 +2215,14 @@ public partial class SettingsWindow : FluentWindow
         _settings.TrackChangeToastTextAlignment = ToastTextCenterRadio.IsChecked == true ? "Center"
             : ToastTextRightRadio.IsChecked == true ? "Right"
             : "Left";
+        ToastArtNextToTextPanel.Visibility = ToastTextCenterRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ToastArtNextToTextCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastArtNextToText = ToastArtNextToTextCheckBox.IsChecked == true;
     }
 
     private void ToastMonitorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
@@ -2175,6 +2241,19 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.TrackChangeToastWidth = ToastWidthSlider.Value;
+    }
+
+    private void ToastOpacitySlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateToastOpacityValueText();
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastOpacity = ToastOpacitySlider.Value / 100.0;
+    }
+
+    private void UpdateToastOpacityValueText()
+    {
+        ToastOpacityValueText.Text = $"{(int)Math.Round(ToastOpacitySlider.Value)}%";
     }
 
     private void UpdateToastWidthValueText()
@@ -2455,6 +2534,17 @@ public partial class SettingsWindow : FluentWindow
                 ? (Brush)FindResource("TextFillColorPrimaryBrush")
                 : Brushes.Transparent;
         }
+    }
+
+    private void MiniSizePresetRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerSizePreset = MiniSizeCompactRadio.IsChecked == true ? MiniPlayerSizePreset.Compact
+            : MiniSizeCurrentRadio.IsChecked == true ? MiniPlayerSizePreset.Current
+            : MiniPlayerSizePreset.Classic;
+        _owner.ApplyMiniPlayerSizePresetLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void MiniInfoModeRadio_Changed(object sender, RoutedEventArgs e)

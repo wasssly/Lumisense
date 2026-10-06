@@ -104,7 +104,10 @@ public static class LumiProfileIO
             settings.InterfaceScale > AccessibilityPreferences.MaximumInterfaceScale)
             return false;
         if (!double.IsFinite(settings.SyncedLyricsFontSize) || settings.SyncedLyricsFontSize < 11 || settings.SyncedLyricsFontSize > 28 ||
-            (settings.SyncedLyricsHighlightEffect?.Length ?? 0) > 32)
+            (settings.SyncedLyricsHighlightEffect?.Length ?? 0) > 32 ||
+            (settings.LyricsTextAlignment?.Length ?? 0) > 32 ||
+            (settings.FavoriteHeartAnimation?.Length ?? 0) > 32 ||
+            (settings.MiniPlayerSizePreset?.Length ?? 0) > 32)
             return false;
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
             return false;
@@ -198,6 +201,8 @@ public static class LumiProfileIO
         target.TrackChangeToastMonitor = source.TrackChangeToastMonitor;
         target.TrackChangeToastSize = source.TrackChangeToastSize;
         target.TrackChangeToastWidth = source.TrackChangeToastWidth;
+        target.TrackChangeToastOpacity = source.TrackChangeToastOpacity;
+        target.TrackChangeToastArtNextToText = source.TrackChangeToastArtNextToText;
         target.MiniPlayerButtonsLayout = source.MiniPlayerButtonsLayout;
         target.MiniPlayerShowProgress = source.MiniPlayerShowProgress;
         target.MiniPlayerShowArtworkProgress = source.MiniPlayerShowArtworkProgress;
@@ -243,6 +248,13 @@ public static class LumiProfileIO
             target.WasapiMode = source.WasapiMode;
         if (source.TrackChangeToastArtSide is "Left" or "Right")
             target.TrackChangeToastArtSide = source.TrackChangeToastArtSide;
+        if (source.LyricsTextAlignment is "Left" or "Center" or "Right")
+            target.LyricsTextAlignment = source.LyricsTextAlignment;
+        if (HeartAnimation.IsKnown(source.FavoriteHeartAnimation))
+            target.FavoriteHeartAnimation = source.FavoriteHeartAnimation;
+        target.HideCoverInLyricsPanel = source.HideCoverInLyricsPanel;
+        if (MiniPlayerSizePreset.IsKnown(source.MiniPlayerSizePreset))
+            target.MiniPlayerSizePreset = source.MiniPlayerSizePreset;
         if (source.TrackChangeToastTextAlignment is "Left" or "Center" or "Right")
             target.TrackChangeToastTextAlignment = source.TrackChangeToastTextAlignment;
         if (double.IsFinite(source.MiniPlayerArtworkProgressThickness))

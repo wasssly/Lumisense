@@ -58,6 +58,7 @@ public partial class NowPlayingWindow : Window
         AccessibilityPreferences.ApplyToWindow(this, _owner.Settings);
 
         SyncedLyricsList.ItemsSource = _syncedLines;
+        ApplyLyricsAppearance();
         OnlineLyricsResultsList.ItemsSource = _onlineResults;
         Loaded += NowPlayingWindow_Loaded;
         Closed += NowPlayingWindow_Closed;
@@ -93,6 +94,115 @@ public partial class NowPlayingWindow : Window
         ArtworkProgressMaterialSlider.ActiveBrush = accent;
         ArtworkProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
         ArtworkProgressMaterial.IsWaving = _owner.IsPlayingNow;
+    }
+
+    // У ScrollViewer нет анимируемого свойства VerticalOffset: attached-свойство проксирует анимацию в ScrollToVerticalOffset.
+    private static readonly DependencyProperty AnimatedScrollOffsetProperty = DependencyProperty.RegisterAttached(
+        "AnimatedScrollOffset", typeof(double), typeof(NowPlayingWindow),
+        new PropertyMetadata(0.0, (d, e) =>
+        {
+            if (d is ScrollViewer viewer && e.NewValue is double offset) viewer.ScrollToVerticalOffset(offset);
+        }));
+
+    private UIElement? _glowElement;
+
+    // Активная строка стоит по вертикали в центре списка, а не у нижнего края, как после ScrollIntoView.
+    private void SmoothScrollLyricsToLine(LyricLine line)
+    {
+        // CanContentScroll=False: смещение, высота области и контейнера — в одних единицах (пикселях).
+        SyncedLyricsList.UpdateLayout();
+        var container = SyncedLyricsList.ItemContainerGenerator.ContainerFromItem(line) as FrameworkElement;
+        if (container is null)
+        {
+            SyncedLyricsList.ScrollIntoView(line);
+            SyncedLyricsList.UpdateLayout();
+            container = SyncedLyricsList.ItemContainerGenerator.ContainerFromItem(line) as FrameworkElement;
+            if (container is null) return;
+        }
+
+        ScrollViewer? viewer = FindScrollViewer(SyncedLyricsList);
+        if (viewer is null || viewer.ViewportHeight <= 0 || container.ActualHeight <= 0) return;
+
+        try
+        {
+            Point itemTop = container.TranslatePoint(new Point(0, 0), SyncedLyricsList);
+            double viewportHeight = Math.Min(viewer.ViewportHeight, SyncedLyricsList.ActualHeight);
+            double maxOffset = Math.Max(0, viewer.ExtentHeight - viewer.ViewportHeight);
+            double target = Math.Clamp(
+                viewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) / 2, 0, maxOffset);
+
+            if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
+            {
+                viewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
+                viewer.ScrollToVerticalOffset(target);
+                return;
+            }
+
+            var animation = new DoubleAnimation(viewer.VerticalOffset, target, new Duration(TimeSpan.FromMilliseconds(360)))
+            {
+                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+            };
+            viewer.BeginAnimation(AnimatedScrollOffsetProperty, animation, HandoffBehavior.SnapshotAndReplace);
+        }
+        catch (InvalidOperationException)
+        {
+            // Во время пересоздания контейнеров ListBox visual tree может быть временно разорван.
+        }
+    }
+
+    // Мягкое свечение только у текста активной строки (DropShadowEffect на каждой строке был бы дорог в длинных текстах);
+    // эффект на самом TextBlock, а не на ListBoxItem, иначе светился бы весь скруглённый фон выделения.
+    private void RefreshActiveLyricGlow()
+    {
+        if (_glowElement is not null) _glowElement.Effect = null;
+        _glowElement = null;
+
+        if (_owner.Settings.SyncedLyricsHighlightEffect == "None") return;
+        if (_activeLyricIndex < 0 || _activeLyricIndex >= _syncedLines.Count) return;
+
+        if (SyncedLyricsList.ItemContainerGenerator.ContainerFromItem(_syncedLines[_activeLyricIndex]) is not DependencyObject container) return;
+        if (FindDescendant<TextBlock>(container) is not { } text) return;
+
+        text.Effect = new System.Windows.Media.Effects.DropShadowEffect
+        {
+            Color = Colors.White,
+            BlurRadius = 16,
+            ShadowDepth = 0,
+            Opacity = 0.62,
+        };
+        _glowElement = text;
+    }
+
+    private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+            if (child is T match) return match;
+            if (FindDescendant<T>(child) is { } nested) return nested;
+        }
+        return null;
+    }
+
+    private static ScrollViewer? FindScrollViewer(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+            if (child is ScrollViewer viewer) return viewer;
+            if (FindScrollViewer(child) is { } nested) return nested;
+        }
+        return null;
+    }
+
+    // Вид текста песни: выравнивание (AppSettings.LyricsTextAlignment) и свечение активной строки
+    // (AppSettings.SyncedLyricsHighlightEffect). Вызывается при создании окна и из MainWindow при смене настроек.
+    internal void ApplyLyricsAppearance()
+    {
+        RefreshActiveLyricGlow();
+        TextAlignment alignment = LyricsTextAlignmentMode.ToTextAlignment(_owner.Settings.LyricsTextAlignment);
+        SyncedLyricsList.SetValue(System.Windows.Controls.TextBlock.TextAlignmentProperty, alignment);
+        PlainLyricsText.TextAlignment = alignment;
     }
 
     public void ApplyAccessibilityPreferences()
@@ -704,7 +814,20 @@ public partial class NowPlayingWindow : Window
         _activeLyricIndex = index;
         SyncedLyricsList.SelectedIndex = index;
         if (index >= 0 && index < _syncedLines.Count)
-            SyncedLyricsList.ScrollIntoView(_syncedLines[index]);
+        {
+            // Контейнер строки может появиться только после layout, поэтому и центрирование, и свечение — после него.
+            LyricLine activeLine = _syncedLines[index];
+            Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+            {
+                if (_activeLyricIndex != index) return;
+                RefreshActiveLyricGlow();
+                SmoothScrollLyricsToLine(activeLine);
+            }));
+        }
+        else
+        {
+            RefreshActiveLyricGlow();
+        }
     }
 
     private void ArtworkProgressBar_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)

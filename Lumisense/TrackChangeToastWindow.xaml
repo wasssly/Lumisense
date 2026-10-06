@@ -33,7 +33,7 @@
 
         <!-- DockPanel, а не StackPanel: сторона обложки и выравнивание текста настраиваются (AppSettings.TrackChangeToast*) в ApplyLayout;
              LastChildFill отдаёт текстовой колонке всё оставшееся место. -->
-        <DockPanel LastChildFill="True">
+        <DockPanel x:Name="ToastContentPanel" LastChildFill="True">
             <Border x:Name="ArtBorder" DockPanel.Dock="Left" Width="48" Height="48" CornerRadius="8"
                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
                     SnapsToDevicePixels="True" UseLayoutRounding="True">
