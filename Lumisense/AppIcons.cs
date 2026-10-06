@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Runtime.InteropServices;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -66,6 +68,8 @@ public static class AppIcons
 
     public static bool IsKnown(string? icon) => icon is not null && Array.IndexOf(All, icon) >= 0;
 
+    public static string GetFileName(string icon) => FileNames[icon];
+
     public static Uri GetUri(string icon) =>
         new($"pack://application:,,,/Icons/app/{FileNames[icon]}.ico", UriKind.Absolute);
 
@@ -73,4 +77,33 @@ public static class AppIcons
     // при живой смене (см. аналогичный комментарий в прежнем TrayIconManager.LoadAppIcon).
     private static ImageSource Load(string icon) =>
         BitmapFrame.Create(GetUri(icon), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+
+    private const int SM_CXSMICON = 49;
+
+    [DllImport("user32.dll")]
+    private static extern int GetSystemMetrics(int nIndex);
+
+    // WPF-UI делает HICON трея из одного кадра, а первый кадр .ico — 256 px: Windows грубо уменьшала его до
+    // 16–32 px. Берём кадр размера трея или, если такого нет, уменьшаем ближайший больший с HighQuality.
+    public static ImageSource LoadTrayIcon(string icon)
+    {
+        int target = Math.Max(16, GetSystemMetrics(SM_CXSMICON));
+        BitmapDecoder decoder = BitmapDecoder.Create(GetUri(icon), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+
+        BitmapFrame? exact = decoder.Frames.FirstOrDefault(frame => frame.PixelWidth == target);
+        if (exact is not null) return exact;
+
+        BitmapFrame source = decoder.Frames.Where(frame => frame.PixelWidth > target).OrderBy(frame => frame.PixelWidth).FirstOrDefault()
+            ?? decoder.Frames.OrderByDescending(frame => frame.PixelWidth).First();
+
+        var visual = new DrawingVisual();
+        RenderOptions.SetBitmapScalingMode(visual, BitmapScalingMode.HighQuality);
+        using (DrawingContext context = visual.RenderOpen())
+            context.DrawImage(source, new Rect(0, 0, target, target));
+
+        var scaled = new RenderTargetBitmap(target, target, 96, 96, PixelFormats.Pbgra32);
+        scaled.Render(visual);
+        scaled.Freeze();
+        return BitmapFrame.Create(scaled);
+    }
 }

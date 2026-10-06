@@ -82,6 +82,7 @@ internal sealed class MainWindowIntegrationController
         try
         {
             Tray = new TrayIconManager(window);
+            Tray.ReduceMotionProvider = () => AccessibilityPreferences.ShouldReduceMotion(window.Settings);
             Tray.OpenRequested += host.RestoreFromTray;
             Tray.SettingsRequested += () => window.Dispatcher.BeginInvoke(() => window.ShowSettingsWindow());
             Tray.ExitRequested += host.ExitApplicationCompletely;
