@@ -172,8 +172,8 @@ public static class IconPacks
     public const string Bold = "Bold";
     public const string Fill = "Fill";
     public const string Thin = "Thin";
-
-    public static readonly string[] All = { Duotone, Outline, Bold, Fill, Thin };
+    public const string FontAwesome = "FontAwesome";
+    public static readonly string[] All = { Duotone, Outline, Bold, Fill, Thin, FontAwesome };
 
     // Полный список имён иконок, одинаковый для всех паков — используется окном полного
     // превью пака (IconPackPreviewWindow), открывается по ПКМ на карточке пака в настройках.
