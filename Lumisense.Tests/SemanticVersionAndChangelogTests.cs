@@ -150,3 +150,37 @@ public sealed class ToastPlacementCalculatorTests
         Assert.Equal(72, placement.Height);
     }
 }
+
+public sealed class ChangeTypeCatalogTests
+{
+    [Theory]
+    [InlineData("added", "added")]
+    [InlineData("changed", "changed")]
+    [InlineData("improved", "improved")]
+    [InlineData("fixed", "fixed")]
+    [InlineData("removed", "removed")]
+    [InlineData("security", "security")]
+    [InlineData("  Security ", "security")]
+    public void Resolve_ReturnsKnownTypesCaseInsensitively(string input, string expectedKey)
+    {
+        Assert.Equal(expectedKey, ChangeTypeCatalog.Resolve(input).Key);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("performance")]
+    [InlineData("unknown")]
+    public void Resolve_FallsBackToChangedForUnknownTypes(string? input)
+    {
+        Assert.Same(ChangeTypeCatalog.Changed, ChangeTypeCatalog.Resolve(input));
+    }
+
+    [Fact]
+    public void All_ContainsEveryTypeOnceWithUniqueKeys()
+    {
+        Assert.Equal(ChangeTypeCatalog.All.Count, ChangeTypeCatalog.All.Select(info => info.Key).Distinct().Count());
+        Assert.Contains(ChangeTypeCatalog.Improved, ChangeTypeCatalog.All);
+        Assert.Contains(ChangeTypeCatalog.Security, ChangeTypeCatalog.All);
+    }
+}

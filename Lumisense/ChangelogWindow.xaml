@@ -211,6 +211,13 @@
                                 <TextBlock Text="Изменено" FontSize="11" Margin="5,0,0,0" />
                             </StackPanel>
                         </ToggleButton>
+                        <ToggleButton x:Name="FilterImprovedToggle" Style="{StaticResource TypeChipStyle}"
+                                      Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconRefresh" Size="11" Foreground="#8B5CF6" />
+                                <TextBlock Text="Улучшено" FontSize="11" Margin="5,0,0,0" />
+                            </StackPanel>
+                        </ToggleButton>
                         <ToggleButton x:Name="FilterFixedToggle" Style="{StaticResource TypeChipStyle}"
                                       Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
                             <StackPanel Orientation="Horizontal">
@@ -223,6 +230,13 @@
                             <StackPanel Orientation="Horizontal">
                                 <local:SvgPathIcon Icon="IconDelete" Size="11" Foreground="#EF4444" />
                                 <TextBlock Text="Удалено" FontSize="11" Margin="5,0,0,0" />
+                            </StackPanel>
+                        </ToggleButton>
+                        <ToggleButton x:Name="FilterSecurityToggle" Style="{StaticResource TypeChipStyle}"
+                                      Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconInfo" Size="11" Foreground="#14B8A6" />
+                                <TextBlock Text="Безопасность" FontSize="11" Margin="5,0,0,0" />
                             </StackPanel>
                         </ToggleButton>
                     </WrapPanel>

@@ -125,8 +125,10 @@ public partial class ChangelogWindow : FluentWindow
         var selectedTypes = new List<string>();
         if (FilterAddedToggle.IsChecked == true) selectedTypes.Add(ChangeTypeCatalog.Added.Key);
         if (FilterChangedToggle.IsChecked == true) selectedTypes.Add(ChangeTypeCatalog.Changed.Key);
+        if (FilterImprovedToggle.IsChecked == true) selectedTypes.Add(ChangeTypeCatalog.Improved.Key);
         if (FilterFixedToggle.IsChecked == true) selectedTypes.Add(ChangeTypeCatalog.Fixed.Key);
         if (FilterRemovedToggle.IsChecked == true) selectedTypes.Add(ChangeTypeCatalog.Removed.Key);
+        if (FilterSecurityToggle.IsChecked == true) selectedTypes.Add(ChangeTypeCatalog.Security.Key);
 
         IEnumerable<ChangelogEntryViewModel> filtered = _allEntries.Where(entry =>
             entry.Matches(query) &&

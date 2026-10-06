@@ -11,7 +11,7 @@ public class ChangelogEntry
     public bool IsCurrent { get; set; }
 }
 
-// Type — "added"/"changed"/"fixed"/"removed", см. ChangeTypeCatalog
+// Type — "added"/"changed"/"improved"/"fixed"/"removed"/"security", см. ChangeTypeCatalog
 public class ChangeItem
 {
     public string Type { get; set; } = "changed";
