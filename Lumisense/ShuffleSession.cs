@@ -78,6 +78,20 @@ internal sealed class ShuffleSession
         return path;
     }
 
+    // Трек в истории на offset от path без изменения истории (для превью соседних обложек); null, если там ничего нет.
+    public string? PeekNeighbor(string path, int offset)
+    {
+        int found = -1;
+        for (int i = 0; i < _history.Count; i++)
+        {
+            if (_history[i] == path && (found < 0 || Math.Abs(i - _historyIndex) < Math.Abs(found - _historyIndex)))
+                found = i;
+        }
+
+        int target = found + offset;
+        return found < 0 || target < 0 || target >= _history.Count ? null : _history[target];
+    }
+
     // Генерирует новый случайный трек и дописывает его в конец истории шафла — вызывается
     // только когда двигаться вперёд по уже существующей истории больше некуда.
     public string AppendNew(List<string> activeTracks, string? currentPath)

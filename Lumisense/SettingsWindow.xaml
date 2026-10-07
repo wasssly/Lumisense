@@ -1138,9 +1138,12 @@
                                 <TextBlock Text="Анимация смены обложки" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="AlbumArtTransitionOffRadio" Content="Без анимации" GroupName="AlbumArtTransition"
                                              Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="AlbumArtTransitionOnRadio" Content="С анимацией" GroupName="AlbumArtTransition"
+                                <RadioButton x:Name="AlbumArtTransitionOnRadio" Content="Слайд" GroupName="AlbumArtTransition"
+                                             Checked="AlbumArtTransitionRadio_Changed" Margin="0,0,0,12" />
+                                <!-- См. AppSettings.AlbumArtTransitionStyle. -->
+                                <RadioButton x:Name="AlbumArtTransitionStyleCarouselRadio" Content="Карусель" GroupName="AlbumArtTransition"
                                              Checked="AlbumArtTransitionRadio_Changed" />
-                                <TextBlock Text="При переключении трека старая обложка «улетает» в сторону, а новая «влетает» с противоположной — как в iTunes."
+                                <TextBlock Text="«Слайд»: старая обложка «улетает» в сторону, а новая «влетает» с противоположной — как в iTunes. «Карусель»: по бокам видны предыдущая и следующая обложки, приглушённые затемнением, и вся лента сдвигается на один шаг. В шаффле будущая обложка заранее неизвестна, вместо неё показывается заглушка."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,8" />
                             </StackPanel>
                         </Border>
@@ -1154,6 +1157,7 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
+
 
                     </StackPanel>
 

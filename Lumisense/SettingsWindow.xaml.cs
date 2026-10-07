@@ -246,7 +246,9 @@ public partial class SettingsWindow : FluentWindow
         DiscordRichPresenceShowTimelineCheckBox.IsChecked = _settings.DiscordRichPresenceShowTimeline;
         DiscordRichPresenceShowCoverArtCheckBox.IsChecked = _settings.DiscordRichPresenceShowCoverArt;
         UpdateDiscordRichPresenceConnectionStatus();
-        AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled;
+        bool carousel = _owner.IsAlbumArtTransitionEnabled && _settings.AlbumArtTransitionStyle == "Carousel";
+        AlbumArtTransitionStyleCarouselRadio.IsChecked = carousel;
+        AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled && !carousel;
         AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
         AlbumArtGesturesCheckBox.IsChecked = _settings.AlbumArtGesturesEnabled;
 
@@ -1102,7 +1104,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация accessibility scale motion");
-        Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд fly transition album art cover");
+        Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
         Add("Жесты на обложке", "Оформление", "Appearance", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
         Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно и запуск", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
@@ -2902,7 +2904,10 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _owner.SetAlbumArtTransitionEnabled(AlbumArtTransitionOnRadio.IsChecked == true);
+        _owner.SetAlbumArtTransitionEnabled(AlbumArtTransitionOffRadio.IsChecked != true);
+        _settings.AlbumArtTransitionStyle = AlbumArtTransitionStyleCarouselRadio.IsChecked == true ? "Carousel" : "Slide";
+        _owner.ApplyAlbumArtTransitionStyleLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void AlbumArtGesturesCheckBox_Changed(object sender, RoutedEventArgs e)

@@ -398,16 +398,32 @@ public partial class MainWindow
             _settings.AlbumArtTransitionEnabled &&
             !AccessibilityPreferences.ShouldReduceMotion(_settings) && IsLoaded;
 
+        string? oldPath = _lastArtPath;
+        string? newPath = _currentTrackPath;
+        _lastArtPath = newPath;
+        PrefetchNeighborArt(newPath);
+
         if (!canAnimate)
         {
             ResetAlbumArtTransitionLayers();
             _albumArtTransitionBurstPolicy.Reset();
             applyNewArt();
+            RefreshCarouselSides();
             return;
         }
 
         bool isBurst = _albumArtTransitionBurstPolicy.ShouldSkipAnimation(DateTime.UtcNow);
         int transitionGeneration = ResetAlbumArtTransitionLayers();
+
+        if (IsCarouselTransition)
+        {
+            ImageSource? oldArt = AlbumArtImage.Visibility == Visibility.Visible ? AlbumArtImage.Source : null;
+            applyNewArt();
+            ImageSource? newArt = AlbumArtImage.Visibility == Visibility.Visible ? AlbumArtImage.Source : null;
+            RunCarouselTransition(direction, oldArt, newArt, oldPath, newPath,
+                isBurst ? TimeSpan.FromMilliseconds(120) : TimeSpan.FromMilliseconds(460), transitionGeneration);
+            return;
+        }
 
         double size = AlbumArtBorder.ActualWidth > 0 ? AlbumArtBorder.ActualWidth : AlbumArtBorder.Width;
         double distance = size + 24;
@@ -483,6 +499,7 @@ public partial class MainWindow
         AlbumArtBorderScale.ScaleX = 1;
         AlbumArtBorderScale.ScaleY = 1;
         AlbumArtBorder.Opacity = 1;
+        ClearCarouselLayers();
         return _albumArtTransitionGeneration;
     }
 

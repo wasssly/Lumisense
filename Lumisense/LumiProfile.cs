@@ -108,7 +108,8 @@ public static class LumiProfileIO
             (settings.LyricsTextAlignment?.Length ?? 0) > 32 ||
             (settings.FavoriteHeartAnimation?.Length ?? 0) > 32 ||
             (settings.MiniPlayerSizePreset?.Length ?? 0) > 32 ||
-            (settings.NowPlayingBackground?.Length ?? 0) > 32)
+            (settings.NowPlayingBackground?.Length ?? 0) > 32 ||
+            (settings.AlbumArtTransitionStyle?.Length ?? 0) > 32)
             return false;
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
             return false;
@@ -183,6 +184,8 @@ public static class LumiProfileIO
         target.IsShuffleEnabled = source.IsShuffleEnabled;
         target.RepeatMode = source.RepeatMode;
         target.AlbumArtTransitionEnabled = source.AlbumArtTransitionEnabled;
+        if (source.AlbumArtTransitionStyle is "Slide" or "Carousel")
+            target.AlbumArtTransitionStyle = source.AlbumArtTransitionStyle;
         target.AlbumArtGesturesEnabled = source.AlbumArtGesturesEnabled;
         target.MiniPlayerOpacity = source.MiniPlayerOpacity;
         target.MiniPlayerArtworkStyle = source.MiniPlayerArtworkStyle;

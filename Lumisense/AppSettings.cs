@@ -239,6 +239,9 @@ public class AppSettings
     // (см. MainWindow.SetAlbumArtTransitionEnabled).
     public bool AlbumArtTransitionEnabled { get; set; } = true;
 
+    // Стиль анимации смены обложки: "Slide" (старая улетает, новая влетает) | "Carousel" (лента из предыдущей, текущей и следующей).
+    public string AlbumArtTransitionStyle { get; set; } = "Slide";
+
     // Касание/свайпы на обложке: касание — пуск/пауза, горизонтальный свайп — трек, вертикальный — громкость;
     // при отключении клик снова открывает просмотр обложки.
     public bool AlbumArtGesturesEnabled { get; set; } = true;

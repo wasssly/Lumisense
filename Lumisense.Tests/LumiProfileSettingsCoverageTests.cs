@@ -65,6 +65,7 @@ public sealed class LumiProfileSettingsCoverageTests
             case nameof(AppSettings.FavoriteHeartAnimation): return current as string == "Fill" ? "Ring" : "Fill";
             case nameof(AppSettings.MiniPlayerSizePreset): return current as string == "Classic" ? "Compact" : "Classic";
             case nameof(AppSettings.NowPlayingBackground): return current as string == "Clouds" ? "Orbs" : "Clouds";
+            case nameof(AppSettings.AlbumArtTransitionStyle): return current as string == "Slide" ? "Carousel" : "Slide";
             case nameof(AppSettings.MiniPlayerArtworkProgressThickness): return 3.5;
             case nameof(AppSettings.DisabledTrackContextMenuActions): return new List<string> { TrackContextMenuActions.CopyPath };
             case nameof(AppSettings.DisabledMiniPlayerContextMenuActions): return new List<string> { MiniPlayerContextMenuActions.Pin };
@@ -208,6 +209,7 @@ public sealed class LumiProfileSettingsCoverageTests
             FavoriteHeartAnimation = "Justify",
             MiniPlayerSizePreset = "Justify",
             NowPlayingBackground = "Justify",
+            AlbumArtTransitionStyle = "Justify",
             MiniPlayerArtworkProgressThickness = 99
         };
 
@@ -223,6 +225,7 @@ public sealed class LumiProfileSettingsCoverageTests
         Assert.Equal(defaults.FavoriteHeartAnimation, live.FavoriteHeartAnimation);
         Assert.Equal(defaults.MiniPlayerSizePreset, live.MiniPlayerSizePreset);
         Assert.Equal(defaults.NowPlayingBackground, live.NowPlayingBackground);
+        Assert.Equal(defaults.AlbumArtTransitionStyle, live.AlbumArtTransitionStyle);
         Assert.Equal(4.0, live.MiniPlayerArtworkProgressThickness);
     }
 

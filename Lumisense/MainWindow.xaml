@@ -715,6 +715,10 @@
                                            Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                     </Grid>
                 </Border>
+
+                <!-- Лента из предыдущей, текущей и следующей обложек на время смены (стиль "Carousel", MainWindow.AlbumArtCarousel.cs). -->
+                <Grid x:Name="AlbumArtCarouselHost" Width="150" Height="150" ClipToBounds="False" Panel.ZIndex="-1"
+                      IsHitTestVisible="False" Visibility="Collapsed" />
             </Grid>
 
             <TextBlock x:Name="TrackTitleText" Text="Файл не выбран"
