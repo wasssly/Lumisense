@@ -185,6 +185,7 @@ public partial class MainWindow
         ApplySelectableControlAccentResources(appliedAccent);
         RefreshAccentDependentIcons();
         _miniPlayerWindow?.ApplyArtworkProgressColor();
+        _nowPlayingWindow?.ApplyAccentColor();
         ApplyCoverBaseBackground();
     }
 

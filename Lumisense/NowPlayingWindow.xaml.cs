@@ -90,12 +90,23 @@ public partial class NowPlayingWindow : Window
         ArtworkProgressMaterial.Visibility = wave ? Visibility.Visible : Visibility.Collapsed;
         ArtworkProgressMaterialSlider.Visibility = slider ? Visibility.Visible : Visibility.Collapsed;
 
+        ApplyAccentColor();
+        ArtworkProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        ArtworkProgressMaterial.IsWaving = _owner.IsPlayingNow;
+    }
+
+    // Эти кисти заданы значением, а не DynamicResource: при смене акцента (в том числе от обложки на каждом треке)
+    // их нужно переназначать явно.
+    public void ApplyAccentColor()
+    {
         var accent = new SolidColorBrush(_owner.GetResolvedAccentColor());
         accent.Freeze();
         ArtworkProgressMaterial.PlayedBrush = accent;
         ArtworkProgressMaterialSlider.ActiveBrush = accent;
-        ArtworkProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
-        ArtworkProgressMaterial.IsWaving = _owner.IsPlayingNow;
+        ArtworkProgressBar.Foreground = accent;
+        // Primary-кнопка WPF-UI берёт цвет из темы, а не из подменяемых ресурсов, поэтому красим её явно, как в главном окне.
+        ArtworkPlayPauseButton.Background = accent;
+        ArtworkPlayPauseIcon.Foreground = IconResources.AccentContrastBrush;
     }
 
     // У ScrollViewer нет анимируемого свойства VerticalOffset: attached-свойство проксирует анимацию в ScrollToVerticalOffset.
