@@ -81,6 +81,39 @@ internal sealed class ShuffleSession
     // Трек в истории на offset от path без изменения истории (для превью соседних обложек); null, если там ничего нет.
     public string? PeekNeighbor(string path, int offset)
     {
+        int found = FindNearestIndex(path);
+        int target = found + offset;
+        return found < 0 || target < 0 || target >= _history.Count ? null : _history[target];
+    }
+
+    // Заранее выбирает соседей path на краях истории, чтобы превью в карусели показывало именно те треки, которые затем сыграют
+    // «Вперёд»/«Назад»; позиция в истории не меняется.
+    public void PlanNeighbors(List<string> activeTracks, string path)
+    {
+        if (activeTracks.Count < 2) return;
+
+        if (_history.Count == 0)
+        {
+            _history.Add(path);
+            _historyIndex = 0;
+        }
+
+        int found = FindNearestIndex(path);
+        if (found < 0) return;
+
+        if (found == _history.Count - 1)
+            _history.Add(GetNext(activeTracks, path));
+
+        if (found == 0)
+        {
+            _history.Insert(0, GetNext(activeTracks, path));
+            if (_historyIndex >= 0) _historyIndex++;
+        }
+    }
+
+    // Один трек может встречаться в истории несколько раз: берём вхождение, ближайшее к текущей позиции.
+    private int FindNearestIndex(string path)
+    {
         int found = -1;
         for (int i = 0; i < _history.Count; i++)
         {
@@ -88,8 +121,7 @@ internal sealed class ShuffleSession
                 found = i;
         }
 
-        int target = found + offset;
-        return found < 0 || target < 0 || target >= _history.Count ? null : _history[target];
+        return found;
     }
 
     // Генерирует новый случайный трек и дописывает его в конец истории шафла — вызывается

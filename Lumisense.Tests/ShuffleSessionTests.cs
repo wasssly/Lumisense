@@ -349,4 +349,32 @@ public sealed class ShuffleSessionTests
 
         Assert.Equal(new[] { "new.mp3" }, Persist(session).ShuffleHistory);
     }
+
+    [Fact]
+    public void PlanNeighbors_AddsKnownNeighborsOnBothSidesAndKeepsPosition()
+    {
+        var session = CreateEnabled();
+        var active = new List<string> { "a", "b", "c", "d" };
+
+        session.PlanNeighbors(active, "b");
+
+        string? next = session.PeekNeighbor("b", 1);
+        string? previous = session.PeekNeighbor("b", -1);
+        Assert.NotNull(next);
+        Assert.NotNull(previous);
+        Assert.NotEqual("b", next);
+        Assert.NotEqual("b", previous);
+        Assert.Equal(next, session.GetHistoryTrack(+1, active, "b"));
+    }
+
+    [Fact]
+    public void PlanNeighbors_DoesNothingForSingleTrack()
+    {
+        var session = CreateEnabled();
+
+        session.PlanNeighbors(new List<string> { "a" }, "a");
+
+        Assert.Null(session.PeekNeighbor("a", 1));
+        Assert.Null(session.PeekNeighbor("a", -1));
+    }
 }

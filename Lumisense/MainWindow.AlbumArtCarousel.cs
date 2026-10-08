@@ -30,8 +30,7 @@ public partial class MainWindow
     // Карусель включена: по бокам главной обложки всегда видны соседние (приглушённые), а смена трека двигает ленту.
     private bool IsCarouselTransition => _settings.AlbumArtTransitionEnabled && _settings.AlbumArtTransitionStyle == "Carousel";
 
-    // Соседи по порядку плейлиста, а в шаффле — по уже известной истории (будущий трек, которого в истории ещё нет, заранее
-    // неизвестен, и вместо него показывается заглушка).
+    // Соседи по порядку плейлиста, а в шаффле — по истории, в которую PrefetchNeighborArt заранее дописывает соседей.
     private string? GetNeighborTrackPath(string? path, int offset)
     {
         if (path is null) return null;
@@ -80,6 +79,10 @@ public partial class MainWindow
     private void PrefetchNeighborArt(string? centerPath)
     {
         if (!IsCarouselTransition) return;
+
+        // В шаффле будущий трек иначе неизвестен, и справа от главной обложки не было бы карточки.
+        if (_shuffleSession.IsEnabled && centerPath is not null)
+            _shuffleSession.PlanNeighbors(FlattenActive(), centerPath);
 
         var wanted = new List<string>();
         for (int offset = -NeighborArtReach; offset <= NeighborArtReach; offset++)

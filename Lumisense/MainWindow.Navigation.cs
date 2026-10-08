@@ -251,7 +251,11 @@ public partial class MainWindow
 
     void IIntegrationHost.ShuffleButton_Click(object sender, RoutedEventArgs e) => ShuffleButton_Click(sender, e);
 
-    private void ShuffleButton_Click(object sender, RoutedEventArgs e) => SetShuffleEnabled(!_shuffleSession.IsEnabled);
+    private void ShuffleButton_Click(object sender, RoutedEventArgs e)
+    {
+        SetShuffleEnabled(!_shuffleSession.IsEnabled);
+        ApplyAlbumArtTransitionStyleLive();
+    }
 
     // Вынесено из ShuffleButton_Click, чтобы применять то же (состояние и иконка) при восстановлении на старте без эмуляции клика.
     private void SetShuffleEnabled(bool enabled, bool resetSessionHistory = true)
