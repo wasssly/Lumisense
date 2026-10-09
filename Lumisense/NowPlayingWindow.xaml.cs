@@ -585,17 +585,15 @@ public partial class NowPlayingWindow : Window
         try
         {
             LyricsModeText.Text = LocalizationService.Translate("Ищем текст…");
-            IReadOnlyList<OnlineLyricsResult> results = await LyricsService.SearchOnlineAsync(
-                _owner.CurrentTitle, _owner.CurrentArtist, token);
+            LyricsService.AutomaticLyricsLookup lookup = await LyricsService.FindAutomaticAsync(
+                _owner.CurrentTitle, _owner.CurrentArtist, _owner.CurrentTrackDurationSeconds, token);
             if (token.IsCancellationRequested || !string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            OnlineLyricsResult? exact = results.FirstOrDefault(result =>
-                SameTrackField(result.TrackName, _owner.CurrentTitle) &&
-                SameTrackField(result.ArtistName, _owner.CurrentArtist));
+            OnlineLyricsResult? exact = lookup.Best;
             if (exact is null)
             {
-                LyricsModeText.Text = LocalizationService.Translate(results.Count > 0 ? "Нужен выбор варианта" : "Нет текста");
+                LyricsModeText.Text = LocalizationService.Translate(lookup.CandidateCount > 0 ? "Нужен выбор варианта" : "Нет текста");
                 return;
             }
 
@@ -625,18 +623,6 @@ public partial class NowPlayingWindow : Window
                 _onlineSearchCts = null;
             searchCts.Dispose();
         }
-    }
-
-    private static bool SameTrackField(string left, string right)
-    {
-        static string Normalize(string value) => new(value
-            .Where(char.IsLetterOrDigit)
-            .Select(char.ToLowerInvariant)
-            .ToArray());
-
-        string normalizedLeft = Normalize(left);
-        string normalizedRight = Normalize(right);
-        return normalizedLeft.Length > 0 && normalizedLeft == normalizedRight;
     }
 
     private void ApplyLyricsDocument(LyricsDocument document)

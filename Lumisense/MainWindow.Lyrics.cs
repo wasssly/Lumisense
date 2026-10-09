@@ -129,13 +129,11 @@ public partial class MainWindow
             if (document.Kind == LyricsKind.None && !string.IsNullOrWhiteSpace(trackPath))
             {
                 LyricsPanelSourceText.Text = LocalizationService.Translate("Ищем текст…");
-                IReadOnlyList<OnlineLyricsResult> results = await LyricsService.SearchOnlineAsync(
-                    CurrentTitle, CurrentArtist, token);
+                LyricsService.AutomaticLyricsLookup lookup = await LyricsService.FindAutomaticAsync(
+                    CurrentTitle, CurrentArtist, CurrentTrackDurationSeconds, token);
                 if (!IsMainWindowLyricsRequestCurrent(trackPath, token)) return;
 
-                OnlineLyricsResult? exact = results.FirstOrDefault(result =>
-                    SameLyricsTrackField(result.TrackName, CurrentTitle) &&
-                    SameLyricsTrackField(result.ArtistName, CurrentArtist));
+                OnlineLyricsResult? exact = lookup.Best;
                 if (exact is not null)
                 {
                     await LyricsService.SaveOnlineResultAsync(trackPath, exact, token);
@@ -174,18 +172,6 @@ public partial class MainWindow
         _isLyricsPanelActive && !token.IsCancellationRequested &&
         string.Equals(trackPath, _mainWindowLyricsTrackPath, StringComparison.OrdinalIgnoreCase) &&
         string.Equals(trackPath, _currentTrackPath, StringComparison.OrdinalIgnoreCase);
-
-    private static bool SameLyricsTrackField(string left, string right)
-    {
-        static string Normalize(string value) => new(value
-            .Where(char.IsLetterOrDigit)
-            .Select(char.ToLowerInvariant)
-            .ToArray());
-
-        string normalizedLeft = Normalize(left);
-        string normalizedRight = Normalize(right);
-        return normalizedLeft.Length > 0 && normalizedLeft == normalizedRight;
-    }
 
     private void ApplyMainWindowLyricsLoading()
     {
