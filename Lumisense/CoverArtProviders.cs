@@ -20,7 +20,7 @@ public static class CoverArtProviders
 
     public static readonly HashSet<string> TrustedImageHosts = new(StringComparer.OrdinalIgnoreCase)
     {
-        "mzstatic.com", "apple.com", "deezer.com", "dzcdn.net", "coverartarchive.org", "archive.org"
+        "mzstatic.com", "apple.com", "deezer.com", "dzcdn.net", "coverartarchive.org", "archive.org", "yandex.net"
     };
 
     // Единая карточка результата независимо от источника. Source — только для UI (подпись/фильтр
@@ -130,6 +130,80 @@ public static class CoverArtProviders
             var label = string.IsNullOrEmpty(albumTitle) ? trackArtist ?? "" : $"{trackArtist} — {albumTitle}";
 
             entries.Add(new ArtResult(thumb, full, label, "Deezer"));
+        }
+
+        return entries;
+    }
+
+    // Яндекс Музыка: неофициальный публичный поиск api.music.yandex.net без авторизации (токен не используется).
+    // Это собственный небольшой клиент; сторонняя библиотека-обёртка (GPL-3.0) намеренно не подключена. Если сервис
+    // изменит или закроет доступ, источник просто вернёт пустой список, как и остальные.
+    public static async Task<List<ArtResult>> SearchYandexMusicAsync(string query, CancellationToken token)
+    {
+        query = query.Trim();
+        if (query.Length == 0) return new List<ArtResult>();
+
+        try
+        {
+            var url = $"https://api.music.yandex.net/search?text={Uri.EscapeDataString(query)}&type=track&page=0&pageSize=16";
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.TryAddWithoutValidation("User-Agent", MusicBrainzUserAgent);
+            using var response = await Http.SendAsync(request, token);
+            response.EnsureSuccessStatusCode();
+            var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
+            return ParseYandexMusicResults(json);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            // См. комментарий в SearchItunesAsync: сбой одного источника не должен ломать остальные.
+            return new List<ArtResult>();
+        }
+    }
+
+    // Ответ вида {"result":{"tracks":{"results":[{"title","artists":[{"name"}],"albums":[{"title","coverUri"}],"coverUri"}]}}}.
+    // coverUri приходит без схемы и с маркером размера "%%", например "avatars.yandex.net/get-music-content/.../%%".
+    private static List<ArtResult> ParseYandexMusicResults(string json)
+    {
+        var entries = new List<ArtResult>();
+
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("result", out var result)
+            || !result.TryGetProperty("tracks", out var tracks)
+            || !tracks.TryGetProperty("results", out var items)
+            || items.ValueKind != JsonValueKind.Array)
+            return entries;
+
+        var seenArt = new HashSet<string>();
+        foreach (var item in items.EnumerateArray())
+        {
+            var coverUri = item.TryGetProperty("coverUri", out var coverEl) ? coverEl.GetString() : null;
+            string? albumTitle = null;
+            if (item.TryGetProperty("albums", out var albums) && albums.ValueKind == JsonValueKind.Array && albums.GetArrayLength() > 0)
+            {
+                var album = albums[0];
+                albumTitle = album.TryGetProperty("title", out var albumTitleEl) ? albumTitleEl.GetString() : null;
+                if (string.IsNullOrEmpty(coverUri))
+                    coverUri = album.TryGetProperty("coverUri", out var albumCoverEl) ? albumCoverEl.GetString() : null;
+            }
+            if (string.IsNullOrEmpty(coverUri) || !coverUri.Contains("%%") || !seenArt.Add(coverUri)) continue;
+
+            var artists = new List<string>();
+            if (item.TryGetProperty("artists", out var artistsEl) && artistsEl.ValueKind == JsonValueKind.Array)
+            {
+                foreach (var artist in artistsEl.EnumerateArray())
+                {
+                    var name = artist.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+                    if (!string.IsNullOrEmpty(name)) artists.Add(name);
+                }
+            }
+
+            var artistText = string.Join(", ", artists);
+            var label = string.IsNullOrEmpty(albumTitle) ? artistText : $"{artistText} — {albumTitle}";
+            entries.Add(new ArtResult("https://" + coverUri.Replace("%%", "200x200"), "https://" + coverUri.Replace("%%", "1000x1000"), label, "Yandex Music"));
         }
 
         return entries;

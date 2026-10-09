@@ -110,6 +110,7 @@ public partial class CoverArtSearchWindow : FluentWindow
             if (ItunesSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchItunesAsync(query, token));
             if (DeezerSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchDeezerAsync(query, token));
             if (MusicBrainzSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchMusicBrainzAsync(query, token));
+            if (YandexMusicSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchYandexMusicAsync(query, token));
 
             if (searchTasks.Count == 0)
             {

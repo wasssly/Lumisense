@@ -49,7 +49,9 @@
             <TextBlock Text="Источники:" VerticalAlignment="Center" Opacity="0.6" FontSize="12" Margin="0,0,10,0" />
             <CheckBox x:Name="ItunesSourceCheckBox" Content="iTunes" IsChecked="True" Margin="0,0,14,0" />
             <CheckBox x:Name="DeezerSourceCheckBox" Content="Deezer" IsChecked="True" Margin="0,0,14,0" />
-            <CheckBox x:Name="MusicBrainzSourceCheckBox" Content="MusicBrainz" IsChecked="True" />
+            <CheckBox x:Name="MusicBrainzSourceCheckBox" Content="MusicBrainz" IsChecked="True" Margin="0,0,14,0" />
+            <!-- Неофициальный источник: по умолчанию выключен, запрос уходит в Яндекс только после явного выбора. -->
+            <CheckBox x:Name="YandexMusicSourceCheckBox" Content="Yandex Music" IsChecked="False" />
         </StackPanel>
 
         <Grid Grid.Row="3" Margin="24,0,24,8">
