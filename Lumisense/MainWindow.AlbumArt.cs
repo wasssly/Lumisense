@@ -449,27 +449,28 @@ public partial class MainWindow
         AlbumArtBorderScale.ScaleX = 0.88;
         AlbumArtBorderScale.ScaleY = 0.88;
 
-        // Кривые разные: уезжающая обложка ускоряется (EaseIn), влетающая гасит скорость и мягко садится (EaseOut).
-        var duration = isBurst ? TimeSpan.FromMilliseconds(120) : TimeSpan.FromMilliseconds(460);
-        var exitEase = new CubicEase { EasingMode = EasingMode.EaseIn };
-        var enterEase = new CubicEase { EasingMode = EasingMode.EaseOut };
+        // Одна кривая у обеих обложек: они едут как единая лента; EaseOut без долгого «разгона» не даёт рывка в середине хода.
+        var duration = isBurst ? TimeSpan.FromMilliseconds(120) : TimeSpan.FromMilliseconds(500);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
 
-        var ghostSlide = new DoubleAnimation(0, exitX, duration) { EasingFunction = exitEase };
-        var ghostScaleAnim = new DoubleAnimation(1, 0.88, duration) { EasingFunction = exitEase };
-        var ghostFade = new DoubleAnimation(1, 0, duration) { EasingFunction = exitEase };
+        var ghostSlide = new DoubleAnimation(0, exitX, duration) { EasingFunction = ease };
+        var ghostScaleAnim = new DoubleAnimation(1, 0.88, duration) { EasingFunction = ease };
+        var ghostFade = new DoubleAnimation(1, 0, duration) { EasingFunction = ease };
         ghostSlide.Completed += (_, _) =>
         {
             if (transitionGeneration == _albumArtTransitionGeneration)
                 AlbumArtGhostBorder.Visibility = Visibility.Collapsed;
         };
 
-        var enterSlide = new DoubleAnimation(enterFromX, 0, duration) { EasingFunction = enterEase };
-        var enterScaleAnim = new DoubleAnimation(0.88, 1, duration) { EasingFunction = enterEase };
+        var enterSlide = new DoubleAnimation(enterFromX, 0, duration) { EasingFunction = ease };
+        var enterScaleAnim = new DoubleAnimation(0.88, 1, duration) { EasingFunction = ease };
+        var enterFade = new DoubleAnimation(0, 1, duration) { EasingFunction = ease };
 
         AlbumArtGhostTransform.BeginAnimation(TranslateTransform.XProperty, ghostSlide);
         AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleXProperty, ghostScaleAnim);
         AlbumArtGhostScale.BeginAnimation(ScaleTransform.ScaleYProperty, ghostScaleAnim);
         AlbumArtGhostBorder.BeginAnimation(OpacityProperty, ghostFade);
+        AlbumArtBorder.BeginAnimation(OpacityProperty, enterFade);
         AlbumArtBorderTransform.BeginAnimation(TranslateTransform.XProperty, enterSlide);
         AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleXProperty, enterScaleAnim);
         AlbumArtBorderScale.BeginAnimation(ScaleTransform.ScaleYProperty, enterScaleAnim);

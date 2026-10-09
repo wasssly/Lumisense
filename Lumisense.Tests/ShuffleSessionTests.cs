@@ -356,7 +356,7 @@ public sealed class ShuffleSessionTests
         var session = CreateEnabled();
         var active = new List<string> { "a", "b", "c", "d" };
 
-        session.PlanNeighbors(active, "b");
+        session.PlanNeighbors(active, "b", 1);
 
         string? next = session.PeekNeighbor("b", 1);
         string? previous = session.PeekNeighbor("b", -1);
@@ -368,11 +368,23 @@ public sealed class ShuffleSessionTests
     }
 
     [Fact]
+    public void PlanNeighbors_PlansRequestedReachOnBothSides()
+    {
+        var session = CreateEnabled();
+        var active = new List<string> { "a", "b", "c", "d", "e" };
+
+        session.PlanNeighbors(active, "c", 2);
+
+        Assert.NotNull(session.PeekNeighbor("c", 2));
+        Assert.NotNull(session.PeekNeighbor("c", -2));
+    }
+
+    [Fact]
     public void PlanNeighbors_DoesNothingForSingleTrack()
     {
         var session = CreateEnabled();
 
-        session.PlanNeighbors(new List<string> { "a" }, "a");
+        session.PlanNeighbors(new List<string> { "a" }, "a", 1);
 
         Assert.Null(session.PeekNeighbor("a", 1));
         Assert.Null(session.PeekNeighbor("a", -1));

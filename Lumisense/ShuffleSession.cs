@@ -86,9 +86,9 @@ internal sealed class ShuffleSession
         return found < 0 || target < 0 || target >= _history.Count ? null : _history[target];
     }
 
-    // Заранее выбирает соседей path на краях истории, чтобы превью в карусели показывало именно те треки, которые затем сыграют
-    // «Вперёд»/«Назад»; позиция в истории не меняется.
-    public void PlanNeighbors(List<string> activeTracks, string path)
+    // Заранее выбирает до reach соседей path с каждой стороны, чтобы превью в карусели показывало именно те треки, которые затем
+    // сыграют «Вперёд»/«Назад», и их обложки успели подгрузиться; позиция в истории не меняется.
+    public void PlanNeighbors(List<string> activeTracks, string path, int reach)
     {
         if (activeTracks.Count < 2) return;
 
@@ -101,12 +101,13 @@ internal sealed class ShuffleSession
         int found = FindNearestIndex(path);
         if (found < 0) return;
 
-        if (found == _history.Count - 1)
-            _history.Add(GetNext(activeTracks, path));
+        while (_history.Count - 1 - found < reach)
+            _history.Add(GetNext(activeTracks, _history[^1]));
 
-        if (found == 0)
+        while (found < reach)
         {
-            _history.Insert(0, GetNext(activeTracks, path));
+            _history.Insert(0, GetNext(activeTracks, _history[0]));
+            found++;
             if (_historyIndex >= 0) _historyIndex++;
         }
     }
