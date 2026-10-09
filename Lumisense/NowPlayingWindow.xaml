@@ -73,7 +73,7 @@
     <Grid>
         <!-- Декоративный слой: крупные размытые световые сферы быстро проходят через экран.
              Он не ловит мышь и поэтому не влияет на клавиши, кнопки или выбор текста. -->
-        <Canvas IsHitTestVisible="False" ClipToBounds="True">
+        <Canvas x:Name="CloudsBackdrop" IsHitTestVisible="False" ClipToBounds="True">
             <Ellipse x:Name="AmbientBlobOne" RenderTransformOrigin="0.5,0.5" Width="540" Height="540" Fill="#D45278FF" Opacity="0.82" Canvas.Left="0" Canvas.Top="0">
                 <Ellipse.Effect><BlurEffect Radius="140" /></Ellipse.Effect>
                 <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobOneScale" /><TranslateTransform x:Name="AmbientBlobOneTransform" /></TransformGroup></Ellipse.RenderTransform>
@@ -107,6 +107,13 @@
                 <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobEightScale" /><TranslateTransform x:Name="AmbientBlobEightTransform" /></TransformGroup></Ellipse.RenderTransform>
             </Ellipse>
         </Canvas>
+        <!-- Фон «Цветные шары» (NowPlayingWindow.Dynamic.cs): овалы с мягким радиальным градиентом создаются в коде. -->
+        <Canvas x:Name="OrbsBackdrop" IsHitTestVisible="False" ClipToBounds="True" Visibility="Collapsed" />
+
+        <!-- Фон «Волны» (NowPlayingWindow.Dynamic.cs): волны рисуются в маленький битмап, который растягивается на всё окно;
+             линейное сглаживание при увеличении даёт размытие. -->
+        <Image x:Name="WavesBackdrop" IsHitTestVisible="False" Stretch="Fill" Visibility="Collapsed"
+               RenderOptions.BitmapScalingMode="HighQuality" />
         <Border Background="#70080A0F" />
 
         <Grid>

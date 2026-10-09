@@ -263,6 +263,8 @@ internal static class SettingsIntegrityService
         settings.TrackChangeToastSize = Allowed(settings.TrackChangeToastSize, defaults.TrackChangeToastSize, "Small", "Medium", "Large");
         settings.TrackChangeToastPolicy = Allowed(settings.TrackChangeToastPolicy, defaults.TrackChangeToastPolicy,
             "EveryTrackChange", "PlaybackOnly", "ManualOnly");
+        settings.NowPlayingBackground = Allowed(settings.NowPlayingBackground, defaults.NowPlayingBackground,
+            "Clouds", "Orbs", "Waves");
         settings.MiniPlayerSizePreset = Allowed(settings.MiniPlayerSizePreset, defaults.MiniPlayerSizePreset,
             "Compact", "Current", "Classic");
         settings.FavoriteHeartAnimation = Allowed(settings.FavoriteHeartAnimation, defaults.FavoriteHeartAnimation,

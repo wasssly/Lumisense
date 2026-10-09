@@ -148,6 +148,9 @@ public partial class SettingsWindow : FluentWindow
         SyncedLyricsEffectNoneRadio.IsChecked = _settings.SyncedLyricsHighlightEffect == "None";
         // Старые значения Scale/GlowScale после обновления корректно воспринимаются как Glow.
         SyncedLyricsEffectGlowRadio.IsChecked = !SyncedLyricsEffectNoneRadio.IsChecked.GetValueOrDefault();
+        NowPlayingBackgroundOrbsRadio.IsChecked = _settings.NowPlayingBackground == "Orbs";
+        NowPlayingBackgroundWavesRadio.IsChecked = _settings.NowPlayingBackground == "Waves";
+        NowPlayingBackgroundCloudsRadio.IsChecked = _settings.NowPlayingBackground is not ("Orbs" or "Waves");
         HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
         FavoriteHeartSparksRadio.IsChecked = _settings.FavoriteHeartAnimation == "Sparks";
         FavoriteHeartRingRadio.IsChecked = _settings.FavoriteHeartAnimation == "Ring";
@@ -1154,6 +1157,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
         Add("Выравнивание текста песни", "Оформление", "Appearance", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
+        Add("Фон Now Playing", "Оформление", "Appearance", NowPlayingBackgroundCloudsRadio, "фон now playing облака цветные шары волны background orbs clouds waves");
         Add("Скрывать обложку при тексте песни", "Оформление", "Appearance", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
         Add("Анимация избранного", "Оформление", "Appearance", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
         Add("Размер мини-плеера", "Мини-плеер", "MiniPlayer", MiniSizeClassicRadio, "размер мини плеер компактный классический текущий 1.21 size preset");
@@ -1660,6 +1664,17 @@ public partial class SettingsWindow : FluentWindow
             : LyricsAlignRightRadio.IsChecked == true ? "Right"
             : "Left";
         _owner.ApplySyncedLyricsAppearance();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void NowPlayingBackgroundRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.NowPlayingBackground = NowPlayingBackgroundOrbsRadio.IsChecked == true ? "Orbs"
+            : NowPlayingBackgroundWavesRadio.IsChecked == true ? "Waves"
+            : "Clouds";
+        _owner.ApplyNowPlayingBackgroundLive();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 

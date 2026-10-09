@@ -1053,6 +1053,21 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.NowPlayingBackground и NowPlayingWindow.Backdrop.cs. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Фон Now Playing" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="NowPlayingBackgroundCloudsRadio" Content="Облака из цветов обложки"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="NowPlayingBackgroundOrbsRadio" Content="Цветные шары"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="NowPlayingBackgroundWavesRadio" Content="Волны"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,0" />
+                                <TextBlock Text="«Цветные шары» плавно движутся по орбитам, «Волны» размыты и реагируют на громкость. Оба фона останавливаются на паузе и при «Меньше анимации»."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Панель текста песни" Style="{StaticResource SettingsSectionTitleStyle}" />

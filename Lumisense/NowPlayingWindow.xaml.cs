@@ -59,6 +59,8 @@ public partial class NowPlayingWindow : Window
 
         SyncedLyricsList.ItemsSource = _syncedLines;
         ApplyLyricsAppearance();
+        ApplyBackgroundMode();
+        SizeChanged += (_, _) => UpdateBackdropGeometry();
         OnlineLyricsResultsList.ItemsSource = _onlineResults;
         Loaded += NowPlayingWindow_Loaded;
         Closed += NowPlayingWindow_Closed;
@@ -215,6 +217,7 @@ public partial class NowPlayingWindow : Window
             _ambientSpeed = 0;
             _ambientTargetSpeed = 0;
             _ambientMotionTimer?.Stop();
+            UpdateDynamicDriver(false);
             return;
         }
 
@@ -228,6 +231,7 @@ public partial class NowPlayingWindow : Window
         LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         CancelLyricsLoad();
         CancelOnlineSearch();
+        StopDynamicDriver();
         if (_ambientMotionTimer is not null)
         {
             _ambientMotionTimer.Stop();
@@ -353,6 +357,8 @@ public partial class NowPlayingWindow : Window
         AmbientBlobSix.Fill = CreateSoftCloudBrush(cloudColors[0]);
         AmbientBlobSeven.Fill = CreateSoftCloudBrush(cloudColors[2]);
         AmbientBlobEight.Fill = CreateSoftCloudBrush(cloudColors[4]);
+
+        ApplyDynamicPalette(cloudColors, animate: true);
     }
 
     private static RadialGradientBrush CreateSoftCloudBrush(System.Windows.Media.Color color)
@@ -791,8 +797,10 @@ public partial class NowPlayingWindow : Window
         _ambientTargetSpeed = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings)
             ? 0
             : isPlaying ? 0.72 : 0.15;
+        // Таймер нужен только облакам; шары и волны считаются покадрово.
         if (_ambientMotionTimer is not null)
-            _ambientMotionTimer.IsEnabled = true;
+            _ambientMotionTimer.IsEnabled = BackgroundMode == "Clouds";
+        UpdateDynamicDriver(isPlaying);
     }
 
     private void UpdateProgress(double currentSeconds, double totalSeconds)

@@ -120,6 +120,9 @@ public class AppSettings
     // Анимация сердечка при добавлении в избранное: "None" | "Sparks" | "Fill" | "Ring".
     public string FavoriteHeartAnimation { get; set; } = "Fill";
 
+    // Фон Now Playing: "Clouds" (облака из палитры обложки) | "Orbs" (мягкие цветные шары на орбитах) | "Waves" (размытые волны).
+    public string NowPlayingBackground { get; set; } = "Clouds";
+
     // Размер мини-плеера: "Compact" | "Current" | "Classic" (по умолчанию размер версии 1.21.0).
     public string MiniPlayerSizePreset { get; set; } = "Classic";
 

@@ -107,7 +107,8 @@ public static class LumiProfileIO
             (settings.SyncedLyricsHighlightEffect?.Length ?? 0) > 32 ||
             (settings.LyricsTextAlignment?.Length ?? 0) > 32 ||
             (settings.FavoriteHeartAnimation?.Length ?? 0) > 32 ||
-            (settings.MiniPlayerSizePreset?.Length ?? 0) > 32)
+            (settings.MiniPlayerSizePreset?.Length ?? 0) > 32 ||
+            (settings.NowPlayingBackground?.Length ?? 0) > 32)
             return false;
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
             return false;
@@ -253,6 +254,8 @@ public static class LumiProfileIO
         if (HeartAnimation.IsKnown(source.FavoriteHeartAnimation))
             target.FavoriteHeartAnimation = source.FavoriteHeartAnimation;
         target.HideCoverInLyricsPanel = source.HideCoverInLyricsPanel;
+        if (source.NowPlayingBackground is "Clouds" or "Orbs" or "Waves")
+            target.NowPlayingBackground = source.NowPlayingBackground;
         if (MiniPlayerSizePreset.IsKnown(source.MiniPlayerSizePreset))
             target.MiniPlayerSizePreset = source.MiniPlayerSizePreset;
         if (source.TrackChangeToastTextAlignment is "Left" or "Center" or "Right")

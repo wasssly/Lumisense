@@ -211,6 +211,11 @@ public partial class MainWindow
         _miniPlayerWindow?.ApplySizePreset();
     }
 
+    public void ApplyNowPlayingBackgroundLive()
+    {
+        _nowPlayingWindow?.ApplyBackgroundMode();
+    }
+
     // Аналог ApplyMiniPlayerSecondaryButtonLive для настройки "показывать полосу прогресса"
     // (см. AppSettings.MiniPlayerShowProgress).
     public void ApplyMiniPlayerProgressBarVisibilityLive()
