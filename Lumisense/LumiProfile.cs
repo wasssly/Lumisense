@@ -257,6 +257,7 @@ public static class LumiProfileIO
         if (HeartAnimation.IsKnown(source.FavoriteHeartAnimation))
             target.FavoriteHeartAnimation = source.FavoriteHeartAnimation;
         target.HideCoverInLyricsPanel = source.HideCoverInLyricsPanel;
+        target.UseExtraLyricsSource = source.UseExtraLyricsSource;
         if (source.NowPlayingBackground is "Clouds" or "Orbs" or "Waves")
             target.NowPlayingBackground = source.NowPlayingBackground;
         if (MiniPlayerSizePreset.IsKnown(source.MiniPlayerSizePreset))

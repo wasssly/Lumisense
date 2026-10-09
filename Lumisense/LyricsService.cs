@@ -43,13 +43,17 @@ public sealed record OnlineLyricsResult(
     string AlbumName,
     double Duration,
     string? PlainLyrics,
-    string? SyncedLyrics)
+    string? SyncedLyrics,
+    string Source = "LRCLIB")
 {
     public bool HasSyncedLyrics => !string.IsNullOrWhiteSpace(SyncedLyrics);
     public bool HasLyrics => HasSyncedLyrics || !string.IsNullOrWhiteSpace(PlainLyrics);
-    public string DisplayName => string.IsNullOrWhiteSpace(ArtistName)
+    private string BaseName => string.IsNullOrWhiteSpace(ArtistName)
         ? TrackName
         : $"{ArtistName} — {TrackName}";
+
+    // Результаты дополнительного источника помечены его названием, чтобы их можно было отличить от LRCLIB.
+    public string DisplayName => Source == "LRCLIB" ? BaseName : $"{BaseName} \u00b7 {Source}";
 }
 
 // Локальная загрузка текстов и поиск через LRCLIB. Now Playing может сделать один авто-запрос
@@ -389,20 +393,25 @@ public static class LyricsService
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonicalPath))).ToLowerInvariant();
     }
 
+    // Включает дополнительный источник текстов (NetEase через Lyricify); выставляется из настроек.
+    public static bool ExtraSourceEnabled { get; set; }
+
     // Встроенный поиск по LRCLIB. Никакой ключ не нужен, но сервис просит корректный User-Agent
     // и последовательные запросы; UI отменяет предыдущий поиск до начала следующего.
-    public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineAsync(
+    private static async Task<IReadOnlyList<OnlineLyricsResult>> SearchLrcLibAsync(
         string trackName,
         string artistName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        bool generalQuery = false)
     {
         string title = trackName.Trim();
         string artist = artistName.Trim();
         if (string.IsNullOrWhiteSpace(title) || title == "Файл не выбран")
             return Array.Empty<OnlineLyricsResult>();
 
-        var query = new List<string> { $"track_name={Uri.EscapeDataString(title)}" };
-        if (!string.IsNullOrWhiteSpace(artist) && artist != "—")
+        // Общий запрос (q) ищет по названию и исполнителю сразу: помогает, когда теги записаны не так, как в каталоге LRCLIB.
+        var query = new List<string> { generalQuery ? $"q={Uri.EscapeDataString(title)}" : $"track_name={Uri.EscapeDataString(title)}" };
+        if (!generalQuery && !string.IsNullOrWhiteSpace(artist) && artist != "—")
             query.Add($"artist_name={Uri.EscapeDataString(artist)}");
 
         await SearchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -449,6 +458,22 @@ public static class LyricsService
         }
     }
 
+    // Онлайн-поиск текстов: основной источник LRCLIB, а при включённой настройке — ещё и NetEase (LyricifyLyricsSource).
+    // Результаты дополнительного источника идут после LRCLIB, чтобы не вытеснять привычную выдачу.
+    public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineAsync(
+        string trackName,
+        string artistName,
+        CancellationToken cancellationToken,
+        bool generalQuery = false,
+        bool includeExtra = true)
+    {
+        IReadOnlyList<OnlineLyricsResult> primary = await SearchLrcLibAsync(trackName, artistName, cancellationToken, generalQuery);
+        if (!includeExtra || !ExtraSourceEnabled) return primary;
+
+        IReadOnlyList<OnlineLyricsResult> extra = await LyricifyLyricsSource.SearchAsync(trackName, artistName, cancellationToken);
+        return extra.Count == 0 ? primary : primary.Concat(extra).ToList();
+    }
+
     // Теги исполнителя и названия часто записаны по-разному: пробуем до трёх вариантов и останавливаемся
     // на первом непустом результате, чтобы не нагружать публичный сервис.
     public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineVariantsAsync(
@@ -456,17 +481,94 @@ public static class LyricsService
         string artistName,
         CancellationToken cancellationToken)
     {
-        string title = trackName.Trim();
-        string artist = artistName.Trim();
-        IReadOnlyList<OnlineLyricsResult> primary = await SearchOnlineAsync(title, artist, cancellationToken);
-        if (primary.Count > 0 || string.IsNullOrWhiteSpace(artist)) return primary;
+        // Варианты: как в теге, без пометок версии, с первым исполнителем, только название и, наконец, общий запрос.
+        // Сначала только LRCLIB: он быстрый. Дополнительные источники опрашиваются один раз в конце и дописываются к выдаче,
+        // а не повторяются на каждом варианте запроса.
+        IReadOnlyList<OnlineLyricsResult> primary = Array.Empty<OnlineLyricsResult>();
+        foreach ((string title, string artist) in LyricsMatcher.BuildQueryVariants(trackName, artistName))
+        {
+            primary = await SearchOnlineAsync(title, artist, cancellationToken, includeExtra: false);
+            if (primary.Count > 0) break;
+        }
 
-        IReadOnlyList<OnlineLyricsResult> titleOnly = await SearchOnlineAsync(title, string.Empty, cancellationToken);
-        if (titleOnly.Count > 0) return titleOnly;
+        string? generalQuery = BuildGeneralQuery(trackName, artistName);
+        if (primary.Count == 0 && generalQuery is not null)
+            primary = await SearchOnlineAsync(generalQuery, string.Empty, cancellationToken, generalQuery: true, includeExtra: false);
 
-        // Последний вариант помогает, когда каталог хранит исполнителя в самом названии.
-        return await SearchOnlineAsync($"{artist} {title}", string.Empty, cancellationToken);
+        if (!ExtraSourceEnabled) return primary;
+
+        (string extraTitle, string extraArtist) = ExtraSourceQuery(trackName, artistName);
+        IReadOnlyList<OnlineLyricsResult> extra = await LyricifyLyricsSource.SearchAsync(extraTitle, extraArtist, cancellationToken);
+        return extra.Count == 0 ? primary : primary.Concat(extra).ToList();
     }
+
+    // Запрос для дополнительных источников: название без пометок версии и исполнитель как в теге (их поиск нечёткий).
+    private static (string Title, string Artist) ExtraSourceQuery(string trackName, string artistName)
+    {
+        string artist = artistName.Trim();
+        return (LyricsMatcher.CleanTitle(trackName), artist == "—" ? string.Empty : artist);
+    }
+
+    // Результат автоподбора: уверенное совпадение (или null) и сколько кандидатов нашлось вообще — от этого зависит подсказка
+    // «Нужен выбор варианта» или «Нет текста».
+    public sealed record AutomaticLyricsLookup(OnlineLyricsResult? Best, int CandidateCount);
+
+    // Автоподбор текста для текущего трека: перебирает варианты запроса, пока не появится уверенное совпадение
+    // (см. LyricsMatcher.FindBest). Останавливается на первом удачном варианте, чтобы не нагружать публичные сервисы.
+    public static async Task<AutomaticLyricsLookup> FindAutomaticAsync(
+        string trackName,
+        string artistName,
+        double durationSeconds,
+        CancellationToken cancellationToken)
+    {
+        var candidates = new List<OnlineLyricsResult>();
+
+        void Collect(IReadOnlyList<OnlineLyricsResult> found)
+        {
+            foreach (OnlineLyricsResult result in found)
+            {
+                if (!candidates.Any(existing => existing.Source == result.Source && existing.Id == result.Id))
+                    candidates.Add(result);
+            }
+        }
+
+        // 1) LRCLIB по всем вариантам запроса — быстро и без внешних китайских серверов.
+        foreach ((string title, string artist) in LyricsMatcher.BuildQueryVariants(trackName, artistName))
+        {
+            Collect(await SearchOnlineAsync(title, artist, cancellationToken, includeExtra: false));
+            OnlineLyricsResult? best = LyricsMatcher.FindBest(candidates, trackName, artistName, durationSeconds);
+            if (best is not null) return new AutomaticLyricsLookup(best, candidates.Count);
+        }
+
+        string? generalQuery = BuildGeneralQuery(trackName, artistName);
+        if (generalQuery is not null)
+        {
+            Collect(await SearchOnlineAsync(generalQuery, string.Empty, cancellationToken, generalQuery: true, includeExtra: false));
+            OnlineLyricsResult? best = LyricsMatcher.FindBest(candidates, trackName, artistName, durationSeconds);
+            if (best is not null) return new AutomaticLyricsLookup(best, candidates.Count);
+        }
+
+        // 2) Дополнительные источники — только если LRCLIB не дал уверенного совпадения и они включены; один запрос с таймаутом.
+        if (ExtraSourceEnabled)
+        {
+            (string extraTitle, string extraArtist) = ExtraSourceQuery(trackName, artistName);
+            Collect(await LyricifyLyricsSource.SearchAsync(extraTitle, extraArtist, cancellationToken));
+            OnlineLyricsResult? best = LyricsMatcher.FindBest(candidates, trackName, artistName, durationSeconds);
+            if (best is not null) return new AutomaticLyricsLookup(best, candidates.Count);
+        }
+
+        return new AutomaticLyricsLookup(null, candidates.Count);
+    }
+
+    // «Исполнитель название» без пометок версии; null, если исполнитель неизвестен (тогда общий запрос ничего не добавляет).
+    private static string? BuildGeneralQuery(string trackName, string artistName)
+    {
+        string artist = LyricsMatcher.FirstArtist(artistName);
+        string title = LyricsMatcher.CleanTitle(trackName);
+        return artist.Length == 0 || title.Length == 0 ? null : $"{artist} {title}";
+    }
+
+    private static string LabelSource(OnlineLyricsResult result) => result.Source;
 
     public static LyricsDocument CreateDocumentFromOnlineResult(OnlineLyricsResult result)
     {
@@ -474,12 +576,12 @@ public static class LyricsService
         {
             List<LyricLine> lines = ParseLrc(result.SyncedLyrics);
             if (lines.Count > 0)
-                return new LyricsDocument(LyricsKind.Synced, lines, string.Empty, "LRCLIB · синхронный текст");
+                return new LyricsDocument(LyricsKind.Synced, lines, string.Empty, $"{LabelSource(result)} · синхронный текст");
         }
 
         return string.IsNullOrWhiteSpace(result.PlainLyrics)
             ? LyricsDocument.Empty
-            : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), result.PlainLyrics.Trim(), "LRCLIB · текст");
+            : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), result.PlainLyrics.Trim(), $"{LabelSource(result)} · текст");
     }
 
     public static async Task SaveOnlineResultAsync(string audioPath, OnlineLyricsResult result, CancellationToken cancellationToken)

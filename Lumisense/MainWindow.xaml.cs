@@ -356,6 +356,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
         // То же самое для Icon окна (см. AppIconContext, на который биндится Icon в XAML).
         AppIcons.Initialize(_settings);
+        LyricsService.ExtraSourceEnabled = _settings.UseExtraLyricsSource;
 
         // Установщик и обновление пересоздают ярлыки со значком Aurora — возвращаем выбранный пользователем.
         if (AppIcons.Current != AppIcons.Aurora)

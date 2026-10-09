@@ -1114,6 +1114,17 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.UseExtraLyricsSource и LyricifyLyricsSource.cs. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Дополнительный источник текстов" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <CheckBox x:Name="UseExtraLyricsSourceCheckBox" Content="NetEase Cloud Music и QQ Music (через Lyricify)"
+                                          Checked="UseExtraLyricsSourceCheckBox_Changed" Unchecked="UseExtraLyricsSourceCheckBox_Changed" />
+                                <TextBlock Text="Помогает найти тексты русских и других исполнителей, которых нет в LRCLIB. При онлайн-поиске название и исполнитель трека отправляются на серверы NetEase и QQ Music. Результаты идут после LRCLIB и помечены источником."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.WindowBackdropType. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>

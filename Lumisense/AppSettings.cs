@@ -123,6 +123,9 @@ public class AppSettings
     // Фон Now Playing: "Clouds" (облака из палитры обложки) | "Orbs" (мягкие цветные шары на орбитах) | "Waves" (размытые волны).
     public string NowPlayingBackground { get; set; } = "Clouds";
 
+    // Дополнительный источник текстов песен (NetEase через Lyricify.Lyrics.Helper); по умолчанию выключен.
+    public bool UseExtraLyricsSource { get; set; }
+
     // Размер мини-плеера: "Compact" | "Current" | "Classic" (по умолчанию размер версии 1.21.0).
     public string MiniPlayerSizePreset { get; set; } = "Classic";
 
