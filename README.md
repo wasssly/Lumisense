@@ -90,7 +90,7 @@
 - Режим совместимости с играми и оверлеями: включается вручную или автоматически, когда обнаружена игра на весь экран либо известный оверлей (RTSS, Xbox Game Bar, Steam, NVIDIA, AMD).
 - Жесты на обложке.
 - Полноэкранный режим Now Playing с крупной обложкой, динамичным фоном, управлением и текстом песни.
-- Шесть наборов иконок (Duotone, Outline, Bold, Fill, Thin, Font Awesome) с предпросмотром в настройках; переключаются без перезапуска. Иконки: Phosphor (MIT) и Font Awesome Free 7 (иконки под CC BY 4.0, https://fontawesome.com); тексты лицензий в `Lumisense/Icons/`.
+- Шесть наборов иконок (Duotone, Outline, Bold, Fill, Thin, Font Awesome) с предпросмотром в настройках; переключаются без перезапуска. Иконки: Phosphor (MIT) и Font Awesome Free 7 (иконки под CC BY 4.0, https://fontawesome.com); тексты лицензий в `Lumisense/Icons/`. Тексты песен: LRCLIB и опциональные источники NetEase и QQ Music через Lyricify.Lyrics.Helper (Apache-2.0, текст лицензии в `docs/`).
 - Три значка приложения (Classic, Aurora, Lavender) для окон и значка в трее; файл `.exe` и ярлыки не меняются.
 - Светлая и тёмная темы.
 - Системный или пользовательский акцентный цвет.
@@ -283,7 +283,7 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 - Standard, square, and compact mini-player modes with adjustable opacity, edge snapping, artwork gestures, progress outline, standard artwork, rotating vinyl, and static circular artwork.
 - Configurable mini-player context menu; opacity can be changed with a slider, the mouse wheel, or by typing a value; progress-outline thickness from 2 to 4.
 - Game and overlay compatibility mode, enabled manually or automatically when a full-screen game or a known overlay (RTSS, Xbox Game Bar, Steam, NVIDIA, AMD) is detected.
-- Six icon packs (Duotone, Outline, Bold, Fill, Thin, Font Awesome) with a preview gallery in Settings, switchable without a restart; three application icons (Classic, Aurora, Lavender) for windows and the tray. Icons: Phosphor (MIT) and Font Awesome Free 7 (icons under CC BY 4.0, https://fontawesome.com); license texts are in `Lumisense/Icons/`.
+- Six icon packs (Duotone, Outline, Bold, Fill, Thin, Font Awesome) with a preview gallery in Settings, switchable without a restart; three application icons (Classic, Aurora, Lavender) for windows and the tray. Icons: Phosphor (MIT) and Font Awesome Free 7 (icons under CC BY 4.0, https://fontawesome.com); license texts are in `Lumisense/Icons/`. Lyrics: LRCLIB, plus an optional NetEase and QQ Music sources via Lyricify.Lyrics.Helper (Apache-2.0, license text in `docs/`).
 - Full-screen Now Playing with lyrics and dynamic background.
 - Dark and light themes, Mica/Acrylic, custom accents, interface scaling, reduced motion, system tray, media keys, global hotkeys, Discord Rich Presence, and System Media Transport Controls.
 - Discord Rich Presence can show the current track's cover art (looked up by title and artist via iTunes, Deezer, and MusicBrainz).
