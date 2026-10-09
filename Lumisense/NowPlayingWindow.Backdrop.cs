@@ -2,7 +2,8 @@ using System.Windows;
 
 namespace Lumisense;
 
-// Выбор фона Now Playing (AppSettings.NowPlayingBackground): облака, цветные шары или волны; шары и волны — в NowPlayingWindow.Dynamic.cs.
+// Выбор фона Now Playing (AppSettings.NowPlayingBackground): "Clouds" — прежние облака из палитры обложки (по умолчанию),
+// "Orbs" — мягкие цветные шары на орбитах, "Waves" — размытые волны. Рисование шаров и волн — в NowPlayingWindow.Dynamic.cs.
 public partial class NowPlayingWindow
 {
     private const string OrbsBackgroundMode = "Orbs";
@@ -28,6 +29,7 @@ public partial class NowPlayingWindow
         ApplyDynamicPalette(_dynamicPalette, animate: false);
 
         UpdateBackdropGeometry();
+        // Таймер облаков нужен только режиму «Облака»; шары и волны двигаются своим покадровым расчётом.
         UpdateAmbientAnimation(_owner.IsPlayingNow);
     }
 }

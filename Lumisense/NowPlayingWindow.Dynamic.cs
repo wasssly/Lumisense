@@ -7,14 +7,23 @@ using System.Windows.Shapes;
 
 namespace Lumisense;
 
-// Покадровые фоны «Orbs» и «Waves»: считаются в CompositionTarget.Rendering только при воспроизведении и без «Меньше анимации».
-// Шары — овалы с радиальным градиентом вместо BlurEffect (он считается на CPU и на весь экран слишком тяжёл).
+// Покадровые фоны Now Playing: «Orbs» (мягкие цветные шары на орбитах) и «Waves» (размытые волны). Кадры считаются в
+// CompositionTarget.Rendering только во время воспроизведения и без «Меньше анимации»; на паузе остаётся статичный кадр.
+//
+// Шары — овалы с радиальным градиентом (мягкий край вместо BlurEffect, который в WPF считается на CPU и на весь экран был
+// бы слишком тяжёлым); каждый движется по прямоугольной орбите со сглаженными поворотами и «дышит». Волны рисуются в
+// небольшой битмап прямо в массив пикселей (без RenderTargetBitmap и чтения кадра с GPU), размываются в коде (box-blur)
+// и растягиваются на окно с линейным сглаживанием. Волны перерисовываются 30 раз в секунду, а не с частотой монитора:
+// на глаз разницы нет, а нагрузка на поток интерфейса вдвое меньше.
 public partial class NowPlayingWindow
 {
     private const int WaveCount = 3;
-    private const int WavesBitmapWidth = 256;
-    private const int WavesBlurRadius = 7;
-    private const double WaveStep = 2;
+    // Ширина битмапа волн и радиус размытия вместе задают мягкость фона: радиус 2 при ширине 320 — это ≈0.6% ширины окна
+    // на каждую сторону (раньше 2 при 480, ≈0.4%). Меньший битмап заодно вдвое с лишним дешевле в расчёте.
+    private const int WavesBitmapWidth = 320;
+    private const int WavesBlurRadius = 2;
+    private const double WavesCrestThickness = 1.1;
+    private const double WavesFrameInterval = 1.0 / 30;
     private static readonly Duration PaletteFadeDuration = new(TimeSpan.FromMilliseconds(700));
 
     // Параметры шаров: размер-добавка (px), период обхода орбиты (с), амплитуда орбиты (% ширины/высоты), центр (% окна),
@@ -63,8 +72,7 @@ public partial class NowPlayingWindow
     private Color[] _dynamicPalette = CreateFallbackPalette();
     private readonly List<Orb> _orbs = new();
     private readonly SolidColorBrush[] _waveBrushes = new SolidColorBrush[WaveCount];
-    private readonly DrawingVisual _wavesVisual = new();
-    private RenderTargetBitmap? _wavesRender;
+    private readonly SolidColorBrush[] _waveCrestBrushes = new SolidColorBrush[WaveCount];
     private WriteableBitmap? _wavesOutput;
     private byte[] _wavesPixels = Array.Empty<byte>();
     private byte[] _wavesScratch = Array.Empty<byte>();
@@ -73,6 +81,7 @@ public partial class NowPlayingWindow
     private TimeSpan _dynamicLastTime = TimeSpan.MinValue;
     private double _dynamicTime;
     private double _dynamicLevel;
+    private double _wavesSinceRender;
 
     // Новая палитра обложки: цвета шаров и волн плавно перетекают, а не меняются рывком.
     private void ApplyDynamicPalette(Color[] palette, bool animate)
@@ -85,7 +94,10 @@ public partial class NowPlayingWindow
         EnsureWaveBrushes();
         Color[] waveColors = { palette[1], palette[3], palette[4] };
         for (int index = 0; index < WaveCount; index++)
+        {
             AnimateColor(_waveBrushes[index], SolidColorBrush.ColorProperty, _waveBrushes[index].Color, waveColors[index], animate);
+            AnimateColor(_waveCrestBrushes[index], SolidColorBrush.ColorProperty, _waveCrestBrushes[index].Color, Lighten(waveColors[index], 0.55), animate);
+        }
 
         for (int index = 0; index < _orbs.Count; index++)
         {
@@ -124,7 +136,11 @@ public partial class NowPlayingWindow
     {
         if (_waveBrushes[0] is not null) return;
         for (int index = 0; index < WaveCount; index++)
+        {
             _waveBrushes[index] = new SolidColorBrush(Colors.Transparent);
+            // Цвет гребня тянется за цветом волны (осветлённым), чтобы он перетекал вместе с палитрой.
+            _waveCrestBrushes[index] = new SolidColorBrush(Colors.White);
+        }
     }
 
     private void EnsureOrbs()
@@ -178,10 +194,9 @@ public partial class NowPlayingWindow
         }
 
         int bitmapHeight = Math.Max(48, (int)Math.Round(WavesBitmapWidth * height / width));
-        if (_wavesRender is null || bitmapHeight != _wavesBitmapHeight)
+        if (_wavesOutput is null || bitmapHeight != _wavesBitmapHeight)
         {
             _wavesBitmapHeight = bitmapHeight;
-            _wavesRender = new RenderTargetBitmap(WavesBitmapWidth, bitmapHeight, 96, 96, PixelFormats.Pbgra32);
             _wavesOutput = new WriteableBitmap(WavesBitmapWidth, bitmapHeight, 96, 96, PixelFormats.Pbgra32, null);
             _wavesPixels = new byte[WavesBitmapWidth * bitmapHeight * 4];
             _wavesScratch = new byte[_wavesPixels.Length];
@@ -199,6 +214,7 @@ public partial class NowPlayingWindow
         if (run && !_dynamicRendering)
         {
             _dynamicLastTime = TimeSpan.MinValue;
+            _wavesSinceRender = WavesFrameInterval;
             CompositionTarget.Rendering += DynamicBackdrop_Rendering;
             _dynamicRendering = true;
         }
@@ -222,6 +238,14 @@ public partial class NowPlayingWindow
     {
         if (e is not RenderingEventArgs args) return;
 
+        // Свёрнутое или скрытое окно ничего не показывает: кадры не считаем, а время не накапливаем, чтобы после
+        // возврата анимация продолжилась без скачка.
+        if (!IsVisible || WindowState == WindowState.Minimized)
+        {
+            _dynamicLastTime = TimeSpan.MinValue;
+            return;
+        }
+
         double delta = _dynamicLastTime == TimeSpan.MinValue ? 0 : (args.RenderingTime - _dynamicLastTime).TotalSeconds;
         _dynamicLastTime = args.RenderingTime;
         delta = Math.Clamp(delta, 0, 0.1);
@@ -230,6 +254,15 @@ public partial class NowPlayingWindow
         double level = Math.Sqrt(Math.Clamp(_owner.AudioLevelMeter?.NormalizedLevel ?? 0d, 0d, 1d));
         // Громкость сглаживаем: сырое значение дёргается от кадра к кадру, и волны мигали бы.
         _dynamicLevel += (level - _dynamicLevel) * Math.Min(1, delta * 7);
+
+        if (IsWavesBackground)
+        {
+            // Порог 90% интервала: при 60 Гц кадры приходят каждые ≈16.7 мс, и без запаса часть кадров давала бы 3 пропуска вместо 2.
+            _wavesSinceRender += delta;
+            if (_wavesSinceRender < WavesFrameInterval * 0.9) return;
+            _wavesSinceRender = 0;
+        }
+
         RenderDynamicFrame();
     }
 
@@ -274,60 +307,77 @@ public partial class NowPlayingWindow
 
     private static double SmoothStep(double t) => t * t * (3 - 2 * t);
 
+    // Волны рисуются прямо в массив пикселей Pbgra32: для каждого столбца считается высота гребня, ниже неё заливка с
+    // дробным покрытием верхней строки (мягкий край без сглаживания WPF), а по самому гребню — светлая линия.
+    // Так не нужны ни RenderTargetBitmap, ни чтение кадра с GPU, ни временные геометрии на каждом кадре.
     private void RenderWaves()
     {
-        if (_wavesRender is null || _wavesOutput is null) return;
+        if (_wavesOutput is null) return;
         EnsureWaveBrushes();
 
-        double width = WavesBitmapWidth, height = _wavesBitmapHeight;
-        using (DrawingContext context = _wavesVisual.RenderOpen())
+        int width = WavesBitmapWidth, height = _wavesBitmapHeight;
+        Array.Clear(_wavesPixels);
+
+        for (int index = 0; index < WaveCount; index++)
         {
-            for (int index = 0; index < WaveCount; index++)
+            double direction = index % 2 == 0 ? 1 : -1;
+            double baseY = height * (0.56 + 0.13 * index);
+            double amplitude = height * (0.045 + 0.15 * _dynamicLevel) * (1 - 0.14 * index);
+            double frequency = Math.PI * 2 / (width * (0.55 + 0.22 * index));
+            double phase = _dynamicTime * (0.55 + 0.3 * index) * direction;
+
+            Color fillColor = _waveBrushes[index].Color;
+            Color crestColor = _waveCrestBrushes[index].Color;
+            double fillOpacity = 0.78 - index * 0.12;
+            double crestOpacity = 0.55 - index * 0.12;
+
+            for (int column = 0; column < width; column++)
             {
-                double direction = index % 2 == 0 ? 1 : -1;
-                double baseY = height * (0.56 + 0.13 * index);
-                double amplitude = height * (0.035 + 0.11 * _dynamicLevel) * (1 - 0.16 * index);
-                double frequency = Math.PI * 2 / (width * (0.55 + 0.22 * index));
-                double phase = _dynamicTime * (0.55 + 0.3 * index) * direction;
+                double x = column + 0.5;
+                double y = baseY
+                    + amplitude * Math.Sin(x * frequency + phase)
+                    + amplitude * 0.45 * Math.Sin(x * frequency * 2.1 - phase * 1.3);
 
-                var points = new List<Point>((int)(width / WaveStep) + 3);
-                for (double x = 0; x <= width + WaveStep; x += WaveStep)
+                double top = Math.Floor(y);
+                int firstRow = (int)top;
+                for (int row = Math.Max(firstRow, 0); row < height; row++)
                 {
-                    double y = baseY
-                        + amplitude * Math.Sin(x * frequency + phase)
-                        + amplitude * 0.45 * Math.Sin(x * frequency * 2.1 - phase * 1.3);
-                    points.Add(new Point(x, y));
+                    double coverage = row == firstRow ? 1 - (y - top) : 1;
+                    BlendPixel(_wavesPixels, (row * width + column) * 4, fillColor, (int)(fillOpacity * coverage * 255 + 0.5));
                 }
 
-                var geometry = new StreamGeometry();
-                using (StreamGeometryContext figure = geometry.Open())
+                double crestTop = y - WavesCrestThickness / 2, crestBottom = y + WavesCrestThickness / 2;
+                int crestFirst = Math.Max(0, (int)Math.Floor(crestTop));
+                int crestLast = Math.Min(height - 1, (int)Math.Floor(crestBottom));
+                for (int row = crestFirst; row <= crestLast; row++)
                 {
-                    figure.BeginFigure(new Point(0, height + 1), isFilled: true, isClosed: true);
-                    figure.PolyLineTo(points, isStroked: false, isSmoothJoin: true);
-                    figure.LineTo(new Point(width + WaveStep, height + 1), isStroked: false, isSmoothJoin: false);
+                    double coverage = Math.Min(row + 1, crestBottom) - Math.Max(row, crestTop);
+                    if (coverage > 0)
+                        BlendPixel(_wavesPixels, (row * width + column) * 4, crestColor, (int)(crestOpacity * coverage * 255 + 0.5));
                 }
-
-                context.PushOpacity(0.55 - index * 0.09);
-                context.DrawGeometry(_waveBrushes[index], null, geometry);
-                context.Pop();
             }
         }
 
-        _wavesRender.Clear();
-        _wavesRender.Render(_wavesVisual);
+        int stride = width * 4;
 
-        int stride = WavesBitmapWidth * 4;
-        _wavesRender.CopyPixels(_wavesPixels, stride, 0);
+        // Box-blur по горизонтали и вертикали поверх предумноженных каналов: гладкое размытие без «ступенек»,
+        // которые были бы заметны при простом растягивании маленького битмапа.
+        BoxBlur(_wavesPixels, _wavesScratch, width, height, WavesBlurRadius, horizontal: true);
+        BoxBlur(_wavesScratch, _wavesPixels, width, height, WavesBlurRadius, horizontal: false);
 
-        // Двойной box-blur по горизонтали и вертикали поверх предумноженных каналов: даёт гладкое размытие без «ступенек»,
-        // которые были заметны при простом растягивании маленького битмапа.
-        for (int pass = 0; pass < 2; pass++)
-        {
-            BoxBlur(_wavesPixels, _wavesScratch, WavesBitmapWidth, _wavesBitmapHeight, WavesBlurRadius, horizontal: true);
-            BoxBlur(_wavesScratch, _wavesPixels, WavesBitmapWidth, _wavesBitmapHeight, WavesBlurRadius, horizontal: false);
-        }
+        _wavesOutput.WritePixels(new Int32Rect(0, 0, width, height), _wavesPixels, stride, 0);
+    }
 
-        _wavesOutput.WritePixels(new Int32Rect(0, 0, WavesBitmapWidth, _wavesBitmapHeight), _wavesPixels, stride, 0);
+    // «Источник поверх» для предумноженного Pbgra32: цвет домножается на альфу, подложка гасится на (1 − альфа).
+    private static void BlendPixel(byte[] pixels, int offset, Color color, int alpha)
+    {
+        if (alpha <= 0) return;
+        if (alpha > 255) alpha = 255;
+        int inverse = 255 - alpha;
+        pixels[offset] = (byte)((color.B * alpha + pixels[offset] * inverse) / 255);
+        pixels[offset + 1] = (byte)((color.G * alpha + pixels[offset + 1] * inverse) / 255);
+        pixels[offset + 2] = (byte)((color.R * alpha + pixels[offset + 2] * inverse) / 255);
+        pixels[offset + 3] = (byte)((255 * alpha + pixels[offset + 3] * inverse) / 255);
     }
 
     // Размытие скользящим окном за O(n): одна сумма на канал, обновляемая добавлением и вычитанием крайних пикселей.

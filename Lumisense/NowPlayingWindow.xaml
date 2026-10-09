@@ -111,9 +111,9 @@
         <Canvas x:Name="OrbsBackdrop" IsHitTestVisible="False" ClipToBounds="True" Visibility="Collapsed" />
 
         <!-- Фон «Волны» (NowPlayingWindow.Dynamic.cs): волны рисуются в маленький битмап, который растягивается на всё окно;
-             линейное сглаживание при увеличении даёт размытие. -->
+             линейное сглаживание при увеличении даёт размытие и ничего не пересчитывает на каждом кадре (HighQuality дороже). -->
         <Image x:Name="WavesBackdrop" IsHitTestVisible="False" Stretch="Fill" Visibility="Collapsed"
-               RenderOptions.BitmapScalingMode="HighQuality" />
+               RenderOptions.BitmapScalingMode="Linear" />
         <Border Background="#70080A0F" />
 
         <Grid>
