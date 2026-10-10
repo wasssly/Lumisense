@@ -41,6 +41,15 @@ public partial class NowPlayingWindow : Window
     private readonly ObservableCollection<OnlineLyricsResult> _onlineResults = new();
     private CancellationTokenSource? _lyricsLoadCts;
     private CancellationTokenSource? _onlineSearchCts;
+
+    // Варианты текста для кнопки «Другой вариант»: уверенные совпадения по убыванию качества для текущего трека.
+    // LRCLIB и дополнительные источники подгружаются по очереди, только когда варианты закончились.
+    private readonly List<OnlineLyricsResult> _lyricsVariants = new();
+    private string? _lyricsVariantsTrackPath;
+    private int _lyricsVariantIndex = -1;
+    private bool _lyricsVariantsLrcLibLoaded;
+    private bool _lyricsVariantsExtraLoaded;
+    private bool _lyricsVariantBusy;
     private DispatcherTimer? _ambientMotionTimer;
     private double _ambientMotionTime;
     private double _ambientSpeed = 1.0;
@@ -601,6 +610,13 @@ public partial class NowPlayingWindow : Window
             if (token.IsCancellationRequested || !string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
                 return;
 
+            // Остальные уверенные совпадения запоминаем: кнопка «Другой вариант» покажет их без повторного поиска.
+            ResetLyricsVariants(trackPath);
+            _lyricsVariants.AddRange(lookup.Matches);
+            _lyricsVariantIndex = Math.Max(0, _lyricsVariants.IndexOf(exact));
+            _lyricsVariantsLrcLibLoaded = true;
+            _lyricsVariantsExtraLoaded = lookup.Matches.Any(match => match.Source != "LRCLIB");
+
             _lyrics = LyricsService.CreateDocumentFromOnlineResult(exact);
             ApplyLyricsDocument(_lyrics);
             UpdateProgress(_owner.CurrentPlaybackSeconds, _owner.CurrentTrackDurationSeconds);
@@ -622,6 +638,115 @@ public partial class NowPlayingWindow : Window
             if (ReferenceEquals(_onlineSearchCts, searchCts))
                 _onlineSearchCts = null;
             searchCts.Dispose();
+        }
+    }
+
+    private void ResetLyricsVariants(string? trackPath)
+    {
+        _lyricsVariants.Clear();
+        _lyricsVariantsTrackPath = trackPath;
+        _lyricsVariantIndex = -1;
+        _lyricsVariantsLrcLibLoaded = false;
+        _lyricsVariantsExtraLoaded = false;
+    }
+
+    private void NextLyricsVariantButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ShowNextLyricsVariantAsync(), nameof(NextLyricsVariantButton_Click));
+
+    // «Другой вариант»: переключает текущий трек на следующий найденный текст (с кругом по списку) и сохраняет его так же,
+    // как выбор в ручном поиске. Если известные варианты закончились, один раз догружает дополнительные источники.
+    private async Task ShowNextLyricsVariantAsync()
+    {
+        if (_lyricsVariantBusy) return;
+
+        string? trackPath = _owner.CurrentTrackPath;
+        if (string.IsNullOrWhiteSpace(trackPath) || !File.Exists(trackPath)) return;
+
+        if (_owner.Settings.LyricsSearchPolicy == "LocalOnly")
+        {
+            LyricsModeText.Text = LocalizationService.Translate("Онлайн-поиск текста отключён");
+            return;
+        }
+
+        if (!string.Equals(trackPath, _lyricsVariantsTrackPath, StringComparison.OrdinalIgnoreCase))
+            ResetLyricsVariants(trackPath);
+
+        CancelOnlineSearch();
+        var searchCts = new CancellationTokenSource();
+        _onlineSearchCts = searchCts;
+        CancellationToken token = searchCts.Token;
+
+        _lyricsVariantBusy = true;
+        NextLyricsVariantButton.IsEnabled = false;
+        try
+        {
+            string title = _owner.CurrentTitle, artist = _owner.CurrentArtist;
+            double duration = _owner.CurrentTrackDurationSeconds;
+
+            void AddVariants(IReadOnlyList<OnlineLyricsResult> found)
+            {
+                foreach (OnlineLyricsResult result in found)
+                {
+                    if (!_lyricsVariants.Any(existing => existing.Source == result.Source && existing.Id == result.Id))
+                        _lyricsVariants.Add(result);
+                }
+            }
+
+            if (!_lyricsVariantsLrcLibLoaded)
+            {
+                LyricsModeText.Text = LocalizationService.Translate("Ищем другие варианты…");
+                AddVariants(await LyricsService.FindLrcLibVariantsAsync(title, artist, duration, token));
+                _lyricsVariantsLrcLibLoaded = true;
+            }
+
+            if (_lyricsVariantIndex + 1 >= _lyricsVariants.Count && !_lyricsVariantsExtraLoaded)
+            {
+                LyricsModeText.Text = LocalizationService.Translate("Ищем другие варианты…");
+                AddVariants(await LyricsService.FindExtraVariantsAsync(title, artist, duration, token));
+                _lyricsVariantsExtraLoaded = true;
+            }
+
+            if (token.IsCancellationRequested || !string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            if (_lyricsVariants.Count == 0 || (_lyricsVariants.Count == 1 && _lyricsVariantIndex == 0))
+            {
+                LyricsModeText.Text = LocalizationService.Translate(_lyricsVariants.Count == 0
+                    ? "Подходящих вариантов не найдено"
+                    : "Других вариантов нет");
+                return;
+            }
+
+            int next = (_lyricsVariantIndex + 1) % _lyricsVariants.Count;
+            await LyricsService.SaveOnlineResultAsync(trackPath, _lyricsVariants[next], token);
+            if (token.IsCancellationRequested || !string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            _lyricsVariantIndex = next;
+            // Перечитываем текст обычным путём, как после выбора в ручном поиске, чтобы показать ровно то, что сохранено.
+            _lyricsTrackPath = null;
+            await LoadLyricsAsync(trackPath);
+            LyricsModeText.Text += $" · {next + 1}/{_lyricsVariants.Count}";
+        }
+        catch (LyricsRateLimitException)
+        {
+            LyricsModeText.Text = LocalizationService.Translate("Поиск временно ограничен");
+        }
+        catch (OperationCanceledException)
+        {
+            // Смена трека или запуск другого поиска.
+        }
+        catch
+        {
+            LyricsModeText.Text = LocalizationService.Translate("Не удалось сменить вариант текста");
+        }
+        finally
+        {
+            if (ReferenceEquals(_onlineSearchCts, searchCts))
+                _onlineSearchCts = null;
+            searchCts.Dispose();
+            _lyricsVariantBusy = false;
+            NextLyricsVariantButton.IsEnabled = true;
         }
     }
 

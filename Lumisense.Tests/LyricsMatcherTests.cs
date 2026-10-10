@@ -93,4 +93,28 @@ public sealed class LyricsMatcherTests
         var results = new List<OnlineLyricsResult> { Result("Song", "Edguy") };
         Assert.Null(LyricsMatcher.FindBest(results, "Song", "Ed", 0));
     }
+
+    [Fact]
+    public void RankMatches_ReturnsAllConfidentMatchesBestFirst()
+    {
+        var plain = Result("Song", "Artist", duration: 200, synced: false, id: 1);
+        var synced = Result("Song", "Artist", duration: 200, synced: true, source: "NetEase", id: 2);
+        var other = Result("Another", "Artist", id: 3);
+        var wrongArtist = Result("Song", "Someone Else", id: 4);
+
+        IReadOnlyList<OnlineLyricsResult> ranked = LyricsMatcher.RankMatches(
+            new[] { plain, synced, other, wrongArtist }, "Song", "Artist", 200);
+
+        Assert.Equal(new long[] { 2, 1 }, ranked.Select(result => result.Id).ToArray());
+        Assert.Equal(ranked[0], LyricsMatcher.FindBest(new[] { plain, synced, other, wrongArtist }, "Song", "Artist", 200));
+    }
+
+    [Fact]
+    public void RankMatches_KeepsOriginalOrderForEqualScores()
+    {
+        var first = Result("Song", "Artist", id: 1);
+        var second = Result("Song", "Artist", id: 2);
+        Assert.Equal(new long[] { 1, 2 },
+            LyricsMatcher.RankMatches(new[] { first, second }, "Song", "Artist", 200).Select(result => result.Id).ToArray());
+    }
 }

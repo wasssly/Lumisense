@@ -243,6 +243,10 @@
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock x:Name="LyricsModeText" Text="Нет текста" FontSize="12" Foreground="#A8FFFFFF"
                                                VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <ui:Button x:Name="NextLyricsVariantButton" Width="30" Height="30" Padding="0" Margin="0,0,6,0" Appearance="Secondary"
+                                               ToolTip="Другой вариант текста" Click="NextLyricsVariantButton_Click">
+                                        <ui:Button.Icon><local:SvgPathIcon Icon="IconSync" Size="13" /></ui:Button.Icon>
+                                    </ui:Button>
                                     <ui:Button x:Name="FindLyricsButton" Width="30" Height="30" Padding="0" Appearance="Secondary"
                                                ToolTip="Открыть встроенный поиск текста" Click="FindLyricsButton_Click">
                                         <ui:Button.Icon><local:SvgPathIcon Icon="IconSearch" Size="13" /></ui:Button.Icon>

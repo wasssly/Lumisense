@@ -91,22 +91,30 @@ public static class LyricsMatcher
         return result;
     }
 
-    // Лучший уверенный кандидат или null. Название (после очистки) должно совпасть; исполнитель — пересечься, если он известен;
-    // длительность, если известна с обеих сторон, не должна отличаться больше чем на 8 секунд.
+    // Лучший уверенный кандидат или null.
     public static OnlineLyricsResult? FindBest(
+        IReadOnlyList<OnlineLyricsResult> results,
+        string? title,
+        string? artist,
+        double durationSeconds) =>
+        RankMatches(results, title, artist, durationSeconds).FirstOrDefault();
+
+    // Все уверенные кандидаты от лучшего к худшему (при равенстве сохраняется исходный порядок: LRCLIB раньше
+    // дополнительных источников). Название (после очистки) должно совпасть; исполнитель — пересечься, если он известен;
+    // длительность, если известна с обеих сторон, не должна отличаться больше чем на 8 секунд.
+    public static IReadOnlyList<OnlineLyricsResult> RankMatches(
         IReadOnlyList<OnlineLyricsResult> results,
         string? title,
         string? artist,
         double durationSeconds)
     {
         string wantedTitle = NormalizeKey(CleanTitle(title));
-        if (wantedTitle.Length == 0) return null;
+        if (wantedTitle.Length == 0) return Array.Empty<OnlineLyricsResult>();
 
         string rawTitleKey = NormalizeKey(title);
         HashSet<string> wantedArtists = ArtistKeys(artist);
 
-        OnlineLyricsResult? best = null;
-        double bestScore = double.MinValue;
+        var scored = new List<(OnlineLyricsResult Result, double Score)>();
         foreach (OnlineLyricsResult result in results)
         {
             if (!result.HasLyrics) continue;
@@ -126,15 +134,11 @@ public static class LyricsMatcher
             if (NormalizeKey(result.TrackName) == rawTitleKey) score += 1;
             if (result.Source == "LRCLIB") score += 0.25;
 
-            // Строго «больше»: при равенстве остаётся более ранний результат, то есть LRCLIB раньше дополнительных источников.
-            if (score > bestScore)
-            {
-                best = result;
-                bestScore = score;
-            }
+            scored.Add((result, score));
         }
 
-        return best;
+        // OrderByDescending стабилен: равные по оценке остаются в исходном порядке.
+        return scored.OrderByDescending(item => item.Score).Select(item => item.Result).ToList();
     }
 
     private static HashSet<string> ArtistKeys(string? artist)
