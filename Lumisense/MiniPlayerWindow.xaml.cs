@@ -536,10 +536,13 @@ public partial class MiniPlayerWindow : Window
         if (_buttonsOverlayMode)
         {
             // В Overlay-режиме ControlsPanel занимает ту же строку, что HeaderPanel: на время индикатора громкости
-            // убираем кнопки, чтобы элементы не перекрывались.
-            _volumeOverlaySuppressedControls = ControlsPanel.Visibility == Visibility.Visible;
-            if (_volumeOverlaySuppressedControls)
+            // убираем кнопки, чтобы элементы не перекрывались. Флаг не сбрасываем на повторном шаге колеса: панель уже скрыта
+            // нами, и без флага таймер не вернул бы кнопки под курсором.
+            if (ControlsPanel.Visibility == Visibility.Visible)
+            {
+                _volumeOverlaySuppressedControls = true;
                 ControlsPanel.Visibility = Visibility.Collapsed;
+            }
         }
 
         _volumeOverlayRestoreTimer?.Stop();
@@ -585,7 +588,7 @@ public partial class MiniPlayerWindow : Window
             _volumeOverlayRestoreTimer = null;
         }
 
-        // OnVolumeChanged в overlay-режиме пропускает VolumeIndicatorStoryboard, а больше
+        // OnVolumeChanged в overlay-режиме пропускает фейд индикатора, а больше
         // ничего Opacity=1 обратно не сбрасывало — индикатор зависал навсегда.
         if (_overlayCompatibilityMode)
         {
