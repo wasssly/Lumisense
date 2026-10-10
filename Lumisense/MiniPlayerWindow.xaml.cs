@@ -525,9 +525,11 @@ public partial class MiniPlayerWindow : Window
     }
 
     // Индикатор громкости показывается при любом изменении, пока открыт мини-плеер (у него нет ползунка); каждый вызов
-    // перезапускает Storyboard, поэтому быстрые нажатия хоткея продлевают показ, а не мигают.
+    // перезапускает фейд с текущей прозрачности, поэтому быстрые нажатия хоткея продлевают показ, а не мигают.
     private void OnVolumeChanged(double volume)
     {
+        double shownOpacity = VolumeIndicator.Opacity;
+        double headerOpacity = HeaderPanel.Opacity;
         VolumeIndicatorText.Text = $"{(int)Math.Round(volume * 100)}%";
         VolumeIndicatorIcon.Icon = volume <= 0.0 ? "IconSpeakerMute" : "IconSpeaker";
 
@@ -555,8 +557,23 @@ public partial class MiniPlayerWindow : Window
             return;
         }
 
-        var storyboard = (Storyboard)FindResource("VolumeIndicatorStoryboard");
-        storyboard.Begin(this, true);
+        // Фейд стартует с текущей прозрачности: Storyboard с From="0" сбрасывал индикатор в ноль на каждом шаге колеса или хоткея,
+        // и он мигал, хотя должен был просто остаться на экране.
+        VolumeIndicator.BeginAnimation(UIElement.OpacityProperty, null);
+        HeaderPanel.BeginAnimation(UIElement.OpacityProperty, null);
+        VolumeIndicator.BeginAnimation(UIElement.OpacityProperty, CreateVolumeFade(shownOpacity, 1, 0));
+        HeaderPanel.BeginAnimation(UIElement.OpacityProperty, CreateVolumeFade(headerOpacity, 0, 1));
+    }
+
+    // Плавно доводит прозрачность до target, держит до 0.9 с и возвращает к rest за 0.35 с; первый кадр фиксирует текущее значение.
+    private static DoubleAnimationUsingKeyFrames CreateVolumeFade(double current, double target, double rest)
+    {
+        var fade = new DoubleAnimationUsingKeyFrames();
+        fade.KeyFrames.Add(new DiscreteDoubleKeyFrame(current, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(target, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.12 * Math.Abs(target - current)))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(target, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(0.9))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(rest, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(1.25))));
+        return fade;
     }
 
     private void VolumeOverlayRestoreTimer_Tick(object? sender, EventArgs e)

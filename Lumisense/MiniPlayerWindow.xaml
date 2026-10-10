@@ -63,20 +63,6 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
-        <!-- Индикатор громкости (VolumeIndicator): плавно появляется и исчезает, перезапускаясь при каждом изменении (ShowVolumeIndicator
-             останавливает прошлый прогон); тем же Storyboard HeaderPanel гаснет, чтобы надписи не накладывались на процент. -->
-        <Storyboard x:Key="VolumeIndicatorStoryboard">
-            <DoubleAnimation Storyboard.TargetName="VolumeIndicator" Storyboard.TargetProperty="Opacity"
-                              From="0" To="1" Duration="0:0:0.12" />
-            <DoubleAnimation Storyboard.TargetName="VolumeIndicator" Storyboard.TargetProperty="Opacity"
-                              From="1" To="0" BeginTime="0:0:0.9" Duration="0:0:0.35" />
-
-            <DoubleAnimation Storyboard.TargetName="HeaderPanel" Storyboard.TargetProperty="Opacity"
-                              From="1" To="0" Duration="0:0:0.12" />
-            <DoubleAnimation Storyboard.TargetName="HeaderPanel" Storyboard.TargetProperty="Opacity"
-                              From="0" To="1" BeginTime="0:0:0.9" Duration="0:0:0.35" />
-        </Storyboard>
     </Window.Resources>
 
     <!-- Фон — один слой: RootBorder заливается цветом темы (ApplyTheme) с альфой из настройки (ApplyBackground); окно уже AllowsTransparency="True",
