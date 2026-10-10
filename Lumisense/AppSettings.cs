@@ -123,6 +123,10 @@ public class AppSettings
     // Фон Now Playing: "Clouds" (облака из палитры обложки) | "Orbs" (мягкие цветные шары на орбитах) | "Waves" (размытые волны).
     public string NowPlayingBackground { get; set; } = "Clouds";
 
+    // Вид навигации в окне настроек: "Sidebar" (боковая панель) | "Tabs" (вкладки сверху) | "Pills" (таблетки сверху) |
+    // "FloatingBar" (плавающая нижняя панель).
+    public string SettingsNavigationStyle { get; set; } = "Sidebar";
+
     // Дополнительный источник текстов песен (NetEase через Lyricify.Lyrics.Helper); по умолчанию выключен.
     public bool UseExtraLyricsSource { get; set; }
 

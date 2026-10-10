@@ -387,4 +387,27 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
         Assert.True(result);
         Assert.Equal("GitHub", settings!.UpdateDownloadSource);
     }
+
+    [Theory]
+    [InlineData("Sidebar")]
+    [InlineData("Tabs")]
+    [InlineData("Pills")]
+    [InlineData("FloatingBar")]
+    public void TryLoad_KnownSettingsNavigationStyle_IsKept(string style)
+    {
+        bool result = TryLoad("{\"SettingsNavigationStyle\": \"" + style + "\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(style, settings!.SettingsNavigationStyle);
+    }
+
+    [Fact]
+    public void TryLoad_UnknownSettingsNavigationStyle_FallsBackToSidebar()
+    {
+        bool result = TryLoad("{\"SettingsNavigationStyle\": \"Rail\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal("Sidebar", settings!.SettingsNavigationStyle);
+        Assert.Equal("Sidebar", new AppSettings().SettingsNavigationStyle);
+    }
 }

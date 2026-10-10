@@ -267,6 +267,8 @@ internal static class SettingsIntegrityService
             "Slide", "Carousel");
         settings.NowPlayingBackground = Allowed(settings.NowPlayingBackground, defaults.NowPlayingBackground,
             "Clouds", "Orbs", "Waves");
+        settings.SettingsNavigationStyle = Allowed(settings.SettingsNavigationStyle, defaults.SettingsNavigationStyle,
+            "Sidebar", "Tabs", "Pills", "FloatingBar");
         settings.MiniPlayerSizePreset = Allowed(settings.MiniPlayerSizePreset, defaults.MiniPlayerSizePreset,
             "Compact", "Current", "Classic");
         settings.FavoriteHeartAnimation = Allowed(settings.FavoriteHeartAnimation, defaults.FavoriteHeartAnimation,

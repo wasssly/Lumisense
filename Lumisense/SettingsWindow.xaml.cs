@@ -302,6 +302,14 @@ public partial class SettingsWindow : FluentWindow
         RefreshVelopackBasePackagePresentation();
         RefreshLegacyInnoCleanupPresentation();
 
+        NavStyleTabsRadio.IsChecked = _settings.SettingsNavigationStyle == "Tabs";
+        NavStylePillsRadio.IsChecked = _settings.SettingsNavigationStyle == "Pills";
+        NavStyleFloatingRadio.IsChecked = _settings.SettingsNavigationStyle == "FloatingBar";
+        NavStyleSidebarRadio.IsChecked = !NavStyleTabsRadio.IsChecked.GetValueOrDefault()
+                                         && !NavStylePillsRadio.IsChecked.GetValueOrDefault()
+                                         && !NavStyleFloatingRadio.IsChecked.GetValueOrDefault();
+        ApplyNavigationStyle(_settings.SettingsNavigationStyle);
+
         _isInitializing = false;
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
         Loaded += async (_, _) =>
@@ -1101,6 +1109,7 @@ public partial class SettingsWindow : FluentWindow
 
         Add("Язык интерфейса", "Оформление", "Appearance", LanguageRussianRadio, "язык русский english language locale локализация");
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
+        Add("Навигация в настройках", "Оформление", "Appearance", NavigationStyleCard, "навигация меню вкладки таблетки панель боковая плавающая нижняя разделы tabs pills sidebar floating navigation");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
@@ -1190,11 +1199,13 @@ public partial class SettingsWindow : FluentWindow
         {
             NavCategoriesPanel.Visibility = Visibility.Visible;
             SearchResultsHost.Visibility = Visibility.Collapsed;
+            UpdateSearchOverlayVisibility();
             return;
         }
 
         NavCategoriesPanel.Visibility = Visibility.Collapsed;
         SearchResultsHost.Visibility = Visibility.Visible;
+        UpdateSearchOverlayVisibility();
 
         string queryLower = query.ToLowerInvariant();
         _searchResults.Clear();
@@ -3111,6 +3122,161 @@ public partial class SettingsWindow : FluentWindow
         };
         if (activePage is not null)
             AnimateSettingsPage(activePage);
+
+        if (_navigationStyle != "Sidebar")
+        {
+            RefreshNavLabels();
+            ((System.Windows.Controls.RadioButton)sender).BringIntoView();
+        }
+    }
+
+    // Виды навигации. Пункты — одни и те же RadioButton, что и в боковой панели: ApplyNavigationStyle лишь переносит их между
+    // контейнерами и меняет стиль, поэтому NavigateToPage, поиск и NavItem_Checked работают одинаково в любом виде.
+    // Строка поиска и её результаты при виде без боковой панели переезжают в верхнюю полосу и во всплывающую карточку.
+    private string _navigationStyle = "Sidebar";
+    private List<UIElement>? _sidebarNavChildren;
+
+    private static string NormalizeNavigationStyle(string? style) =>
+        style is "Tabs" or "Pills" or "FloatingBar" ? style : "Sidebar";
+
+    private void NavStyleRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.SettingsNavigationStyle = NavStyleTabsRadio.IsChecked == true ? "Tabs"
+            : NavStylePillsRadio.IsChecked == true ? "Pills"
+            : NavStyleFloatingRadio.IsChecked == true ? "FloatingBar"
+            : "Sidebar";
+        ApplyNavigationStyle(_settings.SettingsNavigationStyle);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private static void DetachFromParent(FrameworkElement element)
+    {
+        switch (element.Parent)
+        {
+            case System.Windows.Controls.Panel panel:
+                panel.Children.Remove(element);
+                break;
+            case System.Windows.Controls.Decorator decorator:
+                decorator.Child = null;
+                break;
+        }
+    }
+
+    private void ApplyNavigationStyle(string? requestedStyle)
+    {
+        string style = NormalizeNavigationStyle(requestedStyle);
+        _navigationStyle = style;
+
+        _sidebarNavChildren ??= NavCategoriesPanel.Children.Cast<UIElement>().ToList();
+        var buttons = _sidebarNavChildren.OfType<System.Windows.Controls.RadioButton>().ToList();
+
+        // Сначала снимаем пункты со всех контейнеров: у элемента может быть только один родитель.
+        NavCategoriesPanel.Children.Clear();
+        TopNavPanel.Children.Clear();
+        FloatingNavPanel.Children.Clear();
+
+        bool sidebar = style == "Sidebar";
+        SidebarColumn.Width = sidebar ? new GridLength(236) : new GridLength(0);
+        SidebarBorder.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
+        TopNavBar.Visibility = sidebar ? Visibility.Collapsed : Visibility.Visible;
+        TopNavStrip.Visibility = style is "Tabs" or "Pills" ? Visibility.Visible : Visibility.Collapsed;
+        FloatingNavBar.Visibility = style == "FloatingBar" ? Visibility.Visible : Visibility.Collapsed;
+
+        DetachFromParent(SettingsSearchBox);
+        DetachFromParent(SearchResultsHost);
+        if (sidebar)
+        {
+            SidebarHeaderPanel.Children.Add(SettingsSearchBox);
+            SidebarNavHost.Children.Add(SearchResultsHost);
+        }
+        else
+        {
+            TopSearchHost.Child = SettingsSearchBox;
+            SearchOverlayHost.Child = SearchResultsHost;
+        }
+
+        switch (style)
+        {
+            case "Tabs":
+                SetNavButtons(buttons, "NavTabStyle", TopNavPanel);
+                TopNavStrip.HorizontalAlignment = HorizontalAlignment.Stretch;
+                TopNavStrip.ClearValue(System.Windows.Controls.Border.BackgroundProperty);
+                TopNavStrip.BorderThickness = new Thickness(0, 0, 0, 1);
+                TopNavStrip.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "ControlStrokeColorDefaultBrush");
+                TopNavStrip.CornerRadius = new CornerRadius(0);
+                TopNavStrip.Padding = new Thickness(0);
+                break;
+            case "Pills":
+                SetNavButtons(buttons, "NavPillStyle", TopNavPanel);
+                TopNavStrip.HorizontalAlignment = HorizontalAlignment.Left;
+                TopNavStrip.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "ControlFillColorSecondaryBrush");
+                TopNavStrip.BorderThickness = new Thickness(1);
+                TopNavStrip.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "ControlStrokeColorDefaultBrush");
+                TopNavStrip.CornerRadius = new CornerRadius(22);
+                TopNavStrip.Padding = new Thickness(4);
+                break;
+            case "FloatingBar":
+                SetNavButtons(buttons, "NavFloatingStyle", FloatingNavPanel);
+                break;
+            default:
+                foreach (UIElement child in _sidebarNavChildren)
+                {
+                    if (child is System.Windows.Controls.RadioButton radio)
+                        radio.Style = (Style)FindResource("NavItemStyle");
+                    NavCategoriesPanel.Children.Add(child);
+                }
+                break;
+        }
+
+        // Страница в плавающем виде получает нижний запас, чтобы последняя карточка не пряталась под панелью.
+        ContentBorder.Margin = sidebar ? new Thickness(18, 14, 18, 16) : new Thickness(18, 0, 18, 16);
+        ContentPagesGrid.Margin = style == "FloatingBar" ? new Thickness(46, 40, 46, 112) : new Thickness(46, 40, 46, 44);
+
+        RefreshNavLabels();
+        UpdateSearchOverlayVisibility();
+    }
+
+    private void SetNavButtons(List<System.Windows.Controls.RadioButton> buttons, string styleKey, System.Windows.Controls.Panel target)
+    {
+        var style = (Style)FindResource(styleKey);
+        foreach (System.Windows.Controls.RadioButton radio in buttons)
+        {
+            radio.Style = style;
+            target.Children.Add(radio);
+        }
+    }
+
+    private static System.Windows.Controls.TextBlock? GetNavLabel(System.Windows.Controls.RadioButton radio) =>
+        (radio.Content as System.Windows.Controls.StackPanel)?.Children.OfType<System.Windows.Controls.TextBlock>().FirstOrDefault();
+
+    // В плавающей панели подпись остаётся только у выбранного пункта, у остальных — подсказка; в других видах подписи у всех.
+    private void RefreshNavLabels()
+    {
+        if (_sidebarNavChildren is null) return;
+
+        bool floating = _navigationStyle == "FloatingBar";
+        foreach (System.Windows.Controls.RadioButton radio in _sidebarNavChildren.OfType<System.Windows.Controls.RadioButton>())
+        {
+            if (GetNavLabel(radio) is not { } label) continue;
+            label.Visibility = !floating || radio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+            radio.ToolTip = floating ? LocalizationService.Translate(label.Text) : null;
+        }
+    }
+
+    private void UpdateSearchOverlayVisibility() =>
+        SearchOverlayHost.Visibility = _navigationStyle != "Sidebar" && SearchResultsHost.Visibility == Visibility.Visible
+            ? Visibility.Visible
+            : Visibility.Collapsed;
+
+    // Колесо над верхней полосой листает её по горизонтали, если пункты не помещаются.
+    private void TopNavScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    {
+        if (TopNavScroll.ScrollableWidth <= 0) return;
+
+        TopNavScroll.ScrollToHorizontalOffset(Math.Clamp(TopNavScroll.HorizontalOffset - e.Delta, 0, TopNavScroll.ScrollableWidth));
+        e.Handled = true;
     }
 
     private static void AnimateSettingsPage(FrameworkElement page)
