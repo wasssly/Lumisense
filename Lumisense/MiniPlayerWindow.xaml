@@ -526,9 +526,13 @@
                 <local:SvgPathIcon x:Name="VolumeIndicatorIcon" Icon="IconSpeaker" Size="14"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                <TextBlock x:Name="VolumeIndicatorText" Text="30%" FontSize="14" FontWeight="SemiBold"
-                           Margin="7,0,0,0" VerticalAlignment="Center"
-                           Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <!-- Скрытый «100%» держит ширину: иначе плашка меняет размер, когда в проценте меняется число цифр. -->
+                <Grid Margin="7,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="100%" FontSize="14" FontWeight="SemiBold" Visibility="Hidden" />
+                    <TextBlock x:Name="VolumeIndicatorText" Text="30%" FontSize="14" FontWeight="SemiBold"
+                               HorizontalAlignment="Right"
+                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                </Grid>
             </StackPanel>
             </Border>
         </Grid>
