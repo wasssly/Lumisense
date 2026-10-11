@@ -3174,7 +3174,7 @@
                      Padding 6 + рамка 1 = 7 со всех сторон; радиус панели = радиус пункта + 7 (ApplyNavigationStyle).
                      Прокручиваемая область обрезается капсулой в том же радиусе (FloatingNavScroll_SizeChanged). ScrollViewer нужен на случай,
                      когда панель с названиями шире окна: полоса скрыта, листается колесом. -->
-                <ScrollViewer x:Name="FloatingNavScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                <ScrollViewer x:Name="FloatingNavScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
                               PreviewMouseWheel="NavScroll_PreviewMouseWheel" SizeChanged="FloatingNavScroll_SizeChanged">
                     <ScrollViewer.RenderTransform>
                         <TranslateTransform x:Name="FloatingNavShift" />
@@ -3182,7 +3182,8 @@
                     <!-- Панель сама рисует скользящую подсветку и раскладывает пункты по степени выбора каждого из них (его двигает пружина).
                          Текст в панели — в оттенках серого и с режимом Animated (без привязки глифов к сетке пикселей): у движущегося текста
                          ClearType даёт мерцание окантовки, а привязка к сетке — шаги по целому пикселю. -->
-                    <local:ExpressiveNavPanel x:Name="FloatingNavPanel" HighlightBrush="{DynamicResource AccentFillColorDefaultBrush}" />
+                    <local:ExpressiveNavPanel x:Name="FloatingNavPanel" HighlightBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                              SizeChanged="FloatingNavPanel_SizeChanged" />
                 </ScrollViewer>
             </local:SoftShadowBorder>
 

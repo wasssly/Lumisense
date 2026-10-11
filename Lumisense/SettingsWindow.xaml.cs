@@ -3221,8 +3221,11 @@ public partial class SettingsWindow : FluentWindow
     }
 
     // Панель с названиями может быть шире окна: ограничиваем её ширину окном, остальное листается внутри.
-    private void UpdateFloatingBarMaxWidth() =>
+    private void UpdateFloatingBarMaxWidth()
+    {
         FloatingNavBar.MaxWidth = Math.Max(240, ActualWidth - 60);
+        UpdateFloatingScrollMode();
+    }
 
     // Область прокрутки обрезается капсулой с радиусом в половину высоты: при прокрутке пункты не упираются в прямые края,
     // а у неподвижной панели обрезка совпадает со скруглением подсветки крайних пунктов.
@@ -3311,6 +3314,8 @@ public partial class SettingsWindow : FluentWindow
             radio.ClearValue(System.Windows.Controls.Control.ForegroundProperty);
             if (GetNavLabel(radio) is { } navLabel) navLabel.ClearValue(UIElement.OpacityProperty);
         }
+
+        _floatingTinted.Clear();
 
         // Параметры плавающей панели; радиус панели = радиус пункта (половина высоты) + отступ 7: края — ровные капсулы.
         WireFloatingPanel();
@@ -3413,21 +3418,32 @@ public partial class SettingsWindow : FluentWindow
     // каждого перехода сдвигало на полпикселя все иконки и весь текст панели, в том числе неподвижные, — это и было «подёргиванием»
     // при переключении страниц. Плавность дробных сдвигов обеспечивает сама панель (остаток отдаётся преобразованию).
     private bool _floatingCentering;
-    private double _floatingBaseExactLeft;
-    private double _floatingBaseActualLeft;
+    private double _fbExactStart, _fbActualStart, _fbExactEnd, _fbActualEnd;
 
     private void FloatingNavPanel_AnimatingChanged(bool animating)
     {
         if (animating)
         {
             // В режиме «рядом с иконкой» ширина панели меняется, а сама она центрируется: её левый край WPF округляет до пикселя на
-            // каждом кадре, и содержимое шагало бы вместе с ним. Удерживаем положение по центру на долях пикселя (см. ниже).
-            if (FloatingLabelsInline && !_floatingCentering && TryReadFloatingBarLeft(out double exact, out double actual))
+            // каждом кадре, и содержимое шагало бы вместе с ним. Ведём содержимое плавно от начального положения к итоговому
+            // (оба заранее известны и лежат на целых пикселях), поэтому в конце движения нет «доводки» и рывка в сторону.
+            if (FloatingLabelsInline && !_floatingCentering && FloatingNavBar.Parent is FrameworkElement parent
+                && TryGetFloatingBarFrame(out double parentWidth, out double frame))
             {
-                _floatingBaseExactLeft = exact;
-                _floatingBaseActualLeft = actual;
-                _floatingCentering = true;
-                FloatingNavPanel.LayoutUpdated += FloatingNavPanel_LayoutUpdated;
+                double startWidth = FloatingNavPanel.ExactWidth + frame;
+                double endWidth = FloatingNavPanel.ComputeTargetWidth() + frame;
+                if (Math.Max(startWidth, endWidth) < FloatingNavBar.MaxWidth)
+                {
+                    double scale = FloatingNavBar.UseLayoutRounding ? VisualTreeHelper.GetDpi(this).DpiScaleX : 0;
+                    _fbExactStart = (parentWidth - startWidth) / 2;
+                    _fbActualStart = FloatingNavBar.TranslatePoint(new Point(0, 0), parent).X;
+                    _fbExactEnd = (parentWidth - endWidth) / 2;
+                    // Так же округляет раскладка WPF (Math.Round до физического пикселя).
+                    _fbActualEnd = scale > 0 ? Math.Round(_fbExactEnd * scale) / scale : _fbExactEnd;
+
+                    _floatingCentering = true;
+                    FloatingNavPanel.LayoutUpdated += FloatingNavPanel_LayoutUpdated;
+                }
             }
 
             return;
@@ -3443,36 +3459,57 @@ public partial class SettingsWindow : FluentWindow
         ClearFloatingForegrounds();
     }
 
-    // Точный левый край панели при центрировании (от дробной ширины) и тот, где её реально поставила раскладка (с округлением).
-    private bool TryReadFloatingBarLeft(out double exactLeft, out double actualLeft)
+    private bool TryGetFloatingBarFrame(out double parentWidth, out double frame)
     {
-        exactLeft = actualLeft = 0;
+        parentWidth = frame = 0;
         if (FloatingNavBar.Parent is not FrameworkElement parent || FloatingNavBar.ActualWidth <= 0) return false;
 
-        double frame = FloatingNavBar.Padding.Left + FloatingNavBar.Padding.Right
-                       + FloatingNavBar.BorderThickness.Left + FloatingNavBar.BorderThickness.Right;
-        double exactWidth = FloatingNavPanel.ExactWidth + frame;
-
-        // Панель упёрлась в предел ширины и прокручивается — центрирование по дробной ширине не применимо.
-        if (exactWidth >= FloatingNavBar.MaxWidth) return false;
-
-        exactLeft = (parent.ActualWidth - exactWidth) / 2;
-        actualLeft = FloatingNavBar.TranslatePoint(new Point(0, 0), parent).X;
+        parentWidth = parent.ActualWidth;
+        frame = FloatingNavBar.Padding.Left + FloatingNavBar.Padding.Right
+                + FloatingNavBar.BorderThickness.Left + FloatingNavBar.BorderThickness.Right;
         return true;
     }
 
-    // После каждой раскладки: сдвигаем содержимое на разницу между «как должно быть» и «как округлила раскладка». Отсчёт от
-    // положения в начале движения, поэтому в первый момент сдвиг нулевой и ничего не дёргается.
+    // После каждой раскладки: содержимое ставится туда, где оно должно быть при плавном движении панели от начального левого
+    // края к итоговому (линейное соответствие точному положению по текущей ширине), а не туда, куда его округлила раскладка.
+    // В начале и в конце движения это совпадает с раскладкой, поэтому сдвиг там нулевой.
     private void FloatingNavPanel_LayoutUpdated(object? sender, EventArgs e)
     {
-        if (!TryReadFloatingBarLeft(out double exact, out double actual))
+        if (FloatingNavBar.Parent is not FrameworkElement parent || !TryGetFloatingBarFrame(out double parentWidth, out double frame))
         {
             FloatingNavShift.X = 0;
             return;
         }
 
-        double shift = (exact - _floatingBaseExactLeft) - (actual - _floatingBaseActualLeft);
-        FloatingNavShift.X = Math.Clamp(shift, -1, 1);
+        double exact = (parentWidth - (FloatingNavPanel.ExactWidth + frame)) / 2;
+        double span = _fbExactEnd - _fbExactStart;
+        double desired = Math.Abs(span) < 0.01
+            ? _fbActualStart
+            : _fbActualStart + (exact - _fbExactStart) * ((_fbActualEnd - _fbActualStart) / span);
+        double actual = FloatingNavBar.TranslatePoint(new Point(0, 0), parent).X;
+        FloatingNavShift.X = Math.Clamp(desired - actual, -2, 2);
+    }
+
+    // Полоса прокрутки внутри панели нужна, только когда панель шире окна. Пока она включена (Hidden), ширина содержимого на доли
+    // пикселя больше области просмотра, и любой запрос «показать элемент» (в том числе при фокусе нажатого пункта, у которого
+    // размер больше его ячейки) сдвигал содержимое на эту долю; при возвращении ширин в покой сдвиг снимался — иконки чуть
+    // «уезжали» в сторону после анимации. Без переполнения прокрутка выключена совсем (Disabled): смещаться нечему.
+    private void FloatingNavPanel_SizeChanged(object sender, SizeChangedEventArgs e) => UpdateFloatingScrollMode();
+
+    private void UpdateFloatingScrollMode()
+    {
+        double frame = FloatingNavBar.Padding.Left + FloatingNavBar.Padding.Right
+                       + FloatingNavBar.BorderThickness.Left + FloatingNavBar.BorderThickness.Right;
+        bool overflow = FloatingNavPanel.ExactWidth + frame > FloatingNavBar.MaxWidth + 0.5;
+        System.Windows.Controls.ScrollBarVisibility mode = overflow
+            ? System.Windows.Controls.ScrollBarVisibility.Hidden
+            : System.Windows.Controls.ScrollBarVisibility.Disabled;
+
+        if (FloatingNavScroll.HorizontalScrollBarVisibility != mode)
+        {
+            if (mode == System.Windows.Controls.ScrollBarVisibility.Disabled) FloatingNavScroll.ScrollToHorizontalOffset(0);
+            FloatingNavScroll.HorizontalScrollBarVisibility = mode;
+        }
     }
 
     private void FloatingNavPanel_ProximityChanged(UIElement item, double closeness)
@@ -3490,6 +3527,7 @@ public partial class SettingsWindow : FluentWindow
             radio.Foreground = closeness <= 0 ? idle
                 : closeness >= 1 ? active
                 : new SolidColorBrush(BlendColors(idle.Color, active.Color, closeness));
+            _floatingTinted.Add(radio);
         }
     }
 
@@ -3499,12 +3537,15 @@ public partial class SettingsWindow : FluentWindow
         (byte)Math.Round(start.G + (end.G - start.G) * amount),
         (byte)Math.Round(start.B + (end.B - start.B) * amount));
 
+    // Пункты, которым панель задавала цвет: снимаем только их, а не все одиннадцать (каждое снятие перерисовывает иконку).
+    private readonly HashSet<System.Windows.Controls.RadioButton> _floatingTinted = new();
+
     private void ClearFloatingForegrounds()
     {
-        if (_sidebarNavChildren is null) return;
-
-        foreach (System.Windows.Controls.RadioButton radio in _sidebarNavChildren.OfType<System.Windows.Controls.RadioButton>())
+        foreach (System.Windows.Controls.RadioButton radio in _floatingTinted)
             radio.ClearValue(System.Windows.Controls.Control.ForegroundProperty);
+
+        _floatingTinted.Clear();
     }
 
     private void SelectFloatingIndex(int index, bool animate)
@@ -3728,8 +3769,10 @@ public partial class SettingsWindow : FluentWindow
         var translate = new System.Windows.Media.TranslateTransform(PageSlideDistance * direction, 0);
         page.RenderTransform = translate;
         page.RenderTransformOrigin = new Point(0.5, 0);
-        page.CacheMode = new System.Windows.Media.BitmapCache(VisualTreeHelper.GetDpi(page).DpiScaleX);
 
+        // Кэш страницы в текстуру (BitmapCache) убран: по журналу каждый переход начинался с провала в ~30 мс (кадр №2), то есть
+        // растеризация всей страницы в текстуру тормозила как раз первые кадры панели. Без кэша страница лишь сдвигается и
+        // проявляется, как в боковой панели, где такого провала нет.
         _pageSpring = new PageSpringState { Page = page, Translate = translate, Direction = direction };
         _pageSpringLastFrame = TimeSpan.MinValue;
         CompositionTarget.Rendering += PageSpring_Frame;

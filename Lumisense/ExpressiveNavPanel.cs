@@ -76,7 +76,6 @@ public sealed class ExpressiveNavPanel : Panel
     private Size[] _clipSizes = Array.Empty<Size>();
     private TranslateTransform?[] _shifts = Array.Empty<TranslateTransform?>();
     private double _totalWidth;
-    private Rect _highlight = Rect.Empty;
     private int _selectedIndex = -1;
     private bool _animating;
     private TimeSpan _lastFrame = TimeSpan.MinValue;
@@ -86,6 +85,7 @@ public sealed class ExpressiveNavPanel : Panel
     // тяжёлой страницы), а не из-за самой анимации.
     private int _frameCount;
     private int _slowFrames;
+    private int _slowestFrameIndex;
     private double _maxFrameMilliseconds;
 
     public ExpressiveNavPanel()
@@ -163,6 +163,31 @@ public sealed class ExpressiveNavPanel : Panel
     }
 
     private double Reveal(int index) => index < _reveals.Count ? Math.Clamp(_reveals[index].Value, 0, 1) : 0;
+
+    // Ширина всех пунктов в конечном состоянии (выбранный раскрыт, остальные свёрнуты): окно по ней заранее знает, где в итоге
+    // окажется центрированная панель, и плавно приводит содержимое именно туда.
+    public double ComputeTargetWidth()
+    {
+        int count = InternalChildren.Count;
+        if (_natural.Length != count) return _totalWidth;
+
+        double scale = PixelScale;
+        double total = 0;
+        for (int i = 0; i < count; i++)
+        {
+            double natural = _natural[i];
+            if (!ExpandSelected)
+            {
+                total += natural;
+                continue;
+            }
+
+            double min = Math.Min(SnapUp(MinItemWidth, scale), natural);
+            total += i == _selectedIndex ? natural : min;
+        }
+
+        return total;
+    }
 
     private double PixelScale => UseLayoutRounding ? VisualTreeHelper.GetDpi(this).DpiScaleX : 0;
 
@@ -252,7 +277,6 @@ public sealed class ExpressiveNavPanel : Panel
             x += width;
         }
 
-        _highlight = ComputeHighlight(count);
         return finalSize;
     }
 
@@ -298,10 +322,17 @@ public sealed class ExpressiveNavPanel : Panel
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
-        if (HighlightBrush is not { } brush || _highlight.IsEmpty || _highlight.Width <= 0) return;
 
-        double radius = _highlight.Height / 2;
-        drawingContext.DrawRoundedRectangle(brush, null, _highlight, radius, radius);
+        // Подсветка считается здесь, из прямоугольников последней раскладки и текущих reveal: так при постоянных ширинах она
+        // движется без повторной раскладки.
+        int count = InternalChildren.Count;
+        if (HighlightBrush is not { } brush || _rects.Length != count) return;
+
+        Rect highlight = ComputeHighlight(count);
+        if (highlight.IsEmpty || highlight.Width <= 0) return;
+
+        double radius = highlight.Height / 2;
+        drawingContext.DrawRoundedRectangle(brush, null, highlight, radius, radius);
     }
 
     private void StartAnimation()
@@ -312,6 +343,7 @@ public sealed class ExpressiveNavPanel : Panel
         _lastFrame = TimeSpan.MinValue;
         _frameCount = 0;
         _slowFrames = 0;
+        _slowestFrameIndex = 0;
         _maxFrameMilliseconds = 0;
         CompositionTarget.Rendering += OnFrame;
         AnimatingChanged?.Invoke(true);
@@ -325,7 +357,8 @@ public sealed class ExpressiveNavPanel : Panel
         _animating = false;
         if (_slowFrames > 0)
         {
-            Logger.Info($"Навигация: кадров {_frameCount}, самый долгий {_maxFrameMilliseconds:0} мс, медленнее 25 мс: {_slowFrames}");
+            // Номер самого долгого кадра: 2–3 — провал в самом начале (показ страницы), больше — посреди движения панели.
+            Logger.Info($"Навигация: кадров {_frameCount}, самый долгий {_maxFrameMilliseconds:0} мс (кадр №{_slowestFrameIndex}), медленнее 25 мс: {_slowFrames}");
         }
 
         AnimatingChanged?.Invoke(false);
@@ -340,14 +373,21 @@ public sealed class ExpressiveNavPanel : Panel
 
         _frameCount++;
         double milliseconds = delta * 1000;
-        if (milliseconds > _maxFrameMilliseconds) _maxFrameMilliseconds = milliseconds;
+        if (milliseconds > _maxFrameMilliseconds)
+        {
+            _maxFrameMilliseconds = milliseconds;
+            _slowestFrameIndex = _frameCount;
+        }
+
         if (milliseconds > 25) _slowFrames++;
 
         bool moving = false;
         foreach (SpringValue spring in _reveals)
             moving |= spring.Step(delta);
 
-        InvalidateMeasure();
+        // Пока ширины пунктов постоянны (только иконки или подписи под иконками), раскладка не меняется — перерисовывается лишь
+        // подсветка. Раскладка на каждом кадре нужна, только когда выбранный пункт раскрывается.
+        if (ExpandSelected) InvalidateMeasure();
         InvalidateVisual();
         NotifyProximity(force: false);
         if (!moving) StopAnimation();
