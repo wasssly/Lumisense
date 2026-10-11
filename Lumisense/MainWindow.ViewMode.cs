@@ -235,27 +235,47 @@ public partial class MainWindow
     {
         if (sender is not FrameworkElement { ContextMenu: { } menu } element) return;
 
-        // Повторный клик по заголовку закрывает меню. Когда меню открыто, клик снаружи закрывает его ещё на нажатии, а затем
-        // отпускание кнопки доходило сюда и открывало меню заново — поэтому закрыть повторным кликом не получалось.
-        if (menu.IsOpen)
-        {
-            menu.IsOpen = false;
-            return;
-        }
-
-        if (Environment.TickCount64 - _viewMenuClosedTicks < ViewMenuReopenGuardMilliseconds) return;
+        long now = Environment.TickCount64;
+        bool closedByThisClick = _viewMenuPressClosedTicks != 0 && now - _viewMenuPressClosedTicks < ViewMenuPressWindowMilliseconds;
+        _viewMenuPressClosedTicks = 0;
+        if (closedByThisClick || now - _viewMenuClosedTicks < ViewMenuReopenGuardMilliseconds) return;
 
         menu.PlacementTarget = element;
         menu.IsOpen = true;
     }
 
-    private const long ViewMenuReopenGuardMilliseconds = 400;
+    private const long ViewMenuReopenGuardMilliseconds = 150;
+    private const long ViewMenuPressWindowMilliseconds = 2000;
     private long _viewMenuClosedTicks;
+    private long _viewMenuPressClosedTicks;
 
-    private void MainViewContextMenu_Closed(object sender, RoutedEventArgs e) => _viewMenuClosedTicks = Environment.TickCount64;
+    // Открытое меню держит захват мыши и закрывается на нажатии вне его; заголовок такое нажатие не получает, а отпускание
+    // получает и открыло бы меню заново. Нажатие по заголовку ловим здесь, до закрытия, поэтому порядок событий не важен.
+    private void MainViewContextMenu_PreviewMouseDownOutside(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == System.Windows.Input.MouseButton.Left && IsPointerOverTitleClickArea())
+            _viewMenuPressClosedTicks = Environment.TickCount64;
+    }
+
+    private bool IsPointerOverTitleClickArea() =>
+        TitleClickArea.IsLoaded && new Rect(TitleClickArea.RenderSize).Contains(System.Windows.Input.Mouse.GetPosition(TitleClickArea));
+
+    // Запасной путь: меню могло закрыться раньше, чем сработал перехват нажатия.
+    private void MainViewContextMenu_Closed(object sender, RoutedEventArgs e)
+    {
+        if (!IsPointerOverTitleClickArea()) return;
+
+        if (System.Windows.Input.Mouse.LeftButton == System.Windows.Input.MouseButtonState.Pressed)
+            _viewMenuPressClosedTicks = Environment.TickCount64;
+        else
+            _viewMenuClosedTicks = Environment.TickCount64;
+    }
 
     private void MainViewContextMenu_Opened(object sender, RoutedEventArgs e)
     {
+        _viewMenuPressClosedTicks = 0;
+        System.Windows.Input.Mouse.RemovePreviewMouseDownOutsideCapturedElementHandler(MainViewContextMenu, MainViewContextMenu_PreviewMouseDownOutside);
+        System.Windows.Input.Mouse.AddPreviewMouseDownOutsideCapturedElementHandler(MainViewContextMenu, MainViewContextMenu_PreviewMouseDownOutside);
         ApplyMainViewContextMenuAccent();
         UpdateViewModeMenuChecks();
 
