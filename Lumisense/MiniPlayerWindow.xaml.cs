@@ -395,11 +395,21 @@ public partial class MiniPlayerWindow : Window
 
     private void ApplyArtworkImageClip(bool circle)
     {
-        // Border.CornerRadius не обрезает дочерний Image. Поэтому форма задаётся самому
-        // пиксельному слою: скруглённый квадрат или круглая обложка.
-        ArtImage.Clip = circle
+        // CornerRadius у Border только рисует скруглённый фон и сам по себе не обрезает дочерние элементы.
+        // Ограничиваем всю поверхность ArtBorder геометрией формы, чтобы ни изображение, ни дочерние эффекты
+        // не могли выйти за контур. Clip задаётся в локальных координатах 42×42 и вращается вместе с винилом.
+        Geometry clip = circle
             ? new EllipseGeometry(new Point(21, 21), 21, 21)
             : new RectangleGeometry(new Rect(0, 0, 42, 42), 8, 8);
+        clip.Freeze();
+
+        ArtBorder.Clip = clip;
+
+        Geometry imageClip = circle
+            ? new EllipseGeometry(new Point(21, 21), 21, 21)
+            : new RectangleGeometry(new Rect(0, 0, 42, 42), 8, 8);
+        imageClip.Freeze();
+        ArtImage.Clip = imageClip;
     }
 
     private void ApplyArtworkProgressClip(bool circle)
