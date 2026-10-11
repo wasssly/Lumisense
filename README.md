@@ -1,8 +1,10 @@
 ![Lumisense interface](docs/lumisense-gallery.png)
 
+*Скриншот устарел и не отражает текущий интерфейс. / The screenshot is outdated and does not reflect the current interface.*
+
 # Lumisense
 
-[![Release](https://img.shields.io/github/v/release/wasssly/Lumisense?display_name=tag&sort=semver&label=release)](https://github.com/wasssly/Lumisense/releases) [![CI](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml) [![Release workflow](https://github.com/wasssly/Lumisense/actions/workflows/release.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/release.yml) [![Platform](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white)](https://github.com/wasssly/Lumisense)
+[![Release](https://img.shields.io/github/v/release/wasssly/Lumisense?display_name=tag&sort=semver&label=release)](https://github.com/wasssly/Lumisense/releases) [![CI](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/ci.yml) [![Release workflow](https://github.com/wasssly/Lumisense/actions/workflows/release.yml/badge.svg)](https://github.com/wasssly/Lumisense/actions/workflows/release.yml) [![Platform](https://img.shields.io/badge/platform-Windows%2010%2B-0078D4?logo=windows11&logoColor=white)](https://github.com/wasssly/Lumisense) [![Telegram](https://img.shields.io/badge/Telegram-@LumisenseApp-26A5E4?logo=telegram&logoColor=white)](https://t.me/LumisenseApp)
 
 <p align="center">
   <a href="#russian" title="Русский">🇷🇺</a>&nbsp;&nbsp;&nbsp;<a href="#english" title="English">🇬🇧</a>
@@ -66,14 +68,15 @@
 - Поиск по плейлисту.
 - Виртуализированный список для больших коллекций.
 - Очередь «Играть следующим» с поиском и сортировкой.
-- Избранное с отдельным представлением и быстрым переключением из заголовка плейлиста.
+- Избранное с отдельным представлением и быстрым переключением из заголовка плейлиста; анимацию сердечка можно выбрать («Заливка», «Искры», «Кольцо») или отключить.
+- Если выбранный или перетащенный файл уже есть в плейлисте, плеер раскрывает его папку и подсвечивает трек.
 - Массовое выделение с помощью `Ctrl` и `Shift`.
 - Drag & Drop.
 - Проверка отслеживаемых папок на новые файлы.
 - Обработка недоступных файлов без удаления исходного файла с диска: можно найти замену или удалить только запись из плейлиста.
 - Редактирование тегов, свойств и обложки трека.
 - Настраиваемое контекстное меню трека: ненужные действия можно скрыть в настройках.
-- Поиск обложек в интернете (iTunes, Deezer и MusicBrainz — источники выбираются в окне поиска) и локальное кэширование найденных изображений.
+- Поиск обложек в интернете (iTunes, Deezer и MusicBrainz — источники выбираются в окне поиска; неофициальный источник Yandex Music по умолчанию выключен и включается галочкой) и локальное кэширование найденных изображений.
 - Нормализация имён аудиофайлов по настраиваемому шаблону.
 
 ### Мини-плеер и внешний вид
@@ -86,12 +89,16 @@
 - Статичный круглый режим обложки.
 - Контур прогресса текущего трека вокруг обложки.
 - Настройка толщины контура прогресса (от 2 до 4).
+- Пресеты размера мини-плеера: «Классический» (по умолчанию), «Текущий» и «Компактный».
+- Бегущая строка для длинного имени исполнителя в мини-плеере (настраивается).
 - Фон мини-плеера, адаптирующийся к цвету текущей обложки.
 - Режим совместимости с играми и оверлеями: включается вручную или автоматически, когда обнаружена игра на весь экран либо известный оверлей (RTSS, Xbox Game Bar, Steam, NVIDIA, AMD).
 - Жесты на обложке.
-- Полноэкранный режим Now Playing с крупной обложкой, динамичным фоном, управлением и текстом песни.
+- Полноэкранный режим Now Playing с крупной обложкой, управлением и текстом песни; фон на выбор: «Облака из цветов обложки», «Цветные шары» или «Волны».
+- Вид навигации в настройках: боковая панель, таблетки сверху или плавающая нижняя панель (у неё подписи пунктов можно скрыть, показывать под иконками или только у выбранного пункта).
+- Виды полосы прогресса, включая «Material» и «Material Slider», и вид ползунков «Material»; анимация смены обложки «Слайд» или «Карусель».
 - Шесть наборов иконок (Duotone, Outline, Bold, Fill, Thin, Font Awesome) с предпросмотром в настройках; переключаются без перезапуска. Иконки: Phosphor (MIT) и Font Awesome Free 7 (иконки под CC BY 4.0, https://fontawesome.com); тексты лицензий в `Lumisense/Icons/`. Тексты песен: LRCLIB и опциональные источники NetEase и QQ Music через Lyricify.Lyrics.Helper (Apache-2.0, текст лицензии в `docs/`).
-- Три значка приложения (Classic, Aurora, Lavender) для окон и значка в трее; файл `.exe` и ярлыки не меняются.
+- Три значка приложения (Classic, Aurora, Lavender) для окон, значка в трее и ярлыков на рабочем столе и в меню «Пуск»; значок самого файла `.exe` и установщика — Aurora.
 - Светлая и тёмная темы.
 - Системный или пользовательский акцентный цвет.
 - Mica/Acrylic и другие параметры оформления Windows-интерфейса.
@@ -103,17 +110,19 @@
 
 - Live Lyrics из `.lrc`.
 - Обычные тексты из `.txt` и тега Comment.
-- Поиск текстов и ручная загрузка.
+- Поиск текстов и ручная загрузка; автоматический выбор учитывает название, исполнителя и длительность трека.
+- Дополнительный источник текстов NetEase Cloud Music и QQ Music (через Lyricify) по умолчанию выключен: при включении название и исполнитель трека отправляются в эти сервисы.
+- Настройки текста песни: выравнивание (слева, по центру, справа) и скрытие обложки при открытом тексте в главном окне. В Now Playing клик по строке перематывает трек, а при нескольких найденных вариантах текста можно переключаться между ними.
 - Настройка политики поиска: локальные источники, автоматический точный поиск или ручной поиск.
 - Управляемое локальное хранение кэша текстов и обложек.
 - Discord Rich Presence с настройками приватности; обложку трека можно показывать в статусе (ищется по названию и исполнителю через iTunes, Deezer и MusicBrainz).
 - Windows media keys.
 - Пользовательские глобальные горячие клавиши.
 - System Media Transport Controls.
-- Значок в системном трее с управлением воспроизведением и пунктом «Настройки»; плеер открывается по клику.
+- Значок в системном трее с собственным меню (управление воспроизведением и пункт «Настройки»); плеер открывается по клику.
 - Автозапуск вместе с Windows и запуск в свёрнутом виде.
 - Сворачивание в трей вместо закрытия.
-- Создание ярлыка на рабочем столе.
+- Создание ярлыков на рабочем столе и в меню «Пуск» (в установщике — отдельные опции).
 
 ### Состояние, диагностика и обновления
 
@@ -129,10 +138,11 @@
 - Диагностика аудиовывода и фоновых операций.
 - Встроенный список изменений с категориями, поиском и сортировкой.
 - Проверка обновлений через GitHub Releases.
-- Проверка SHA-256 установщиков перед запуском.
+- Проверка SHA-256 установщиков перед запуском; для установщиков в GitHub Release публикуется аттестация происхождения сборки.
+- Загрузку обновлений можно переключить на зеркало; перед этим плеер предупреждает, что зеркало видит IP-адрес и факт скачивания, но не может подменить файл.
 - Поддержка обычного EXE/Inno Setup-сценария и компактных Velopack/MSI-обновлений.
 - Когда обновление подготовлено, плеер запрашивает подтверждение перед перезапуском.
-- Уведомление о смене трека: положение, монитор, размер, ширина, сторона обложки и выравнивание текста; карточку можно мгновенно скрыть кликом.
+- Уведомление о смене трека: положение, монитор, размер, ширина, сторона обложки и выравнивание текста; карточку можно мгновенно скрыть кликом; настраивается прозрачность фона и прижатие обложки к тексту при выравнивании «По центру».
 
 ## Сборка из исходников
 
@@ -183,6 +193,8 @@ Lumisense может проверять наличие новых версий �
 
 Если обновление не запускается автоматически, откройте страницу нужного релиза и используйте соответствующий EXE-установщик. Не запускайте отдельные служебные файлы Velopack вручную.
 
+Новости и анонсы обновлений публикуются в Telegram-канале [@LumisenseApp](https://t.me/LumisenseApp).
+
 ## Технологии
 
 - **.NET 10** и **WPF**.
@@ -194,6 +206,7 @@ Lumisense может проверять наличие новых версий �
 - **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** — отображение SVG.
 - **[Velopack](https://github.com/velopack/velopack)** — компактные обновления.
 - **DiscordRichPresence** — интеграция с Discord.
+- **Lyricify.Lyrics.Helper** — дополнительные источники текстов (по желанию пользователя).
 - **xUnit v3** и Microsoft Testing Platform — автоматические тесты.
 
 ### Структура репозитория
@@ -204,11 +217,13 @@ Lumisense/
 ├── .github/workflows/release.yml       — сборка и публикация релизов по тегу
 ├── Installer/Lumisense.iss             — сценарий установщика Inno Setup
 ├── docs/UPDATES.md                     — установка, обновления и назначение release assets
+├── docs/NETWORK_AND_PRIVACY.md         — сетевые запросы и приватность
+├── tools/                              — скрипты подготовки релиза
 ├── Lumisense.Tests/                    — unit-тесты
 └── Lumisense/                          — исходный код плеера
     ├── Lumisense.csproj
     ├── App.xaml / .cs                   — точка входа и подключение тем
-    ├── MainWindow.xaml / .cs            — основное окно и воспроизведение
+    ├── MainWindow.xaml / .cs            — основное окно; логика разделена по файлам MainWindow.*.cs
     ├── MiniPlayerWindow.xaml / .cs      — компактный мини-плеер
     ├── NowPlayingWindow.xaml / .cs      — полноэкранный режим Now Playing
     ├── LyricsService.cs                 — загрузка, поиск и кэширование текстов
@@ -225,6 +240,7 @@ Lumisense/
     ├── SettingsWindow.xaml / .cs        — окно настроек
     ├── Changelog/                       — история изменений
     ├── TrayIconManager.cs               — системный трей
+    ├── TrayMenuWindow.xaml / .cs        — меню значка в трее
     ├── GameOverlayDetectionService.cs   — автоопределение игры и оверлея
     ├── GlobalMediaHotKeys.cs            — медиа-клавиши и горячие клавиши
     ├── NowPlayingIntegration.cs         — интеграция Now Playing
@@ -246,7 +262,7 @@ Lumisense/
 
 Не прикладывайте логи с личными путями, именами пользователей или другой чувствительной информацией без предварительного редактирования.
 
-Создать issue можно в [репозитории Lumisense](https://github.com/wasssly/Lumisense/issues).
+Создать issue можно в [репозитории Lumisense](https://github.com/wasssly/Lumisense/issues). Новости и обновления — в Telegram-канале [@LumisenseApp](https://t.me/LumisenseApp).
 
 
 </details>
@@ -275,21 +291,24 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 #### Playlist and library
 
 - Files, folders, nested folders, empty folders, grouping, search, Favorites, Play Next, Drag & Drop, and a virtualized list for large collections.
-- Unavailable-file recovery, tag and artwork editing, online artwork search (iTunes, Deezer, and MusicBrainz, selectable in the search window), local artwork caching, and filename normalization.
+- Unavailable-file recovery, tag and artwork editing, online artwork search (iTunes, Deezer, and MusicBrainz, selectable in the search window; an unofficial Yandex Music source is off by default and enabled with a checkbox), local artwork caching, and filename normalization.
 - Configurable track context menu: actions you do not need can be hidden in Settings.
+- Favorites heart animation can be chosen (Fill, Sparks, Ring) or turned off; selecting or dropping a file already in the playlist expands its folder and highlights the track.
 
 #### Mini-player and Windows integration
 
 - Standard, square, and compact mini-player modes with adjustable opacity, edge snapping, artwork gestures, progress outline, standard artwork, rotating vinyl, and static circular artwork.
-- Configurable mini-player context menu; opacity can be changed with a slider, the mouse wheel, or by typing a value; progress-outline thickness from 2 to 4.
+- Configurable mini-player context menu; opacity can be changed with a slider, the mouse wheel, or by typing a value; progress-outline thickness from 2 to 4; size presets (Classic by default, Current, Compact) and an optional marquee for long artist names.
 - Game and overlay compatibility mode, enabled manually or automatically when a full-screen game or a known overlay (RTSS, Xbox Game Bar, Steam, NVIDIA, AMD) is detected.
-- Six icon packs (Duotone, Outline, Bold, Fill, Thin, Font Awesome) with a preview gallery in Settings, switchable without a restart; three application icons (Classic, Aurora, Lavender) for windows and the tray. Icons: Phosphor (MIT) and Font Awesome Free 7 (icons under CC BY 4.0, https://fontawesome.com); license texts are in `Lumisense/Icons/`. Lyrics: LRCLIB, plus an optional NetEase and QQ Music sources via Lyricify.Lyrics.Helper (Apache-2.0, license text in `docs/`).
-- Full-screen Now Playing with lyrics and dynamic background.
+- Six icon packs (Duotone, Outline, Bold, Fill, Thin, Font Awesome) with a preview gallery in Settings, switchable without a restart; three application icons (Classic, Aurora, Lavender) for windows, the tray, and desktop and Start Menu shortcuts (the `.exe` and installer use Aurora). Icons: Phosphor (MIT) and Font Awesome Free 7 (icons under CC BY 4.0, https://fontawesome.com); license texts are in `Lumisense/Icons/`. Lyrics: LRCLIB, plus an optional NetEase and QQ Music sources via Lyricify.Lyrics.Helper (Apache-2.0, license text in `docs/`).
+- Full-screen Now Playing with lyrics and a selectable background (cover-colour clouds, colour orbs, or waves); clicking a synced lyric line seeks to it, and you can switch between lyric variants when several are found.
+- Settings navigation style: sidebar, top pills, or a floating bottom bar (item labels can be hidden, shown under icons, or shown only for the selected item); Material progress bar and slider styles; Slide or Carousel artwork transition.
+- Lyrics options: text alignment (left, centre, right), hiding the cover while lyrics are open in the main window, automatic lyric selection by title, artist, and duration, and an optional NetEase and QQ Music source that is off by default and sends the track title and artist to those services when enabled.
 - Dark and light themes, Mica/Acrylic, custom accents, interface scaling, reduced motion, system tray, media keys, global hotkeys, Discord Rich Presence, and System Media Transport Controls.
 - Discord Rich Presence can show the current track's cover art (looked up by title and artist via iTunes, Deezer, and MusicBrainz).
-- System tray icon with playback controls and a Settings item; a single click opens the player.
+- System tray icon with its own menu (playback controls and a Settings item); a single click opens the player. Desktop and Start Menu shortcuts (separate options in the installer).
 - Auto-scroll in Settings toggled by clicking the middle mouse button once to enable it and again to disable it; the pointer indicates the active direction.
-- Track-change notification settings (position, monitor, size, width, artwork side, and text alignment); the notification can be dismissed immediately by clicking its card.
+- Track-change notification settings (position, monitor, size, width, artwork side, and text alignment); the notification can be dismissed immediately by clicking its card; background opacity and an option to pull the artwork next to centred text are configurable.
 
 ### Build from source
 
@@ -314,7 +333,7 @@ The repository contains separate application and test projects, so explicit `.cs
 
 ### Updates
 
-Ready-to-use builds are published on [GitHub Releases](https://github.com/wasssly/Lumisense/releases). Use `Lumisense-<version>-Setup.exe` for normal installation and updates. The MSI package is intended for users who want to migrate to compact Velopack updates. Do not run `.nupkg`, `RELEASES`, or `releases.win.json` files manually. See [docs/UPDATES.md](docs/UPDATES.md) for the exact EXE/MSI scenarios and asset roles. Once an update is ready, the player asks for confirmation before restarting.
+Ready-to-use builds are published on [GitHub Releases](https://github.com/wasssly/Lumisense/releases). Use `Lumisense-<version>-Setup.exe` for normal installation and updates. The MSI package is intended for users who want to migrate to compact Velopack updates. Do not run `.nupkg`, `RELEASES`, or `releases.win.json` files manually. See [docs/UPDATES.md](docs/UPDATES.md) for the exact EXE/MSI scenarios and asset roles. Installer SHA-256 is verified before launch, and release installers carry a build provenance attestation. Downloads can be switched to a mirror after a warning that the mirror sees your IP address and the fact of the download but cannot alter the file. Once an update is ready, the player asks for confirmation before restarting. News and release announcements are posted in the Telegram channel [@LumisenseApp](https://t.me/LumisenseApp).
 
 ### Technologies
 
@@ -327,6 +346,7 @@ Ready-to-use builds are published on [GitHub Releases](https://github.com/wasssl
 - **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** for SVG icons.
 - **[Velopack](https://github.com/velopack/velopack)** for compact updates.
 - **DiscordRichPresence** for Discord integration.
+- **Lyricify.Lyrics.Helper** for optional extra lyrics sources.
 - **xUnit v3** and Microsoft Testing Platform for automated tests.
 
 Key internal components include `AudioPlaybackCoordinator`, `TrackPreparationService`, and `TrackExportService`.
@@ -339,11 +359,13 @@ Lumisense/
 ├── .github/workflows/release.yml       — builds and publishes releases from tags
 ├── Installer/Lumisense.iss             — Inno Setup installer script
 ├── docs/UPDATES.md                     — installation, updates, and release asset guide
+├── docs/NETWORK_AND_PRIVACY.md         — network requests and privacy
+├── tools/                              — release preparation scripts
 ├── Lumisense.Tests/                    — unit tests
 └── Lumisense/                          — player source code
     ├── Lumisense.csproj
     ├── App.xaml / .cs                   — entry point and theme setup
-    ├── MainWindow.xaml / .cs            — main window and playback
+    ├── MainWindow.xaml / .cs            — main window; logic is split across MainWindow.*.cs files
     ├── MiniPlayerWindow.xaml / .cs      — compact mini player
     ├── NowPlayingWindow.xaml / .cs      — full-screen Now Playing mode
     ├── LyricsService.cs                 — lyrics loading, search, and caching
@@ -360,6 +382,7 @@ Lumisense/
     ├── SettingsWindow.xaml / .cs        — Settings window
     ├── Changelog/                       — change history
     ├── TrayIconManager.cs               — system tray
+    ├── TrayMenuWindow.xaml / .cs        — tray icon menu
     ├── GameOverlayDetectionService.cs   — game and overlay auto-detection
     ├── GlobalMediaHotKeys.cs            — media keys and hotkeys
     ├── NowPlayingIntegration.cs         — Windows Now Playing integration
@@ -371,7 +394,7 @@ Lumisense/
 
 ### Feedback
 
-If you find a bug or would like to propose an improvement, open an [issue in the repository](https://github.com/wasssly/Lumisense/issues). Include the application version, Windows version, reproduction steps, expected and actual results, and a redacted log excerpt or screenshot when available. Remove personal paths, usernames, and other sensitive information before sharing logs.
+If you find a bug or would like to propose an improvement, open an [issue in the repository](https://github.com/wasssly/Lumisense/issues). Include the application version, Windows version, reproduction steps, expected and actual results, and a redacted log excerpt or screenshot when available. Remove personal paths, usernames, and other sensitive information before sharing logs. News and updates: Telegram channel [@LumisenseApp](https://t.me/LumisenseApp).
 
 
 </details>
