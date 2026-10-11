@@ -727,8 +727,8 @@ public partial class MiniPlayerWindow : Window
         bool isFavorite = _mainWindow.CurrentTrackPath is { } path && FavoritesManager.IsFavorite(path);
 
         SecondaryButton.Icon = isFavorite
-            ? IconResources.MakeOnAccent("IconHeartFilled", size: 12)
-            : IconResources.Make("IconHeart", size: 12);
+            ? IconResources.MakeOnAccent("IconHeartFilled", size: 14)
+            : IconResources.Make("IconHeart", size: 14);
         SetAccentButtonActive(SecondaryButton, isFavorite);
     }
 
