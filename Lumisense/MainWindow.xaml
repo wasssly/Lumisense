@@ -477,20 +477,80 @@
             </Grid.ColumnDefinitions>
 
             <Border x:Name="TitleClickArea" Grid.Column="0" VerticalAlignment="Stretch"
-                    Background="Transparent" Cursor="Hand" Padding="16,0,4,0"
+                    Background="Transparent" Cursor="Hand" Padding="8,0,4,0"
                     MouseLeftButtonUp="TitleClickArea_MouseLeftButtonUp"
                     ToolTip="Вид плеера">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                    <!-- PNG сохраняет детализированный 256px artwork (лучше 16px-кадра ICO для этой области), а layout/scaling flags не дают ему
-                         размыться на дробном DPI. -->
-                    <Image Source="/Icons/app/lumisense.png" Width="14" Height="14" Margin="0,0,6,0"
-                           Stretch="Uniform" SnapsToDevicePixels="True" UseLayoutRounding="True"
-                           RenderOptions.BitmapScalingMode="HighQuality" />
-                    <TextBlock Text="Lumisense" FontSize="12" VerticalAlignment="Center" Opacity="0.9" />
-                </StackPanel>
+                <!-- Капсула вокруг значка и названия показывает, что это кнопка: в покое едва заметная, при наведении ярче, а пока
+                     открыто меню вида окна — подсвечена как нажатая. Стрелка справа подсказывает, что откроется список. -->
+                <Border x:Name="TitleCapsule" VerticalAlignment="Center" Height="26" CornerRadius="13"
+                        Padding="9,0,8,0" BorderThickness="1">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource ControlFillColorDefaultBrush}" />
+                            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsMouseOver, ElementName=TitleClickArea}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding ContextMenu.IsOpen, ElementName=TitleClickArea}" Value="True">
+                                    <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <!-- Рисунок значка — крупный PNG выбранного в настройках значка (AppIconContext.CurrentArt), а не всегда классический:
+                             он лучше кадра ICO 16 px в этой области, а флаги раскладки не дают ему размыться на дробном DPI. -->
+                        <Image Source="{Binding CurrentArt, Source={x:Static local:AppIconContext.Instance}}"
+                               Width="14" Height="14" Margin="0,0,6,0"
+                               Stretch="Uniform" SnapsToDevicePixels="True" UseLayoutRounding="True"
+                               RenderOptions.BitmapScalingMode="HighQuality" />
+                        <TextBlock Text="Lumisense" FontSize="12" VerticalAlignment="Center" Opacity="0.9" />
+                        <!-- Стрелка поворачивается вверх, пока меню открыто, и плавно возвращается при закрытии. Поворот — на обёртке Grid:
+                             у самой иконки (IconElement) свой стиль, который не стоит подменять. -->
+                        <Grid Margin="6,1,0,0" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <RotateTransform Angle="0" />
+                            </Grid.RenderTransform>
+                            <Grid.Style>
+                                <Style TargetType="Grid">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding ContextMenu.IsOpen, ElementName=TitleClickArea}" Value="True">
+                                            <DataTrigger.EnterActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                         To="180" Duration="0:0:0.2">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.EnterActions>
+                                            <DataTrigger.ExitActions>
+                                                <BeginStoryboard>
+                                                    <Storyboard>
+                                                        <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(RotateTransform.Angle)"
+                                                                         To="0" Duration="0:0:0.2">
+                                                            <DoubleAnimation.EasingFunction>
+                                                                <CubicEase EasingMode="EaseOut" />
+                                                            </DoubleAnimation.EasingFunction>
+                                                        </DoubleAnimation>
+                                                    </Storyboard>
+                                                </BeginStoryboard>
+                                            </DataTrigger.ExitActions>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Grid.Style>
+                            <local:SvgPathIcon Icon="IconChevronDown" Size="10" Opacity="0.65" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
                 <Border.ContextMenu>
                     <ContextMenu x:Name="MainViewContextMenu" Placement="Bottom"
-                                 Opened="MainViewContextMenu_Opened">
+                                 Opened="MainViewContextMenu_Opened" Closed="MainViewContextMenu_Closed">
                         <ContextMenu.Resources>
                             <!-- Wpf.Ui не всегда рисует штатный check-glyph MenuItem в Popup: локальный шаблон для трёх пунктов выбора вида показывает
                                  тот же Fluent CheckBox, что в меню мини-плеера, без новых пунктов и состояний. -->

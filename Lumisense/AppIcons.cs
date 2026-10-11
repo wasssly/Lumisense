@@ -27,6 +27,20 @@ public sealed class AppIconContext : INotifyPropertyChanged
         }
     }
 
+    // Крупный рисунок значка (PNG) для интерфейса: маленькие значки в заголовках рисуются из него, а не из кадра ICO (см. AppIcons.LoadArt).
+    private ImageSource? _currentArt;
+
+    public ImageSource? CurrentArt
+    {
+        get => _currentArt;
+        set
+        {
+            if (ReferenceEquals(_currentArt, value)) return;
+            _currentArt = value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(CurrentArt)));
+        }
+    }
+
     public event PropertyChangedEventHandler? PropertyChanged;
 }
 
@@ -55,6 +69,7 @@ public static class AppIcons
     {
         Current = IsKnown(settings.AppIcon) ? settings.AppIcon : Aurora;
         AppIconContext.Instance.Current = Load(Current);
+        AppIconContext.Instance.CurrentArt = LoadArt(Current);
     }
 
     // Меняет активную иконку немедленно на всех открытых окнах и в трее — сохранение в
@@ -64,6 +79,7 @@ public static class AppIcons
         if (!IsKnown(icon)) return;
         Current = icon;
         AppIconContext.Instance.Current = Load(icon);
+        AppIconContext.Instance.CurrentArt = LoadArt(icon);
     }
 
     public static bool IsKnown(string? icon) => icon is not null && Array.IndexOf(All, icon) >= 0;
@@ -72,6 +88,27 @@ public static class AppIcons
 
     public static Uri GetUri(string icon) =>
         new($"pack://application:,,,/Icons/app/{FileNames[icon]}.ico", UriKind.Absolute);
+
+    // Путь ресурса внутри сборки; отдельно от Uri, потому что схема pack:// регистрируется только внутри запущенного WPF-приложения
+    // (в тестовом процессе new Uri("pack://...") падает с «Invalid port specified»).
+    public static string GetArtPath(string icon) => $"/Icons/app/{FileNames[icon]}.png";
+
+    public static Uri GetArtUri(string icon) =>
+        new($"pack://application:,,,{GetArtPath(icon)}", UriKind.Absolute);
+
+    // Рисунок значка для заголовков: PNG с крупным исходником, декодируется сразу в 96 px (хватает и для 200 % масштаба) и
+    // замораживается. Раньше заголовок главного окна всегда брал рисунок классического значка, а не выбранного в настройках.
+    private static ImageSource LoadArt(string icon)
+    {
+        var image = new BitmapImage();
+        image.BeginInit();
+        image.UriSource = GetArtUri(icon);
+        image.DecodePixelWidth = 96;
+        image.CacheOption = BitmapCacheOption.OnLoad;
+        image.EndInit();
+        image.Freeze();
+        return image;
+    }
 
     // OnLoad — синхронное декодирование: ленивая загрузка могла на миг оставить пустые пиксели
     // при живой смене (см. аналогичный комментарий в прежнем TrayIconManager.LoadAppIcon).

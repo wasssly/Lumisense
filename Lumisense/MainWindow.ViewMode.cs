@@ -234,9 +234,25 @@ public partial class MainWindow
     private void TitleClickArea_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
         if (sender is not FrameworkElement { ContextMenu: { } menu } element) return;
+
+        // Повторный клик по заголовку закрывает меню. Когда меню открыто, клик снаружи закрывает его ещё на нажатии, а затем
+        // отпускание кнопки доходило сюда и открывало меню заново — поэтому закрыть повторным кликом не получалось.
+        if (menu.IsOpen)
+        {
+            menu.IsOpen = false;
+            return;
+        }
+
+        if (Environment.TickCount64 - _viewMenuClosedTicks < ViewMenuReopenGuardMilliseconds) return;
+
         menu.PlacementTarget = element;
         menu.IsOpen = true;
     }
+
+    private const long ViewMenuReopenGuardMilliseconds = 400;
+    private long _viewMenuClosedTicks;
+
+    private void MainViewContextMenu_Closed(object sender, RoutedEventArgs e) => _viewMenuClosedTicks = Environment.TickCount64;
 
     private void MainViewContextMenu_Opened(object sender, RoutedEventArgs e)
     {
