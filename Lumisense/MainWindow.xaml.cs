@@ -88,6 +88,11 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // Пауза объединяет быстрый ввод поиска в один запрос, фильтрация снимка идёт вне Dispatcher — иначе каждое нажатие
     // перестраивало бы раскладку тысяч ListViewItem.
     private readonly DispatcherTimer _playlistSearchDebounceTimer = new() { Interval = TimeSpan.FromMilliseconds(180) };
+    // Discord ограничивает частоту обновлений Rich Presence, поэтому серия быстрых смен трека уходит одним обновлением.
+    private static readonly TimeSpan DiscordTrackChangeQuietPeriod = TimeSpan.FromSeconds(1);
+    private readonly DispatcherTimer _discordTrackChangeTimer = new() { Interval = DiscordTrackChangeQuietPeriod };
+    private DateTime _discordTrackChangeAtUtc;
+    private bool _discordTrackChangePending;
     private CancellationTokenSource? _playlistSearchCts;
     private int _playlistSearchGeneration;
     private readonly Stopwatch _playbackClock = new();
@@ -403,6 +408,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         _progressTimer.Tick += ProgressTimer_Tick;
         _playlistSearchDebounceTimer.Tick += PlaylistSearchDebounceTimer_Tick;
         _folderRefreshDebounceTimer.Tick += FolderRefreshDebounceTimer_Tick;
+        _discordTrackChangeTimer.Tick += DiscordTrackChangeTimer_Tick;
         _hotkeyTrackStepTimer.Tick += HotkeyTrackStepTimer_Tick;
         _playbackRatePersistenceTimer.Tick += PlaybackRatePersistenceTimer_Tick;
         _settingsCheckpointTimer.Tick += SettingsCheckpointTimer_Tick;
@@ -422,8 +428,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
         // Rich Presence использует те же единые события, что и мини-плеер: это исключает
         // отдельный таймер, опрос UI и расхождение со сменой состояния аудиоустройства.
-        TrackInfoChanged += (_, _, _) => UpdateDiscordRichPresence(force: true);
-        PlaybackStateChanged += _ => UpdateDiscordRichPresence(force: true);
+        TrackInfoChanged += (_, _, _) => QueueDiscordRichPresenceTrackUpdate();
+        PlaybackStateChanged += _ => UpdateDiscordRichPresence(force: false);
         ProgressChanged += (_, _) => UpdateDiscordRichPresence(force: false);
         ApplySettingsOnStartup();
         _playbackRatePersistenceTimer.Start();
@@ -1307,6 +1313,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // поэтому Discord не зависит от текстовых полей UI.
     private void UpdateDiscordRichPresence(bool force)
     {
+        if (_discordTrackChangePending) return;
+
         var audioFile = _audioFile;
         _discordRichPresence.Update(
             _settings,
@@ -1317,6 +1325,30 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             audioFile?.TotalTime.TotalSeconds ?? 0,
             audioFile != null && !string.IsNullOrWhiteSpace(_currentTrackPath),
             force);
+    }
+
+    // Первая смена после паузы уходит сразу, а серия смен подряд ждёт тишины и публикует только последний трек.
+    private void QueueDiscordRichPresenceTrackUpdate()
+    {
+        var now = DateTime.UtcNow;
+        bool burst = _discordTrackChangePending || now - _discordTrackChangeAtUtc < DiscordTrackChangeQuietPeriod;
+        _discordTrackChangeAtUtc = now;
+        if (!burst)
+        {
+            UpdateDiscordRichPresence(force: true);
+            return;
+        }
+
+        _discordTrackChangePending = true;
+        _discordTrackChangeTimer.Stop();
+        _discordTrackChangeTimer.Start();
+    }
+
+    private void DiscordTrackChangeTimer_Tick(object? sender, EventArgs e)
+    {
+        _discordTrackChangeTimer.Stop();
+        _discordTrackChangePending = false;
+        UpdateDiscordRichPresence(force: true);
     }
 
     // Вызывается SettingsWindow сразу после изменения включения, Application ID или параметров
