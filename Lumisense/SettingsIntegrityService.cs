@@ -268,7 +268,9 @@ internal static class SettingsIntegrityService
         settings.NowPlayingBackground = Allowed(settings.NowPlayingBackground, defaults.NowPlayingBackground,
             "Clouds", "Orbs", "Waves");
         settings.SettingsNavigationStyle = Allowed(settings.SettingsNavigationStyle, defaults.SettingsNavigationStyle,
-            "Sidebar", "Tabs", "Pills", "FloatingBar");
+            "Sidebar", "Pills", "FloatingBar");
+        settings.SettingsNavigationLabelMode = Allowed(settings.SettingsNavigationLabelMode, defaults.SettingsNavigationLabelMode,
+            "Below", "Selected");
         settings.MiniPlayerSizePreset = Allowed(settings.MiniPlayerSizePreset, defaults.MiniPlayerSizePreset,
             "Compact", "Current", "Classic");
         settings.FavoriteHeartAnimation = Allowed(settings.FavoriteHeartAnimation, defaults.FavoriteHeartAnimation,

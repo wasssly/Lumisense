@@ -419,41 +419,12 @@
         </Style>
 
         <!-- Горизонтальные виды навигации («Навигация в настройках»): те же RadioButton, что и в боковой панели, но с другим
-             стилем; SettingsWindow.ApplyNavigationStyle переносит их между контейнерами. -->
-        <Style x:Key="NavTabStyle" TargetType="RadioButton">
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Margin" Value="0,0,2,0" />
-            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="RadioButton">
-                        <Border x:Name="Bg" CornerRadius="8" Background="Transparent">
-                            <Grid Height="42">
-                                <ContentPresenter Margin="14,0,14,3" VerticalAlignment="Center" HorizontalAlignment="Center" />
-                                <Border x:Name="Indicator" Height="3" CornerRadius="2" VerticalAlignment="Bottom" Margin="12,0,12,0"
-                                        Background="{DynamicResource AccentFillColorDefaultBrush}" Opacity="0" />
-                            </Grid>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Indicator" Property="Opacity" Value="1" />
-                                <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
-                            </Trigger>
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
+             стилем; SettingsWindow.ApplyNavigationStyle переносит их между контейнерами. Скругления согласованы по высоте:
+             таблетка 36 → её полоса 36 + 2·4 + 2·1 = 46 (радиус 23); плавающий пункт 40 → панель 54 (радиус 27). -->
+        <!-- Выбранная таблетка не рисует фон сама: акцентную подсветку плавно переносит SettingsWindow.UpdatePillHighlight. -->
         <Style x:Key="NavPillStyle" TargetType="RadioButton">
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Margin" Value="0,0,4,0" />
+            <Setter Property="Margin" Value="2,0" />
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
@@ -464,11 +435,14 @@
                             </Grid>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                    <Condition Property="IsChecked" Value="False" />
+                                </MultiTrigger.Conditions>
                                 <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
-                            </Trigger>
+                            </MultiTrigger>
                             <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
                                 <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
@@ -480,29 +454,124 @@
             </Setter>
         </Style>
 
-        <!-- Плавающая панель: только иконки, подпись показывает код у выбранного пункта (ApplyNavigationStyle). -->
+        <!-- Плавающая панель: пункт высотой 40 и шириной не меньше 40 (иконка 18 + поля 11 = 40: ровный круг, радиус 20); у выбранного
+             пункта в режиме «рядом с иконкой» ширина растёт на подпись. Поля у пунктов нулевые, чтобы отступы панели слева и справа были
+             такими же, как сверху и снизу. Подсветку рисует и двигает ExpressiveNavPanel. -->
         <Style x:Key="NavFloatingStyle" TargetType="RadioButton">
             <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Margin" Value="2,0" />
+            <Setter Property="Margin" Value="0" />
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="RadioButton">
                         <Border x:Name="Bg" CornerRadius="20" Background="Transparent">
-                            <Grid Height="40" MinWidth="44">
-                                <ContentPresenter Margin="13,0" VerticalAlignment="Center" HorizontalAlignment="Center" />
+                            <Grid Height="40" MinWidth="40">
+                                <ContentPresenter Margin="11,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                    <Condition Property="IsChecked" Value="False" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+                            </MultiTrigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Та же панель с названиями: иконка над подписью, высота 56 (радиус 28 = половина), ширина по подписи. Радиусы панели и
+             подсветки выставляет ApplyNavigationStyle: радиус панели = радиус пункта + отступ 7. -->
+        <Style x:Key="NavFloatingLabelStyle" TargetType="RadioButton" BasedOn="{StaticResource NavFloatingStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bg" CornerRadius="28" Background="Transparent">
+                            <Grid Height="56" MinWidth="56">
+                                <ContentPresenter Margin="8,0" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                    <Condition Property="IsChecked" Value="False" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+                            </MultiTrigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Режим «подпись рядом с иконкой у выбранного пункта»: значок прижат влево с полем 11 (в свёрнутом пункте шириной 40 он
+             оказывается по центру), подпись видна по мере раскрытия пункта; ширину задаёт ExpressiveNavPanel, лишнее обрезается. -->
+        <Style x:Key="NavFloatingInlineStyle" TargetType="RadioButton" BasedOn="{StaticResource NavFloatingStyle}">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Bg" CornerRadius="20" Background="Transparent">
+                            <Grid Height="40">
+                                <ContentPresenter Margin="11,0,14,0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True" />
+                                    <Condition Property="IsChecked" Value="False" />
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+                            </MultiTrigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стрелки по краям полосы таблеток: видны, только когда пункты не помещаются; удержание листает дальше. -->
+        <Style x:Key="NavArrowButtonStyle" TargetType="RepeatButton">
+            <Setter Property="Width" Value="28" />
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Delay" Value="350" />
+            <Setter Property="Interval" Value="70" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RepeatButton">
+                        <Border x:Name="Bg" CornerRadius="18" Background="Transparent">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
                             </Trigger>
-                            <Trigger Property="IsChecked" Value="True">
-                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-                                <Setter Property="Foreground" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
-                            </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter Property="Opacity" Value="0.45" />
+                                <Setter Property="Opacity" Value="0.3" />
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
@@ -821,13 +890,24 @@
                                 <TextBlock Text="Как выглядит переключение разделов в этом окне. Применяется сразу."
                                            FontSize="12" Opacity="0.6" Margin="0,-4,0,14" TextWrapping="Wrap" />
                                 <RadioButton x:Name="NavStyleSidebarRadio" Content="Боковая панель" GroupName="SettingsNavigationStyle"
-                                             Checked="NavStyleRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="NavStyleTabsRadio" Content="Вкладки сверху" GroupName="SettingsNavigationStyle"
-                                             Checked="NavStyleRadio_Changed" Margin="0,0,0,12" />
+                                             Checked="NavStyleRadio_Changed" MinHeight="32" Margin="0,0,0,2" />
                                 <RadioButton x:Name="NavStylePillsRadio" Content="Таблетки сверху" GroupName="SettingsNavigationStyle"
-                                             Checked="NavStyleRadio_Changed" Margin="0,0,0,12" />
+                                             Checked="NavStyleRadio_Changed" MinHeight="32" Margin="0,0,0,2" />
                                 <RadioButton x:Name="NavStyleFloatingRadio" Content="Плавающая нижняя панель" GroupName="SettingsNavigationStyle"
-                                             Checked="NavStyleRadio_Changed" />
+                                             Checked="NavStyleRadio_Changed" MinHeight="32" Margin="0,0,0,2" />
+                                <!-- Параметры плавающей панели: видны только при её выборе (SettingsWindow.UpdateNavOptionsVisibility). Отступ слева 28 —
+                                     это ширина кружка радиокнопки с зазором, поэтому флажок выровнен по тексту выбранного пункта. -->
+                                <StackPanel x:Name="NavLabelOptionsPanel" Visibility="Collapsed" Margin="28,4,0,0">
+                                    <CheckBox x:Name="NavShowLabelsCheckBox" Content="Показывать названия рядом с иконками" MinHeight="32"
+                                              VerticalContentAlignment="Center"
+                                              Checked="NavShowLabelsCheckBox_Changed" Unchecked="NavShowLabelsCheckBox_Changed" />
+                                    <StackPanel x:Name="NavLabelModePanel" Visibility="Collapsed" Margin="28,2,0,0">
+                                        <RadioButton x:Name="NavLabelModeBelowRadio" Content="Под иконками у всех пунктов" GroupName="SettingsNavigationLabelMode"
+                                                     Checked="NavLabelModeRadio_Changed" MinHeight="32" Margin="0,0,0,2" />
+                                        <RadioButton x:Name="NavLabelModeSelectedRadio" Content="Рядом с иконкой выбранного пункта" GroupName="SettingsNavigationLabelMode"
+                                                     Checked="NavLabelModeRadio_Changed" MinHeight="32" />
+                                    </StackPanel>
+                                </StackPanel>
                             </StackPanel>
                         </Border>
 
@@ -2891,7 +2971,10 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
 
-                                    <Image Grid.Column="0" Source="/Icons/app/lumisense.png" Width="44" Height="44"
+                                    <!-- Значок в карточке «О программе» — выбранный в настройках (AppIconContext.CurrentArt), а не всегда
+                                         классический; карточка «Классический» в выборе значка, наоборот, остаётся с классическим рисунком. -->
+                                    <Image Grid.Column="0" Source="{Binding CurrentArt, Source={x:Static local:AppIconContext.Instance}}"
+                                           Width="44" Height="44"
                                            Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
                                            Margin="0,0,12,0" />
 
@@ -3031,32 +3114,77 @@
                 </ScrollViewer>
             </Border>
 
-            <!-- Виды навигации «Вкладки» и «Таблетки»: панель сверху + поиск справа (SettingsWindow.ApplyNavigationStyle). -->
+            <!-- Вид навигации «Таблетки»: панель сверху + поиск справа (SettingsWindow.ApplyNavigationStyle). -->
             <Grid x:Name="TopNavBar" Grid.Row="0" Grid.ColumnSpan="2" Margin="18,12,18,10" Visibility="Collapsed">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <Border x:Name="TopNavStrip" Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center">
-                    <ScrollViewer x:Name="TopNavScroll" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled"
-                                  PreviewMouseWheel="TopNavScroll_PreviewMouseWheel">
-                        <StackPanel x:Name="TopNavPanel" Orientation="Horizontal" />
-                    </ScrollViewer>
+                <!-- Отступы выровнены: Padding 2,4 + поля пунктов 2 + рамка 1 = 5 со всех сторон, поэтому слева, справа, сверху и снизу
+                     подсветка отстоит от края одинаково, а радиус 23 = половина высоты 46. -->
+                <Border x:Name="TopNavStrip" Grid.Column="0" HorizontalAlignment="Left" VerticalAlignment="Center"
+                        Padding="2,4" CornerRadius="23" BorderThickness="1" TextOptions.TextHintingMode="Animated"
+                        Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                        BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <RepeatButton x:Name="TopNavLeftArrow" Grid.Column="0" Tag="-1" Visibility="Collapsed"
+                                      Style="{StaticResource NavArrowButtonStyle}" Click="TopNavArrow_Click">
+                            <Path Data="M 6,1 L 1.5,6 L 6,11" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RepeatButton}}"
+                                  StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                        </RepeatButton>
+                        <!-- Полоса прокрутки скрыта: листать можно стрелками и колесом, выбранный пункт прокручивается в зону видимости. -->
+                        <ScrollViewer x:Name="TopNavScroll" Grid.Column="1" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                                      PreviewMouseWheel="NavScroll_PreviewMouseWheel" ScrollChanged="TopNavScroll_ScrollChanged">
+                            <Grid>
+                                <!-- Скользящая акцентная подсветка выбранной таблетки; позицию задаёт UpdatePillHighlight. -->
+                                <Border x:Name="PillHighlight" HorizontalAlignment="Left" VerticalAlignment="Center"
+                                        Height="36" Width="0" CornerRadius="18" IsHitTestVisible="False" Visibility="Collapsed"
+                                        Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform x:Name="PillHighlightTranslate" />
+                                    </Border.RenderTransform>
+                                </Border>
+                                <StackPanel x:Name="TopNavPanel" Orientation="Horizontal" SizeChanged="TopNavPanel_SizeChanged" />
+                            </Grid>
+                        </ScrollViewer>
+                        <RepeatButton x:Name="TopNavRightArrow" Grid.Column="2" Tag="1" Visibility="Collapsed"
+                                      Style="{StaticResource NavArrowButtonStyle}" Click="TopNavArrow_Click">
+                            <Path Data="M 1.5,1 L 6,6 L 1.5,11" Stroke="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RepeatButton}}"
+                                  StrokeThickness="1.8" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                        </RepeatButton>
+                    </Grid>
                 </Border>
                 <Border x:Name="TopSearchHost" Grid.Column="1" Width="240" Margin="12,0,0,0" VerticalAlignment="Center" />
             </Grid>
 
             <!-- Плавающая нижняя панель; не занимает места в раскладке, поэтому странице оставляется нижний отступ. -->
-            <Border x:Name="FloatingNavBar" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed"
-                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,28" Padding="6"
-                    CornerRadius="28" Panel.ZIndex="20"
+            <local:SoftShadowBorder x:Name="FloatingNavBar" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed"
+                    HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,42" Padding="6"
+                    CornerRadius="27" Panel.ZIndex="20" TextOptions.TextRenderingMode="Grayscale" TextOptions.TextHintingMode="Animated"
                     Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
                     BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1">
-                <Border.Effect>
-                    <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Opacity="0.28" />
-                </Border.Effect>
-                <StackPanel x:Name="FloatingNavPanel" Orientation="Horizontal" />
-            </Border>
+                <!-- Тень рисует сама рамка слоями (SoftShadowBorder), а не DropShadowEffect: встроенный эффект считается программно и
+                     пересчитывался на каждом кадре движения панели. Нижний отступ 42 = отступ карточки страницы (16) + запас 26: панель
+                     целиком лежит внутри карточки и тень не пересекает её нижнюю границу.
+                     Padding 6 + рамка 1 = 7 со всех сторон; радиус панели = радиус пункта + 7 (ApplyNavigationStyle).
+                     Прокручиваемая область обрезается капсулой в том же радиусе (FloatingNavScroll_SizeChanged). ScrollViewer нужен на случай,
+                     когда панель с названиями шире окна: полоса скрыта, листается колесом. -->
+                <ScrollViewer x:Name="FloatingNavScroll" HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                              PreviewMouseWheel="NavScroll_PreviewMouseWheel" SizeChanged="FloatingNavScroll_SizeChanged">
+                    <ScrollViewer.RenderTransform>
+                        <TranslateTransform x:Name="FloatingNavShift" />
+                    </ScrollViewer.RenderTransform>
+                    <!-- Панель сама рисует скользящую подсветку и раскладывает пункты по степени выбора каждого из них (его двигает пружина).
+                         Текст в панели — в оттенках серого и с режимом Animated (без привязки глифов к сетке пикселей): у движущегося текста
+                         ClearType даёт мерцание окантовки, а привязка к сетке — шаги по целому пикселю. -->
+                    <local:ExpressiveNavPanel x:Name="FloatingNavPanel" HighlightBrush="{DynamicResource AccentFillColorDefaultBrush}" />
+                </ScrollViewer>
+            </local:SoftShadowBorder>
 
             <!-- Результаты поиска, когда боковой панели нет: SearchResultsHost переезжает сюда. -->
             <Border x:Name="SearchOverlayHost" Grid.Row="1" Grid.ColumnSpan="2" Visibility="Collapsed"

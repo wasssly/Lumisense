@@ -123,9 +123,16 @@ public class AppSettings
     // Фон Now Playing: "Clouds" (облака из палитры обложки) | "Orbs" (мягкие цветные шары на орбитах) | "Waves" (размытые волны).
     public string NowPlayingBackground { get; set; } = "Clouds";
 
-    // Вид навигации в окне настроек: "Sidebar" (боковая панель) | "Tabs" (вкладки сверху) | "Pills" (таблетки сверху) |
+    // Вид навигации в окне настроек: "Sidebar" (боковая панель) | "Pills" (таблетки сверху) |
     // "FloatingBar" (плавающая нижняя панель).
     public string SettingsNavigationStyle { get; set; } = "Sidebar";
+
+    // Плавающая нижняя панель: показывать названия пунктов под иконками (иначе только иконки с подсказками).
+    public bool SettingsNavigationShowLabels { get; set; }
+
+    // Как показывать названия в плавающей панели: "Below" (под иконками у всех пунктов) | "Selected" (рядом с иконкой только у
+    // выбранного пункта). Действует только при SettingsNavigationShowLabels.
+    public string SettingsNavigationLabelMode { get; set; } = "Below";
 
     // Дополнительный источник текстов песен (NetEase через Lyricify.Lyrics.Helper); по умолчанию выключен.
     public bool UseExtraLyricsSource { get; set; }

@@ -302,13 +302,17 @@ public partial class SettingsWindow : FluentWindow
         RefreshVelopackBasePackagePresentation();
         RefreshLegacyInnoCleanupPresentation();
 
-        NavStyleTabsRadio.IsChecked = _settings.SettingsNavigationStyle == "Tabs";
+        NavShowLabelsCheckBox.IsChecked = _settings.SettingsNavigationShowLabels;
+        NavLabelModeSelectedRadio.IsChecked = _settings.SettingsNavigationLabelMode == "Selected";
+        NavLabelModeBelowRadio.IsChecked = _settings.SettingsNavigationLabelMode != "Selected";
         NavStylePillsRadio.IsChecked = _settings.SettingsNavigationStyle == "Pills";
         NavStyleFloatingRadio.IsChecked = _settings.SettingsNavigationStyle == "FloatingBar";
-        NavStyleSidebarRadio.IsChecked = !NavStyleTabsRadio.IsChecked.GetValueOrDefault()
-                                         && !NavStylePillsRadio.IsChecked.GetValueOrDefault()
+        NavStyleSidebarRadio.IsChecked = !NavStylePillsRadio.IsChecked.GetValueOrDefault()
                                          && !NavStyleFloatingRadio.IsChecked.GetValueOrDefault();
         ApplyNavigationStyle(_settings.SettingsNavigationStyle);
+        UpdateNavOptionsVisibility(animate: false);
+        SizeChanged += (_, _) => UpdateFloatingBarMaxWidth();
+        Loaded += (_, _) => StartPageWarmUp();
 
         _isInitializing = false;
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
@@ -1109,7 +1113,7 @@ public partial class SettingsWindow : FluentWindow
 
         Add("Язык интерфейса", "Оформление", "Appearance", LanguageRussianRadio, "язык русский english language locale локализация");
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
-        Add("Навигация в настройках", "Оформление", "Appearance", NavigationStyleCard, "навигация меню вкладки таблетки панель боковая плавающая нижняя разделы tabs pills sidebar floating navigation");
+        Add("Навигация в настройках", "Оформление", "Appearance", NavigationStyleCard, "навигация меню таблетки панель боковая плавающая нижняя разделы названия подписи текст pills sidebar floating navigation labels");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
@@ -3120,13 +3124,40 @@ public partial class SettingsWindow : FluentWindow
             "About" => PageAbout,
             _ => null
         };
+        var checkedButton = (System.Windows.Controls.RadioButton)sender;
+        List<System.Windows.Controls.RadioButton> navButtons =
+            _sidebarNavChildren?.OfType<System.Windows.Controls.RadioButton>().ToList() ?? new List<System.Windows.Controls.RadioButton>();
+        int index = navButtons.IndexOf(checkedButton);
+
+        // В горизонтальных видах страница въезжает со стороны, куда сдвинулся выбор (вправо по списку — справа, влево — слева).
+        int direction = 0;
+        if (_navigationStyle != "Sidebar" && IsLoaded && index >= 0 && _lastNavIndex >= 0 && index != _lastNavIndex
+            && !AccessibilityPreferences.ShouldReduceMotion(_settings))
+        {
+            direction = index > _lastNavIndex ? 1 : -1;
+        }
+
+        if (index >= 0) _lastNavIndex = index;
+
         if (activePage is not null)
-            AnimateSettingsPage(activePage);
+        {
+            // Горизонтальные виды: страница въезжает на той же пружине, что и панель; боковая панель — прежняя анимация снизу.
+            if (direction != 0) StartPageSpring(activePage, direction);
+            else AnimateSettingsPage(activePage);
+        }
 
         if (_navigationStyle != "Sidebar")
         {
+            bool animate = IsLoaded && !AccessibilityPreferences.ShouldReduceMotion(_settings);
             RefreshNavLabels();
-            ((System.Windows.Controls.RadioButton)sender).BringIntoView();
+            UpdatePillHighlight(animate);
+            if (_navigationStyle == "FloatingBar") SelectFloatingIndex(index, animate);
+
+            // Прокручиваем к выбранному пункту, только если полоса действительно шире окна. Из-за округления ширин содержимое бывает
+            // шире области просмотра на доли пикселя; BringIntoView тогда сдвигал всю панель на эту долю на каждом переключении —
+            // иконки и текст чуть «дёргались», хотя прокручивать было нечего.
+            if (_navigationStyle == "Pills" && TopNavScroll.ScrollableWidth > 1) checkedButton.BringIntoView();
+            else if (FloatingLabelsStacked && FloatingNavScroll.ScrollableWidth > 1) checkedButton.BringIntoView();
         }
     }
 
@@ -3135,19 +3166,72 @@ public partial class SettingsWindow : FluentWindow
     // Строка поиска и её результаты при виде без боковой панели переезжают в верхнюю полосу и во всплывающую карточку.
     private string _navigationStyle = "Sidebar";
     private List<UIElement>? _sidebarNavChildren;
+    private int _lastNavIndex = -1;
 
     private static string NormalizeNavigationStyle(string? style) =>
-        style is "Tabs" or "Pills" or "FloatingBar" ? style : "Sidebar";
+        style is "Pills" or "FloatingBar" ? style : "Sidebar";
 
     private void NavStyleRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
 
-        _settings.SettingsNavigationStyle = NavStyleTabsRadio.IsChecked == true ? "Tabs"
-            : NavStylePillsRadio.IsChecked == true ? "Pills"
+        _settings.SettingsNavigationStyle = NavStylePillsRadio.IsChecked == true ? "Pills"
             : NavStyleFloatingRadio.IsChecked == true ? "FloatingBar"
             : "Sidebar";
         ApplyNavigationStyle(_settings.SettingsNavigationStyle);
+        UpdateNavOptionsVisibility(animate: true);
+    }
+
+    private void NavShowLabelsCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.SettingsNavigationShowLabels = NavShowLabelsCheckBox.IsChecked == true;
+        ApplyNavigationStyle(_settings.SettingsNavigationStyle);
+        UpdateNavOptionsVisibility(animate: true);
+    }
+
+    private void NavLabelModeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.SettingsNavigationLabelMode = NavLabelModeSelectedRadio.IsChecked == true ? "Selected" : "Below";
+        ApplyNavigationStyle(_settings.SettingsNavigationStyle);
+    }
+
+    // Параметры названий относятся только к плавающей панели: блок появляется при её выборе, а выбор способа показа — когда
+    // включён флажок «Показывать названия».
+    private void UpdateNavOptionsVisibility(bool animate)
+    {
+        bool floating = _navigationStyle == "FloatingBar";
+        SetNavOptionVisible(NavLabelOptionsPanel, floating, animate);
+        SetNavOptionVisible(NavLabelModePanel, floating && _settings.SettingsNavigationShowLabels, animate);
+    }
+
+    private void SetNavOptionVisible(FrameworkElement element, bool show, bool animate)
+    {
+        bool wasHidden = element.Visibility != Visibility.Visible;
+        element.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+
+        if (show && wasHidden && animate && !AccessibilityPreferences.ShouldReduceMotion(_settings))
+        {
+            element.BeginAnimation(UIElement.OpacityProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = NavEasing });
+        }
+    }
+
+    // Панель с названиями может быть шире окна: ограничиваем её ширину окном, остальное листается внутри.
+    private void UpdateFloatingBarMaxWidth() =>
+        FloatingNavBar.MaxWidth = Math.Max(240, ActualWidth - 60);
+
+    // Область прокрутки обрезается капсулой с радиусом в половину высоты: при прокрутке пункты не упираются в прямые края,
+    // а у неподвижной панели обрезка совпадает со скруглением подсветки крайних пунктов.
+    private void FloatingNavScroll_SizeChanged(object sender, SizeChangedEventArgs e)
+    {
+        double width = FloatingNavScroll.ActualWidth, height = FloatingNavScroll.ActualHeight;
+        if (width <= 0 || height <= 0) return;
+
+        FloatingNavScroll.Clip = new System.Windows.Media.RectangleGeometry(new Rect(0, 0, width, height), height / 2, height / 2);
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
@@ -3181,7 +3265,7 @@ public partial class SettingsWindow : FluentWindow
         SidebarColumn.Width = sidebar ? new GridLength(236) : new GridLength(0);
         SidebarBorder.Visibility = sidebar ? Visibility.Visible : Visibility.Collapsed;
         TopNavBar.Visibility = sidebar ? Visibility.Collapsed : Visibility.Visible;
-        TopNavStrip.Visibility = style is "Tabs" or "Pills" ? Visibility.Visible : Visibility.Collapsed;
+        TopNavStrip.Visibility = style == "Pills" ? Visibility.Visible : Visibility.Collapsed;
         FloatingNavBar.Visibility = style == "FloatingBar" ? Visibility.Visible : Visibility.Collapsed;
 
         DetachFromParent(SettingsSearchBox);
@@ -3199,26 +3283,13 @@ public partial class SettingsWindow : FluentWindow
 
         switch (style)
         {
-            case "Tabs":
-                SetNavButtons(buttons, "NavTabStyle", TopNavPanel);
-                TopNavStrip.HorizontalAlignment = HorizontalAlignment.Stretch;
-                TopNavStrip.ClearValue(System.Windows.Controls.Border.BackgroundProperty);
-                TopNavStrip.BorderThickness = new Thickness(0, 0, 0, 1);
-                TopNavStrip.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "ControlStrokeColorDefaultBrush");
-                TopNavStrip.CornerRadius = new CornerRadius(0);
-                TopNavStrip.Padding = new Thickness(0);
-                break;
             case "Pills":
                 SetNavButtons(buttons, "NavPillStyle", TopNavPanel);
-                TopNavStrip.HorizontalAlignment = HorizontalAlignment.Left;
-                TopNavStrip.SetResourceReference(System.Windows.Controls.Border.BackgroundProperty, "ControlFillColorSecondaryBrush");
-                TopNavStrip.BorderThickness = new Thickness(1);
-                TopNavStrip.SetResourceReference(System.Windows.Controls.Border.BorderBrushProperty, "ControlStrokeColorDefaultBrush");
-                TopNavStrip.CornerRadius = new CornerRadius(22);
-                TopNavStrip.Padding = new Thickness(4);
                 break;
             case "FloatingBar":
-                SetNavButtons(buttons, "NavFloatingStyle", FloatingNavPanel);
+                SetNavButtons(buttons,
+                    FloatingLabelsStacked ? "NavFloatingLabelStyle" : FloatingLabelsInline ? "NavFloatingInlineStyle" : "NavFloatingStyle",
+                    FloatingNavPanel);
                 break;
             default:
                 foreach (UIElement child in _sidebarNavChildren)
@@ -3232,9 +3303,30 @@ public partial class SettingsWindow : FluentWindow
 
         // Страница в плавающем виде получает нижний запас, чтобы последняя карточка не пряталась под панелью.
         ContentBorder.Margin = sidebar ? new Thickness(18, 14, 18, 16) : new Thickness(18, 0, 18, 16);
-        ContentPagesGrid.Margin = style == "FloatingBar" ? new Thickness(46, 40, 46, 112) : new Thickness(46, 40, 46, 44);
+        ContentPagesGrid.Margin = style == "FloatingBar" ? new Thickness(46, 40, 46, 128) : new Thickness(46, 40, 46, 44);
 
+        // Сбрасываем следы прошлого вида: перекраску иконок и прозрачность подписей, которые ставила плавающая панель.
+        foreach (System.Windows.Controls.RadioButton radio in buttons)
+        {
+            radio.ClearValue(System.Windows.Controls.Control.ForegroundProperty);
+            if (GetNavLabel(radio) is { } navLabel) navLabel.ClearValue(UIElement.OpacityProperty);
+        }
+
+        // Параметры плавающей панели; радиус панели = радиус пункта (половина высоты) + отступ 7: края — ровные капсулы.
+        WireFloatingPanel();
+        bool stacked = FloatingLabelsStacked;
+        FloatingNavPanel.ItemHeight = stacked ? 56 : 40;
+        FloatingNavPanel.MinItemWidth = stacked ? 56 : 40;
+        FloatingNavPanel.ExpandSelected = FloatingLabelsInline;
+        FloatingNavPanel.InvalidateProximity();
+        FloatingNavBar.CornerRadius = new CornerRadius(FloatingNavPanel.ItemHeight / 2 + 7);
+        UpdateFloatingBarMaxWidth();
+
+        _lastNavIndex = buttons.FindIndex(radio => radio.IsChecked == true);
         RefreshNavLabels();
+        UpdatePillHighlight(animate: false);
+        if (style == "FloatingBar") SelectFloatingIndex(_lastNavIndex, animate: false);
+        UpdateTopNavArrows();
         UpdateSearchOverlayVisibility();
     }
 
@@ -3251,18 +3343,275 @@ public partial class SettingsWindow : FluentWindow
     private static System.Windows.Controls.TextBlock? GetNavLabel(System.Windows.Controls.RadioButton radio) =>
         (radio.Content as System.Windows.Controls.StackPanel)?.Children.OfType<System.Windows.Controls.TextBlock>().FirstOrDefault();
 
-    // В плавающей панели подпись остаётся только у выбранного пункта, у остальных — подсказка; в других видах подписи у всех.
+    // Режимы названий в плавающей панели (SettingsNavigationShowLabels + SettingsNavigationLabelMode):
+    // выключено — только иконки (название в подсказке); "Below" — иконка над подписью у всех пунктов; "Selected" — подпись рядом
+    // с иконкой только у выбранного пункта.
+    private bool FloatingLabelsStacked =>
+        _navigationStyle == "FloatingBar" && _settings.SettingsNavigationShowLabels && _settings.SettingsNavigationLabelMode != "Selected";
+
+    private bool FloatingLabelsInline =>
+        _navigationStyle == "FloatingBar" && _settings.SettingsNavigationShowLabels && _settings.SettingsNavigationLabelMode == "Selected";
+
     private void RefreshNavLabels()
     {
         if (_sidebarNavChildren is null) return;
 
         bool floating = _navigationStyle == "FloatingBar";
+        bool stacked = FloatingLabelsStacked;
+        bool inline = FloatingLabelsInline;
         foreach (System.Windows.Controls.RadioButton radio in _sidebarNavChildren.OfType<System.Windows.Controls.RadioButton>())
         {
             if (GetNavLabel(radio) is not { } label) continue;
-            label.Visibility = !floating || radio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-            radio.ToolTip = floating ? LocalizationService.Translate(label.Text) : null;
+
+            // Режим «рядом с иконкой»: подписи есть у всех пунктов, но свёрнутый пункт их обрезает, а прозрачность задаёт панель.
+            bool labelVisible = !floating || stacked || inline;
+            label.Visibility = labelVisible ? Visibility.Visible : Visibility.Collapsed;
+            radio.ToolTip = floating && !stacked ? LocalizationService.Translate(label.Text) : null;
+
+            if (radio.Content is System.Windows.Controls.StackPanel content)
+            {
+                content.Orientation = stacked ? System.Windows.Controls.Orientation.Vertical : System.Windows.Controls.Orientation.Horizontal;
+
+                // В вертикальной раскладке иконка стоит по центру над подписью.
+                if (content.Children.Count > 0 && content.Children[0] is FrameworkElement icon)
+                {
+                    if (stacked) icon.HorizontalAlignment = HorizontalAlignment.Center;
+                    else icon.ClearValue(FrameworkElement.HorizontalAlignmentProperty);
+                }
+            }
+
+            if (stacked)
+            {
+                label.Margin = new Thickness(0, 3, 0, 0);
+                label.FontSize = 11;
+                label.HorizontalAlignment = HorizontalAlignment.Center;
+            }
+            else
+            {
+                label.Margin = new Thickness(10, 0, 0, 0);
+                label.ClearValue(System.Windows.Controls.TextBlock.FontSizeProperty);
+                label.ClearValue(FrameworkElement.HorizontalAlignmentProperty);
+            }
         }
+    }
+
+    // ----- Плавающая панель (ExpressiveNavPanel) -----
+    // Пружина двигает одно «положение выбора», а панель каждый кадр выводит из него ширины пунктов, их положения и подсветку.
+    // Окно лишь перекрашивает иконки и проявляет подписи по «близости» пункта к выбору (FloatingNavPanel_ProximityChanged).
+    private bool _floatingWired;
+
+    private void WireFloatingPanel()
+    {
+        if (_floatingWired) return;
+
+        _floatingWired = true;
+        FloatingNavPanel.ProximityChanged = FloatingNavPanel_ProximityChanged;
+        FloatingNavPanel.AnimatingChanged += FloatingNavPanel_AnimatingChanged;
+    }
+
+    // Округление раскладки и привязку к пикселям на время движения НЕ отключаем: переключение этих свойств в начале и в конце
+    // каждого перехода сдвигало на полпикселя все иконки и весь текст панели, в том числе неподвижные, — это и было «подёргиванием»
+    // при переключении страниц. Плавность дробных сдвигов обеспечивает сама панель (остаток отдаётся преобразованию).
+    private bool _floatingCentering;
+    private double _floatingBaseExactLeft;
+    private double _floatingBaseActualLeft;
+
+    private void FloatingNavPanel_AnimatingChanged(bool animating)
+    {
+        if (animating)
+        {
+            // В режиме «рядом с иконкой» ширина панели меняется, а сама она центрируется: её левый край WPF округляет до пикселя на
+            // каждом кадре, и содержимое шагало бы вместе с ним. Удерживаем положение по центру на долях пикселя (см. ниже).
+            if (FloatingLabelsInline && !_floatingCentering && TryReadFloatingBarLeft(out double exact, out double actual))
+            {
+                _floatingBaseExactLeft = exact;
+                _floatingBaseActualLeft = actual;
+                _floatingCentering = true;
+                FloatingNavPanel.LayoutUpdated += FloatingNavPanel_LayoutUpdated;
+            }
+
+            return;
+        }
+
+        if (_floatingCentering)
+        {
+            FloatingNavPanel.LayoutUpdated -= FloatingNavPanel_LayoutUpdated;
+            _floatingCentering = false;
+        }
+
+        FloatingNavShift.X = 0;
+        ClearFloatingForegrounds();
+    }
+
+    // Точный левый край панели при центрировании (от дробной ширины) и тот, где её реально поставила раскладка (с округлением).
+    private bool TryReadFloatingBarLeft(out double exactLeft, out double actualLeft)
+    {
+        exactLeft = actualLeft = 0;
+        if (FloatingNavBar.Parent is not FrameworkElement parent || FloatingNavBar.ActualWidth <= 0) return false;
+
+        double frame = FloatingNavBar.Padding.Left + FloatingNavBar.Padding.Right
+                       + FloatingNavBar.BorderThickness.Left + FloatingNavBar.BorderThickness.Right;
+        double exactWidth = FloatingNavPanel.ExactWidth + frame;
+
+        // Панель упёрлась в предел ширины и прокручивается — центрирование по дробной ширине не применимо.
+        if (exactWidth >= FloatingNavBar.MaxWidth) return false;
+
+        exactLeft = (parent.ActualWidth - exactWidth) / 2;
+        actualLeft = FloatingNavBar.TranslatePoint(new Point(0, 0), parent).X;
+        return true;
+    }
+
+    // После каждой раскладки: сдвигаем содержимое на разницу между «как должно быть» и «как округлила раскладка». Отсчёт от
+    // положения в начале движения, поэтому в первый момент сдвиг нулевой и ничего не дёргается.
+    private void FloatingNavPanel_LayoutUpdated(object? sender, EventArgs e)
+    {
+        if (!TryReadFloatingBarLeft(out double exact, out double actual))
+        {
+            FloatingNavShift.X = 0;
+            return;
+        }
+
+        double shift = (exact - _floatingBaseExactLeft) - (actual - _floatingBaseActualLeft);
+        FloatingNavShift.X = Math.Clamp(shift, -1, 1);
+    }
+
+    private void FloatingNavPanel_ProximityChanged(UIElement item, double closeness)
+    {
+        if (item is not System.Windows.Controls.RadioButton radio) return;
+
+        // Подпись проявляется по мере раскрытия пункта (только в режиме «рядом с иконкой»).
+        if (FloatingLabelsInline && GetNavLabel(radio) is { } label)
+            label.Opacity = Math.Clamp((closeness - 0.25) / 0.75, 0, 1);
+
+        // Цвет иконки и текста плавно переходит вместе с подсветкой, а не меняется мгновенно при выборе.
+        if (TryFindResource("TextFillColorSecondaryBrush") is SolidColorBrush idle
+            && TryFindResource("TextOnAccentFillColorPrimaryBrush") is SolidColorBrush active)
+        {
+            radio.Foreground = closeness <= 0 ? idle
+                : closeness >= 1 ? active
+                : new SolidColorBrush(BlendColors(idle.Color, active.Color, closeness));
+        }
+    }
+
+    private static Color BlendColors(Color start, Color end, double amount) => Color.FromArgb(
+        (byte)Math.Round(start.A + (end.A - start.A) * amount),
+        (byte)Math.Round(start.R + (end.R - start.R) * amount),
+        (byte)Math.Round(start.G + (end.G - start.G) * amount),
+        (byte)Math.Round(start.B + (end.B - start.B) * amount));
+
+    private void ClearFloatingForegrounds()
+    {
+        if (_sidebarNavChildren is null) return;
+
+        foreach (System.Windows.Controls.RadioButton radio in _sidebarNavChildren.OfType<System.Windows.Controls.RadioButton>())
+            radio.ClearValue(System.Windows.Controls.Control.ForegroundProperty);
+    }
+
+    private void SelectFloatingIndex(int index, bool animate)
+    {
+        if (index < 0) return;
+
+        FloatingNavPanel.SelectIndex(index, animate);
+        if (!FloatingNavPanel.IsAnimating) ClearFloatingForegrounds();
+    }
+
+    private System.Windows.Controls.RadioButton? CheckedNavButton() =>
+        _sidebarNavChildren?.OfType<System.Windows.Controls.RadioButton>().FirstOrDefault(radio => radio.IsChecked == true);
+
+    // Скользящая акцентная подсветка выбранной таблетки: переезжает на новый пункт, меняя сдвиг и ширину.
+    private void SlideNavHighlight(
+        System.Windows.Controls.RadioButton? selected,
+        System.Windows.Controls.Panel panel,
+        System.Windows.Controls.Border highlight,
+        System.Windows.Media.TranslateTransform translate,
+        bool animate)
+    {
+        // До первой раскладки ActualWidth равна нулю: подсветка поставится по SizeChanged панели.
+        if (selected is null || selected.ActualWidth <= 0 || !selected.IsDescendantOf(panel))
+        {
+            highlight.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        double x = selected.TranslatePoint(new Point(0, 0), panel).X;
+        double width = selected.ActualWidth;
+        bool firstPlacement = highlight.Visibility != Visibility.Visible || highlight.Width <= 0;
+        highlight.Visibility = Visibility.Visible;
+
+        if (!animate || firstPlacement || AccessibilityPreferences.ShouldReduceMotion(_settings))
+        {
+            translate.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
+            highlight.BeginAnimation(FrameworkElement.WidthProperty, null);
+            translate.X = x;
+            highlight.Width = width;
+            return;
+        }
+
+        var easing = new System.Windows.Media.Animation.CubicEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut };
+        translate.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(x, TimeSpan.FromMilliseconds(300)) { EasingFunction = easing });
+        highlight.BeginAnimation(FrameworkElement.WidthProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(width, TimeSpan.FromMilliseconds(300)) { EasingFunction = easing });
+    }
+
+    private void UpdatePillHighlight(bool animate) =>
+        SlideNavHighlight(_navigationStyle == "Pills" ? CheckedNavButton() : null, TopNavPanel, PillHighlight, PillHighlightTranslate, animate);
+
+    // Размер панели меняется при первой раскладке, смене языка или масштаба: подсветку ставим заново без анимации.
+    private void TopNavPanel_SizeChanged(object sender, SizeChangedEventArgs e) => UpdatePillHighlight(animate: false);
+
+
+    private static readonly System.Windows.Media.Animation.CubicEase NavEasing =
+        new() { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut };
+
+    // ----- Стрелки по краям полосы таблеток -----
+    private static readonly DependencyProperty NavScrollOffsetProperty = DependencyProperty.RegisterAttached(
+        "NavScrollOffset", typeof(double), typeof(SettingsWindow),
+        new PropertyMetadata(0.0, (d, e) =>
+        {
+            if (d is System.Windows.Controls.ScrollViewer viewer) viewer.ScrollToHorizontalOffset((double)e.NewValue);
+        }));
+
+    private double _navScrollTarget;
+
+    private void TopNavArrow_Click(object sender, RoutedEventArgs e)
+    {
+        int direction = (sender as FrameworkElement)?.Tag is "-1" ? -1 : 1;
+
+        // Если предыдущая прокрутка ещё идёт (удержание кнопки), продолжаем от её цели, иначе от текущего положения.
+        double start = Math.Abs(_navScrollTarget - TopNavScroll.HorizontalOffset) > 0.5 ? _navScrollTarget : TopNavScroll.HorizontalOffset;
+        double target = Math.Clamp(start + direction * 160, 0, TopNavScroll.ScrollableWidth);
+        _navScrollTarget = target;
+
+        if (AccessibilityPreferences.ShouldReduceMotion(_settings))
+        {
+            TopNavScroll.ScrollToHorizontalOffset(target);
+            return;
+        }
+
+        TopNavScroll.BeginAnimation(NavScrollOffsetProperty,
+            new System.Windows.Media.Animation.DoubleAnimation(TopNavScroll.HorizontalOffset, target, TimeSpan.FromMilliseconds(220))
+            {
+                EasingFunction = NavEasing
+            });
+    }
+
+    private void TopNavScroll_ScrollChanged(object sender, System.Windows.Controls.ScrollChangedEventArgs e) => UpdateTopNavArrows();
+
+    // Стрелки показываются, только когда пункты не помещаются. Место, занятое самими стрелками, учитывается в проверке,
+    // иначе появление стрелок сужало бы область и скрывало их обратно.
+    private void UpdateTopNavArrows()
+    {
+        double reserved = (TopNavLeftArrow.Visibility == Visibility.Visible ? TopNavLeftArrow.ActualWidth : 0)
+                          + (TopNavRightArrow.Visibility == Visibility.Visible ? TopNavRightArrow.ActualWidth : 0);
+        bool overflow = TopNavScroll.ExtentWidth > TopNavScroll.ViewportWidth + reserved + 0.5;
+        Visibility visibility = overflow ? Visibility.Visible : Visibility.Collapsed;
+
+        if (TopNavLeftArrow.Visibility != visibility) TopNavLeftArrow.Visibility = visibility;
+        if (TopNavRightArrow.Visibility != visibility) TopNavRightArrow.Visibility = visibility;
+
+        TopNavLeftArrow.IsEnabled = TopNavScroll.HorizontalOffset > 0.5;
+        TopNavRightArrow.IsEnabled = TopNavScroll.HorizontalOffset < TopNavScroll.ScrollableWidth - 0.5;
     }
 
     private void UpdateSearchOverlayVisibility() =>
@@ -3270,15 +3619,16 @@ public partial class SettingsWindow : FluentWindow
             ? Visibility.Visible
             : Visibility.Collapsed;
 
-    // Колесо над верхней полосой листает её по горизонтали, если пункты не помещаются.
-    private void TopNavScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+    // Колесо над полосой навигации (таблетки или плавающая панель) листает её по горизонтали, если пункты не помещаются.
+    private void NavScroll_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (TopNavScroll.ScrollableWidth <= 0) return;
+        if (sender is not System.Windows.Controls.ScrollViewer viewer || viewer.ScrollableWidth <= 0) return;
 
-        TopNavScroll.ScrollToHorizontalOffset(Math.Clamp(TopNavScroll.HorizontalOffset - e.Delta, 0, TopNavScroll.ScrollableWidth));
+        viewer.ScrollToHorizontalOffset(Math.Clamp(viewer.HorizontalOffset - e.Delta, 0, viewer.ScrollableWidth));
         e.Handled = true;
     }
 
+    // Въезд страницы снизу (боковая панель).
     private static void AnimateSettingsPage(FrameworkElement page)
     {
         page.Opacity = 0;
@@ -3300,6 +3650,114 @@ public partial class SettingsWindow : FluentWindow
             {
                 EasingFunction = easing
             });
+    }
+
+    // ----- Прогрев страниц -----
+    // Страница, которую ещё ни разу не показывали, при первом показе раскладывается целиком: применяются шаблоны, считается
+    // раскладка, и интерфейс на десятки-сотни миллисекунд замирает ровно в тот момент, когда должна идти анимация панели
+    // навигации (это заметно на переходе с первой страницы на дальнюю). Поэтому после открытия окна, в простое, каждая скрытая
+    // страница по одной раскладывается заранее: на время раскладки она Hidden (а не Visible), то есть измеряется, но не
+    // рисуется и не вызывает событий видимости (IsVisible у Hidden и Collapsed одинаков), и тут же возвращается в Collapsed.
+    private Queue<FrameworkElement>? _pagesToWarm;
+
+    private void StartPageWarmUp()
+    {
+        _pagesToWarm = new Queue<FrameworkElement>(new FrameworkElement[]
+        {
+            PageWindow, PagePlayback, PageIntegrations, PageNotifications, PageEqualizer,
+            PageMiniPlayer, PageHotkeys, PageProfile, PageUpdates, PageAbout
+        });
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(WarmUpNextPage));
+    }
+
+    private void WarmUpNextPage()
+    {
+        if (_pagesToWarm is null || _pagesToWarm.Count == 0)
+        {
+            _pagesToWarm = null;
+            return;
+        }
+
+        FrameworkElement page = _pagesToWarm.Dequeue();
+        try
+        {
+            // Страницу, которую пользователь уже открывал, трогать не нужно.
+            if (IsLoaded && page.Visibility == Visibility.Collapsed)
+            {
+                page.Visibility = Visibility.Hidden;
+                page.UpdateLayout();
+                page.Visibility = Visibility.Collapsed;
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Прогрев страницы настроек не удался: {ex.Message}");
+            page.Visibility = Visibility.Collapsed;
+            _pagesToWarm = null;
+            return;
+        }
+
+        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(WarmUpNextPage));
+    }
+
+    // ----- Въезд страницы на пружине (таблетки и плавающая панель) -----
+    // Та же пружина со скоростью, что и у панели навигации (SpringValue): страница въезжает со стороны выбора с лёгким «пружинным»
+    // доводом, а на время движения рисуется один раз в текстуру с масштабом экрана. Прозрачность и сдвиг считаются из одного
+    // значения, поэтому не расходятся. (Раньше здесь была BeginTime = null — такая анимация не стартует вовсе, и страница
+    // при первом открытии окна оставалась невидимой.)
+    private const double PageSlideDistance = 36;
+
+    private sealed class PageSpringState
+    {
+        public required FrameworkElement Page { get; init; }
+        public required System.Windows.Media.TranslateTransform Translate { get; init; }
+        public required int Direction { get; init; }
+        public SpringValue Spring { get; } = new() { Stiffness = 300, DampingRatio = 0.82, Target = 1 };
+    }
+
+    private PageSpringState? _pageSpring;
+    private TimeSpan _pageSpringLastFrame = TimeSpan.MinValue;
+
+    private void StartPageSpring(FrameworkElement page, int direction)
+    {
+        FinishPageSpring();
+
+        // Прежние анимации страницы (боковая панель) могли оставить удерживаемое значение прозрачности — снимаем его.
+        page.BeginAnimation(UIElement.OpacityProperty, null);
+        page.Opacity = 0;
+        var translate = new System.Windows.Media.TranslateTransform(PageSlideDistance * direction, 0);
+        page.RenderTransform = translate;
+        page.RenderTransformOrigin = new Point(0.5, 0);
+        page.CacheMode = new System.Windows.Media.BitmapCache(VisualTreeHelper.GetDpi(page).DpiScaleX);
+
+        _pageSpring = new PageSpringState { Page = page, Translate = translate, Direction = direction };
+        _pageSpringLastFrame = TimeSpan.MinValue;
+        CompositionTarget.Rendering += PageSpring_Frame;
+    }
+
+    private void PageSpring_Frame(object? sender, EventArgs e)
+    {
+        if (_pageSpring is not { } state || e is not RenderingEventArgs args || args.RenderingTime == _pageSpringLastFrame) return;
+
+        double delta = _pageSpringLastFrame == TimeSpan.MinValue ? 1.0 / 60 : (args.RenderingTime - _pageSpringLastFrame).TotalSeconds;
+        _pageSpringLastFrame = args.RenderingTime;
+
+        bool moving = state.Spring.Step(delta);
+        double progress = state.Spring.Value;
+        state.Page.Opacity = Math.Clamp(progress * 1.3, 0, 1);
+        state.Translate.X = (1 - progress) * PageSlideDistance * state.Direction;
+        if (!moving) FinishPageSpring();
+    }
+
+    private void FinishPageSpring()
+    {
+        if (_pageSpring is not { } state) return;
+
+        CompositionTarget.Rendering -= PageSpring_Frame;
+        _pageSpring = null;
+        state.Page.Opacity = 1;
+        state.Page.ClearValue(UIElement.RenderTransformProperty);
+        state.Page.CacheMode = null;
     }
 
     // Список изменений и настройки не должны быть открыты одновременно: MainWindow.ShowChangelogWindow (симметрично

@@ -390,7 +390,6 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
 
     [Theory]
     [InlineData("Sidebar")]
-    [InlineData("Tabs")]
     [InlineData("Pills")]
     [InlineData("FloatingBar")]
     public void TryLoad_KnownSettingsNavigationStyle_IsKept(string style)
@@ -404,10 +403,32 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     [Fact]
     public void TryLoad_UnknownSettingsNavigationStyle_FallsBackToSidebar()
     {
-        bool result = TryLoad("{\"SettingsNavigationStyle\": \"Rail\"}", out AppSettings? settings, out _);
+        // «Tabs» был в промежуточной сборке и убран: такое значение тоже должно безопасно вернуться к боковой панели.
+        bool result = TryLoad("{\"SettingsNavigationStyle\": \"Tabs\"}", out AppSettings? settings, out _);
 
         Assert.True(result);
         Assert.Equal("Sidebar", settings!.SettingsNavigationStyle);
         Assert.Equal("Sidebar", new AppSettings().SettingsNavigationStyle);
+        Assert.False(new AppSettings().SettingsNavigationShowLabels);
+    }
+
+    [Theory]
+    [InlineData("Below")]
+    [InlineData("Selected")]
+    public void TryLoad_KnownSettingsNavigationLabelMode_IsKept(string mode)
+    {
+        bool result = TryLoad("{\"SettingsNavigationLabelMode\": \"" + mode + "\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal(mode, settings!.SettingsNavigationLabelMode);
+    }
+
+    [Fact]
+    public void TryLoad_UnknownSettingsNavigationLabelMode_FallsBackToBelow()
+    {
+        bool result = TryLoad("{\"SettingsNavigationLabelMode\": \"Inline\"}", out AppSettings? settings, out _);
+
+        Assert.True(result);
+        Assert.Equal("Below", settings!.SettingsNavigationLabelMode);
     }
 }

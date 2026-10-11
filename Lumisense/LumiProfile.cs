@@ -110,7 +110,8 @@ public static class LumiProfileIO
             (settings.MiniPlayerSizePreset?.Length ?? 0) > 32 ||
             (settings.NowPlayingBackground?.Length ?? 0) > 32 ||
             (settings.AlbumArtTransitionStyle?.Length ?? 0) > 32 ||
-            (settings.SettingsNavigationStyle?.Length ?? 0) > 32)
+            (settings.SettingsNavigationStyle?.Length ?? 0) > 32 ||
+            (settings.SettingsNavigationLabelMode?.Length ?? 0) > 32)
             return false;
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
             return false;
@@ -261,8 +262,11 @@ public static class LumiProfileIO
         target.UseExtraLyricsSource = source.UseExtraLyricsSource;
         if (source.NowPlayingBackground is "Clouds" or "Orbs" or "Waves")
             target.NowPlayingBackground = source.NowPlayingBackground;
-        if (source.SettingsNavigationStyle is "Sidebar" or "Tabs" or "Pills" or "FloatingBar")
+        if (source.SettingsNavigationStyle is "Sidebar" or "Pills" or "FloatingBar")
             target.SettingsNavigationStyle = source.SettingsNavigationStyle;
+        target.SettingsNavigationShowLabels = source.SettingsNavigationShowLabels;
+        if (source.SettingsNavigationLabelMode is "Below" or "Selected")
+            target.SettingsNavigationLabelMode = source.SettingsNavigationLabelMode;
         if (MiniPlayerSizePreset.IsKnown(source.MiniPlayerSizePreset))
             target.MiniPlayerSizePreset = source.MiniPlayerSizePreset;
         if (source.TrackChangeToastTextAlignment is "Left" or "Center" or "Right")

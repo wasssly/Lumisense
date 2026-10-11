@@ -65,7 +65,8 @@ public sealed class LumiProfileSettingsCoverageTests
             case nameof(AppSettings.FavoriteHeartAnimation): return current as string == "Fill" ? "Ring" : "Fill";
             case nameof(AppSettings.MiniPlayerSizePreset): return current as string == "Classic" ? "Compact" : "Classic";
             case nameof(AppSettings.NowPlayingBackground): return current as string == "Clouds" ? "Orbs" : "Clouds";
-            case nameof(AppSettings.SettingsNavigationStyle): return current as string == "Sidebar" ? "Tabs" : "Sidebar";
+            case nameof(AppSettings.SettingsNavigationStyle): return current as string == "Sidebar" ? "Pills" : "Sidebar";
+            case nameof(AppSettings.SettingsNavigationLabelMode): return current as string == "Below" ? "Selected" : "Below";
             case nameof(AppSettings.AlbumArtTransitionStyle): return current as string == "Slide" ? "Carousel" : "Slide";
             case nameof(AppSettings.MiniPlayerArtworkProgressThickness): return 3.5;
             case nameof(AppSettings.DisabledTrackContextMenuActions): return new List<string> { TrackContextMenuActions.CopyPath };
@@ -210,6 +211,7 @@ public sealed class LumiProfileSettingsCoverageTests
             FavoriteHeartAnimation = "Justify",
             MiniPlayerSizePreset = "Justify",
             NowPlayingBackground = "Justify",
+            SettingsNavigationLabelMode = "Justify",
             SettingsNavigationStyle = "Justify",
             AlbumArtTransitionStyle = "Justify",
             MiniPlayerArtworkProgressThickness = 99
@@ -226,6 +228,7 @@ public sealed class LumiProfileSettingsCoverageTests
         Assert.Equal(defaults.LyricsTextAlignment, live.LyricsTextAlignment);
         Assert.Equal(defaults.FavoriteHeartAnimation, live.FavoriteHeartAnimation);
         Assert.Equal(defaults.MiniPlayerSizePreset, live.MiniPlayerSizePreset);
+        Assert.Equal(defaults.SettingsNavigationLabelMode, live.SettingsNavigationLabelMode);
         Assert.Equal(defaults.NowPlayingBackground, live.NowPlayingBackground);
         Assert.Equal(defaults.SettingsNavigationStyle, live.SettingsNavigationStyle);
         Assert.Equal(defaults.AlbumArtTransitionStyle, live.AlbumArtTransitionStyle);
