@@ -18,6 +18,7 @@ using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
+using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
@@ -93,7 +94,7 @@ public partial class MainWindow
                     requestedDeviceKey, resolved.ActiveDeviceKey, resolved.UsedFallback))
             {
                 _settings.OutputDeviceName = resolved.ActiveDeviceKey;
-                _ = SettingsManager.SaveAsync(_settings);
+                FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
                 _settingsWindow?.RefreshOutputDeviceSelection();
             }
         }
@@ -113,7 +114,7 @@ public partial class MainWindow
                 // общий, чтобы плеер не остался нерабочим.
                 Logger.Warn($"Не удалось открыть устройство в монопольном режиме WASAPI, переключение на общий: {ex.Message}");
                 _settings.WasapiMode = "Shared";
-                _ = SettingsManager.SaveAsync(_settings);
+                FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
                 _settingsWindow?.RefreshWasapiModeSelection();
                 _outputDevice = BuildWasapiPlayer(_outputEndpoint, useExclusiveMode: false);
                 _outputDiagnostics.ActiveWasapiMode = "Shared";
