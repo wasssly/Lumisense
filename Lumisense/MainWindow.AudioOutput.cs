@@ -29,6 +29,9 @@ public partial class MainWindow
     // WASAPI-буфера) — 60 мс безопасный минимум для плеера с realtime DSP (SoundTouch, эквалайзер).
     private const int WasapiRequestedLatencyMilliseconds = 60;
 
+    // Следующее открытие устройства идёт через системное, но сохранённый выбор пользователя остаётся прежним.
+    private bool _forceSystemOutputOnce;
+
     private void InitializeOutputDevice(ISampleProvider sampleProvider)
     {
         try
@@ -37,16 +40,11 @@ public partial class MainWindow
         }
         catch (Exception ex) when (!string.IsNullOrWhiteSpace(_settings.OutputDeviceName))
         {
-            // Endpoint мог исчезнуть между перечислением и Init (USB/Bluetooth). Однократно
-            // переходим на системный render endpoint Windows, сохраняя причину fallback в UI.
+            // Endpoint мог исчезнуть между перечислением и Init (USB/Bluetooth). Однократно переходим на системный
+            // endpoint, не меняя сохранённый выбор: следующий трек снова попробует выбранное устройство.
             Logger.Error("Не удалось инициализировать выбранное устройство вывода; используется системное устройство", ex);
-            string failedDeviceKey = _settings.OutputDeviceName;
             DisposeOutputDeviceSafely();
-            _outputDiagnostics.ActiveDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
-            _outputDiagnostics.FallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(failedDeviceKey, usedFallback: true);
-            _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
-            _ = SettingsManager.SaveAsync(_settings);
-            _settingsWindow?.RefreshOutputDeviceSelection();
+            _forceSystemOutputOnce = true;
             CreateAndInitializeWasapiPlayer(sampleProvider);
         }
     }
@@ -70,17 +68,21 @@ public partial class MainWindow
     {
         if (_outputDevice is not null) return;
 
-        string requestedDeviceKey = _settings.OutputDeviceName;
+        string savedDeviceKey = _settings.OutputDeviceName;
+        bool systemOutputForced = _forceSystemOutputOnce;
+        _forceSystemOutputOnce = false;
+        string requestedDeviceKey = systemOutputForced ? AudioOutputDeviceService.SystemDefaultDeviceName : savedDeviceKey;
         AudioOutputDeviceService.ResolvedEndpoint resolved = _audioOutputDeviceManager.Resolve(requestedDeviceKey);
         _outputDiagnostics.ResetForNewEndpoint();
         _outputDiagnostics.ActiveDeviceKey = resolved.ActiveDeviceKey;
 
-        if (resolved.UsedFallback)
+        bool usedFallback = resolved.UsedFallback ||
+            systemOutputForced && !AudioOutputRecoveryPolicy.FollowsSystemDefault(savedDeviceKey);
+        if (usedFallback)
         {
-            _outputDiagnostics.FallbackFrom = requestedDeviceKey;
-            Logger.Warn($"Выбранное WASAPI-устройство недоступно: {requestedDeviceKey}. Используется системное устройство Windows.");
-            _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
-            _ = SettingsManager.SaveAsync(_settings);
+            // Выбор в настройках не перезаписываем: устройство может вернуться (см. TryRestoreSelectedOutputDevice).
+            _outputDiagnostics.FallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(savedDeviceKey, usedFallback: true);
+            Logger.Warn($"Выбранное WASAPI-устройство недоступно: {savedDeviceKey}. Используется системное устройство Windows.");
             _settingsWindow?.RefreshOutputDeviceSelection();
         }
         else
@@ -236,6 +238,10 @@ public partial class MainWindow
             return;
 
         RecordMeaningfulOutputDeviceEvent(e);
+        if (e.Kind is AudioOutputEndpointChangeKind.DeviceAdded or AudioOutputEndpointChangeKind.DeviceStateChanged &&
+            TryRestoreSelectedOutputDevice())
+            return;
+
         if (e.Kind == AudioOutputEndpointChangeKind.DefaultDeviceChanged)
         {
             QueueSystemDefaultEndpointRecovery(e.EndpointId);
@@ -253,6 +259,20 @@ public partial class MainWindow
         const string reason = "активное устройство вывода отключено или стало недоступно";
         Logger.Warn($"{reason}; выполняется восстановление WASAPI.");
         RecoverOutputDeviceAfterFailure(new InvalidOperationException(reason), _isPlaying, expectedDeviceEvent: true);
+    }
+
+    // Выбранное устройство вернулось после временного отката на системное: переоткрываем вывод на нём с той же позиции.
+    private bool TryRestoreSelectedOutputDevice()
+    {
+        if (!AudioOutputDeviceManager.ShouldRestoreSavedEndpoint(
+                _settings.OutputDeviceName, _outputDiagnostics.ActiveDeviceKey,
+                outputIsFallback: !string.IsNullOrWhiteSpace(_outputDiagnostics.FallbackFrom)) ||
+            !AudioOutputDeviceService.IsAvailable(_settings.OutputDeviceName))
+            return false;
+
+        Logger.Info("Выбранное устройство вывода снова доступно; возврат с системного устройства.");
+        ApplyOutputDeviceSelection();
+        return true;
     }
 
     private void RecordMeaningfulOutputDeviceEvent(AudioOutputEndpointChangedEventArgs e)
@@ -365,14 +385,8 @@ public partial class MainWindow
     private void ExecutePlaybackRecovery(PlaybackRecoverySnapshot snapshot)
     {
         StopPlayback(disposeOnly: true);
-        string failedDeviceKey = snapshot.SavedDeviceKey ?? string.Empty;
         DisposeOutputDeviceSafely();
-        _outputDiagnostics.ActiveDeviceKey = AudioOutputDeviceService.SystemDefaultDeviceName;
-        _outputDiagnostics.FallbackFrom = AudioOutputDeviceManager.GetFallbackSourceKey(
-            failedDeviceKey, usedFallback: true);
-        _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
-        _ = SettingsManager.SaveAsync(_settings);
-        _settingsWindow?.RefreshOutputDeviceSelection();
+        _forceSystemOutputOnce = true;
         LoadAndPlay(snapshot.TrackPath, autoPlay: snapshot.WasPlaying,
             startPosition: snapshot.Position, changeOrigin: TrackChangeOrigin.Automatic);
     }

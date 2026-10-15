@@ -2044,9 +2044,8 @@ public partial class SettingsWindow : FluentWindow
             var selected = OutputDeviceCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
                 .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.OutputDeviceName, StringComparison.OrdinalIgnoreCase));
             bool fallbackToSystemDefault = selected is null;
+            // Сохранённый выбор не сбрасываем: отключённое устройство может вернуться, и плеер переключится на него.
             OutputDeviceCombo.SelectedItem = selected ?? systemDefault;
-            if (fallbackToSystemDefault)
-                _settings.OutputDeviceName = AudioOutputDeviceService.SystemDefaultDeviceName;
 
             RefreshOutputDeviceStatus(fallbackToSystemDefault);
         }
