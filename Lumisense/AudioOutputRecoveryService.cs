@@ -29,6 +29,7 @@ internal sealed record OutputRecoveryDecision(
     int RecoveryCount,
     string? RejectionReason);
 
+// Completed — workflow не бросил исключение; для воспроизведения это значит «загрузка трека запущена», а не «звук восстановлен».
 internal sealed record OutputRecoveryExecutionResult(
     bool Started,
     bool Completed,

@@ -225,6 +225,7 @@ public partial class MainWindow
         }
         catch
         {
+            // Любой сбой чтения или JSON означает «это не пресет»; окно показывает одно общее сообщение.
             return null;
         }
 
