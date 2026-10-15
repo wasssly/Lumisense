@@ -166,7 +166,7 @@ public class AppSettings
     public double SavedVolume { get; set; } = 0.15;
 
     // Линейный ползунок сильнее всего меняет громкость на верхнем участке (слух логарифмичен): при включении
-    // позиция переводится в дБ (MainWindow.ToOutputVolume); по умолчанию выключено, чтобы сохранить привычную шкалу.
+    // позиция переводится в дБ (TrackPreparationService.ComputeAudioFileVolume); по умолчанию выключено, чтобы сохранить привычную шкалу.
     public bool UseLogarithmicVolume { get; set; }
 
     // ReplayGain по тегам REPLAYGAIN_* (источник тега определяет ATL.NET, см. ReplayGainReader); по умолчанию выключено —

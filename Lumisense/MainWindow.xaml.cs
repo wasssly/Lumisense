@@ -117,7 +117,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
     // Главная обложка 150 DIP, мини-плеер и уведомления меньше: ограничиваем декодирование UI-копии, чтобы огромные
     // embedded 4K-обложки не занимали память и не тормозили масштабирование при анимации.
-    private const int ArtworkDisplayDecodePixelWidth = 512;
+    private const int ArtworkDisplayDecodePixelWidth = TrackPreparationService.ArtworkDisplayDecodePixelWidth;
 
     // Отменяет расчёт формы волны предыдущего трека при быстром переключении: иначе устаревший результат перезапишет волну нового.
     private CancellationTokenSource? _waveformCts;

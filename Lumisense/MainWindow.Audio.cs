@@ -284,41 +284,17 @@ public partial class MainWindow
         VolumeSlider.Value = Math.Clamp(VolumeSlider.Value + delta, VolumeSlider.Minimum, VolumeSlider.Maximum);
     }
 
-    // Положение ползунка (0..1) → множитель амплитуды: обычно мягкая audio-taper кривая, в логарифмическом режиме — через
-    // децибелы [MinDb, 0] и 10^(dB/20), чтобы ход воспринимался равномерно, а не сжатым в нижние 10-20%.
-    private const double MinVolumeDb = -40.0; // тише практически не слышно — дальше просто тишина
-    private const double LinearVolumeExponent = 2.0;
-
-    private float ToOutputVolume(double sliderValue)
-    {
-        sliderValue = Math.Clamp(sliderValue, 0.0, 1.0);
-
-        if (!_settings.UseLogarithmicVolume)
-            return (float)Math.Pow(sliderValue, LinearVolumeExponent);
-
-        if (sliderValue <= 0.0) return 0f;
-
-        double db = MinVolumeDb * (1.0 - sliderValue);
-        double raw = Math.Pow(10.0, db / 20.0);
-
-        // 10^(dB/20) при sliderValue → 0 стремится к "полу", а не к 0: без перенормировки последний отрезок хода давал
-        // резкий скачок к тишине вместо плавного затухания.
-        double floor = Math.Pow(10.0, MinVolumeDb / 20.0);
-        return (float)((raw - floor) / (1.0 - floor));
-    }
-
     public void RefreshVolumeCurve()
     {
         if (_audioFile != null)
             _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
     }
 
-    // Домножает обычную громкость (см. ToOutputVolume) на _replayGainFactor — то же место
-    // конвейера (AudioFileReader.Volume, до эквалайзера).
+    // Громкость учитывает _replayGainFactor — то же место конвейера (AudioFileReader.Volume, до эквалайзера).
     private float ComputeAudioFileVolume(double sliderValue) => ComputeAudioFileVolume(sliderValue, _replayGainFactor);
 
     private float ComputeAudioFileVolume(double sliderValue, double replayGainFactor) =>
-        (float)(ToOutputVolume(sliderValue) * replayGainFactor);
+        TrackPreparationService.ComputeAudioFileVolume(sliderValue, _settings.UseLogarithmicVolume, replayGainFactor);
 
     public void ApplyChannelMode()
     {

@@ -45,9 +45,9 @@ internal sealed record TrackPreparationOptions(
 
 internal sealed class TrackPreparationService
 {
-    private const double MinVolumeDb = -40.0;
+    private const double MinVolumeDb = -40.0; // тише практически не слышно — дальше просто тишина
     private const double LinearVolumeExponent = 2.0;
-    private const int ArtworkDisplayDecodePixelWidth = 512;
+    internal const int ArtworkDisplayDecodePixelWidth = 512;
 
     public async Task<PreparedTrack> PrepareAsync(
         string filePath,
@@ -179,7 +179,9 @@ internal sealed class TrackPreparationService
         }
     }
 
-    private static float ComputeAudioFileVolume(
+    // Положение ползунка (0..1) → множитель амплитуды (с учётом ReplayGain). Обычно мягкая audio-taper кривая, в
+    // логарифмическом режиме — через децибелы [MinDb, 0] и 10^(dB/20), чтобы ход воспринимался равномерно.
+    internal static float ComputeAudioFileVolume(
         double sliderValue,
         bool useLogarithmicVolume,
         double replayGainFactor)
@@ -200,6 +202,7 @@ internal sealed class TrackPreparationService
         {
             double db = MinVolumeDb * (1.0 - sliderValue);
             double raw = Math.Pow(10.0, db / 20.0);
+            // Без перенормировки последний отрезок хода давал резкий скачок к тишине вместо плавного затухания.
             double floor = Math.Pow(10.0, MinVolumeDb / 20.0);
             outputVolume = (float)((raw - floor) / (1.0 - floor));
         }

@@ -109,4 +109,26 @@ public sealed class TrackPreparationServiceTests
             PlaybackSpeed: playbackSpeed,
             PlaybackPitch: playbackPitch,
             TraceEnabled: false);
+
+    [Fact]
+    public void ComputeAudioFileVolume_LinearCurveUsesAudioTaper()
+    {
+        Assert.Equal(0.25f, TrackPreparationService.ComputeAudioFileVolume(0.5, false, 1.0), 5);
+        Assert.Equal(1f, TrackPreparationService.ComputeAudioFileVolume(2.0, false, 1.0), 5);
+        Assert.Equal(0f, TrackPreparationService.ComputeAudioFileVolume(-1.0, false, 1.0), 5);
+    }
+
+    [Fact]
+    public void ComputeAudioFileVolume_LogarithmicCurveSpansSilenceToFullScale()
+    {
+        Assert.Equal(0f, TrackPreparationService.ComputeAudioFileVolume(0.0, true, 1.0), 5);
+        Assert.Equal(1f, TrackPreparationService.ComputeAudioFileVolume(1.0, true, 1.0), 5);
+        Assert.InRange(TrackPreparationService.ComputeAudioFileVolume(0.5, true, 1.0), 0.05f, 0.15f);
+    }
+
+    [Fact]
+    public void ComputeAudioFileVolume_AppliesReplayGainFactor()
+    {
+        Assert.Equal(0.5f, TrackPreparationService.ComputeAudioFileVolume(1.0, false, 0.5), 5);
+    }
 }
