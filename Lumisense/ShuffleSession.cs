@@ -10,6 +10,7 @@ internal sealed class ShuffleSession
     private readonly List<string> _history = new();
     private int _historyIndex = -1;
     private List<string> _bag = new();
+    private readonly HashSet<string> _playedInRound = new(StringComparer.OrdinalIgnoreCase);
 
     public ShuffleSession(Random random) => _random = random;
 
@@ -24,7 +25,16 @@ internal sealed class ShuffleSession
         _history.Clear();
         _historyIndex = -1;
         _bag.Clear();
+        _playedInRound.Clear();
     }
+
+    // Колода может быть уже раздана наперёд (превью соседей), поэтому «круг закончен» считаем по реально начатым трекам.
+    public void MarkPlayed(string path) => _playedInRound.Add(path);
+
+    public void ResetRound() => _playedInRound.Clear();
+
+    public bool HasPlayedAll(List<string> activeTracks) =>
+        IsEnabled && activeTracks.Count > 0 && activeTracks.All(_playedInRound.Contains);
 
     public string GetRandom(List<string> activeTracks, string? excludePath)
     {

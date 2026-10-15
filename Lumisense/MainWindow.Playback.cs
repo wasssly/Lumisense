@@ -244,7 +244,11 @@ public partial class MainWindow
         // Ручной выбор строки — новая отправная точка обычного шаффла, иначе «Следующий» продолжил бы старую историю и вернул
         // пройденную последовательность; кнопки, hotkey и автопереход явно передают preserveShuffleSession=true.
         if (!preserveShuffleSession && changeOrigin == TrackChangeOrigin.User)
+        {
             _shuffleSession.StartStandardSession(filePath, _settings.UseImprovedShuffle);
+            _shuffleSession.ResetRound();
+        }
+        _shuffleSession.MarkPlayed(filePath);
 
         _halfPlayCounted = false;
         _actuallyPlayedSeconds = 0;
@@ -557,13 +561,21 @@ public partial class MainWindow
             default:
                 var active = FlattenActive();
                 int posInActive = active.IndexOf(currentPath);
-                // Без повтора и без шафла останавливаемся на последнем треке активных групп,
-                // а не зацикливаем плейлист заново
-                bool isLastTrack = !_shuffleSession.IsEnabled && (posInActive < 0 || posInActive == active.Count - 1);
+                // Без повтора останавливаемся на последнем треке активных групп (при шаффле — когда сыграли все треки),
+                // а не зацикливаем плейлист. Шафл могли включить посреди трека, поэтому играющий трек отмечаем здесь.
+                _shuffleSession.MarkPlayed(currentPath);
+                bool isLastTrack = _shuffleSession.IsEnabled
+                    ? _shuffleSession.HasPlayedAll(active)
+                    : posInActive < 0 || posInActive == active.Count - 1;
                 if (isLastTrack)
+                {
+                    _shuffleSession.ResetRound();
                     StopPlayback();
+                }
                 else
+                {
                     PlayNextTrack(TrackChangeOrigin.Automatic);
+                }
                 break;
         }
     }

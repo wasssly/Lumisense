@@ -389,4 +389,44 @@ public sealed class ShuffleSessionTests
         Assert.Null(session.PeekNeighbor("a", 1));
         Assert.Null(session.PeekNeighbor("a", -1));
     }
+
+    [Fact]
+    public void HasPlayedAll_IsTrueOnlyAfterEveryActiveTrackWasMarked()
+    {
+        var session = CreateEnabled();
+        var active = new List<string> { "a", "b", "c" };
+
+        session.MarkPlayed("a");
+        session.MarkPlayed("B");
+        Assert.False(session.HasPlayedAll(active));
+
+        session.MarkPlayed("c");
+        Assert.True(session.HasPlayedAll(active));
+    }
+
+    [Fact]
+    public void HasPlayedAll_IsFalseWhenShuffleIsOffOrPlaylistIsEmpty()
+    {
+        var session = new ShuffleSession(new Random(1));
+        session.MarkPlayed("a");
+        Assert.False(session.HasPlayedAll(new List<string> { "a" }));
+
+        session.SetEnabled(true);
+        Assert.False(session.HasPlayedAll(new List<string>()));
+    }
+
+    [Fact]
+    public void ResetRound_AndReset_ClearPlayedTracks()
+    {
+        var session = CreateEnabled();
+        var active = new List<string> { "a" };
+
+        session.MarkPlayed("a");
+        session.ResetRound();
+        Assert.False(session.HasPlayedAll(active));
+
+        session.MarkPlayed("a");
+        session.Reset();
+        Assert.False(session.HasPlayedAll(active));
+    }
 }
