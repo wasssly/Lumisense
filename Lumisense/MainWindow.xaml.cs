@@ -1038,7 +1038,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     {
         if (_statisticsWindow == null)
         {
-            _statisticsWindow = new StatisticsWindow(_settings) { Owner = this };
+            _statisticsWindow = new StatisticsWindow(_settings);
             _statisticsWindow.Closed += (_, _) => _statisticsWindow = null;
             _statisticsWindow.Show();
         }
@@ -1070,12 +1070,13 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private ChangelogWindow? _changelogWindow;
 
     // Список изменений и настройки не открыты одновременно: открытие списка закрывает настройки, закрытие — открывает их
-    // заново (вызывается из SettingsWindow.ChangelogButton_Click).
+    // заново (вызывается из SettingsWindow.ChangelogButton_Click). Без Owner: окно с владельцем всегда поверх него,
+    // и главное окно нельзя было вывести выше списка; при выходе список закрывается явно (OnClosed).
     public void ShowChangelogWindow()
     {
         if (_changelogWindow == null)
         {
-            _changelogWindow = new ChangelogWindow(_settings) { Owner = this };
+            _changelogWindow = new ChangelogWindow(_settings);
             _changelogWindow.Closed += (_, _) =>
             {
                 _changelogWindow = null;

@@ -9,7 +9,7 @@
         MinHeight="480" MinWidth="660"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
-        WindowStartupLocation="CenterOwner"
+        WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize"
         UseLayoutRounding="True"
         TextOptions.TextFormattingMode="Display">

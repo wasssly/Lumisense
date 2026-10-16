@@ -9,7 +9,7 @@
         MinHeight="440" MinWidth="360"
         WindowBackdropType="Mica"
         ExtendsContentIntoTitleBar="True"
-        WindowStartupLocation="CenterOwner"
+        WindowStartupLocation="CenterScreen"
         ResizeMode="CanResize">
 
     <!-- Окно "Статистика": сводки сверху, топ-5 исполнителей и треков из PlayCountManager и AppSettings.TotalListenSeconds;
