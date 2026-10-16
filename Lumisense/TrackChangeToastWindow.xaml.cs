@@ -21,6 +21,7 @@ public partial class TrackChangeToastWindow : Window
     private readonly DispatcherTimer _hideTimer;
     private bool _overlayCompatibilityMode;
     private readonly System.Windows.Media.Effects.Effect? _normalEffect;
+    private Action<ToastPositionPickResult?>? _pickCompleted;
 
     public TrackChangeToastWindow()
     {
@@ -35,7 +36,8 @@ public partial class TrackChangeToastWindow : Window
     // MainWindow.ResolveToastScreen; остальные параметры — см. AppSettings.TrackChangeToast*.
     public void ShowToast(string title, string artist, Brush? art, bool isLightTheme,
         System.Windows.Forms.Screen screen, string position, string size, double width,
-        string artSide, string textAlignment, bool artNextToText, double backgroundOpacity = 1.0)
+        string artSide, string textAlignment, bool artNextToText, double backgroundOpacity = 1.0,
+        double customX = 0, double customY = 0, Color? tint = null, double tintStrength = 1.0)
     {
         ToastTitleText.Text = title;
 
@@ -46,7 +48,11 @@ public partial class TrackChangeToastWindow : Window
         ApplySizePreset(size);
         ApplyWidth(width, size);
         ApplyLayout(artSide, textAlignment, artNextToText);
-        ApplyThemeBrushes(isLightTheme);
+
+        // Цвет карточки (AppSettings.TrackChangeToastColorMode): без него фон по теме; с ним контраст текста выбирается по
+        // получившемуся фону, а не по теме приложения.
+        Color background = ToastColorCalculator.Blend(isLightTheme ? LightBackground : DarkBackground, tint, tintStrength);
+        ApplyThemeBrushes(tint is null ? isLightTheme : ToastColorCalculator.IsLight(background));
 
         if (art is ImageBrush { ImageSource: not null } imageBrush)
         {
@@ -64,7 +70,6 @@ public partial class TrackChangeToastWindow : Window
             ArtIcon.Visibility = art is null ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        Color background = isLightTheme ? LightBackground : DarkBackground;
         byte alpha = (byte)Math.Round(255 * Math.Clamp(backgroundOpacity, 0.3, 1.0));
         ToastBackgroundBrush.Color = Color.FromArgb(alpha, background.R, background.G, background.B);
 
@@ -80,7 +85,7 @@ public partial class TrackChangeToastWindow : Window
             RootBorder.Opacity = 0;
             Show();
         }
-        PositionOnScreen(screen, position);
+        PositionOnScreen(screen, position, customX, customY);
 
         if (_overlayCompatibilityMode)
         {
@@ -139,8 +144,75 @@ public partial class TrackChangeToastWindow : Window
         RootBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
     }
 
+    internal bool IsPickingPosition => _pickCompleted is not null;
+
+    // Показывает ту же карточку без автоскрытия: пользователь перетаскивает её и подтверждает двойным кликом или Enter.
+    internal void BeginPositionPick(string title, string hint, Brush? art, bool isLightTheme,
+        System.Windows.Forms.Screen screen, AppSettings settings, Color? tint, Action<ToastPositionPickResult?> completed)
+    {
+        if (_pickCompleted is not null) CompletePick(save: false);
+
+        ShowToast(title, hint, art, isLightTheme, screen, settings.TrackChangeToastPosition, settings.TrackChangeToastSize,
+            settings.TrackChangeToastWidth, settings.TrackChangeToastArtSide, settings.TrackChangeToastTextAlignment,
+            settings.TrackChangeToastArtNextToText, settings.TrackChangeToastOpacity,
+            settings.TrackChangeToastCustomX, settings.TrackChangeToastCustomY, tint, settings.TrackChangeToastColorStrength);
+        _pickCompleted = completed;
+        _hideTimer.Stop();
+        Activate();
+    }
+
+    private void CompletePick(bool save)
+    {
+        var completed = _pickCompleted;
+        _pickCompleted = null;
+        var result = save ? ReadPickedPosition() : null;
+
+        _hideTimer.Stop();
+        RootBorder.BeginAnimation(UIElement.OpacityProperty, null);
+        RootBorder.Opacity = 0;
+        Hide();
+        completed?.Invoke(result);
+    }
+
+    // Монитор определяется по центру карточки: она может оказаться на другом экране, чем показывалась.
+    private ToastPositionPickResult? ReadPickedPosition()
+    {
+        IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero || !WindowSnapHelper.GetWindowRect(hwnd, out var rect)) return null;
+
+        var center = new System.Drawing.Point((rect.Left + rect.Right) / 2, (rect.Top + rect.Bottom) / 2);
+        var screen = System.Windows.Forms.Screen.FromPoint(center);
+        var (x, y) = ToastPlacementCalculator.ToCustomFractions(screen.WorkingArea, rect.Left, rect.Top,
+            rect.Right - rect.Left, rect.Bottom - rect.Top);
+        return new ToastPositionPickResult(screen.DeviceName, x, y);
+    }
+
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (_pickCompleted is null) return;
+
+        if (e.Key == Key.Enter)
+        {
+            CompletePick(save: true);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape)
+        {
+            CompletePick(save: false);
+            e.Handled = true;
+        }
+    }
+
     private void RootBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
+        if (_pickCompleted is not null)
+        {
+            if (e.ClickCount >= 2) CompletePick(save: true);
+            else DragMove();
+            e.Handled = true;
+            return;
+        }
+
         // Уведомление не является интерактивным элементом. Любой клик по карточке должен
         // закрывать её сразу, не дожидаясь окончания видимой задержки или fade-out.
         _hideTimer.Stop();
@@ -228,10 +300,11 @@ public partial class TrackChangeToastWindow : Window
 
     // Рабочая область Screen — в физических пикселях: берём DPI именно выбранного монитора и позиционируем
     // HWND через SetWindowPos, чтобы mixed-DPI не зависел от монитора прошлого показа.
-    private void PositionOnScreen(System.Windows.Forms.Screen screen, string position)
+    private void PositionOnScreen(System.Windows.Forms.Screen screen, string position, double customX, double customY)
     {
         double scale = ToastMonitorDpi.GetScale(screen, GetDpiScale());
-        ToastPlacement placement = ToastPlacementCalculator.Calculate(screen.WorkingArea, Width, Height, scale, position);
+        ToastPlacement placement = ToastPlacementCalculator.Calculate(screen.WorkingArea, Width, Height, scale, position,
+            customX, customY);
         IntPtr hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
 
         if (hwnd != IntPtr.Zero)

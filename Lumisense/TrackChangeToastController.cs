@@ -9,14 +9,27 @@ internal sealed class TrackChangeToastController : IDisposable
     private TrackChangeToastWindow? _window;
 
     public void Show(string title, string artist, Brush? art, bool isLightTheme,
-        System.Windows.Forms.Screen screen, AppSettings settings)
+        System.Windows.Forms.Screen screen, AppSettings settings, Color? tint = null)
     {
+        // Пока пользователь выбирает место, смена трека не должна подменять карточку и прятать её.
+        if (_window?.IsPickingPosition == true) return;
+
         _window ??= new TrackChangeToastWindow();
         _window.ApplyOverlayCompatibilityLive(settings.GameOverlayCompatibilityMode);
         _window.ShowToast(title, artist, art, isLightTheme, screen,
             settings.TrackChangeToastPosition, settings.TrackChangeToastSize, settings.TrackChangeToastWidth,
             settings.TrackChangeToastArtSide, settings.TrackChangeToastTextAlignment,
-            settings.TrackChangeToastArtNextToText, settings.TrackChangeToastOpacity);
+            settings.TrackChangeToastArtNextToText, settings.TrackChangeToastOpacity,
+            settings.TrackChangeToastCustomX, settings.TrackChangeToastCustomY,
+            tint, settings.TrackChangeToastColorStrength);
+    }
+
+    public void PickPosition(string title, string hint, Brush? art, bool isLightTheme,
+        System.Windows.Forms.Screen screen, AppSettings settings, Color? tint, Action<ToastPositionPickResult?> completed)
+    {
+        _window ??= new TrackChangeToastWindow();
+        _window.ApplyOverlayCompatibilityLive(settings.GameOverlayCompatibilityMode);
+        _window.BeginPositionPick(title, hint, art, isLightTheme, screen, settings, tint, completed);
     }
 
     public void ApplyOverlayCompatibilityLive(bool enabled)

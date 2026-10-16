@@ -33,6 +33,10 @@ internal interface ISettingsAppearanceHost
     void ApplySyncedLyricsAppearance();
     void ApplyProgressBarStyle();
     void ApplySliderStyle();
+    void ApplyTrackStateBadgeMode();
+    void RefreshLyricsDisplayMode();
+    void PreviewTrackChangeToast();
+    void PickToastPosition(Action<ToastPositionPickResult?> completed);
 }
 
 // Звук и устройство вывода.

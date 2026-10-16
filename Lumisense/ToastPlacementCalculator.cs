@@ -5,6 +5,9 @@ namespace Lumisense;
 
 internal readonly record struct ToastPlacement(int X, int Y, int Width, int Height);
 
+// Результат ручного выбора положения: монитор, на котором оказалась карточка, и доли свободной области (см. ToCustomFractions).
+public readonly record struct ToastPositionPickResult(string MonitorDeviceName, double X, double Y);
+
 // Расчёт намеренно не зависит от WPF: working area Screen уже задаётся в физических пикселях,
 // поэтому помощник можно проверить unit-тестами для каждого угла и масштаба монитора.
 internal static class ToastPlacementCalculator
@@ -12,7 +15,7 @@ internal static class ToastPlacementCalculator
     public const int ScreenMarginPixels = 20;
 
     public static ToastPlacement Calculate(Rectangle workingArea, double widthDip, double heightDip,
-        double dpiScale, string position)
+        double dpiScale, string position, double customX = 0, double customY = 0)
     {
         double normalizedScale = double.IsFinite(dpiScale) && dpiScale > 0 ? dpiScale : 1.0;
         int width = Math.Max(1, (int)Math.Round(widthDip * normalizedScale));
@@ -31,9 +34,25 @@ internal static class ToastPlacementCalculator
             "TopRight" => new ToastPlacement(right, top, width, height),
             "BottomLeft" => new ToastPlacement(left, bottom, width, height),
             "BottomCenter" => new ToastPlacement(center, bottom, width, height),
+            "Custom" => new ToastPlacement(
+                workingArea.Left + (int)Math.Round(Fraction(customX) * Math.Max(0, workingArea.Width - width)),
+                workingArea.Top + (int)Math.Round(Fraction(customY) * Math.Max(0, workingArea.Height - height)),
+                width, height),
             _ => new ToastPlacement(right, bottom, width, height),
         };
     }
+
+    // Обратная операция для "Custom": по месту, куда пользователь перетащил карточку, находим доли свободной области.
+    public static (double X, double Y) ToCustomFractions(Rectangle workingArea, int x, int y, int width, int height)
+    {
+        int freeWidth = workingArea.Width - width;
+        int freeHeight = workingArea.Height - height;
+        return (
+            freeWidth > 0 ? Math.Clamp((x - workingArea.Left) / (double)freeWidth, 0, 1) : 0,
+            freeHeight > 0 ? Math.Clamp((y - workingArea.Top) / (double)freeHeight, 0, 1) : 0);
+    }
+
+    private static double Fraction(double value) => double.IsFinite(value) ? Math.Clamp(value, 0, 1) : 0;
 }
 
 internal static class ToastMonitorDpi

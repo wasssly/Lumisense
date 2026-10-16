@@ -1275,7 +1275,46 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
         var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         _trackChangeToastController.Show(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
-            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, handle), _settings);
+            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, handle), _settings, ResolveToastTint());
+    }
+
+    // Цвет карточки по AppSettings.TrackChangeToastColorMode. "Cover" берётся из обложки текущего трека на момент показа
+    // (карточка показывается после готовности обложки); если из неё не удалось получить цвет, остаётся фон по теме.
+    private Color? ResolveToastTint() => _settings.TrackChangeToastColorMode switch
+    {
+        "Cover" => _currentAlbumArt is null ? null : ExtractCoverAccentColor(_currentAlbumArt),
+        "Accent" => GetResolvedAccentColor(),
+        "Custom" => ToastColorCalculator.TryParse(_settings.TrackChangeToastColorHex),
+        _ => null
+    };
+
+    // Окно настроек просит показать карточку для перетаскивания; если она оказалась на другом мониторе, чем выбранный
+    // для уведомлений, запоминаем и его, иначе доли свободной области относились бы к чужому экрану.
+    public void PickToastPosition(Action<ToastPositionPickResult?> completed)
+    {
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        var screen = ToastMonitorResolver.Resolve(_settings, handle);
+        _trackChangeToastController.PickPosition(
+            LocalizationService.Translate("Перетащите карточку"), LocalizationService.Translate("Двойной клик — сохранить"),
+            CurrentArtBrush, _settings.IsLightThemeResolved(), screen, _settings, ResolveToastTint(), result =>
+            {
+                if (result is { } picked && picked.MonitorDeviceName != screen.DeviceName)
+                    _settings.TrackChangeToastMonitor = picked.MonitorDeviceName;
+                completed(result);
+            });
+    }
+
+    // Предпросмотр из настроек: настоящая карточка с текущими параметрами. Без загруженного трека берутся образцы текстов,
+    // чтобы размер, ширину и выравнивание можно было проверить и без воспроизведения.
+    public void PreviewTrackChangeToast()
+    {
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        bool hasTrack = _currentTrackPath != null;
+        _trackChangeToastController.Show(
+            hasTrack ? TrackTitleText.Text : LocalizationService.Translate("Название трека"),
+            hasTrack ? TrackArtistText.Text : LocalizationService.Translate("Исполнитель"),
+            hasTrack ? CurrentArtBrush : null,
+            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, handle), _settings, ResolveToastTint());
     }
 
     private bool ShouldShowTrackChangeToast(TrackChangeOrigin origin, bool autoPlay) =>

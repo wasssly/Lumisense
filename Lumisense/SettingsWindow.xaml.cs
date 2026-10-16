@@ -1188,7 +1188,10 @@ public partial class SettingsWindow : FluentWindow
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
+        Add("Режим текста песни", "Оформление", "Appearance", LyricsDisplayPlainRadio, "текст песни синхронный обычный lrc txt переключить режим synced plain lyrics");
+        Add("Показать пример уведомления", "Уведомления", "Notifications", ToastPreviewButton, "уведомление пример предпросмотр показать toast preview");
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
+        Add("Своё положение уведомления", "Уведомления", "Notifications", ToastPickPositionButton, "уведомление перенести перетащить положение позиция свой custom drag move position toast notification");
         Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
         Add("Выравнивание текста песни", "Оформление", "Appearance", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
@@ -1197,6 +1200,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Скрывать обложку при тексте песни", "Оформление", "Appearance", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
         Add("Анимация избранного", "Оформление", "Appearance", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
         Add("Размер мини-плеера", "Мини-плеер", "MiniPlayer", MiniSizeClassicRadio, "размер мини плеер компактный классический текущий 1.21 size preset");
+        Add("Цвет уведомления", "Уведомления", "Notifications", ToastColorCoverRadio, "цвет уведомления обложка акцент свой окрашивание фон toast color cover accent tint");
         Add("Прозрачность уведомления", "Уведомления", "Notifications", ToastOpacitySlider, "прозрачность фона уведомление тост opacity transparency toast");
         Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
@@ -1739,6 +1743,7 @@ public partial class SettingsWindow : FluentWindow
         };
     }
 
+    private void ToastPreviewButton_Click(object sender, RoutedEventArgs e) => _owner.PreviewTrackChangeToast();
 
     private void NowPlayingBackgroundRadio_Changed(object sender, RoutedEventArgs e)
     {
@@ -2212,7 +2217,9 @@ public partial class SettingsWindow : FluentWindow
         ToastPosTopRightRadio.IsChecked = _settings.TrackChangeToastPosition == "TopRight";
         ToastPosBottomLeftRadio.IsChecked = _settings.TrackChangeToastPosition == "BottomLeft";
         ToastPosBottomCenterRadio.IsChecked = _settings.TrackChangeToastPosition == "BottomCenter";
-        ToastPosBottomRightRadio.IsChecked = !ToastPosTopLeftRadio.IsChecked.GetValueOrDefault()
+        ToastCustomPositionText.Visibility = _settings.TrackChangeToastPosition == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        ToastPosBottomRightRadio.IsChecked = _settings.TrackChangeToastPosition != "Custom"
+                                              && !ToastPosTopLeftRadio.IsChecked.GetValueOrDefault()
                                               && !ToastPosTopCenterRadio.IsChecked.GetValueOrDefault()
                                               && !ToastPosTopRightRadio.IsChecked.GetValueOrDefault()
                                               && !ToastPosBottomLeftRadio.IsChecked.GetValueOrDefault()
@@ -2237,6 +2244,14 @@ public partial class SettingsWindow : FluentWindow
         ToastWidthSlider.Value = Math.Clamp(_settings.TrackChangeToastWidth, ToastWidthSlider.Minimum, ToastWidthSlider.Maximum);
         ToastOpacitySlider.Value = Math.Clamp(Math.Round(_settings.TrackChangeToastOpacity * 100), ToastOpacitySlider.Minimum, ToastOpacitySlider.Maximum);
         UpdateToastOpacityValueText();
+        ToastColorCoverRadio.IsChecked = _settings.TrackChangeToastColorMode == "Cover";
+        ToastColorAccentRadio.IsChecked = _settings.TrackChangeToastColorMode == "Accent";
+        ToastColorCustomRadio.IsChecked = _settings.TrackChangeToastColorMode == "Custom";
+        ToastColorDefaultRadio.IsChecked = _settings.TrackChangeToastColorMode is not ("Cover" or "Accent" or "Custom");
+        ToastColorStrengthSlider.Value = Math.Clamp(Math.Round(_settings.TrackChangeToastColorStrength * 100),
+            ToastColorStrengthSlider.Minimum, ToastColorStrengthSlider.Maximum);
+        ToastColorStrengthValueText.Text = $"{(int)Math.Round(ToastColorStrengthSlider.Value)}%";
+        UpdateToastColorPanels();
         UpdateToastWidthValueText();
     }
 
@@ -2288,6 +2303,32 @@ public partial class SettingsWindow : FluentWindow
             : ToastPosBottomLeftRadio.IsChecked == true ? "BottomLeft"
             : ToastPosBottomCenterRadio.IsChecked == true ? "BottomCenter"
             : "BottomRight";
+        ToastCustomPositionText.Visibility = Visibility.Collapsed;
+    }
+
+    private void ToastPickPositionButton_Click(object sender, RoutedEventArgs e) => _owner.PickToastPosition(ToastPositionPicked);
+
+    // Карточка могла оказаться на другом мониторе (MainWindow.PickToastPosition обновил TrackChangeToastMonitor),
+    // поэтому список мониторов перечитываем из настроек.
+    private void ToastPositionPicked(ToastPositionPickResult? result)
+    {
+        if (result is { } picked)
+        {
+            _settings.TrackChangeToastPosition = "Custom";
+            _settings.TrackChangeToastCustomX = picked.X;
+            _settings.TrackChangeToastCustomY = picked.Y;
+
+            ToastPosTopLeftRadio.IsChecked = false;
+            ToastPosTopCenterRadio.IsChecked = false;
+            ToastPosTopRightRadio.IsChecked = false;
+            ToastPosBottomLeftRadio.IsChecked = false;
+            ToastPosBottomCenterRadio.IsChecked = false;
+            ToastPosBottomRightRadio.IsChecked = false;
+            ToastCustomPositionText.Visibility = Visibility.Visible;
+            InitializeToastMonitorCombo();
+        }
+
+        if (IsLoaded) Activate();
     }
 
     private void ToastSizeRadio_Changed(object sender, RoutedEventArgs e)
@@ -2347,6 +2388,60 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.TrackChangeToastOpacity = ToastOpacitySlider.Value / 100.0;
+    }
+
+    // См. AppSettings.TrackChangeToastColorMode: после смены режима или цвета сразу показываем пример, чтобы результат был виден.
+    private void ToastColorModeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastColorMode = ToastColorCoverRadio.IsChecked == true ? "Cover"
+            : ToastColorAccentRadio.IsChecked == true ? "Accent"
+            : ToastColorCustomRadio.IsChecked == true ? "Custom"
+            : "Default";
+        UpdateToastColorPanels();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        _owner.PreviewTrackChangeToast();
+    }
+
+    private void ToastColorStrengthSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (ToastColorStrengthValueText is null) return;
+
+        ToastColorStrengthValueText.Text = $"{(int)Math.Round(ToastColorStrengthSlider.Value)}%";
+        if (_isInitializing) return;
+
+        _settings.TrackChangeToastColorStrength = ToastColorStrengthSlider.Value / 100.0;
+    }
+
+    private void ToastColorPickButton_Click(object sender, RoutedEventArgs e)
+    {
+        System.Windows.Media.Color initial = ToastColorCalculator.TryParse(_settings.TrackChangeToastColorHex)
+            ?? System.Windows.Media.Color.FromRgb(0x00, 0x78, 0xD4);
+        using var dialog = new System.Windows.Forms.ColorDialog
+        {
+            Color = System.Drawing.Color.FromArgb(initial.R, initial.G, initial.B),
+            FullOpen = true
+        };
+
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (dialog.ShowDialog(new Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
+
+        var picked = dialog.Color;
+        _settings.TrackChangeToastColorHex = $"#{picked.R:X2}{picked.G:X2}{picked.B:X2}";
+        UpdateToastColorPanels();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        _owner.PreviewTrackChangeToast();
+    }
+
+    private void UpdateToastColorPanels()
+    {
+        string mode = _settings.TrackChangeToastColorMode;
+        ToastColorStrengthPanel.Visibility = mode is "Cover" or "Accent" or "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        ToastColorCustomPanel.Visibility = mode == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        System.Windows.Media.Color swatch = ToastColorCalculator.TryParse(_settings.TrackChangeToastColorHex)
+            ?? System.Windows.Media.Color.FromRgb(0x00, 0x78, 0xD4);
+        ToastColorSwatch.Background = new System.Windows.Media.SolidColorBrush(swatch);
     }
 
     private void UpdateToastOpacityValueText()

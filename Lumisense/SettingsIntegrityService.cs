@@ -242,6 +242,14 @@ internal static class SettingsIntegrityService
         settings.MiniPlayerOpacity = ClampFinite(settings.MiniPlayerOpacity, 0.2, 1.0, defaults.MiniPlayerOpacity);
         settings.TrackChangeToastWidth = ClampFinite(settings.TrackChangeToastWidth, 220, 560, defaults.TrackChangeToastWidth);
         settings.TrackChangeToastOpacity = ClampFinite(settings.TrackChangeToastOpacity, 0.3, 1.0, defaults.TrackChangeToastOpacity);
+        settings.TrackChangeToastColorMode = Allowed(settings.TrackChangeToastColorMode, defaults.TrackChangeToastColorMode,
+            "Default", "Cover", "Accent", "Custom");
+        settings.TrackChangeToastColorHex = ColorRegex.IsMatch(settings.TrackChangeToastColorHex ?? string.Empty)
+            ? settings.TrackChangeToastColorHex ?? defaults.TrackChangeToastColorHex
+            : defaults.TrackChangeToastColorHex;
+        settings.TrackChangeToastColorStrength = ClampFinite(settings.TrackChangeToastColorStrength, 0.2, 1.0, defaults.TrackChangeToastColorStrength);
+        settings.TrackChangeToastCustomX = ClampFinite(settings.TrackChangeToastCustomX, 0, 1, defaults.TrackChangeToastCustomX);
+        settings.TrackChangeToastCustomY = ClampFinite(settings.TrackChangeToastCustomY, 0, 1, defaults.TrackChangeToastCustomY);
         settings.MiniPlayerArtworkProgressThickness = ClampFinite(
             settings.MiniPlayerArtworkProgressThickness, 2.0, 4.0, defaults.MiniPlayerArtworkProgressThickness);
         settings.TotalListenSeconds = Math.Max(0, double.IsFinite(settings.TotalListenSeconds) ? settings.TotalListenSeconds : 0);
@@ -263,7 +271,7 @@ internal static class SettingsIntegrityService
         settings.LyricsSearchPolicy = Allowed(settings.LyricsSearchPolicy, defaults.LyricsSearchPolicy,
             "LocalOnly", "AutoExact", "ManualOnly");
         settings.TrackChangeToastPosition = Allowed(settings.TrackChangeToastPosition, defaults.TrackChangeToastPosition,
-            "BottomRight", "BottomLeft", "BottomCenter", "TopRight", "TopLeft", "TopCenter");
+            "BottomRight", "BottomLeft", "BottomCenter", "TopRight", "TopLeft", "TopCenter", "Custom");
         settings.TrackChangeToastSize = Allowed(settings.TrackChangeToastSize, defaults.TrackChangeToastSize, "Small", "Medium", "Large");
         settings.TrackChangeToastPolicy = Allowed(settings.TrackChangeToastPolicy, defaults.TrackChangeToastPolicy,
             "EveryTrackChange", "PlaybackOnly", "ManualOnly");

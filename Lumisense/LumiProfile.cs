@@ -212,6 +212,11 @@ public static class LumiProfileIO
         target.ShowTrackChangeToast = source.ShowTrackChangeToast;
         target.TrackChangeToastPolicy = source.TrackChangeToastPolicy;
         target.TrackChangeToastPosition = source.TrackChangeToastPosition;
+        target.TrackChangeToastCustomX = source.TrackChangeToastCustomX;
+        target.TrackChangeToastColorMode = source.TrackChangeToastColorMode;
+        target.TrackChangeToastColorHex = source.TrackChangeToastColorHex;
+        target.TrackChangeToastColorStrength = source.TrackChangeToastColorStrength;
+        target.TrackChangeToastCustomY = source.TrackChangeToastCustomY;
         target.TrackChangeToastMonitor = source.TrackChangeToastMonitor;
         target.TrackChangeToastSize = source.TrackChangeToastSize;
         target.TrackChangeToastWidth = source.TrackChangeToastWidth;

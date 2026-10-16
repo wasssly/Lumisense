@@ -336,8 +336,20 @@ public class AppSettings
     public string TrackChangeToastPolicy { get; set; } = "EveryTrackChange";
 
     // Где на экране показывать уведомление — "BottomRight" (по умолчанию, как было всегда),
-    // "BottomLeft", "BottomCenter", "TopRight", "TopLeft" или "TopCenter".
+    // "BottomLeft", "BottomCenter", "TopRight", "TopLeft", "TopCenter" или "Custom".
     public string TrackChangeToastPosition { get; set; } = "BottomRight";
+
+    // Для TrackChangeToastPosition == "Custom": доля свободной области монитора по горизонтали и вертикали (0 — левый/верхний
+    // край, 1 — правый/нижний), чтобы выбранное место не зависело от разрешения и масштаба.
+    public double TrackChangeToastCustomX { get; set; }
+    public double TrackChangeToastCustomY { get; set; }
+
+    // Цвет карточки: "Default" (по теме, как было), "Cover" (цвет текущей обложки на момент показа), "Accent" (акцент приложения)
+    // или "Custom" (TrackChangeToastColorHex). Strength — доля цвета в фоне, 0.2..1.0; текст подбирается по яркости фона
+    // (ToastColorCalculator).
+    public string TrackChangeToastColorMode { get; set; } = "Default";
+    public string TrackChangeToastColorHex { get; set; } = "#0078D4";
+    public double TrackChangeToastColorStrength { get; set; } = 0.7;
 
     // Монитор уведомления: пусто — тот же, что у основного окна (MainWindow.ResolveToastScreen), иначе Screen.DeviceName
     // ("\\.\DISPLAY1"); если монитор пропал, тихо откатываемся на автоматический выбор.

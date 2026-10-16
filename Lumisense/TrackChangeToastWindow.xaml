@@ -11,7 +11,8 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         Topmost="True"
-        WindowStartupLocation="Manual">
+        WindowStartupLocation="Manual"
+        PreviewKeyDown="Window_PreviewKeyDown">
 
     <!-- Уведомление о смене трека (как у Spotify): ShowActivated="False", чтобы не забирать фокус; окно переиспользуется (ShowToast).
          Ресурсы темы заданы здесь, как в MiniPlayerWindow: фон рисуется вручную (не Mica/Acrylic), контраст текста — тоже. -->

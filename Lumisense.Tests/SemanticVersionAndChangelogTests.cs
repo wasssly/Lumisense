@@ -149,6 +149,29 @@ public sealed class ToastPlacementCalculatorTests
         Assert.Equal(300, placement.Width);
         Assert.Equal(72, placement.Height);
     }
+
+    [Theory]
+    [InlineData(0.0, 0.0, 1920, 0)]
+    [InlineData(0.5, 0.5, 3050, 684)]
+    [InlineData(1.0, 1.0, 4180, 1368)]
+    [InlineData(double.NaN, 2.0, 1920, 1368)]
+    public void Calculate_PlacesACustomPositionByFractionsOfTheFreeArea(double customX, double customY, int expectedX, int expectedY)
+    {
+        ToastPlacement placement = ToastPlacementCalculator.Calculate(WorkingArea, 300, 72, 1.0, "Custom", customX, customY);
+
+        Assert.Equal(expectedX, placement.X);
+        Assert.Equal(expectedY, placement.Y);
+    }
+
+    [Fact]
+    public void ToCustomFractions_ReversesCalculateAndClampsOutsideTheWorkingArea()
+    {
+        var center = ToastPlacementCalculator.ToCustomFractions(WorkingArea, 3050, 684, 300, 72);
+        var outside = ToastPlacementCalculator.ToCustomFractions(WorkingArea, 0, 5000, 300, 72);
+
+        Assert.Equal((0.5, 0.5), center);
+        Assert.Equal((0.0, 1.0), outside);
+    }
 }
 
 public sealed class ChangeTypeCatalogTests

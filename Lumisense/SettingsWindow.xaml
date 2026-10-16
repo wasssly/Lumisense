@@ -1891,6 +1891,18 @@
                                     </StackPanel>
                                 </Grid>
 
+                                <!-- См. AppSettings.TrackChangeToastCustomX/Y: положение "Custom" выбирается перетаскиванием карточки (MainWindow.PickToastPosition). -->
+                                <StackPanel Margin="0,0,0,16">
+                                    <ui:Button x:Name="ToastPickPositionButton" Content="Выбрать своё положение…" Appearance="Secondary"
+                                               HorizontalAlignment="Left" Margin="0,0,0,8"
+                                               Click="ToastPickPositionButton_Click" />
+                                    <TextBlock Text="Перетащите карточку в нужное место экрана и подтвердите двойным кликом или клавишей Enter; Esc — отмена."
+                                               Style="{StaticResource SettingsHelperTextStyle}" />
+                                    <TextBlock x:Name="ToastCustomPositionText" Text="Сейчас выбрано своё положение."
+                                               Style="{StaticResource SettingsHelperTextStyle}" Margin="0,6,0,0"
+                                               Visibility="Collapsed" />
+                                </StackPanel>
+
                                 <TextBlock Text="Размер" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <WrapPanel Margin="0,0,0,16">
                                     <RadioButton x:Name="ToastSizeSmallRadio" Content="Маленький"
@@ -1974,6 +1986,56 @@
                                 <ComboBox x:Name="ToastMonitorCombo" SelectionChanged="ToastMonitorCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="220" />
                                 <TextBlock Text="Автоматический выбор использует экран, на котором находится окно плеера."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. AppSettings.TrackChangeToastColorMode/Hex/Strength и ToastColorCalculator. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Цвет карточки" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="ToastColorDefaultRadio" Content="Стандартный (по теме, по умолчанию)"
+                                             GroupName="ToastColorMode" Checked="ToastColorModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ToastColorCoverRadio" Content="От обложки текущего трека"
+                                             GroupName="ToastColorMode" Checked="ToastColorModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ToastColorAccentRadio" Content="Акцентный цвет приложения"
+                                             GroupName="ToastColorMode" Checked="ToastColorModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ToastColorCustomRadio" Content="Свой цвет"
+                                             GroupName="ToastColorMode" Checked="ToastColorModeRadio_Changed" />
+
+                                <StackPanel x:Name="ToastColorCustomPanel" Orientation="Horizontal" Margin="28,10,0,0" Visibility="Collapsed">
+                                    <Border x:Name="ToastColorSwatch" Width="28" Height="28" CornerRadius="6"
+                                            BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                                    <ui:Button x:Name="ToastColorPickButton" Content="Выбрать цвет…" Appearance="Secondary"
+                                               Margin="12,0,0,0" Click="ToastColorPickButton_Click" />
+                                </StackPanel>
+
+                                <StackPanel x:Name="ToastColorStrengthPanel" Margin="0,16,0,0" Visibility="Collapsed">
+                                    <Grid Margin="0,0,0,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="Сила окрашивания" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                        <TextBlock Grid.Column="1" x:Name="ToastColorStrengthValueText" Text="70%"
+                                                   Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                    </Grid>
+                                    <Slider x:Name="ToastColorStrengthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                            Minimum="20" Maximum="100" Value="70" TickFrequency="5" IsSnapToTickEnabled="True"
+                                            ValueChanged="ToastColorStrengthSlider_ValueChanged" />
+                                </StackPanel>
+
+                                <TextBlock Text="Цвет обложки берётся у текущего трека в момент показа уведомления. Цвет текста подбирается автоматически, чтобы он читался на любом фоне."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,12,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Предпросмотр: настоящая карточка с текущими настройками (MainWindow.PreviewTrackChangeToast). -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <ui:Button x:Name="ToastPreviewButton" Content="Показать пример уведомления" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Click="ToastPreviewButton_Click" />
+                                <TextBlock Text="Показывает карточку с текущими настройками на выбранном мониторе, как при смене трека."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
