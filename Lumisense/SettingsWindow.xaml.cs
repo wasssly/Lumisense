@@ -75,9 +75,7 @@ public partial class SettingsWindow : FluentWindow
     // Своя копия MainWindow.ApplyWindowBackdrop: применяется к собственному HWND этого окна.
     private void ApplyWindowBackdrop(AppSettings settings, bool forceReapply = false)
     {
-        var desiredBackdrop = settings.WindowBackdropType == "Acrylic"
-            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
-            : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        var desiredBackdrop = WindowBackdropOptions.ToWpfUi(settings.WindowBackdropType);
 
         // См. MainWindow.ApplyWindowBackdrop: при смене темы WPF-UI может оставить Acrylic в свойстве, но наложить Mica;
         // None → desired заставляет FluentWindow заново применить нужный backdrop.
@@ -135,8 +133,10 @@ public partial class SettingsWindow : FluentWindow
         AccentSwatchesPanel.Visibility = AccentManualRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         RefreshAccentSwatchSelection();
 
-        BackdropAcrylicRadio.IsChecked = _settings.WindowBackdropType == "Acrylic";
-        BackdropMicaRadio.IsChecked = !BackdropAcrylicRadio.IsChecked.GetValueOrDefault();
+        string backdrop = WindowBackdropOptions.Normalize(_settings.WindowBackdropType);
+        BackdropAcrylicRadio.IsChecked = backdrop == WindowBackdropOptions.Acrylic;
+        BackdropMicaAltRadio.IsChecked = backdrop == WindowBackdropOptions.MicaAlt;
+        BackdropMicaRadio.IsChecked = backdrop == WindowBackdropOptions.Mica;
         CoverBaseFromCoverCheckBox.IsChecked = _settings.CoverBaseFromCover;
 
         InterfaceScaleSlider.Value = AccessibilityPreferences.NormalizeScale(_settings.InterfaceScale) * 100;
@@ -1129,7 +1129,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
         Add("Навигация в настройках", "Оформление", "Appearance", NavigationStyleCard, "навигация меню таблетки панель боковая плавающая нижняя разделы названия подписи текст pills sidebar floating navigation labels");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
-        Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica acrylic blur акрил размытие блюр подложка фон backdrop");
+        Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica alt acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация accessibility scale motion");
         Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
@@ -1500,7 +1500,9 @@ public partial class SettingsWindow : FluentWindow
         private void WindowBackdropRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
-        _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? "Acrylic" : "Mica";
+        _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? WindowBackdropOptions.Acrylic
+            : BackdropMicaAltRadio.IsChecked == true ? WindowBackdropOptions.MicaAlt
+            : WindowBackdropOptions.Mica;
         _owner.ApplyWindowBackdrop();
         ApplyWindowBackdrop(_settings); // то же самое — и у этого окна настроек тоже
     }

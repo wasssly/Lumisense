@@ -1347,9 +1347,11 @@
                                 <TextBlock Text="Основа окна" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="BackdropMicaAltRadio" Content="Mica Alt (более плотная и контрастная основа, Windows 11 22H2+)"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
                                 <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" />
-                                <TextBlock Text="Mica и Acrylic применяются к главному окну, окну настроек и статистике."
+                                <TextBlock Text="Mica, Mica Alt и Acrylic применяются к главному окну, окну настроек и статистике."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="CoverBaseFromCoverCheckBox" Content="Цвет основы от текущей обложки"
                                           Checked="CoverBaseFromCoverCheckBox_Changed"

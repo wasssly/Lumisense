@@ -354,9 +354,7 @@ public partial class MainWindow
     // (SettingsWindow.WindowBackdropRadio_Changed) на открытом окне.
     public void ApplyWindowBackdrop(bool forceReapply = false)
     {
-        var desiredBackdrop = _settings.WindowBackdropType == "Acrylic"
-            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
-            : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        var desiredBackdrop = WindowBackdropOptions.ToWpfUi(_settings.WindowBackdropType);
 
         // DependencyProperty не вызывает callback при присваивании того же значения, а после ApplicationThemeManager.Apply WPF-UI 4
         // может вернуть Mica при выбранном Acrylic; переход через None вызывает OnBackdropTypeChanged и накладывает нужный backdrop.

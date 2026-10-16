@@ -36,9 +36,7 @@ public partial class StatisticsWindow : FluentWindow
     // своя копия, потому что применяется к собственному HWND этого окна.
     private void ApplyWindowBackdrop()
     {
-        WindowBackdropType = _settings.WindowBackdropType == "Acrylic"
-            ? Wpf.Ui.Controls.WindowBackdropType.Acrylic
-            : Wpf.Ui.Controls.WindowBackdropType.Mica;
+        WindowBackdropType = WindowBackdropOptions.ToWpfUi(_settings.WindowBackdropType);
     }
 
     protected override void OnSourceInitialized(EventArgs e)
