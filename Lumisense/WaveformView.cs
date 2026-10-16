@@ -55,6 +55,18 @@ public sealed class WaveformView : FrameworkElement
         set => SetValue(UnplayedBrushProperty, value);
     }
 
+    public static readonly DependencyProperty HoverRatioProperty = DependencyProperty.Register(
+        nameof(HoverRatio), typeof(double?), typeof(WaveformView),
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // 0..1 — где сейчас курсор над полосой; null — курсора нет. Участок от текущей позиции до курсора подсвечивается
+    // бледным цветом проигранной части, как при наведении в SoundCloud.
+    public double? HoverRatio
+    {
+        get => (double?)GetValue(HoverRatioProperty);
+        set => SetValue(HoverRatioProperty, value);
+    }
+
     // Доля ширины деления под зазор между барами; 0.35 подобрано на глаз, чтобы бары не стали тонкими палочками.
     private const double GapRatio = 0.35;
 
@@ -79,6 +91,15 @@ public sealed class WaveformView : FrameworkElement
         }
 
         double progressX = width * Math.Clamp(Progress, 0.0, 1.0);
+        double? hoverX = HoverRatio is { } hoverRatio ? width * Math.Clamp(hoverRatio, 0.0, 1.0) : null;
+
+        // Клон, а не PlayedBrush.Opacity: PlayedBrush принадлежит MainWindow и менять его нельзя.
+        Brush? hoverBrush = null;
+        if (hoverX is not null)
+        {
+            hoverBrush = PlayedBrush.CloneCurrentValue();
+            hoverBrush.Opacity = 0.45;
+        }
 
         double bucketWidth = width / peaks.Length;
         double barWidth = Math.Max(1.0, bucketWidth * (1 - GapRatio));
@@ -91,7 +112,10 @@ public sealed class WaveformView : FrameworkElement
             double y = (height - barHeight) / 2;
 
             // Бар на границе проиграно/нет красим по центру, а не по левому краю, чтобы переход выглядел ровно.
-            Brush brush = (x + barWidth / 2) <= progressX ? PlayedBrush : UnplayedBrush;
+            double center = x + barWidth / 2;
+            Brush brush = center <= progressX ? PlayedBrush
+                : hoverBrush is not null && center <= hoverX ? hoverBrush
+                : UnplayedBrush;
 
             dc.DrawRoundedRectangle(brush, null, new Rect(x, y, barWidth, barHeight), cornerRadius, cornerRadius);
         }

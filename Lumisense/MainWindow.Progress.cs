@@ -56,9 +56,49 @@ public partial class MainWindow
 
     private void ProgressOverlay_MouseMove(object sender, System.Windows.Input.MouseEventArgs e)
     {
-        if (!_isDraggingProgressOverlay) return;
         var overlay = (FrameworkElement)sender;
-        UpdateSliderValueFromMouse(ProgressSlider, e.GetPosition(overlay).X, overlay.ActualWidth);
+        double x = e.GetPosition(overlay).X;
+        UpdateProgressHover(overlay, x);
+
+        if (!_isDraggingProgressOverlay) return;
+        UpdateSliderValueFromMouse(ProgressSlider, x, overlay.ActualWidth);
+    }
+
+    private void ProgressOverlay_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e) => HideProgressHover();
+
+    private System.Windows.Controls.ToolTip? _progressHoverTip;
+
+    // Как в SoundCloud: над Waveform курсор показывает время в этой точке и подсвечивает участок до неё. Обычная полоса и
+    // Material остаются как были.
+    private void UpdateProgressHover(FrameworkElement overlay, double x)
+    {
+        if (_audioFile == null || ProgressWaveform.Visibility != Visibility.Visible || overlay.ActualWidth <= 0)
+        {
+            HideProgressHover();
+            return;
+        }
+
+        double ratio = Math.Clamp(x / overlay.ActualWidth, 0.0, 1.0);
+        var time = TimeSpan.FromSeconds(_audioFile.TotalTime.TotalSeconds * ratio);
+        ProgressWaveform.HoverRatio = ratio;
+
+        _progressHoverTip ??= new System.Windows.Controls.ToolTip
+        {
+            Placement = PlacementMode.Relative,
+            IsHitTestVisible = false,
+            Focusable = false
+        };
+        _progressHoverTip.PlacementTarget = overlay;
+        _progressHoverTip.Content = time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"mm\:ss");
+        _progressHoverTip.HorizontalOffset = x + 12;
+        _progressHoverTip.VerticalOffset = -34;
+        _progressHoverTip.IsOpen = true;
+    }
+
+    private void HideProgressHover()
+    {
+        ProgressWaveform.HoverRatio = null;
+        if (_progressHoverTip != null) _progressHoverTip.IsOpen = false;
     }
 
     private void ProgressOverlay_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)

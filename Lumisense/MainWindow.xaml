@@ -826,6 +826,7 @@
                 <Border Background="Transparent" Height="24"
                         MouseLeftButtonDown="ProgressOverlay_MouseLeftButtonDown"
                         MouseMove="ProgressOverlay_MouseMove"
+                        MouseLeave="ProgressOverlay_MouseLeave"
                         MouseLeftButtonUp="ProgressOverlay_MouseLeftButtonUp"
                         MouseWheel="ProgressOverlay_MouseWheel" />
             </Grid>
