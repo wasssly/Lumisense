@@ -1055,7 +1055,9 @@
                                             BorderThickness="2" BorderBrush="Transparent"
                                             MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
                                         <StackPanel>
-                                            <Image Source="/Icons/app/lumisense.png" Width="44" Height="44"
+                                            <Image Source="/Icons/app/lumisense.png" Width="44" Height="44" Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   SnapsToDevicePixels="True" UseLayoutRounding="True"
                                                    Margin="0,0,0,12" />
                                             <TextBlock Text="Классический" HorizontalAlignment="Center" FontSize="13" />
                                             <TextBlock Text="Оригинальный значок Lumisense" HorizontalAlignment="Center"
@@ -1069,7 +1071,9 @@
                                             BorderThickness="2" BorderBrush="Transparent"
                                             MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
                                         <StackPanel>
-                                            <Image Source="/Icons/app/lumisense-aurora.png" Width="44" Height="44"
+                                            <Image Source="/Icons/app/lumisense-aurora.png" Width="44" Height="44" Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   SnapsToDevicePixels="True" UseLayoutRounding="True"
                                                    Margin="0,0,0,12" />
                                             <TextBlock Text="Aurora" HorizontalAlignment="Center" FontSize="13" />
                                             <TextBlock Text="Стеклянный, синий" HorizontalAlignment="Center"
@@ -1083,7 +1087,9 @@
                                             BorderThickness="2" BorderBrush="Transparent"
                                             MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
                                         <StackPanel>
-                                            <Image Source="/Icons/app/lumisense-lavender.png" Width="44" Height="44"
+                                            <Image Source="/Icons/app/lumisense-lavender.png" Width="44" Height="44" Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   SnapsToDevicePixels="True" UseLayoutRounding="True"
                                                    Margin="0,0,0,12" />
                                             <TextBlock Text="Lavender" HorizontalAlignment="Center" FontSize="13" />
                                             <TextBlock Text="Плоский, сиреневый" HorizontalAlignment="Center"
