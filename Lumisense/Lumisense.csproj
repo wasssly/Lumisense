@@ -41,7 +41,7 @@
     <PackageReference Include="WPF-UI.Tray" Version="4.3.0" />
     <!-- NAudio 3 требует net9. Локальный SoundTouchSampleProvider использует public API
          SoundTouch.Net напрямую, потому что SoundTouch.Net.NAudioSupport.Core собран для ABI NAudio 2.x. -->
-    <PackageReference Include="NAudio" Version="3.1.0" />
+    <PackageReference Include="NAudio" Version="3.2.0" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
     <PackageReference Include="z440.atl.core" Version="7.18.0" />
     <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.2.0" />
