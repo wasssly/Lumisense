@@ -22,6 +22,9 @@ public sealed class ProgressBarAppearance
     public double WaveSpeed { get; set; } = 1.0;
     public bool WaveAlways { get; set; }
 
+    // Ручка на волне Material: вертикальная пилюля на границе проигранной части (размер — ThumbSize).
+    public bool WaveHandle { get; set; }
+
     // Waveform: доля деления под зазор между столбиками и прозрачность ещё не проигранной части.
     public double WaveformGap { get; set; } = 0.35;
     public double WaveformUnplayedOpacity { get; set; } = 1.0;

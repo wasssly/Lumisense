@@ -8,8 +8,8 @@ using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
-// Карточка «Вид полосы воспроизведения» (AppSettings.ProgressAppearance*, ProgressBarAppearance). Редактирует профиль общий
-// или одного из окон; предпросмотр рисуют настоящие WaveformView, MaterialProgressView и MaterialSliderVisual.
+// Карточка «Полоса воспроизведения»: вид полосы (стиль у каждого окна свой или общий) и её внешний вид (ProgressBarAppearance).
+// Правит профиль общий или одного из окон; предпросмотр рисуют настоящие контролы выбранного вида и закрепляется вверху карточки.
 public partial class SettingsWindow
 {
     private ProgressSurface _progressEditSurface = ProgressSurface.Main;
@@ -50,7 +50,6 @@ public partial class SettingsWindow
             ProgressSurfaceNowPlayingRadio.IsChecked = _progressEditSurface == ProgressSurface.NowPlaying;
             ProgressSurfaceMiniRadio.IsChecked = _progressEditSurface == ProgressSurface.Mini;
             ProgressSurfacePanel.Visibility = perWindow ? Visibility.Visible : Visibility.Collapsed;
-            ProgressPreviewWaveform.Peaks = CreateSamplePeaks();
             ProgressPreviewMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
             LoadProgressAppearanceControls();
         }
@@ -64,13 +63,33 @@ public partial class SettingsWindow
             _progressSaveTimer.Stop();
             FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         };
+
+        // Предпросмотр следует за прокруткой, пока карточка на экране (UpdateProgressPreviewSticky).
+        PART_ContentScroll.ScrollChanged += (_, _) => UpdateProgressPreviewSticky();
+        ProgressAppearanceCard.SizeChanged += (_, _) => UpdateProgressPreviewSticky();
+        ProgressPreviewPanel.SizeChanged += (_, _) => UpdateProgressPreviewSticky();
+        ProgressAppearanceCard.IsVisibleChanged += (_, _) => UpdateProgressPreviewSticky();
+
         UpdateProgressPreview();
     }
 
-    // Показывает в контролах значения редактируемого профиля (при смене окна или сбросе).
+    // Показывает в контролах значения редактируемого окна (при смене окна, вида или сбросе) и скрывает то, что к выбранному
+    // виду полосы не относится: так нет настроек, которые ничего не меняют.
     private void LoadProgressAppearanceControls()
     {
         ProgressBarAppearance appearance = EditedProgressAppearance;
+        ProgressSurface surface = EditedProgressSurface;
+        string style = ProgressStyleResolver.Effective(_settings, surface);
+        bool perWindow = _settings.ProgressAppearanceScope == "PerWindow";
+        bool followMain = surface == ProgressSurface.NowPlaying && perWindow && string.IsNullOrEmpty(_settings.NowPlayingProgressStyle);
+
+        ProgressStyleFollowMainRadio.Visibility = surface == ProgressSurface.NowPlaying && perWindow ? Visibility.Visible : Visibility.Collapsed;
+        ProgressStyleWaveformRadio.Visibility = ProgressStyleResolver.SupportsWaveform(surface) ? Visibility.Visible : Visibility.Collapsed;
+        ProgressStyleFollowMainRadio.IsChecked = followMain;
+        ProgressStyleSliderRadio.IsChecked = !followMain && style == "Slider";
+        ProgressStyleWaveformRadio.IsChecked = !followMain && style == "Waveform";
+        ProgressStyleMaterialRadio.IsChecked = !followMain && style == "Material";
+        ProgressStyleMaterialSliderRadio.IsChecked = !followMain && style == "MaterialSlider";
 
         ProgressColorCoverRadio.IsChecked = appearance.ColorMode == "Cover";
         ProgressColorCustomRadio.IsChecked = appearance.ColorMode == "Custom";
@@ -79,6 +98,7 @@ public partial class SettingsWindow
         ProgressShapeFlatRadio.IsChecked = appearance.IsFlat;
         ProgressShapeRoundRadio.IsChecked = !appearance.IsFlat;
         ProgressWaveAlwaysCheckBox.IsChecked = appearance.WaveAlways;
+        ProgressWaveHandleCheckBox.IsChecked = appearance.WaveHandle;
         ProgressHoverTimeCheckBox.IsChecked = appearance.HoverTime;
         ProgressHoverHighlightCheckBox.IsChecked = appearance.HoverHighlight;
 
@@ -87,6 +107,26 @@ public partial class SettingsWindow
             binding.Slider.Value = Math.Clamp(Math.Round(binding.Get(appearance) * 100), binding.Slider.Minimum, binding.Slider.Maximum);
             binding.Text.Text = $"{(int)Math.Round(binding.Slider.Value)}%";
         }
+
+        // Контур вокруг обложки мини-плеера тоже может быть волной, поэтому у мини-плеера волновые настройки показываются, пока
+        // контур включён, и подсказка прямо говорит, почему на контуре волны не видно (он выключен или не «Material»).
+        bool ringShown = surface == ProgressSurface.Mini && _settings.MiniPlayerShowArtworkProgress;
+        bool ringWavy = ringShown && _settings.MiniPlayerArtworkProgressStyle == "Material";
+        ProgressWaveGroup.Visibility = style == "Material" || ringShown ? Visibility.Visible : Visibility.Collapsed;
+        ProgressRingNote.Visibility = ringShown ? Visibility.Visible : Visibility.Collapsed;
+        ProgressRingNote.Text = LocalizationService.Translate(ringWavy
+            ? "Контур вокруг обложки: его вид и толщина выбираются на вкладке «Мини-плеер», а волна и цвет берутся отсюда."
+            : "Контур вокруг обложки сейчас не волнистый (вид «Обычный» или «Material Slider»), поэтому волну на нём не видно.");
+        ProgressRingMakeWavyButton.Visibility = ringShown && !ringWavy ? Visibility.Visible : Visibility.Collapsed;
+        ProgressWaveformGroup.Visibility = style == "Waveform" ? Visibility.Visible : Visibility.Collapsed;
+
+        // Waveform рисует только главное окно: если он выбран там, а у этого окна наследуется, объясняем, что будет обычная полоса.
+        bool inheritsWaveform = surface != ProgressSurface.Main
+            && ProgressStyleResolver.Canonical(_settings.ProgressBarStyle) == "Waveform"
+            && (!perWindow || followMain);
+        ProgressStyleNote.Text = LocalizationService.Translate(
+            "Waveform есть только в главном окне: в Now Playing и мини-плеере вместо него показывается обычная полоса.");
+        ProgressStyleNote.Visibility = inheritsWaveform ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // Применяет профиль к настоящим окнам и предпросмотру; запись в файл откладывается, чтобы не писать на каждый шаг ползунка.
@@ -95,22 +135,53 @@ public partial class SettingsWindow
         UpdateProgressPreview();
         _owner.ApplyProgressAppearance();
 
+        _progressSaveTimer.Stop();
         if (saveNow)
-        {
-            _progressSaveTimer.Stop();
             FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-        }
         else
-        {
-            _progressSaveTimer.Stop();
             _progressSaveTimer.Start();
-        }
+    }
+
+    // Вызывается главным окном при смене трека, обложки, акцента и формы звука: предпросмотр должен показывать то же, что окна.
+    public void RefreshProgressPreview()
+    {
+        if (_progressEditorLoading) return;
+
+        UpdateProgressPreview();
     }
 
     private void UpdateProgressPreview()
     {
         ProgressBarAppearance appearance = EditedProgressAppearance;
-        SolidColorBrush brush = ProgressAppearanceApplier.ToBrush(_owner.GetProgressBarColor(EditedProgressSurface));
+        ProgressSurface surface = EditedProgressSurface;
+        string style = ProgressStyleResolver.Effective(_settings, surface);
+        SolidColorBrush brush = ProgressAppearanceApplier.ToBrush(_owner.GetProgressBarColor(surface));
+
+        // Показываем только вид, который у выбранного окна на самом деле стоит, и в ширину настоящей полосы этого окна.
+        ProgressPreviewHost.Width = surface switch
+        {
+            ProgressSurface.NowPlaying => 400.0,
+            ProgressSurface.Mini => 200.0,
+            _ => 390.0
+        };
+        ProgressPreviewWaveformHost.Visibility = style == "Waveform" ? Visibility.Visible : Visibility.Collapsed;
+        ProgressPreviewMaterial.Visibility = style == "Material" ? Visibility.Visible : Visibility.Collapsed;
+        ProgressPreviewMaterialSlider.Visibility = style == "MaterialSlider" ? Visibility.Visible : Visibility.Collapsed;
+        ProgressPreviewPlain.Visibility = style == "Slider" ? Visibility.Visible : Visibility.Collapsed;
+
+        string caption = LocalizationService.Translate("Предпросмотр");
+        if (_settings.ProgressAppearanceScope == "PerWindow")
+        {
+            string window = surface switch
+            {
+                ProgressSurface.NowPlaying => "Now Playing",
+                ProgressSurface.Mini => LocalizationService.Translate("Мини-плеер"),
+                _ => LocalizationService.Translate("Главное окно")
+            };
+            caption = $"{caption} — {window}";
+        }
+
+        ProgressPreviewCaption.Text = caption;
 
         ProgressAppearanceApplier.Apply(ProgressPreviewWaveform, appearance);
         ProgressAppearanceApplier.Apply(ProgressPreviewMaterial, appearance);
@@ -119,6 +190,9 @@ public partial class SettingsWindow
         ProgressPreviewMaterial.PlayedBrush = brush;
         ProgressPreviewMaterialSlider.ActiveBrush = brush;
         ProgressPreviewFill.Background = brush;
+
+        // Форма звука текущего трека, если она уже посчитана; иначе образец с тем же числом столбиков, что у настоящей.
+        ProgressPreviewWaveform.Peaks = _owner.GetCurrentWaveformPeaks() ?? _samplePeaks ?? (_samplePeaks = CreateSamplePeaks());
 
         double height = 4.0 * appearance.TrackThickness;
         var radius = new CornerRadius(appearance.IsFlat ? 0.0 : height / 2);
@@ -130,16 +204,54 @@ public partial class SettingsWindow
         System.Windows.Media.Color swatch = ToastColorCalculator.TryParse(appearance.ColorHex)
             ?? System.Windows.Media.Color.FromRgb(0x00, 0x78, 0xD4);
         ProgressColorSwatch.Background = new SolidColorBrush(swatch);
+
+        UpdateProgressPreviewSticky();
     }
 
-    // Образец формы звука для предпросмотра: детерминированный, чтобы вид не прыгал между открытиями окна.
+    // Предпросмотр остаётся на экране, пока виден хотя бы его кусок карточки: сдвигается вниз вместе с прокруткой, но не дальше
+    // нижнего края карточки (за её пределы настройки уже другие, предпросмотр им не нужен).
+    private void UpdateProgressPreviewSticky()
+    {
+        if (!ProgressAppearanceCard.IsVisible || !ProgressPreviewPanel.IsVisible || ProgressPreviewPanel.ActualHeight <= 0)
+        {
+            ProgressPreviewTranslate.Y = 0;
+            return;
+        }
+
+        try
+        {
+            Point panelTop = ProgressPreviewPanel.TransformToAncestor(PART_ContentScroll).Transform(new Point(0, 0));
+            Point cardTop = ProgressAppearanceCard.TransformToAncestor(PART_ContentScroll).Transform(new Point(0, 0));
+
+            const double topGap = 8.0;
+            const double bottomPadding = 16.0;
+            double naturalTop = panelTop.Y - ProgressPreviewTranslate.Y;
+            double cardBottom = cardTop.Y + ProgressAppearanceCard.ActualHeight;
+            double maxOffset = cardBottom - bottomPadding - (naturalTop + ProgressPreviewPanel.ActualHeight);
+            double wanted = topGap - naturalTop;
+
+            ProgressPreviewTranslate.Y = Math.Max(0.0, Math.Min(wanted, maxOffset));
+        }
+        catch (InvalidOperationException)
+        {
+            ProgressPreviewTranslate.Y = 0;
+        }
+    }
+
+    private float[]? _samplePeaks;
+
+    // Образец формы звука: 300 столбиков, как у WaveformGenerator.BucketCount, с «живыми» перепадами громкости; детерминированный,
+    // чтобы вид не прыгал между открытиями окна.
     private static float[] CreateSamplePeaks()
     {
-        var peaks = new float[90];
+        var random = new Random(42);
+        var peaks = new float[WaveformGenerator.BucketCount];
+        double level = 0.5;
         for (int i = 0; i < peaks.Length; i++)
         {
-            double envelope = 0.35 + 0.45 * Math.Abs(Math.Sin(i * 0.21)) + 0.15 * Math.Abs(Math.Sin(i * 0.77));
-            peaks[i] = (float)Math.Clamp(envelope, 0.12, 1.0);
+            level = level * 0.6 + random.NextDouble() * 0.4;
+            double section = 0.65 + 0.35 * Math.Sin(i * 0.045);
+            peaks[i] = (float)Math.Clamp(0.12 + level * section * 0.95, 0.1, 1.0);
         }
 
         return peaks;
@@ -160,22 +272,8 @@ public partial class SettingsWindow
     private static bool IsDefaultAppearance(ProgressBarAppearance appearance) =>
         JsonSerializer.Serialize(appearance) == JsonSerializer.Serialize(new ProgressBarAppearance());
 
-    private void ProgressScopeRadio_Changed(object sender, RoutedEventArgs e)
+    private void ReloadProgressControls()
     {
-        if (_progressEditorLoading) return;
-
-        bool perWindow = ProgressScopePerWindowRadio.IsChecked == true;
-        _settings.ProgressAppearanceScope = perWindow ? "PerWindow" : "Shared";
-        if (perWindow)
-        {
-            // Чтобы переход к отдельным профилям ничего не менял на глаз, окна без своих настроек начинают с общего вида.
-            if (IsDefaultAppearance(_settings.ProgressAppearanceNowPlaying))
-                _settings.ProgressAppearanceNowPlaying = _settings.ProgressAppearanceMain.Clone();
-            if (IsDefaultAppearance(_settings.ProgressAppearanceMini))
-                _settings.ProgressAppearanceMini = _settings.ProgressAppearanceMain.Clone();
-        }
-
-        ProgressSurfacePanel.Visibility = perWindow ? Visibility.Visible : Visibility.Collapsed;
         _progressEditorLoading = true;
         try
         {
@@ -185,7 +283,32 @@ public partial class SettingsWindow
         {
             _progressEditorLoading = false;
         }
+    }
 
+    private void ApplyProgressStylesToWindows()
+    {
+        _owner.ApplyProgressBarStyle();
+        _owner.ApplyMiniPlayerProgressBarVisibilityLive();
+    }
+
+    private void ProgressScopeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_progressEditorLoading) return;
+
+        bool perWindow = ProgressScopePerWindowRadio.IsChecked == true;
+        _settings.ProgressAppearanceScope = perWindow ? "PerWindow" : "Shared";
+        if (perWindow)
+        {
+            // Чтобы переход к отдельным настройкам ничего не менял на глаз, окна без своих настроек начинают с общего вида.
+            if (IsDefaultAppearance(_settings.ProgressAppearanceNowPlaying))
+                _settings.ProgressAppearanceNowPlaying = _settings.ProgressAppearanceMain.Clone();
+            if (IsDefaultAppearance(_settings.ProgressAppearanceMini))
+                _settings.ProgressAppearanceMini = _settings.ProgressAppearanceMain.Clone();
+        }
+
+        ProgressSurfacePanel.Visibility = perWindow ? Visibility.Visible : Visibility.Collapsed;
+        ReloadProgressControls();
+        ApplyProgressStylesToWindows();
         CommitProgressAppearance(saveNow: true);
     }
 
@@ -196,17 +319,24 @@ public partial class SettingsWindow
         _progressEditSurface = ProgressSurfaceNowPlayingRadio.IsChecked == true ? ProgressSurface.NowPlaying
             : ProgressSurfaceMiniRadio.IsChecked == true ? ProgressSurface.Mini
             : ProgressSurface.Main;
-        _progressEditorLoading = true;
-        try
-        {
-            LoadProgressAppearanceControls();
-        }
-        finally
-        {
-            _progressEditorLoading = false;
-        }
-
+        ReloadProgressControls();
         UpdateProgressPreview();
+    }
+
+    private void ProgressStyleRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_progressEditorLoading) return;
+
+        bool follow = ProgressStyleFollowMainRadio.IsChecked == true;
+        string style = ProgressStyleWaveformRadio.IsChecked == true ? "Waveform"
+            : ProgressStyleMaterialRadio.IsChecked == true ? "Material"
+            : ProgressStyleMaterialSliderRadio.IsChecked == true ? "MaterialSlider"
+            : "Slider";
+        ProgressStyleResolver.Set(_settings, EditedProgressSurface, style, follow);
+
+        ReloadProgressControls();
+        ApplyProgressStylesToWindows();
+        CommitProgressAppearance(saveNow: true);
     }
 
     private void ProgressColorRadio_Changed(object sender, RoutedEventArgs e)
@@ -254,6 +384,7 @@ public partial class SettingsWindow
 
         ProgressBarAppearance appearance = EditedProgressAppearance;
         appearance.WaveAlways = ProgressWaveAlwaysCheckBox.IsChecked == true;
+        appearance.WaveHandle = ProgressWaveHandleCheckBox.IsChecked == true;
         appearance.HoverTime = ProgressHoverTimeCheckBox.IsChecked == true;
         appearance.HoverHighlight = ProgressHoverHighlightCheckBox.IsChecked == true;
         CommitProgressAppearance(saveNow: true);
@@ -276,19 +407,19 @@ public partial class SettingsWindow
         CommitProgressAppearance();
     }
 
+    // Включает контур в виде «Material» через те же переключатели, что на вкладке «Мини-плеер»: их обработчики применяют вид к окну.
+    private void ProgressRingMakeWavyButton_Click(object sender, RoutedEventArgs e)
+    {
+        MiniShowArtworkProgressCheckBox.IsChecked = true;
+        MiniArtworkProgressStyleMaterialRadio.IsChecked = true;
+        ReloadProgressControls();
+        UpdateProgressPreview();
+    }
+
     private void ProgressAppearanceResetButton_Click(object sender, RoutedEventArgs e)
     {
         SetEditedProgressAppearance(new ProgressBarAppearance());
-        _progressEditorLoading = true;
-        try
-        {
-            LoadProgressAppearanceControls();
-        }
-        finally
-        {
-            _progressEditorLoading = false;
-        }
-
+        ReloadProgressControls();
         CommitProgressAppearance(saveNow: true);
     }
 

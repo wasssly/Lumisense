@@ -234,13 +234,6 @@ public partial class SettingsWindow : FluentWindow
         InitializeMiniPlayerContextMenuActionCheckBoxes();
         ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
         SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
-        ProgressBarWaveformRadio.IsChecked = _settings.ProgressBarStyle == "Waveform";
-        ProgressBarMaterialRadio.IsChecked = _settings.ProgressBarStyle == "Material";
-        ProgressBarMaterialSliderRadio.IsChecked = _settings.ProgressBarStyle == "MaterialSlider";
-        ProgressBarSliderRadio.IsChecked = _settings.ProgressBarStyle is not ("Waveform" or "Material" or "MaterialSlider");
-        MiniProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerProgressStyle == "Material";
-        MiniProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerProgressStyle == "MaterialSlider";
-        MiniProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerProgressStyle is not ("Material" or "MaterialSlider");
         MiniArtworkProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "Material";
         MiniArtworkProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "MaterialSlider";
         MiniArtworkProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle is not ("Material" or "MaterialSlider");
@@ -1188,11 +1181,10 @@ public partial class SettingsWindow : FluentWindow
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
         Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output wasapi shared");
-        Add("Полоса воспроизведения", "Воспроизведение", "Playback", ProgressBarWaveformRadio, "waveform форма звука soundcloud полоса прогресс seek слайдер");
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
-        Add("Вид полосы воспроизведения", "Воспроизведение", "Playback", ProgressScopeSharedRadio, "полоса воспроизведения цвет толщина ручка форма концов волна waveform material предпросмотр progress bar color thickness wave thumb");
+        Add("Полоса воспроизведения", "Воспроизведение", "Playback", ProgressStyleWaveformRadio, "полоса воспроизведения прогресс seek слайдер waveform форма звука soundcloud material волна цвет толщина ручка форма концов предпросмотр для каждого окна progress bar color thickness wave thumb per window");
         Add("Режим текста песни", "Оформление", "Appearance", LyricsDisplayPlainRadio, "текст песни синхронный обычный lrc txt переключить режим synced plain lyrics");
         Add("Показать пример уведомления", "Уведомления", "Notifications", ToastPreviewButton, "уведомление пример предпросмотр показать toast preview");
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
@@ -2610,17 +2602,6 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyMiniPlayerProgressBarVisibilityLive();
     }
 
-    // См. AppSettings.MiniPlayerProgressStyle; ApplyProgressBarVisibility в мини-плеере заодно применяет и вид.
-    private void MiniProgressStyleRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.MiniPlayerProgressStyle = MiniProgressStyleMaterialRadio.IsChecked == true ? "Material"
-            : MiniProgressStyleMaterialSliderRadio.IsChecked == true ? "MaterialSlider"
-            : "Default";
-        _owner.ApplyMiniPlayerProgressBarVisibilityLive();
-    }
-
     // См. AppSettings.MiniPlayerArtworkProgressStyle.
     private void MiniArtworkProgressStyleRadio_Changed(object sender, RoutedEventArgs e)
     {
@@ -2630,6 +2611,7 @@ public partial class SettingsWindow : FluentWindow
             : MiniArtworkProgressStyleMaterialSliderRadio.IsChecked == true ? "MaterialSlider"
             : "Default";
         _owner.ApplyMiniPlayerArtworkProgressVisibilityLive();
+        ReloadProgressControls();
     }
 
     private void MiniShowArtworkProgressCheckBox_Changed(object sender, RoutedEventArgs e)
@@ -2638,6 +2620,7 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.MiniPlayerShowArtworkProgress = MiniShowArtworkProgressCheckBox.IsChecked == true;
         _owner.ApplyMiniPlayerArtworkProgressVisibilityLive();
+        ReloadProgressControls();
     }
 
     private void MiniArtworkProgressThicknessSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -3047,19 +3030,6 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
         _owner.SetSaveQueueBetweenRestarts(SaveQueueBetweenRestartsCheckBox.IsChecked == true);
-    }
-
-    // См. AppSettings.ProgressBarStyle / WaveformView. MainWindow.ApplyProgressBarStyle сама
-    // разбирается, нужно ли при этом (пере)считать форму волны для уже загруженного трека.
-    private void ProgressBarStyleRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.ProgressBarStyle = ProgressBarWaveformRadio.IsChecked == true ? "Waveform"
-            : ProgressBarMaterialRadio.IsChecked == true ? "Material"
-            : ProgressBarMaterialSliderRadio.IsChecked == true ? "MaterialSlider"
-            : "Slider";
-        _owner.ApplyProgressBarStyle();
     }
 
     // См. AppSettings.SliderStyle: переключение применяется ко всем окнам сразу через SliderAppearance.

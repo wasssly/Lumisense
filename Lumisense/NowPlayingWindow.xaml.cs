@@ -93,7 +93,7 @@ public partial class NowPlayingWindow : Window
     // Вид полосы (AppSettings.ProgressBarStyle): Material и MaterialSlider рисуют свои элементы, всё остальное (включая Waveform) — обычная полоса.
     public void ApplyProgressBarStyle()
     {
-        string style = _owner.Settings.ProgressBarStyle;
+        string style = ProgressStyleResolver.Effective(_owner.Settings, ProgressSurface.NowPlaying);
         bool wave = style == "Material";
         bool slider = style == "MaterialSlider";
 

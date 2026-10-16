@@ -1740,32 +1740,16 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.ProgressBarStyle / WaveformView / WaveformGenerator. -->
-                        <Border Style="{StaticResource SettingsCardStyle}">
+                        <!-- Полоса воспроизведения: стиль (AppSettings.ProgressBarStyle, NowPlayingProgressStyle, MiniPlayerProgressStyle через
+                             ProgressStyleResolver) и вид (ProgressBarAppearance) — одна карточка для всех окон. Предпросмотр рисуют настоящие
+                             контролы и закрепляют вверху, пока карточка на экране (SettingsWindow.ProgressAppearance.cs). -->
+                        <Border x:Name="ProgressAppearanceCard" Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Полоса воспроизведения" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <RadioButton x:Name="ProgressBarSliderRadio" Content="Обычная (по умолчанию)"
-                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="ProgressBarWaveformRadio" Content="Waveform (форма звука, как в SoundCloud)"
-                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="ProgressBarMaterialRadio" Content="Material (волнистая линия, как в Android)"
-                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="ProgressBarMaterialSliderRadio" Content="Material Slider (ползунок с зазором, как в Android)"
-                                             GroupName="ProgressBarStyle" Checked="ProgressBarStyleRadio_Changed" Margin="0,0,0,12" />
-                                <TextBlock Text="Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
-                            </StackPanel>
-                        </Border>
 
-                        <!-- Вид полосы воспроизведения (AppSettings.ProgressAppearance*, ProgressBarAppearance): профиль на все окна или свой
-                             у главного окна, Now Playing и мини-плеера; предпросмотр рисуют настоящие контролы. -->
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Вид полосы воспроизведения" Style="{StaticResource SettingsSectionTitleStyle}" />
-
-                                <RadioButton x:Name="ProgressScopeSharedRadio" Content="Одинаковый для всех окон (по умолчанию)"
+                                <RadioButton x:Name="ProgressScopeSharedRadio" Content="Одинаковая для всех окон"
                                              GroupName="ProgressScope" Checked="ProgressScopeRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="ProgressScopePerWindowRadio" Content="Свой для каждого окна"
+                                <RadioButton x:Name="ProgressScopePerWindowRadio" Content="Своя для каждого окна (по умолчанию)"
                                              GroupName="ProgressScope" Checked="ProgressScopeRadio_Changed" />
                                 <WrapPanel x:Name="ProgressSurfacePanel" Margin="28,10,0,0" Visibility="Collapsed">
                                     <RadioButton x:Name="ProgressSurfaceMainRadio" Content="Главное окно" GroupName="ProgressSurface"
@@ -1776,31 +1760,51 @@
                                                  Checked="ProgressSurfaceRadio_Changed" Margin="0" />
                                 </WrapPanel>
 
-                                <TextBlock Text="Предпросмотр" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,18,0,8" />
-                                <Border Padding="16,12" CornerRadius="10" Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                <TextBlock Text="Вид полосы" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,18,0,8" />
+                                <RadioButton x:Name="ProgressStyleFollowMainRadio" Content="Как в главном окне (по умолчанию)"
+                                             GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" Margin="0,0,0,12" Visibility="Collapsed" />
+                                <RadioButton x:Name="ProgressStyleSliderRadio" Content="Обычная (по умолчанию)"
+                                             GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ProgressStyleWaveformRadio" Content="Waveform (форма звука, как в SoundCloud)"
+                                             GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ProgressStyleMaterialRadio" Content="Material (волнистая линия, как в Android)"
+                                             GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ProgressStyleMaterialSliderRadio" Content="Material Slider (ползунок с зазором, как в Android)"
+                                             GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" />
+                                <TextBlock Text="Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock x:Name="ProgressStyleNote" Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0"
+                                           TextWrapping="Wrap" Visibility="Collapsed" />
+
+                                <!-- Закреплённый предпросмотр: Panel.ZIndex выше соседей, чтобы настройки при прокрутке уходили под него. -->
+                                <Border x:Name="ProgressPreviewPanel" Panel.ZIndex="10" Margin="0,18,0,0" Padding="16,12" CornerRadius="10"
+                                        BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                        Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+                                    <Border.RenderTransform>
+                                        <TranslateTransform x:Name="ProgressPreviewTranslate" />
+                                    </Border.RenderTransform>
                                     <StackPanel>
-                                        <TextBlock Text="Waveform (наведите курсор)" FontSize="11" Opacity="0.6" Margin="0,0,0,4" />
-                                        <Border x:Name="ProgressPreviewWaveformHost" Height="32" Background="Transparent"
-                                                MouseMove="ProgressPreviewWaveform_MouseMove" MouseLeave="ProgressPreviewWaveform_MouseLeave">
-                                            <local:WaveformView x:Name="ProgressPreviewWaveform" Progress="0.45"
-                                                                UnplayedBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
-                                        </Border>
-                                        <TextBlock Text="Material" FontSize="11" Opacity="0.6" Margin="0,12,0,4" />
-                                        <local:MaterialProgressView x:Name="ProgressPreviewMaterial" Height="24" Progress="0.45" IsWaving="True"
-                                                                    TrackBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
-                                        <TextBlock Text="Material Slider" FontSize="11" Opacity="0.6" Margin="0,12,0,4" />
-                                        <local:MaterialSliderVisual x:Name="ProgressPreviewMaterialSlider" Height="24" Progress="0.45"
-                                                                    InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
-                                        <TextBlock Text="Обычная" FontSize="11" Opacity="0.6" Margin="0,12,0,4" />
-                                        <Grid Height="24">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="0.45*" />
-                                                <ColumnDefinition Width="0.55*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border x:Name="ProgressPreviewTrack" Grid.ColumnSpan="2" Height="4" CornerRadius="2"
-                                                    VerticalAlignment="Center"
-                                                    Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
-                                            <Border x:Name="ProgressPreviewFill" Height="4" CornerRadius="2" VerticalAlignment="Center" />
+                                        <TextBlock x:Name="ProgressPreviewCaption" Text="Предпросмотр" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
+                                        <Grid x:Name="ProgressPreviewHost" HorizontalAlignment="Left" Width="390">
+                                            <Border x:Name="ProgressPreviewWaveformHost" Height="32" Background="Transparent"
+                                                    MouseMove="ProgressPreviewWaveform_MouseMove" MouseLeave="ProgressPreviewWaveform_MouseLeave">
+                                                <local:WaveformView x:Name="ProgressPreviewWaveform" Progress="0.45"
+                                                                    UnplayedBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                            </Border>
+                                            <local:MaterialProgressView x:Name="ProgressPreviewMaterial" Height="24" Progress="0.45" IsWaving="True"
+                                                                        TrackBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                            <local:MaterialSliderVisual x:Name="ProgressPreviewMaterialSlider" Height="24" Progress="0.45"
+                                                                        InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                            <Grid x:Name="ProgressPreviewPlain" Height="24">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="0.45*" />
+                                                    <ColumnDefinition Width="0.55*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Border x:Name="ProgressPreviewTrack" Grid.ColumnSpan="2" Height="4" CornerRadius="2"
+                                                        VerticalAlignment="Center"
+                                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                <Border x:Name="ProgressPreviewFill" Height="4" CornerRadius="2" VerticalAlignment="Center" />
+                                            </Grid>
                                         </Grid>
                                     </StackPanel>
                                 </Border>
@@ -1849,12 +1853,15 @@
                                     <RadioButton x:Name="ProgressShapeFlatRadio" Content="Прямые" GroupName="ProgressShape"
                                                  Checked="ProgressShapeRadio_Changed" Margin="0" />
                                 </WrapPanel>
+
+                                <!-- Волна Material: видна, только когда у выбранного окна волна (в мини-плеере — и когда волной нарисован контур обложки). -->
+                                <StackPanel x:Name="ProgressWaveGroup">
                                 <Grid Margin="0,16,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Высота волны (Material)" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                    <TextBlock Text="Высота волны" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveAmplitudeValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
                                 <Slider x:Name="ProgressWaveAmplitudeSlider" Style="{StaticResource SettingsAccentSliderStyle}"
@@ -1865,7 +1872,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Длина волны (Material)" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                    <TextBlock Text="Длина волны" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveLengthValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
                                 <Slider x:Name="ProgressWaveLengthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
@@ -1876,21 +1883,33 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Скорость волны (Material)" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                    <TextBlock Text="Скорость волны" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveSpeedValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
                                 <Slider x:Name="ProgressWaveSpeedSlider" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="0" Maximum="200" Value="0" TickFrequency="10" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
 
-                                <CheckBox x:Name="ProgressWaveAlwaysCheckBox" Content="Волна бежит и на паузе" Margin="0,12,0,0"
-                                          Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                                    <CheckBox x:Name="ProgressWaveAlwaysCheckBox" Content="Волна бежит и на паузе" Margin="0,16,0,0"
+                                              Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                                    <CheckBox x:Name="ProgressWaveHandleCheckBox" Content="Ручка на волне" Margin="0,12,0,0"
+                                              Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                                    <TextBlock x:Name="ProgressRingNote" Style="{StaticResource SettingsHelperTextStyle}" Margin="0,12,0,0"
+                                               TextWrapping="Wrap" Visibility="Collapsed"
+                                               Text="Контур вокруг обложки: его вид и толщина выбираются на вкладке «Мини-плеер», а волна и цвет берутся отсюда." />
+                                    <ui:Button x:Name="ProgressRingMakeWavyButton" Content="Сделать контур волнистым" Appearance="Secondary"
+                                               HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"
+                                               Click="ProgressRingMakeWavyButton_Click" />
+                                </StackPanel>
+
+                                <!-- Waveform: видна, только когда у выбранного окна форма звука (её рисует только главное окно). -->
+                                <StackPanel x:Name="ProgressWaveformGroup">
                                 <Grid Margin="0,16,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Зазор между столбиками (Waveform)" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                    <TextBlock Text="Зазор между столбиками" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveformGapValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
                                 <Slider x:Name="ProgressWaveformGapSlider" Style="{StaticResource SettingsAccentSliderStyle}"
@@ -1901,20 +1920,21 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Text="Прозрачность непроигранной части (Waveform)" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                    <TextBlock Text="Прозрачность непроигранной части" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveformOpacityValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
                                 <Slider x:Name="ProgressWaveformOpacitySlider" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="30" Maximum="100" Value="30" TickFrequency="5" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
 
-                                <TextBlock Text="Подсказка при наведении на Waveform" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,20,0,4" />
-                                <CheckBox x:Name="ProgressHoverTimeCheckBox" Content="Показывать время в точке под курсором"
-                                          Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
-                                <CheckBox x:Name="ProgressHoverHighlightCheckBox" Content="Подсвечивать участок до курсора"
-                                          Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                                    <TextBlock Text="Подсказка при наведении" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,20,0,4" />
+                                    <CheckBox x:Name="ProgressHoverTimeCheckBox" Content="Показывать время в точке под курсором"
+                                              Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                                    <CheckBox x:Name="ProgressHoverHighlightCheckBox" Content="Подсвечивать участок до курсора" Margin="0,12,0,0"
+                                              Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                                </StackPanel>
 
-                                <TextBlock Text="Размеры задаются в процентах от стандартных, поэтому 100% — прежний вид. Цвет, толщина и форма концов действуют на полосу выбранного вида; ручка — у обычного ползунка и Material Slider."
+                                <TextBlock Text="Размеры задаются в процентах от стандартных, поэтому 100% — прежний вид. Показаны только настройки, которые действуют на выбранный вид полосы."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,14,0,0" TextWrapping="Wrap" />
                                 <ui:Button x:Name="ProgressAppearanceResetButton" Content="Сбросить вид полосы" Appearance="Secondary"
                                            HorizontalAlignment="Left" Margin="0,14,0,0" Click="ProgressAppearanceResetButton_Click" />
@@ -1931,6 +1951,8 @@
                                              GroupName="SliderStyle" Checked="SliderStyleRadio_Changed" Margin="0,0,0,12" />
                                 <TextBlock Text="Меняет вид всех ползунков: громкость, скорость, эквалайзер и настройки."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Полоса воспроизведения настраивается отдельно, в разделе «Полоса воспроизведения» выше."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,4,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -2526,13 +2548,8 @@
                                           Checked="MiniShowProgressCheckBox_Changed" Unchecked="MiniShowProgressCheckBox_Changed" />
                                 <TextBlock Text="Окно мини-плеера становится немного компактнее, если полоса не нужна. Перемотка кликом по обложке/названию по-прежнему недоступна — только сама полоса."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
-                                <TextBlock Text="Вид полосы прогресса" Style="{StaticResource SettingsFieldLabelStyle}" />
-                                <RadioButton x:Name="MiniProgressStyleDefaultRadio" Content="Обычная (по умолчанию)"
-                                             GroupName="MiniPlayerProgressStyle" Checked="MiniProgressStyleRadio_Changed" />
-                                <RadioButton x:Name="MiniProgressStyleMaterialRadio" Content="Material (волнистая линия, как в Android)"
-                                             GroupName="MiniPlayerProgressStyle" Checked="MiniProgressStyleRadio_Changed" />
-                                <RadioButton x:Name="MiniProgressStyleMaterialSliderRadio" Content="Material Slider (ползунок с зазором, как в Android)"
-                                             GroupName="MiniPlayerProgressStyle" Checked="MiniProgressStyleRadio_Changed" />
+                                <TextBlock Text="Вид, цвет и размеры полосы мини-плеера выбираются на вкладке «Воспроизведение», в разделе «Полоса воспроизведения»."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,10,0,0" />
                                 <CheckBox x:Name="MiniShowArtworkProgressCheckBox" Content="Показывать прогресс вокруг обложки"
                                           Checked="MiniShowArtworkProgressCheckBox_Changed"
                                           Unchecked="MiniShowArtworkProgressCheckBox_Changed"
@@ -2572,7 +2589,7 @@
 
                                 <TextBlock Text="Цвет контура" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <RadioButton x:Name="MiniArtworkProgressAccentRadio"
-                                             Content="Акцент из вкладки «Оформление»"
+                                             Content="Как у полосы воспроизведения (вкладка «Воспроизведение»)"
                                              GroupName="MiniArtworkProgressColorMode"
                                              Checked="MiniArtworkProgressColorModeRadio_Changed" />
                                 <RadioButton x:Name="MiniArtworkProgressFixedRadio" Content="Фиксированный цвет"

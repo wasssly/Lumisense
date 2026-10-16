@@ -20,6 +20,15 @@ public sealed class ProgressBarAppearanceTests
     }
 
     [Fact]
+    public void Settings_DefaultToSeparateWindowsLikeBefore()
+    {
+        var settings = new AppSettings();
+
+        Assert.Equal("PerWindow", settings.ProgressAppearanceScope);
+        Assert.Equal(string.Empty, settings.NowPlayingProgressStyle);
+    }
+
+    [Fact]
     public void Normalize_ClampsOutOfRangeAndBrokenValues()
     {
         var appearance = new ProgressBarAppearance
@@ -66,7 +75,7 @@ public sealed class ProgressAppearanceApplierTests
     [Fact]
     public void For_UsesTheSharedProfileUnlessEachWindowHasItsOwn()
     {
-        var settings = new AppSettings();
+        var settings = new AppSettings { ProgressAppearanceScope = "Shared" };
         settings.ProgressAppearanceMain.TrackThickness = 1.2;
         settings.ProgressAppearanceMini.TrackThickness = 1.8;
 
@@ -82,7 +91,7 @@ public sealed class ProgressAppearanceApplierTests
     [Fact]
     public void AnyUsesCover_FollowsTheProfilesInUse()
     {
-        var settings = new AppSettings();
+        var settings = new AppSettings { ProgressAppearanceScope = "Shared" };
         settings.ProgressAppearanceMini.ColorMode = "Cover";
 
         Assert.False(ProgressAppearanceApplier.AnyUsesCover(settings));
@@ -105,5 +114,81 @@ public sealed class ProgressAppearanceApplierTests
             ProgressAppearanceApplier.ResolveColor(new ProgressBarAppearance { ColorMode = "Custom", ColorHex = "#FF8C00" }, accent, cover));
         Assert.Equal(accent,
             ProgressAppearanceApplier.ResolveColor(new ProgressBarAppearance { ColorMode = "Custom", ColorHex = "bad" }, accent, cover));
+    }
+}
+
+public sealed class ProgressStyleResolverTests
+{
+    [Fact]
+    public void Effective_KeepsTheLegacyBehaviourByDefault()
+    {
+        var settings = new AppSettings { ProgressBarStyle = "Material", MiniPlayerProgressStyle = "Default" };
+
+        Assert.Equal("Material", ProgressStyleResolver.Effective(settings, ProgressSurface.Main));
+        Assert.Equal("Material", ProgressStyleResolver.Effective(settings, ProgressSurface.NowPlaying));
+        Assert.Equal("Slider", ProgressStyleResolver.Effective(settings, ProgressSurface.Mini));
+    }
+
+    [Fact]
+    public void Effective_SharedScopeGivesEveryWindowTheMainStyleWithoutWaveform()
+    {
+        var settings = new AppSettings
+        {
+            ProgressAppearanceScope = "Shared",
+            ProgressBarStyle = "Waveform",
+            MiniPlayerProgressStyle = "Material"
+        };
+
+        Assert.Equal("Waveform", ProgressStyleResolver.Effective(settings, ProgressSurface.Main));
+        Assert.Equal("Slider", ProgressStyleResolver.Effective(settings, ProgressSurface.NowPlaying));
+        Assert.Equal("Slider", ProgressStyleResolver.Effective(settings, ProgressSurface.Mini));
+
+        settings.ProgressBarStyle = "MaterialSlider";
+
+        Assert.Equal("MaterialSlider", ProgressStyleResolver.Effective(settings, ProgressSurface.Mini));
+    }
+
+    [Fact]
+    public void Set_WritesTheStyleToTheStoreOfTheChosenWindow()
+    {
+        var settings = new AppSettings();
+
+        ProgressStyleResolver.Set(settings, ProgressSurface.Mini, "Material");
+        ProgressStyleResolver.Set(settings, ProgressSurface.NowPlaying, "MaterialSlider");
+        ProgressStyleResolver.Set(settings, ProgressSurface.Main, "Waveform");
+
+        Assert.Equal("Material", settings.MiniPlayerProgressStyle);
+        Assert.Equal("MaterialSlider", settings.NowPlayingProgressStyle);
+        Assert.Equal("Waveform", settings.ProgressBarStyle);
+
+        ProgressStyleResolver.Set(settings, ProgressSurface.Mini, "Slider");
+        ProgressStyleResolver.Set(settings, ProgressSurface.NowPlaying, "Slider", followMain: true);
+
+        Assert.Equal("Default", settings.MiniPlayerProgressStyle);
+        Assert.Equal(string.Empty, settings.NowPlayingProgressStyle);
+        Assert.Equal("Slider", ProgressStyleResolver.Effective(settings, ProgressSurface.NowPlaying));
+    }
+
+    [Fact]
+    public void Set_NeverGivesWaveformToWindowsThatCannotDrawIt()
+    {
+        var settings = new AppSettings();
+
+        ProgressStyleResolver.Set(settings, ProgressSurface.NowPlaying, "Waveform");
+        ProgressStyleResolver.Set(settings, ProgressSurface.Mini, "Waveform");
+
+        Assert.Equal("Slider", settings.NowPlayingProgressStyle);
+        Assert.Equal("Default", settings.MiniPlayerProgressStyle);
+    }
+
+    [Fact]
+    public void Set_InSharedScopeAlwaysChangesTheMainStyle()
+    {
+        var settings = new AppSettings { ProgressAppearanceScope = "Shared" };
+
+        ProgressStyleResolver.Set(settings, ProgressSurface.Mini, "Material");
+
+        Assert.Equal("Material", settings.ProgressBarStyle);
+        Assert.Equal("Default", settings.MiniPlayerProgressStyle);
     }
 }

@@ -52,6 +52,8 @@ internal static class ProgressAppearanceApplier
         view.WavelengthScale = appearance.WaveLength;
         view.SpeedScale = appearance.WaveSpeed;
         view.AlwaysWave = appearance.WaveAlways;
+        view.ShowHandle = appearance.WaveHandle;
+        view.HandleScale = appearance.ThumbSize;
     }
 
     public static void Apply(MaterialSliderVisual view, ProgressBarAppearance appearance)
@@ -97,4 +99,50 @@ internal static class ProgressAppearanceApplier
 
     // Размер ручки обычного ползунка в шаблоне MainWindowPlaybackSliderStyle.
     private const double BaseThumbSize = 14.0;
+}
+
+// Какой стиль полосы показывает окно: общий для всех окон или свой у каждого (AppSettings.ProgressAppearanceScope). Значения
+// канонические: "Slider" (обычная), "Waveform", "Material", "MaterialSlider"; в хранилище у мини-плеера обычная — "Default".
+internal static class ProgressStyleResolver
+{
+    public static string Canonical(string? style) =>
+        style is "Waveform" or "Material" or "MaterialSlider" ? style : "Slider";
+
+    // Форму звука считает и рисует только главное окно: в Now Playing и мини-плеере вместо неё обычная полоса.
+    public static bool SupportsWaveform(ProgressSurface surface) => surface == ProgressSurface.Main;
+
+    public static string Effective(AppSettings settings, ProgressSurface surface)
+    {
+        string main = Canonical(settings.ProgressBarStyle);
+        if (settings.ProgressAppearanceScope != "PerWindow")
+            return surface == ProgressSurface.Main ? main : WithoutWaveform(main);
+
+        return surface switch
+        {
+            ProgressSurface.NowPlaying => string.IsNullOrEmpty(settings.NowPlayingProgressStyle)
+                ? WithoutWaveform(main)
+                : WithoutWaveform(Canonical(settings.NowPlayingProgressStyle)),
+            ProgressSurface.Mini => WithoutWaveform(Canonical(settings.MiniPlayerProgressStyle)),
+            _ => main
+        };
+    }
+
+    // followMain — только для Now Playing: пустое значение означает «как в главном окне».
+    public static void Set(AppSettings settings, ProgressSurface surface, string style, bool followMain = false)
+    {
+        string canonical = Canonical(style);
+        if (settings.ProgressAppearanceScope != "PerWindow" || surface == ProgressSurface.Main)
+        {
+            settings.ProgressBarStyle = canonical;
+            return;
+        }
+
+        string withoutWaveform = WithoutWaveform(canonical);
+        if (surface == ProgressSurface.NowPlaying)
+            settings.NowPlayingProgressStyle = followMain ? "" : withoutWaveform;
+        else
+            settings.MiniPlayerProgressStyle = withoutWaveform == "Slider" ? "Default" : withoutWaveform;
+    }
+
+    private static string WithoutWaveform(string style) => style == "Waveform" ? "Slider" : style;
 }

@@ -192,9 +192,14 @@ public class AppSettings
     // без привязки ко времени (LyricsService.ApplyDisplayMode). У трека только с обычным текстом ничего не меняется.
     public string LyricsDisplayMode { get; set; } = "Synced";
 
-    // Вид полосы воспроизведения (ProgressBarAppearance): "Shared" — один профиль (ProgressAppearanceMain) на все окна,
-    // "PerWindow" — у главного окна, Now Playing и мини-плеера свои профили (ProgressAppearanceApplier.For).
-    public string ProgressAppearanceScope { get; set; } = "Shared";
+    // Полоса воспроизведения (вид и ProgressBarAppearance): "Shared" — одна на все окна (стиль ProgressBarStyle и профиль
+    // ProgressAppearanceMain), "PerWindow" — у главного окна, Now Playing и мини-плеера своя. По умолчанию "PerWindow": так и работало
+    // раньше (у мини-плеера свой стиль, Now Playing повторяет главное окно), а профили у всех окон одинаковые по умолчанию.
+    public string ProgressAppearanceScope { get; set; } = "PerWindow";
+
+    // Стиль полосы Now Playing при ProgressAppearanceScope == "PerWindow": "" — как в главном окне (по умолчанию), иначе
+    // "Slider", "Material" или "MaterialSlider" (Waveform там недоступен). См. ProgressStyleResolver.
+    public string NowPlayingProgressStyle { get; set; } = "";
     public ProgressBarAppearance ProgressAppearanceMain { get; set; } = new();
     public ProgressBarAppearance ProgressAppearanceNowPlaying { get; set; } = new();
     public ProgressBarAppearance ProgressAppearanceMini { get; set; } = new();

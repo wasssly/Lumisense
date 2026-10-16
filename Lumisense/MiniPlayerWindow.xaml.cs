@@ -1308,7 +1308,7 @@ public partial class MiniPlayerWindow : Window
     // Вид полосы (AppSettings.MiniPlayerProgressStyle): обычная, волна Material или ползунок Material; перемотка везде через слой поверх.
     private void ApplyProgressStyle()
     {
-        string style = _mainWindow.Settings.MiniPlayerProgressStyle;
+        string style = ProgressStyleResolver.Effective(_mainWindow.Settings, ProgressSurface.Mini);
         bool wave = style == "Material";
         bool slider = style == "MaterialSlider";
         var defaultVisibility = wave || slider ? Visibility.Collapsed : Visibility.Visible;
@@ -1342,6 +1342,9 @@ public partial class MiniPlayerWindow : Window
         ProgressMaterial.PlayedBrush = brush;
         ProgressMaterialSlider.ActiveBrush = brush;
         ProgressFill.Background = brush;
+
+        // Контур вокруг обложки тоже бежит волной и на паузе, если так выбрано; у ползунка Material волны нет.
+        ArtProgressMaterial.AlwaysWave = appearance.WaveAlways && !ArtProgressMaterial.IsSliderLook;
 
         double height = 4.0 * appearance.TrackThickness;
         var radius = new CornerRadius(appearance.IsFlat ? 0.0 : height / 2);
@@ -1381,6 +1384,7 @@ public partial class MiniPlayerWindow : Window
         ArtProgressMaterial.Visibility = _showArtworkProgress && materialRing ? Visibility.Visible : Visibility.Collapsed;
         ArtProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
         ArtProgressMaterial.IsWaving = _mainWindow.IsPlayingNow && !ArtProgressMaterial.IsSliderLook;
+        ApplyProgressAppearance();
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);
     }
 
@@ -1416,7 +1420,8 @@ public partial class MiniPlayerWindow : Window
     // надёжно обновляет уже созданное WPF Window при смене акцента Wpf.Ui.
     public void ApplyArtworkProgressColor()
     {
-        Color color = _mainWindow.GetResolvedAccentColor();
+        // «Акцент» у контура означает цвет полосы мини-плеера из вкладки «Воспроизведение» (по умолчанию тот же акцент оформления).
+        Color color = _mainWindow.GetProgressBarColor(ProgressSurface.Mini);
         if (_mainWindow.Settings.MiniPlayerArtworkProgressColorMode == "Fixed")
         {
             try

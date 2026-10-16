@@ -37,6 +37,7 @@ internal interface ISettingsAppearanceHost
     void ApplyTrackStateBadgeMode();
     void RefreshLyricsDisplayMode();
     void ApplyProgressAppearance();
+    float[]? GetCurrentWaveformPeaks();
     Color GetProgressBarColor(ProgressSurface surface);
     void PreviewTrackChangeToast();
     void PickToastPosition(Action<ToastPositionPickResult?> completed);

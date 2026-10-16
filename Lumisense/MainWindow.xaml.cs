@@ -1040,6 +1040,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         if (_waveformCache.TryGetValue(filePath, out var cached))
         {
             ProgressWaveform.Peaks = cached;
+            _settingsWindow?.RefreshProgressPreview();
             TouchWaveformCache(filePath);
             return;
         }
@@ -1070,6 +1071,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
                 }
             }
             ProgressWaveform.Peaks = peaks;
+            _settingsWindow?.RefreshProgressPreview();
         }
         catch (OperationCanceledException)
         {

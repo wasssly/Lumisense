@@ -174,8 +174,14 @@ public partial class MainWindow
         ProgressWaveform.PlayedBrush = brush;
 
         _nowPlayingWindow?.ApplyProgressAppearance();
-        _miniPlayerWindow?.ApplyProgressAppearance();
+
+        // Мини-плеер перекрашивает и контур вокруг обложки, а он зовёт ApplyProgressAppearance полосы сам.
+        _miniPlayerWindow?.ApplyArtworkProgressColor();
+        _settingsWindow?.RefreshProgressPreview();
     }
+
+    // Форма звука текущего трека для предпросмотра в настройках; null, пока она не посчитана или выбрана не Waveform.
+    public float[]? GetCurrentWaveformPeaks() => ProgressWaveform.Peaks;
 
     public void ApplyAccentColor()
     {

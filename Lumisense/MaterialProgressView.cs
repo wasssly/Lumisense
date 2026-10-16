@@ -13,6 +13,10 @@ public sealed class MaterialProgressView : MaterialWaveElement
     private const double GapSize = 4.0;
     private const double StopDotSize = 4.0;
 
+    // Размеры ручки совпадают с MaterialSliderVisual: пилюля 4×20 dp.
+    private const double BaseHandleWidth = 4.0;
+    private const double BaseHandleLength = 20.0;
+
     // Длина волны, амплитуда и скорость подобраны на глаз под ширину полосы плеера (скорость 32 px/с).
     private const double BaseWaveAmplitude = 3.0;
     private const double BaseWavelength = 40.0;
@@ -76,6 +80,28 @@ public sealed class MaterialProgressView : MaterialWaveElement
         set => SetValue(IsFlatProperty, value);
     }
 
+    public static readonly DependencyProperty ShowHandleProperty = DependencyProperty.Register(
+        nameof(ShowHandle), typeof(bool), typeof(MaterialProgressView),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // true — на границе проигранной части рисуется ручка, как у Material Slider (ProgressBarAppearance.WaveHandle).
+    public bool ShowHandle
+    {
+        get => (bool)GetValue(ShowHandleProperty);
+        set => SetValue(ShowHandleProperty, value);
+    }
+
+    public static readonly DependencyProperty HandleScaleProperty = DependencyProperty.Register(
+        nameof(HandleScale), typeof(double), typeof(MaterialProgressView),
+        new FrameworkPropertyMetadata(1.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // Множитель размера ручки (ProgressBarAppearance.ThumbSize).
+    public double HandleScale
+    {
+        get => (double)GetValue(HandleScaleProperty);
+        set => SetValue(HandleScaleProperty, value);
+    }
+
     public static readonly DependencyProperty AmplitudeScaleProperty = DependencyProperty.Register(
         nameof(AmplitudeScale), typeof(double), typeof(MaterialProgressView),
         new FrameworkPropertyMetadata(1.0, FrameworkPropertyMetadataOptions.AffectsRender));
@@ -136,8 +162,13 @@ public sealed class MaterialProgressView : MaterialWaveElement
         double progress = double.IsFinite(Progress) ? Math.Clamp(Progress, 0.0, 1.0) : 0.0;
         double progressX = left + (right - left) * progress;
 
+        // Ручка стоит в зазоре, поэтому с ней зазор шире на её ширину.
+        double handleFactor = double.IsFinite(HandleScale) ? HandleScale : 1.0;
+        double handleWidth = BaseHandleWidth * handleFactor;
+        double handleLength = Math.Min(BaseHandleLength * handleFactor, height);
+
         // Штрих с круглыми концами выступает на половину толщины, поэтому зазор считаем до центров концов.
-        double gapToEnd = GapSize / 2 + inset;
+        double gapToEnd = (ShowHandle ? GapSize + handleWidth : GapSize) / 2 + inset;
         double activeEnd = progress >= 1.0 ? right : progressX - gapToEnd;
         double trackStart = progressX + gapToEnd;
 
@@ -164,6 +195,13 @@ public sealed class MaterialProgressView : MaterialWaveElement
         {
             dc.DrawLine(trackPen, new Point(trackStart, cy), new Point(right, cy));
             dc.DrawEllipse(PlayedBrush, null, new Point(right, cy), StopDotSize / 2, StopDotSize / 2);
+        }
+
+        if (ShowHandle)
+        {
+            double handleRadius = IsFlat ? 0.0 : handleWidth / 2;
+            dc.DrawRoundedRectangle(PlayedBrush, null,
+                new Rect(progressX - handleWidth / 2, cy - handleLength / 2, handleWidth, handleLength), handleRadius, handleRadius);
         }
     }
 

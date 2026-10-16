@@ -182,6 +182,7 @@ public static class LumiProfileIO
         target.TrackStateBadgeShowFileSize = source.TrackStateBadgeShowFileSize;
         target.LyricsDisplayMode = source.LyricsDisplayMode;
         target.ProgressAppearanceScope = source.ProgressAppearanceScope;
+        target.NowPlayingProgressStyle = source.NowPlayingProgressStyle;
         target.ProgressAppearanceMain = (source.ProgressAppearanceMain ?? new ProgressBarAppearance()).Clone();
         target.ProgressAppearanceNowPlaying = (source.ProgressAppearanceNowPlaying ?? new ProgressBarAppearance()).Clone();
         target.ProgressAppearanceMini = (source.ProgressAppearanceMini ?? new ProgressBarAppearance()).Clone();

@@ -234,6 +234,8 @@ internal static class SettingsIntegrityService
             "State", "Extension", "Quality", "FileSize", "Custom");
         settings.LyricsDisplayMode = Allowed(settings.LyricsDisplayMode, defaults.LyricsDisplayMode, "Synced", "Plain");
         settings.ProgressAppearanceScope = Allowed(settings.ProgressAppearanceScope, defaults.ProgressAppearanceScope, "Shared", "PerWindow");
+        settings.NowPlayingProgressStyle = Allowed(settings.NowPlayingProgressStyle, defaults.NowPlayingProgressStyle,
+            "", "Slider", "Material", "MaterialSlider");
         settings.ProgressAppearanceMain ??= new ProgressBarAppearance();
         settings.ProgressAppearanceNowPlaying ??= new ProgressBarAppearance();
         settings.ProgressAppearanceMini ??= new ProgressBarAppearance();
