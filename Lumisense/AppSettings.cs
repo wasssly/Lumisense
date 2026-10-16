@@ -173,6 +173,9 @@ public class AppSettings
     // автоматическое изменение громкости без явного выбора пользователя нежелательно.
     public bool ReplayGainEnabled { get; set; }
 
+    // "Stereo" (по умолчанию, звук как в файле) или "Mono" (каналы сводятся в один, см. ChannelModeSampleProvider).
+    public string PlaybackChannelMode { get; set; } = "Stereo";
+
     // Discord Rich Presence использует локальный Discord IPC и публичный Application ID Lumisense; по умолчанию
     // выключено, публикация названия, исполнителя и таймлайна настраивается отдельно.
     public bool DiscordRichPresenceEnabled { get; set; }

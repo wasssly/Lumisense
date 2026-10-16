@@ -320,6 +320,12 @@ public partial class MainWindow
     private float ComputeAudioFileVolume(double sliderValue, double replayGainFactor) =>
         (float)(ToOutputVolume(sliderValue) * replayGainFactor);
 
+    public void ApplyChannelMode()
+    {
+        if (_channelMode != null)
+            _channelMode.MonoEnabled = _settings.PlaybackChannelMode == "Mono";
+    }
+
     public void RefreshReplayGain()
     {
         var previous = Interlocked.Exchange(ref _replayGainCts, null);

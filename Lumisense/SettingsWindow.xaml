@@ -1718,6 +1718,19 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- См. AppSettings.PlaybackChannelMode / ChannelModeSampleProvider. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Каналы" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="ChannelModeStereoRadio" Content="Стерео (по умолчанию)"
+                                             GroupName="ChannelMode" Checked="ChannelModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ChannelModeMonoRadio" Content="Моно"
+                                             GroupName="ChannelMode" Checked="ChannelModeRadio_Changed" />
+                                <TextBlock Text="Моно сводит левый и правый каналы в один и играет его в обе колонки: удобно для одного наушника и старых моно-записей. Применяется сразу, трек перезапускать не нужно."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="PageIntegrations" Visibility="Collapsed">

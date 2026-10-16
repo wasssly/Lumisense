@@ -40,6 +40,7 @@ internal interface ISettingsAudioHost
 {
     void RefreshVolumeCurve();
     void RefreshReplayGain();
+    void ApplyChannelMode();
     void ApplyOutputDeviceSelection();
     AudioOutputRuntimeStatus GetOutputDeviceRuntimeStatus();
     string BuildAudioDiagnosticsReport();

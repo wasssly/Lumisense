@@ -229,6 +229,10 @@ internal static class SettingsIntegrityService
         settings.WindowBackdropType = Allowed(settings.WindowBackdropType, defaults.WindowBackdropType, "Mica", "Acrylic");
         settings.ProgressBarStyle = Allowed(settings.ProgressBarStyle, defaults.ProgressBarStyle, "Slider", "Waveform", "Material", "MaterialSlider");
         settings.SliderStyle = Allowed(settings.SliderStyle, defaults.SliderStyle, "Default", "Material");
+        settings.PlaybackChannelMode = Allowed(settings.PlaybackChannelMode, defaults.PlaybackChannelMode, "Stereo", "Mono");
+        settings.TrackStateBadgeMode = Allowed(settings.TrackStateBadgeMode, defaults.TrackStateBadgeMode,
+            "State", "Extension", "Quality", "FileSize", "Custom");
+        settings.LyricsDisplayMode = Allowed(settings.LyricsDisplayMode, defaults.LyricsDisplayMode, "Synced", "Plain");
         settings.SyncedLyricsHighlightEffect = Allowed(settings.SyncedLyricsHighlightEffect, defaults.SyncedLyricsHighlightEffect, "None", "Glow");
         settings.SyncedLyricsFontSize = ClampFinite(settings.SyncedLyricsFontSize, 11, 28, defaults.SyncedLyricsFontSize);
         settings.InterfaceScale = ClampFinite(settings.InterfaceScale, 0.85, 1.35, defaults.InterfaceScale);
