@@ -173,6 +173,14 @@ public static class LumiProfileIO
         target.SavedVolume = source.SavedVolume;
         target.UseLogarithmicVolume = source.UseLogarithmicVolume;
         target.ReplayGainEnabled = source.ReplayGainEnabled;
+        target.PlaybackChannelMode = source.PlaybackChannelMode;
+        target.TrackStateBadgeMode = source.TrackStateBadgeMode;
+        target.TrackStateBadgeShowState = source.TrackStateBadgeShowState;
+        target.TrackStateBadgeShowExtension = source.TrackStateBadgeShowExtension;
+        target.TrackStateBadgeShowBitrate = source.TrackStateBadgeShowBitrate;
+        target.TrackStateBadgeShowSampleRate = source.TrackStateBadgeShowSampleRate;
+        target.TrackStateBadgeShowFileSize = source.TrackStateBadgeShowFileSize;
+        target.LyricsDisplayMode = source.LyricsDisplayMode;
         target.DiscordRichPresenceEnabled = source.DiscordRichPresenceEnabled;
         target.DiscordRichPresenceShowTrackInfo = source.DiscordRichPresenceShowTrackInfo;
         target.DiscordRichPresenceShowTimeline = source.DiscordRichPresenceShowTimeline;

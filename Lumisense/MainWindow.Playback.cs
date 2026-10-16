@@ -240,6 +240,7 @@ public partial class MainWindow
         TotalTimeText.Text = audioFile.TotalTime.ToString(@"mm\:ss");
         ProgressSlider.Maximum = Math.Max(audioFile.TotalTime.TotalSeconds, 0.01);
         _currentTrackPath = filePath;
+        CacheTrackBadgeInfo(filePath, audioFile.WaveFormat.SampleRate, loaded.BitrateKbps);
         // Ручной выбор строки — новая отправная точка обычного шаффла, иначе «Следующий» продолжил бы старую историю и вернул
         // пройденную последовательность; кнопки, hotkey и автопереход явно передают preserveShuffleSession=true.
         if (!preserveShuffleSession && changeOrigin == TrackChangeOrigin.User)
@@ -427,10 +428,48 @@ public partial class MainWindow
             _ => (LocalizationKey.TrackStateNoTrack, LocalizationKey.TrackStateNoTrackHint)
         };
 
-        TrackStateText.Text = LocalizationService.Get(textKey);
-        TrackStateText.ToolTip = LocalizationService.Get(hintKey);
+        string stateText = LocalizationService.Get(textKey);
+        string stateHint = LocalizationService.Get(hintKey);
+        string? infoText = _trackUserState is TrackUserState.Playing or TrackUserState.Paused or TrackUserState.Stopped
+            ? GetTrackBadgeInfoText(stateText)
+            : null;
+
+        TrackStateText.Text = infoText ?? stateText;
+        // В режимах с информацией о файле состояние остаётся доступным во всплывающей подсказке.
+        TrackStateText.ToolTip = infoText == null ? stateHint : $"{stateText}. {stateHint}";
         TrackStateBadge.Opacity = _trackUserState == TrackUserState.Error ? 1.0 : 0.82;
     }
+
+    private void CacheTrackBadgeInfo(string filePath, int sampleRateHz, int bitrateKbps)
+    {
+        _currentTrackExtensionText = TrackBadgeFormatter.Extension(filePath);
+        _currentTrackQualityText = TrackBadgeFormatter.Quality(bitrateKbps, sampleRateHz);
+        _currentTrackBitrateText = TrackBadgeFormatter.Bitrate(bitrateKbps);
+        _currentTrackSampleRateText = TrackBadgeFormatter.SampleRate(sampleRateHz);
+        try
+        {
+            _currentTrackFileSizeText = TrackBadgeFormatter.FileSize(new FileInfo(filePath).Length);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            _currentTrackFileSizeText = null;
+        }
+    }
+
+    // null — режим "State" или для файла нет нужных данных: подпись остаётся обычным состоянием.
+    private string? GetTrackBadgeInfoText(string stateText) => _settings.TrackStateBadgeMode switch
+    {
+        "Extension" => _currentTrackExtensionText,
+        "Quality" => _currentTrackQualityText,
+        "FileSize" => _currentTrackFileSizeText,
+        "Custom" => TrackBadgeFormatter.Join(
+            _settings.TrackStateBadgeShowState ? stateText : null,
+            _settings.TrackStateBadgeShowExtension ? _currentTrackExtensionText : null,
+            _settings.TrackStateBadgeShowBitrate ? _currentTrackBitrateText : null,
+            _settings.TrackStateBadgeShowSampleRate ? _currentTrackSampleRateText : null,
+            _settings.TrackStateBadgeShowFileSize ? _currentTrackFileSizeText : null),
+        _ => null
+    };
 
     private void OutputDevice_PlaybackStopped(object? sender, StoppedEventArgs e)
     {

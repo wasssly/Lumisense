@@ -12,6 +12,7 @@ internal sealed class PreparedTrack : IDisposable
     public required SoundTouchSampleProvider TempoProvider { get; init; }
     public required EqualizerSampleProvider Equalizer { get; init; }
     public required double ReplayGainFactor { get; init; }
+    public int BitrateKbps { get; init; }
     public string? Title { get; init; }
     public string? Artist { get; init; }
     public BitmapImage? AlbumArt { get; init; }
@@ -75,6 +76,7 @@ internal sealed class TrackPreparationService
         byte[]? albumArtBytes = null;
         string? albumArtMimeType = null;
         AlbumArtPictureKind? albumArtPictureType = null;
+        int bitrateKbps = 0;
         long tagsMilliseconds = 0;
         long embeddedArtworkMilliseconds = 0;
         bool tagsMeasured = false;
@@ -90,6 +92,7 @@ internal sealed class TrackPreparationService
                 replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
             }
             title = tagFile.Title;
+            bitrateKbps = Math.Max(0, tagFile.Bitrate);
             artist = !string.IsNullOrWhiteSpace(tagFile.Artist)
                 ? tagFile.Artist
                 : tagFile.AlbumArtist;
@@ -160,6 +163,7 @@ internal sealed class TrackPreparationService
                 TempoProvider = tempoProvider,
                 Equalizer = equalizer,
                 ReplayGainFactor = replayGain,
+                BitrateKbps = bitrateKbps,
                 Title = title,
                 Artist = artist,
                 AlbumArt = albumArt,

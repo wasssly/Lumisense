@@ -176,6 +176,18 @@ public class AppSettings
     // "Stereo" (по умолчанию, звук как в файле) или "Mono" (каналы сводятся в один, см. ChannelModeSampleProvider).
     public string PlaybackChannelMode { get; set; } = "Stereo";
 
+    // Что показывает подпись под названием трека на главном экране: "State" (по умолчанию, состояние воспроизведения),
+    // "Extension" (формат файла), "Quality" (битрейт и частота дискретизации), "FileSize" или "Custom" — набор из частей ниже,
+    // объединённых через « · ». Загрузка и ошибка всегда показываются как состояние (MainWindow.UpdateTrackUserStatePresentation).
+    public string TrackStateBadgeMode { get; set; } = "State";
+
+    // Части режима "Custom". Если ни одна не подходит (ничего не отмечено или у файла нет данных), остаётся состояние.
+    public bool TrackStateBadgeShowState { get; set; } = true;
+    public bool TrackStateBadgeShowExtension { get; set; } = true;
+    public bool TrackStateBadgeShowBitrate { get; set; }
+    public bool TrackStateBadgeShowSampleRate { get; set; }
+    public bool TrackStateBadgeShowFileSize { get; set; }
+
     // Discord Rich Presence использует локальный Discord IPC и публичный Application ID Lumisense; по умолчанию
     // выключено, публикация названия, исполнителя и таймлайна настраивается отдельно.
     public bool DiscordRichPresenceEnabled { get; set; }

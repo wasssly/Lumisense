@@ -63,6 +63,13 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private EqualizerSampleProvider? _equalizer;
     // Измеряет уже обработанный эквалайзером сигнал для визуальной реакции Now Playing.
     private AudioLevelSampleProvider? _audioLevelMeter;
+    private ChannelModeSampleProvider? _channelMode;
+    // Данные для режимов подписи состояния трека (TrackStateBadgeMode), считаются один раз при загрузке трека.
+    private string? _currentTrackExtensionText;
+    private string? _currentTrackQualityText;
+    private string? _currentTrackBitrateText;
+    private string? _currentTrackSampleRateText;
+    private string? _currentTrackFileSizeText;
     private FadeInOutSampleProvider? _activeFade;
     // Быстрые повторные Pause/Play не должны пересекаться с fade и состоянием WASAPI.
     private bool _playPauseTransitionInProgress;

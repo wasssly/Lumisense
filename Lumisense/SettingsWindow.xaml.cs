@@ -242,6 +242,19 @@ public partial class SettingsWindow : FluentWindow
         SliderStyleMaterialRadio.IsChecked = _settings.SliderStyle == "Material";
         SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
+        ChannelModeMonoRadio.IsChecked = _settings.PlaybackChannelMode == "Mono";
+        ChannelModeStereoRadio.IsChecked = _settings.PlaybackChannelMode != "Mono";
+        BadgeModeExtensionRadio.IsChecked = _settings.TrackStateBadgeMode == "Extension";
+        BadgeModeQualityRadio.IsChecked = _settings.TrackStateBadgeMode == "Quality";
+        BadgeModeFileSizeRadio.IsChecked = _settings.TrackStateBadgeMode == "FileSize";
+        BadgeModeCustomRadio.IsChecked = _settings.TrackStateBadgeMode == "Custom";
+        BadgeModeStateRadio.IsChecked = _settings.TrackStateBadgeMode is not ("Extension" or "Quality" or "FileSize" or "Custom");
+        BadgePartStateCheckBox.IsChecked = _settings.TrackStateBadgeShowState;
+        BadgePartExtensionCheckBox.IsChecked = _settings.TrackStateBadgeShowExtension;
+        BadgePartBitrateCheckBox.IsChecked = _settings.TrackStateBadgeShowBitrate;
+        BadgePartSampleRateCheckBox.IsChecked = _settings.TrackStateBadgeShowSampleRate;
+        BadgePartFileSizeCheckBox.IsChecked = _settings.TrackStateBadgeShowFileSize;
+        BadgeCustomPartsPanel.Visibility = _settings.TrackStateBadgeMode == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         DiscordRichPresenceEnabledCheckBox.IsChecked = _settings.DiscordRichPresenceEnabled;
         DiscordRichPresenceShowTrackInfoCheckBox.IsChecked = _settings.DiscordRichPresenceShowTrackInfo;
         DiscordRichPresenceShowTimelineCheckBox.IsChecked = _settings.DiscordRichPresenceShowTimeline;
@@ -1119,6 +1132,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация accessibility scale motion");
         Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
+        Add("Подпись под названием трека", "Оформление", "Appearance", BadgeModeStateRadio, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size");
         Add("Жесты на обложке", "Оформление", "Appearance", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
         Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно и запуск", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
@@ -1686,6 +1700,24 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplySyncedLyricsAppearance();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
+    private void UpdateBadgePreview()
+    {
+        BadgePreviewText.Text = _settings.TrackStateBadgeMode switch
+        {
+            "Extension" => "FLAC",
+            "Quality" => "320 kbps · 44.1 kHz",
+            "FileSize" => "8.4 MB",
+            "Custom" => TrackBadgeFormatter.Join(
+                    _settings.TrackStateBadgeShowState ? LocalizationService.Get(LocalizationKey.TrackStatePlaying) : null,
+                    _settings.TrackStateBadgeShowExtension ? "FLAC" : null,
+                    _settings.TrackStateBadgeShowBitrate ? "320 kbps" : null,
+                    _settings.TrackStateBadgeShowSampleRate ? "44.1 kHz" : null,
+                    _settings.TrackStateBadgeShowFileSize ? "8.4 MB" : null)
+                ?? LocalizationService.Get(LocalizationKey.TrackStatePlaying),
+            _ => LocalizationService.Get(LocalizationKey.TrackStatePlaying)
+        };
+    }
+
 
     private void NowPlayingBackgroundRadio_Changed(object sender, RoutedEventArgs e)
     {
@@ -2925,6 +2957,46 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.ReplayGainEnabled = ReplayGainCheckBox.IsChecked == true;
         _owner.RefreshReplayGain();
+    }
+
+    // См. AppSettings.PlaybackChannelMode / ChannelModeSampleProvider.
+    private void ChannelModeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.PlaybackChannelMode = ChannelModeMonoRadio.IsChecked == true ? "Mono" : "Stereo";
+        _owner.ApplyChannelMode();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // См. AppSettings.TrackStateBadgeMode.
+    private void TrackStateBadgeModeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackStateBadgeMode = BadgeModeExtensionRadio.IsChecked == true ? "Extension"
+            : BadgeModeQualityRadio.IsChecked == true ? "Quality"
+            : BadgeModeFileSizeRadio.IsChecked == true ? "FileSize"
+            : BadgeModeCustomRadio.IsChecked == true ? "Custom"
+            : "State";
+        BadgeCustomPartsPanel.Visibility = _settings.TrackStateBadgeMode == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+        UpdateBadgePreview();
+        _owner.ApplyTrackStateBadgeMode();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void BadgePartCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.TrackStateBadgeShowState = BadgePartStateCheckBox.IsChecked == true;
+        _settings.TrackStateBadgeShowExtension = BadgePartExtensionCheckBox.IsChecked == true;
+        _settings.TrackStateBadgeShowBitrate = BadgePartBitrateCheckBox.IsChecked == true;
+        _settings.TrackStateBadgeShowSampleRate = BadgePartSampleRateCheckBox.IsChecked == true;
+        _settings.TrackStateBadgeShowFileSize = BadgePartFileSizeCheckBox.IsChecked == true;
+        UpdateBadgePreview();
+        _owner.ApplyTrackStateBadgeMode();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void AlbumArtTransitionRadio_Changed(object sender, RoutedEventArgs e)

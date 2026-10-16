@@ -1361,6 +1361,43 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.TrackStateBadgeMode / MainWindow.UpdateTrackUserStatePresentation. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Подпись под названием трека" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="BadgeModeStateRadio" Content="Состояние трека (по умолчанию)"
+                                             GroupName="TrackStateBadgeMode" Checked="TrackStateBadgeModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="BadgeModeExtensionRadio" Content="Расширение файла (FLAC, MP3…)"
+                                             GroupName="TrackStateBadgeMode" Checked="TrackStateBadgeModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="BadgeModeQualityRadio" Content="Качество (битрейт и частота)"
+                                             GroupName="TrackStateBadgeMode" Checked="TrackStateBadgeModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="BadgeModeFileSizeRadio" Content="Размер файла"
+                                             GroupName="TrackStateBadgeMode" Checked="TrackStateBadgeModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="BadgeModeCustomRadio" Content="Свой набор (отметить, что показывать)"
+                                             GroupName="TrackStateBadgeMode" Checked="TrackStateBadgeModeRadio_Changed" />
+                                <!-- Части режима "Custom" (AppSettings.TrackStateBadgeShow*); видны только при выбранном «Свой набор». -->
+                                <StackPanel x:Name="BadgeCustomPartsPanel" Margin="28,10,0,0" Visibility="Collapsed">
+                                    <CheckBox x:Name="BadgePartStateCheckBox" Content="Состояние" MinHeight="32"
+                                              Checked="BadgePartCheckBox_Changed" Unchecked="BadgePartCheckBox_Changed" />
+                                    <CheckBox x:Name="BadgePartExtensionCheckBox" Content="Расширение файла" MinHeight="32"
+                                              Checked="BadgePartCheckBox_Changed" Unchecked="BadgePartCheckBox_Changed" />
+                                    <CheckBox x:Name="BadgePartBitrateCheckBox" Content="Битрейт" MinHeight="32"
+                                              Checked="BadgePartCheckBox_Changed" Unchecked="BadgePartCheckBox_Changed" />
+                                    <CheckBox x:Name="BadgePartSampleRateCheckBox" Content="Частота дискретизации" MinHeight="32"
+                                              Checked="BadgePartCheckBox_Changed" Unchecked="BadgePartCheckBox_Changed" />
+                                    <CheckBox x:Name="BadgePartFileSizeCheckBox" Content="Размер файла" MinHeight="32"
+                                              Checked="BadgePartCheckBox_Changed" Unchecked="BadgePartCheckBox_Changed" />
+                                </StackPanel>
+                                <TextBlock Text="Загрузка и ошибка всегда показываются как состояние. Если для файла нет нужных данных, остаётся состояние; его же видно во всплывающей подсказке."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Предпросмотр" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,14,0,8" />
+                                <Border CornerRadius="8" Padding="8,3" HorizontalAlignment="Left"
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                    <TextBlock x:Name="BadgePreviewText" FontSize="11" Opacity="0.78" />
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
 
                     </StackPanel>
 

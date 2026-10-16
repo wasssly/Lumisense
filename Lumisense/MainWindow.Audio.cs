@@ -326,6 +326,8 @@ public partial class MainWindow
             _channelMode.MonoEnabled = _settings.PlaybackChannelMode == "Mono";
     }
 
+    public void ApplyTrackStateBadgeMode() => UpdateTrackUserStatePresentation();
+
     public void RefreshReplayGain()
     {
         var previous = Interlocked.Exchange(ref _replayGainCts, null);
