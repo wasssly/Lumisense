@@ -1460,6 +1460,7 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <local:SvgPathIcon Icon="IconChangelog" Size="16"
                                            Foreground="{DynamicResource AccentFillColorDefaultBrush}"
@@ -1470,6 +1471,10 @@
                             <TextBlock x:Name="LyricsPanelSourceText" Text=""
                                        FontSize="11" Opacity="0.65" Margin="0,2,0,0" />
                         </StackPanel>
+                        <!-- Переключатель синхронный (LRC) / обычный (TXT) текст; виден, только если у трека есть синхронный текст (AppSettings.LyricsDisplayMode). -->
+                        <ui:Button x:Name="LyricsDisplayModeButton" Grid.Column="2" Height="28" MinWidth="28" Padding="8,0"
+                                   Appearance="Secondary" FontSize="11" VerticalAlignment="Center" Visibility="Collapsed"
+                                   Click="LyricsDisplayModeButton_Click" />
                     </Grid>
 
                     <!-- Для LRC отдельный список строк с состоянием IsActive: текущая строка подсвечивается и остаётся в видимой области. -->

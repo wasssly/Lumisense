@@ -1,0 +1,46 @@
+using System;
+using Xunit;
+
+namespace Lumisense.Tests;
+
+public sealed class LyricsDisplayModeTests
+{
+    private static LyricsDocument Synced() => new(
+        LyricsKind.Synced,
+        new[]
+        {
+            new LyricLine(TimeSpan.FromSeconds(1), "First line"),
+            new LyricLine(TimeSpan.FromSeconds(5), "Second line")
+        },
+        string.Empty,
+        "LRC");
+
+    [Fact]
+    public void ApplyDisplayMode_KeepsSyncedLyricsInSyncedMode()
+    {
+        LyricsDocument document = Synced();
+
+        Assert.Same(document, LyricsService.ApplyDisplayMode(document, "Synced"));
+        Assert.Same(document, LyricsService.ApplyDisplayMode(document, null));
+    }
+
+    [Fact]
+    public void ApplyDisplayMode_TurnsSyncedLyricsIntoPlainTextInPlainMode()
+    {
+        LyricsDocument plain = LyricsService.ApplyDisplayMode(Synced(), "Plain");
+
+        Assert.Equal(LyricsKind.Plain, plain.Kind);
+        Assert.Empty(plain.Lines);
+        Assert.Equal("First line" + Environment.NewLine + "Second line", plain.PlainText);
+        Assert.Equal("LRC", plain.SourceLabel);
+    }
+
+    [Fact]
+    public void ApplyDisplayMode_LeavesPlainAndEmptyDocumentsAlone()
+    {
+        var plainSource = new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), "Text", "TXT");
+
+        Assert.Same(plainSource, LyricsService.ApplyDisplayMode(plainSource, "Plain"));
+        Assert.Same(LyricsDocument.Empty, LyricsService.ApplyDisplayMode(LyricsDocument.Empty, "Plain"));
+    }
+}

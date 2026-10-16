@@ -163,6 +163,10 @@ public partial class SettingsWindow : FluentWindow
         LyricsAlignRightRadio.IsChecked = _settings.LyricsTextAlignment == "Right";
         LyricsAlignLeftRadio.IsChecked = !LyricsAlignCenterRadio.IsChecked.GetValueOrDefault()
                                          && !LyricsAlignRightRadio.IsChecked.GetValueOrDefault();
+        LyricsDisplayPlainRadio.IsChecked = _settings.LyricsDisplayMode == "Plain";
+        LyricsDisplaySyncedRadio.IsChecked = _settings.LyricsDisplayMode != "Plain";
+        UpdateLyricsPreview();
+        UpdateBadgePreview();
         LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
         LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
         LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
@@ -1679,6 +1683,7 @@ public partial class SettingsWindow : FluentWindow
 
         SyncedLyricsFontSizeValueText.Text = $"{e.NewValue:0} px";
         _settings.SyncedLyricsFontSize = Math.Clamp(Math.Round(e.NewValue), 12, 20);
+        UpdateLyricsPreview();
         _owner.ApplySyncedLyricsAppearance();
     }
 
@@ -1697,9 +1702,25 @@ public partial class SettingsWindow : FluentWindow
         _settings.LyricsTextAlignment = LyricsAlignCenterRadio.IsChecked == true ? "Center"
             : LyricsAlignRightRadio.IsChecked == true ? "Right"
             : "Left";
+        UpdateLyricsPreview();
         _owner.ApplySyncedLyricsAppearance();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
+
+    // См. AppSettings.LyricsDisplayMode.
+    private void LyricsDisplayModeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.LyricsDisplayMode = LyricsDisplayPlainRadio.IsChecked == true ? "Plain" : "Synced";
+        UpdateLyricsPreview();
+        _owner.RefreshLyricsDisplayMode();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // Один общий предпросмотр в карточке «Текст песни» отражает размер, эффект, выравнивание и режим сразу.
+    private void UpdateLyricsPreview() => LyricsPreview.Apply(_settings);
+
     private void UpdateBadgePreview()
     {
         BadgePreviewText.Text = _settings.TrackStateBadgeMode switch
@@ -1766,6 +1787,7 @@ public partial class SettingsWindow : FluentWindow
         _settings.SyncedLyricsHighlightEffect = SyncedLyricsEffectNoneRadio.IsChecked == true
             ? "None"
             : "Glow";
+        UpdateLyricsPreview();
         _owner.ApplySyncedLyricsAppearance();
     }
 

@@ -184,6 +184,18 @@ public static class LyricsService
         }
     }
 
+    // Режим "Plain" показывает синхронный текст как обычный: строки без меток времени одним блоком. Остальные документы
+    // (обычный текст, пустой) и режим "Synced" возвращаются как есть.
+    public static LyricsDocument ApplyDisplayMode(LyricsDocument document, string? displayMode)
+    {
+        if (document.Kind != LyricsKind.Synced || displayMode != "Plain") return document;
+
+        string text = string.Join(Environment.NewLine, document.Lines.Select(line => line.Text)).Trim();
+        return text.Length == 0
+            ? document
+            : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), text, document.SourceLabel);
+    }
+
     private static async Task<LyricsDocument> LoadPlainTextAsync(string textPath, CancellationToken cancellationToken)
     {
         try

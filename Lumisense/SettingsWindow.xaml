@@ -1184,12 +1184,16 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.SyncedLyricsFontSize/SyncedLyricsHighlightEffect. -->
+                        <!-- Одна карточка для всего, что влияет на вид текста песни, и один общий предпросмотр сверху:
+                             AppSettings.SyncedLyricsFontSize/SyncedLyricsHighlightEffect, LyricsTextAlignment, LyricsDisplayMode. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Синхронный текст" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Текст песни" Style="{StaticResource SettingsSectionTitleStyle}" />
 
-                                <TextBlock Text="Размер шрифта" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <TextBlock Text="Предпросмотр" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <local:LyricsPreviewControl x:Name="LyricsPreview" />
+
+                                <TextBlock Text="Размер шрифта" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,20,0,8" />
                                 <Grid Margin="0,0,0,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -1223,25 +1227,39 @@
                                                    Style="{StaticResource SettingsHelperTextStyle}" Margin="0,10,0,0" />
                                     </StackPanel>
                                 </Border>
-                            </StackPanel>
-                        </Border>
 
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Выравнивание текста песни" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Относится к тексту песни в панели главного окна и в режиме Now Playing, и к синхронному, и к обычному."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" TextWrapping="Wrap" />
-                                <WrapPanel>
-                                    <RadioButton x:Name="LyricsAlignLeftRadio" Content="Слева"
-                                                 GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
-                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
-                                    <RadioButton x:Name="LyricsAlignCenterRadio" Content="По центру"
-                                                 GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
-                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
-                                    <RadioButton x:Name="LyricsAlignRightRadio" Content="Справа"
-                                                 GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
-                                                 Margin="0" VerticalAlignment="Center" />
-                                </WrapPanel>
+                                <Border Margin="0,16,0,0" Padding="14,12" CornerRadius="10"
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                    <StackPanel>
+                                        <TextBlock Text="Выравнивание текста песни" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                        <TextBlock Text="Относится к тексту песни в панели главного окна и в режиме Now Playing, и к синхронному, и к обычному."
+                                                   Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                                        <WrapPanel>
+                                            <RadioButton x:Name="LyricsAlignLeftRadio" Content="Слева"
+                                                         GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
+                                                         Margin="0,0,16,0" VerticalAlignment="Center" />
+                                            <RadioButton x:Name="LyricsAlignCenterRadio" Content="По центру"
+                                                         GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
+                                                         Margin="0,0,16,0" VerticalAlignment="Center" />
+                                            <RadioButton x:Name="LyricsAlignRightRadio" Content="Справа"
+                                                         GroupName="LyricsTextAlignment" Checked="LyricsTextAlignmentRadio_Changed"
+                                                         Margin="0" VerticalAlignment="Center" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                </Border>
+
+                                <Border Margin="0,16,0,0" Padding="14,12" CornerRadius="10"
+                                        Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                                    <StackPanel>
+                                        <TextBlock Text="Режим текста песни" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                        <RadioButton x:Name="LyricsDisplaySyncedRadio" Content="Синхронный, если он есть (по умолчанию)"
+                                                     GroupName="LyricsDisplayMode" Checked="LyricsDisplayModeRadio_Changed" Margin="0,0,0,12" />
+                                        <RadioButton x:Name="LyricsDisplayPlainRadio" Content="Всегда обычный текст"
+                                                     GroupName="LyricsDisplayMode" Checked="LyricsDisplayModeRadio_Changed" />
+                                        <TextBlock Text="Переключить режим можно и кнопкой LRC/TXT в заголовке панели текста песни. Если у трека только обычный текст, кнопка не показывается."
+                                                   Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 

@@ -24,4 +24,5 @@ internal interface INowPlayingHost
     void ExternalPlayPause();
     void ExternalNext();
     void ExternalPrev();
+    void ToggleLyricsDisplayMode();
 }

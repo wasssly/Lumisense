@@ -188,6 +188,10 @@ public class AppSettings
     public bool TrackStateBadgeShowSampleRate { get; set; }
     public bool TrackStateBadgeShowFileSize { get; set; }
 
+    // Как показывать текст песни, когда у трека есть синхронный (LRC): "Synced" (по умолчанию) или "Plain" — тот же текст
+    // без привязки ко времени (LyricsService.ApplyDisplayMode). У трека только с обычным текстом ничего не меняется.
+    public string LyricsDisplayMode { get; set; } = "Synced";
+
     // Discord Rich Presence использует локальный Discord IPC и публичный Application ID Lumisense; по умолчанию
     // выключено, публикация названия, исполнителя и таймлайна настраивается отдельно.
     public bool DiscordRichPresenceEnabled { get; set; }

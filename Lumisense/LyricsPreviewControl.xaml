@@ -1,0 +1,20 @@
+<UserControl x:Class="Lumisense.LyricsPreviewControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Предпросмотр панели текста песни, повторяется в каждой карточке настроек, которая на него влияет. Фон тёмный независимо
+         от темы: активная строка белая, неактивные серые, как в панели текста (см. MainWindow.ApplySyncedLyricsLineAppearance). -->
+    <Border Padding="18,14" CornerRadius="10" Background="#FF1C1C1E">
+        <StackPanel>
+            <TextBlock x:Name="Line1" Text="Первая строка текста песни"
+                       Foreground="#FF8E8E8E" TextWrapping="Wrap" Margin="0,0,0,6" />
+            <TextBlock x:Name="Line2" Text="Активная строка подсвечена"
+                       Foreground="White" TextWrapping="Wrap" Margin="0,0,0,6">
+                <TextBlock.Effect>
+                    <DropShadowEffect x:Name="Glow" Color="White" BlurRadius="16" ShadowDepth="0" Opacity="0.62" />
+                </TextBlock.Effect>
+            </TextBlock>
+            <TextBlock x:Name="Line3" Text="Следующая строка ждёт своей очереди"
+                       Foreground="#FF8E8E8E" TextWrapping="Wrap" />
+        </StackPanel>
+    </Border>
+</UserControl>

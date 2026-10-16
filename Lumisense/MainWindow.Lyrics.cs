@@ -17,6 +17,8 @@ public partial class MainWindow
     private CancellationTokenSource? _mainWindowLyricsCts;
     private string? _mainWindowLyricsTrackPath;
     private LyricsDocument _mainWindowLyrics = LyricsDocument.Empty;
+    // Документ как он загружен; _mainWindowLyrics — то, что показано с учётом AppSettings.LyricsDisplayMode.
+    private LyricsDocument _mainWindowLyricsSource = LyricsDocument.Empty;
     private readonly ObservableCollection<MainWindowLyricLine> _mainWindowSyncedLyrics = new();
 
     // У ScrollViewer нет анимируемого DependencyProperty для VerticalOffset: attached-свойство проксирует анимацию в
@@ -117,6 +119,7 @@ public partial class MainWindow
         CancellationToken token = cts.Token;
         _mainWindowLyricsTrackPath = trackPath;
         _mainWindowLyrics = LyricsDocument.Empty;
+        _mainWindowLyricsSource = LyricsDocument.Empty;
         ApplyMainWindowLyricsLoading();
 
         try
@@ -142,8 +145,7 @@ public partial class MainWindow
                 }
             }
 
-            _mainWindowLyrics = document;
-            ApplyMainWindowLyricsDocument(document);
+            SetMainWindowLyrics(document);
         }
         catch (LyricsRateLimitException)
         {
@@ -184,6 +186,45 @@ public partial class MainWindow
         LyricsPanelSyncedList.Visibility = Visibility.Collapsed;
         LyricsPanelScrollViewer.Visibility = Visibility.Visible;
         LyricsPanelEmptyState.Visibility = Visibility.Collapsed;
+        LyricsDisplayModeButton.Visibility = Visibility.Collapsed;
+    }
+
+    private void SetMainWindowLyrics(LyricsDocument source)
+    {
+        _mainWindowLyricsSource = source;
+        _mainWindowLyrics = LyricsService.ApplyDisplayMode(source, _settings.LyricsDisplayMode);
+        ApplyMainWindowLyricsDocument(_mainWindowLyrics);
+        UpdateLyricsDisplayModeButton();
+    }
+
+    // Кнопка LRC/TXT нужна, только когда у трека есть синхронный текст: у обычного переключать нечего.
+    private void UpdateLyricsDisplayModeButton()
+    {
+        bool plain = _settings.LyricsDisplayMode == "Plain";
+        LyricsDisplayModeButton.Visibility = _mainWindowLyricsSource.Kind == LyricsKind.Synced ? Visibility.Visible : Visibility.Collapsed;
+        LyricsDisplayModeButton.Content = plain ? "TXT" : "LRC";
+        LyricsDisplayModeButton.ToolTip = LocalizationService.Translate(plain ? "Показать синхронный текст" : "Показать обычный текст");
+    }
+
+    private void LyricsDisplayModeButton_Click(object sender, RoutedEventArgs e) => ToggleLyricsDisplayMode();
+
+    public void ToggleLyricsDisplayMode()
+    {
+        _settings.LyricsDisplayMode = _settings.LyricsDisplayMode == "Plain" ? "Synced" : "Plain";
+        RefreshLyricsDisplayMode();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // Перерисовывает уже загруженный текст в обоих окнах после смены режима (кнопка, Now Playing или настройки).
+    public void RefreshLyricsDisplayMode()
+    {
+        if (_isLyricsPanelActive && _mainWindowLyricsSource.Kind != LyricsKind.None)
+        {
+            SetMainWindowLyrics(_mainWindowLyricsSource);
+            UpdateMainWindowSyncedLyrics(TimeSpan.FromSeconds(CurrentPlaybackSeconds), forceScroll: true);
+        }
+
+        _nowPlayingWindow?.RefreshLyricsDisplayMode();
     }
 
     private void ApplyMainWindowLyricsDocument(LyricsDocument document)
@@ -243,6 +284,7 @@ public partial class MainWindow
         LyricsPanelSyncedList.Visibility = Visibility.Collapsed;
         LyricsPanelScrollViewer.Visibility = Visibility.Collapsed;
         LyricsPanelEmptyState.Visibility = Visibility.Visible;
+        LyricsDisplayModeButton.Visibility = Visibility.Collapsed;
     }
 
     private void UpdateMainWindowSyncedLyrics(TimeSpan position, bool forceScroll = false)

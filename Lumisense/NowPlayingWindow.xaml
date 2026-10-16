@@ -243,6 +243,9 @@
                                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                     <TextBlock x:Name="LyricsModeText" Text="Нет текста" FontSize="12" Foreground="#A8FFFFFF"
                                                VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <ui:Button x:Name="LyricsDisplayModeButton" Height="30" MinWidth="30" Padding="8,0" Margin="0,0,6,0"
+                                               Appearance="Secondary" FontSize="11" Visibility="Collapsed"
+                                               Click="LyricsDisplayModeButton_Click" />
                                     <ui:Button x:Name="NextLyricsVariantButton" Width="30" Height="30" Padding="0" Margin="0,0,6,0" Appearance="Secondary"
                                                ToolTip="Другой вариант текста" Click="NextLyricsVariantButton_Click">
                                         <ui:Button.Icon><local:SvgPathIcon Icon="IconSync" Size="13" /></ui:Button.Icon>

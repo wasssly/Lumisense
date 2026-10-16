@@ -57,6 +57,8 @@ public partial class NowPlayingWindow : Window
     private readonly FlowCloud?[] _flowClouds = new FlowCloud?[5];
     private bool _lyricsPanelVisible = true;
     private LyricsDocument _lyrics = LyricsDocument.Empty;
+    // Документ как он загружен; _lyrics — то, что показано с учётом AppSettings.LyricsDisplayMode.
+    private LyricsDocument _lyricsSource = LyricsDocument.Empty;
     private string? _lyricsTrackPath;
     private int _activeLyricIndex = -2;
 
@@ -545,7 +547,7 @@ public partial class NowPlayingWindow : Window
         CancellationToken token = _lyricsLoadCts.Token;
 
         _lyricsTrackPath = trackPath;
-        _lyrics = LyricsDocument.Empty;
+        SetLyrics(LyricsDocument.Empty);
         _activeLyricIndex = -2;
         ApplyLyricsDocument(_lyrics);
 
@@ -555,8 +557,8 @@ public partial class NowPlayingWindow : Window
             if (token.IsCancellationRequested || !string.Equals(trackPath, _lyricsTrackPath, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            _lyrics = document;
-            ApplyLyricsDocument(document);
+            SetLyrics(document);
+            ApplyLyricsDocument(_lyrics);
             UpdateProgress(_owner.CurrentPlaybackSeconds, _owner.CurrentTrackDurationSeconds);
 
             // Если локального LRC/TXT и текста в теге нет, пробуем автоматически найти
@@ -571,10 +573,26 @@ public partial class NowPlayingWindow : Window
         }
         catch
         {
-            _lyrics = LyricsDocument.Empty;
+            SetLyrics(LyricsDocument.Empty);
             ApplyLyricsDocument(_lyrics);
         }
     }
+
+    private void SetLyrics(LyricsDocument source)
+    {
+        _lyricsSource = source;
+        _lyrics = LyricsService.ApplyDisplayMode(source, _owner.Settings.LyricsDisplayMode);
+    }
+
+    // Вызывается из MainWindow.RefreshLyricsDisplayMode после смены режима.
+    internal void RefreshLyricsDisplayMode()
+    {
+        SetLyrics(_lyricsSource);
+        ApplyLyricsDocument(_lyrics);
+        UpdateProgress(_owner.CurrentPlaybackSeconds, _owner.CurrentTrackDurationSeconds);
+    }
+
+    private void LyricsDisplayModeButton_Click(object sender, RoutedEventArgs e) => _owner.ToggleLyricsDisplayMode();
 
     private async Task TryAutoFindLyricsAsync(string trackPath, CancellationToken lifetimeToken)
     {
@@ -617,7 +635,7 @@ public partial class NowPlayingWindow : Window
             _lyricsVariantsLrcLibLoaded = true;
             _lyricsVariantsExtraLoaded = lookup.Matches.Any(match => match.Source != "LRCLIB");
 
-            _lyrics = LyricsService.CreateDocumentFromOnlineResult(exact);
+            SetLyrics(LyricsService.CreateDocumentFromOnlineResult(exact));
             ApplyLyricsDocument(_lyrics);
             UpdateProgress(_owner.CurrentPlaybackSeconds, _owner.CurrentTrackDurationSeconds);
         }
@@ -763,6 +781,11 @@ public partial class NowPlayingWindow : Window
         NoLyricsPanel.Visibility = document.Kind == LyricsKind.None ? Visibility.Visible : Visibility.Collapsed;
         PlainLyricsText.Text = document.Kind == LyricsKind.Plain ? document.PlainText : string.Empty;
         _activeLyricIndex = -2;
+
+        bool plainMode = _owner.Settings.LyricsDisplayMode == "Plain";
+        LyricsDisplayModeButton.Visibility = _lyricsSource.Kind == LyricsKind.Synced ? Visibility.Visible : Visibility.Collapsed;
+        LyricsDisplayModeButton.Content = plainMode ? "TXT" : "LRC";
+        LyricsDisplayModeButton.ToolTip = LocalizationService.Translate(plainMode ? "Показать синхронный текст" : "Показать обычный текст");
     }
 
     private void UpdatePlaybackState(bool isPlaying)
