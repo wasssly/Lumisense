@@ -67,8 +67,38 @@ public sealed class WaveformView : FrameworkElement
         set => SetValue(HoverRatioProperty, value);
     }
 
-    // Доля ширины деления под зазор между барами; 0.35 подобрано на глаз, чтобы бары не стали тонкими палочками.
-    private const double GapRatio = 0.35;
+    public static readonly DependencyProperty GapRatioProperty = DependencyProperty.Register(
+        nameof(GapRatio), typeof(double), typeof(WaveformView),
+        new FrameworkPropertyMetadata(0.35, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // Доля ширины деления под зазор между столбиками (ProgressBarAppearance.WaveformGap); 0.35 подобрано на глаз.
+    public double GapRatio
+    {
+        get => (double)GetValue(GapRatioProperty);
+        set => SetValue(GapRatioProperty, value);
+    }
+
+    public static readonly DependencyProperty UnplayedOpacityProperty = DependencyProperty.Register(
+        nameof(UnplayedOpacity), typeof(double), typeof(WaveformView),
+        new FrameworkPropertyMetadata(1.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // Прозрачность ещё не проигранной части (ProgressBarAppearance.WaveformUnplayedOpacity).
+    public double UnplayedOpacity
+    {
+        get => (double)GetValue(UnplayedOpacityProperty);
+        set => SetValue(UnplayedOpacityProperty, value);
+    }
+
+    public static readonly DependencyProperty IsFlatProperty = DependencyProperty.Register(
+        nameof(IsFlat), typeof(bool), typeof(WaveformView),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // true — прямые столбики вместо скруглённых (ProgressBarAppearance.EndShape).
+    public bool IsFlat
+    {
+        get => (bool)GetValue(IsFlatProperty);
+        set => SetValue(IsFlatProperty, value);
+    }
 
     // Минимальная высота бара, чтобы тихие участки не исчезали и полоса не выглядела прерванной.
     private const double MinBarHeight = 2.0;
@@ -101,9 +131,19 @@ public sealed class WaveformView : FrameworkElement
             hoverBrush.Opacity = 0.45;
         }
 
+        // Прозрачность непроигранной части: клон, а не UnplayedBrush.Opacity, потому что кисть задана в XAML и общая.
+        Brush unplayedBrush = UnplayedBrush;
+        double unplayedOpacity = double.IsFinite(UnplayedOpacity) ? Math.Clamp(UnplayedOpacity, 0.0, 1.0) : 1.0;
+        if (unplayedOpacity < 0.999)
+        {
+            unplayedBrush = UnplayedBrush.CloneCurrentValue();
+            unplayedBrush.Opacity = UnplayedBrush.Opacity * unplayedOpacity;
+        }
+
+        double gapRatio = double.IsFinite(GapRatio) ? Math.Clamp(GapRatio, 0.0, 0.9) : 0.35;
         double bucketWidth = width / peaks.Length;
-        double barWidth = Math.Max(1.0, bucketWidth * (1 - GapRatio));
-        double cornerRadius = barWidth / 2;
+        double barWidth = Math.Max(1.0, bucketWidth * (1 - gapRatio));
+        double cornerRadius = IsFlat ? 0.0 : barWidth / 2;
 
         for (int i = 0; i < peaks.Length; i++)
         {
@@ -115,7 +155,7 @@ public sealed class WaveformView : FrameworkElement
             double center = x + barWidth / 2;
             Brush brush = center <= progressX ? PlayedBrush
                 : hoverBrush is not null && center <= hoverX ? hoverBrush
-                : UnplayedBrush;
+                : unplayedBrush;
 
             dc.DrawRoundedRectangle(brush, null, new Rect(x, y, barWidth, barHeight), cornerRadius, cornerRadius);
         }

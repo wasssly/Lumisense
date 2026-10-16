@@ -337,7 +337,9 @@ public partial class MainWindow
 
     private void QueueAlbumArtAppearanceRefresh()
     {
-        if (_settings.AccentColorMode != "Cover" && !_settings.CoverBaseFromCover)
+        // Полоса воспроизведения тоже может красится от обложки (ProgressBarAppearance.ColorMode == "Cover").
+        bool progressUsesCover = ProgressAppearanceApplier.AnyUsesCover(_settings);
+        if (_settings.AccentColorMode != "Cover" && !_settings.CoverBaseFromCover && !progressUsesCover)
             return;
 
         if (_albumArtAppearanceRefreshPending || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
@@ -352,8 +354,10 @@ public partial class MainWindow
 
             if (_settings.AccentColorMode == "Cover")
                 ApplyAccentColor();
-            else
+            else if (_settings.CoverBaseFromCover)
                 ApplyCoverBaseBackground();
+
+            ApplyProgressAppearance();
         }), DispatcherPriority.ContextIdle);
     }
 

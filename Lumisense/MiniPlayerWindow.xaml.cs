@@ -1325,9 +1325,30 @@ public partial class MiniPlayerWindow : Window
         ProgressMaterialSlider.ActiveBrush = accent;
         ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
         ProgressMaterial.IsWaving = _mainWindow.IsPlayingNow;
+        ApplyProgressAppearance();
 
         double ratio = _lastTotalSeconds > 0 ? Math.Clamp(_lastCurrentSeconds / _lastTotalSeconds, 0.0, 1.0) : 0.0;
         SetStripProgress(ratio);
+    }
+
+    // Профиль вида полосы для мини-плеера (ProgressBarAppearance): цвет, толщина и форма концов всех трёх видов полосы.
+    public void ApplyProgressAppearance()
+    {
+        ProgressBarAppearance appearance = ProgressAppearanceApplier.For(_mainWindow.Settings, ProgressSurface.Mini);
+        SolidColorBrush brush = ProgressAppearanceApplier.ToBrush(_mainWindow.GetProgressBarColor(ProgressSurface.Mini));
+
+        ProgressAppearanceApplier.Apply(ProgressMaterial, appearance);
+        ProgressAppearanceApplier.Apply(ProgressMaterialSlider, appearance);
+        ProgressMaterial.PlayedBrush = brush;
+        ProgressMaterialSlider.ActiveBrush = brush;
+        ProgressFill.Background = brush;
+
+        double height = 4.0 * appearance.TrackThickness;
+        var radius = new CornerRadius(appearance.IsFlat ? 0.0 : height / 2);
+        ProgressTrackBorder.Height = height;
+        ProgressFill.Height = height;
+        ProgressTrackBorder.CornerRadius = radius;
+        ProgressFill.CornerRadius = radius;
     }
 
     private void SetStripProgress(double ratio)

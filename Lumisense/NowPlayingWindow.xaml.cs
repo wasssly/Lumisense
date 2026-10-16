@@ -118,6 +118,21 @@ public partial class NowPlayingWindow : Window
         // Primary-кнопка WPF-UI берёт цвет из темы, а не из подменяемых ресурсов, поэтому красим её явно, как в главном окне.
         ArtworkPlayPauseButton.Background = accent;
         ArtworkPlayPauseIcon.Foreground = IconResources.AccentContrastBrush;
+        ApplyProgressAppearance();
+    }
+
+    // Профиль вида полосы для Now Playing (ProgressBarAppearance): цвет и размеры поверх акцента, выставленного выше.
+    public void ApplyProgressAppearance()
+    {
+        ProgressBarAppearance appearance = ProgressAppearanceApplier.For(_owner.Settings, ProgressSurface.NowPlaying);
+        SolidColorBrush brush = ProgressAppearanceApplier.ToBrush(_owner.GetProgressBarColor(ProgressSurface.NowPlaying));
+
+        ProgressAppearanceApplier.Apply(ArtworkProgressMaterial, appearance);
+        ProgressAppearanceApplier.Apply(ArtworkProgressMaterialSlider, appearance);
+        ArtworkProgressMaterial.PlayedBrush = brush;
+        ArtworkProgressMaterialSlider.ActiveBrush = brush;
+        ArtworkProgressBar.Foreground = brush;
+        ArtworkProgressBar.Height = 8.0 * appearance.TrackThickness;
     }
 
     // У ScrollViewer нет анимируемого свойства VerticalOffset: attached-свойство проксирует анимацию в ScrollToVerticalOffset.

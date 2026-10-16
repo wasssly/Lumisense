@@ -21,6 +21,7 @@ internal interface IMiniPlayerHost
     string CurrentRepeatModeName { get; }
     bool EffectiveGameOverlayCompatibilityEnabled { get; }
     Color GetResolvedAccentColor();
+    Color GetProgressBarColor(ProgressSurface surface);
 
     void ExternalPlayPause();
     void ExternalNext();

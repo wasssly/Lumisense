@@ -167,6 +167,7 @@ public partial class SettingsWindow : FluentWindow
         LyricsDisplaySyncedRadio.IsChecked = _settings.LyricsDisplayMode != "Plain";
         UpdateLyricsPreview();
         UpdateBadgePreview();
+        InitializeProgressAppearanceEditor();
         LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
         LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
         LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();

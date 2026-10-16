@@ -949,6 +949,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         ProgressMaterial.IsWaving = _isPlaying;
 
         _nowPlayingWindow?.ApplyProgressBarStyle();
+        ApplyProgressAppearance();
 
         if (isWaveform)
             FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");

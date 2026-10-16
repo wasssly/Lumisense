@@ -81,6 +81,7 @@ public sealed class LumiProfileSettingsCoverageTests
         if (type == typeof(double?)) return ((double?)current ?? 0.0) + 1.5;
         if (type == typeof(string)) return "different-value";
         if (type == typeof(double[])) return ((double[])current!).Select(gain => gain + 1.0).ToArray();
+        if (type == typeof(ProgressBarAppearance)) return new ProgressBarAppearance { ColorMode = "Custom", TrackThickness = 1.5 };
         if (type == typeof(HotkeyBinding)) return new HotkeyBinding { Ctrl = true, Shift = true, Key = "Z" };
         if (type == typeof(List<string>)) return new List<string> { "different-item" };
         if (type == typeof(List<EqualizerPreset>)) return new List<EqualizerPreset> { new() { Name = "different" } };

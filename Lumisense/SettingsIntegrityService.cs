@@ -233,6 +233,13 @@ internal static class SettingsIntegrityService
         settings.TrackStateBadgeMode = Allowed(settings.TrackStateBadgeMode, defaults.TrackStateBadgeMode,
             "State", "Extension", "Quality", "FileSize", "Custom");
         settings.LyricsDisplayMode = Allowed(settings.LyricsDisplayMode, defaults.LyricsDisplayMode, "Synced", "Plain");
+        settings.ProgressAppearanceScope = Allowed(settings.ProgressAppearanceScope, defaults.ProgressAppearanceScope, "Shared", "PerWindow");
+        settings.ProgressAppearanceMain ??= new ProgressBarAppearance();
+        settings.ProgressAppearanceNowPlaying ??= new ProgressBarAppearance();
+        settings.ProgressAppearanceMini ??= new ProgressBarAppearance();
+        settings.ProgressAppearanceMain.Normalize();
+        settings.ProgressAppearanceNowPlaying.Normalize();
+        settings.ProgressAppearanceMini.Normalize();
         settings.SyncedLyricsHighlightEffect = Allowed(settings.SyncedLyricsHighlightEffect, defaults.SyncedLyricsHighlightEffect, "None", "Glow");
         settings.SyncedLyricsFontSize = ClampFinite(settings.SyncedLyricsFontSize, 11, 28, defaults.SyncedLyricsFontSize);
         settings.InterfaceScale = ClampFinite(settings.InterfaceScale, 0.85, 1.35, defaults.InterfaceScale);

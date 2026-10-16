@@ -27,6 +27,19 @@ public abstract class MaterialWaveElement : FrameworkElement
         set => SetValue(IsWavingProperty, value);
     }
 
+    public static readonly DependencyProperty AlwaysWaveProperty = DependencyProperty.Register(
+        nameof(AlwaysWave), typeof(bool), typeof(MaterialWaveElement),
+        new FrameworkPropertyMetadata(false, OnAnimationInputChanged));
+
+    // true — волна бежит и на паузе (ProgressBarAppearance.WaveAlways), независимо от IsWaving.
+    public bool AlwaysWave
+    {
+        get => (bool)GetValue(AlwaysWaveProperty);
+        set => SetValue(AlwaysWaveProperty, value);
+    }
+
+    private bool ShouldWave => IsWaving || AlwaysWave;
+
     public static readonly DependencyProperty IsAnimationEnabledProperty = DependencyProperty.Register(
         nameof(IsAnimationEnabled), typeof(bool), typeof(MaterialWaveElement),
         new FrameworkPropertyMetadata(true, OnAnimationInputChanged));
@@ -56,9 +69,9 @@ public abstract class MaterialWaveElement : FrameworkElement
     // Кадры нужны только пока окно видно и волна бежит или выпрямляется: на паузе элемент ничего не тратит.
     private void UpdateAnimationState()
     {
-        double target = IsWaving ? 1.0 : 0.0;
+        double target = ShouldWave ? 1.0 : 0.0;
 
-        if (IsAnimationEnabled && IsLoaded && IsVisible && (IsWaving || AmplitudeFactor > 0.001))
+        if (IsAnimationEnabled && IsLoaded && IsVisible && (ShouldWave || AmplitudeFactor > 0.001))
         {
             StartRendering();
             return;
@@ -95,7 +108,7 @@ public abstract class MaterialWaveElement : FrameworkElement
         double dt = _lastFrame == TimeSpan.Zero ? 0.0 : Math.Min((now - _lastFrame).TotalSeconds, 0.1);
         _lastFrame = now;
 
-        double target = IsWaving ? 1.0 : 0.0;
+        double target = ShouldWave ? 1.0 : 0.0;
         double step = dt / AmplitudeEaseSeconds;
         AmplitudeFactor = AmplitudeFactor < target
             ? Math.Min(target, AmplitudeFactor + step)
@@ -104,7 +117,7 @@ public abstract class MaterialWaveElement : FrameworkElement
         Phase = (Phase + WaveSpeed * dt) % Wavelength;
         InvalidateVisual();
 
-        if (!IsWaving && AmplitudeFactor <= 0.001)
+        if (!ShouldWave && AmplitudeFactor <= 0.001)
             UpdateAnimationState();
     }
 }

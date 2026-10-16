@@ -150,6 +150,33 @@ public partial class MainWindow
             ApplyResources(window.Resources);
     }
 
+    // Цвет полосы воспроизведения окна по его профилю (ProgressBarAppearance): акцент, цвет обложки текущего трека или свой.
+    public Color GetProgressBarColor(ProgressSurface surface)
+    {
+        ProgressBarAppearance appearance = ProgressAppearanceApplier.For(_settings, surface);
+        Color? cover = appearance.ColorMode == "Cover" && _currentAlbumArt is not null
+            ? ExtractCoverAccentColor(_currentAlbumArt)
+            : null;
+        return ProgressAppearanceApplier.ResolveColor(appearance, GetResolvedAccentColor(), cover);
+    }
+
+    // Переносит профиль вида полосы на полосу главного окна и сразу на Now Playing и мини-плеер, если они открыты.
+    public void ApplyProgressAppearance()
+    {
+        ProgressBarAppearance appearance = ProgressAppearanceApplier.For(_settings, ProgressSurface.Main);
+        Color color = GetProgressBarColor(ProgressSurface.Main);
+        SolidColorBrush brush = ProgressAppearanceApplier.ToBrush(color);
+
+        ProgressAppearanceApplier.Apply(ProgressMaterial, appearance);
+        ProgressAppearanceApplier.Apply(ProgressWaveform, appearance);
+        ProgressAppearanceApplier.Apply(ProgressSlider, appearance, color);
+        ProgressMaterial.PlayedBrush = brush;
+        ProgressWaveform.PlayedBrush = brush;
+
+        _nowPlayingWindow?.ApplyProgressAppearance();
+        _miniPlayerWindow?.ApplyProgressAppearance();
+    }
+
     public void ApplyAccentColor()
     {
         RefreshCoverThemeColor();
@@ -186,6 +213,7 @@ public partial class MainWindow
         RefreshAccentDependentIcons();
         _miniPlayerWindow?.ApplyArtworkProgressColor();
         _nowPlayingWindow?.ApplyAccentColor();
+        ApplyProgressAppearance();
         ApplyCoverBaseBackground();
     }
 

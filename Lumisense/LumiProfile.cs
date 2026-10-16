@@ -181,6 +181,10 @@ public static class LumiProfileIO
         target.TrackStateBadgeShowSampleRate = source.TrackStateBadgeShowSampleRate;
         target.TrackStateBadgeShowFileSize = source.TrackStateBadgeShowFileSize;
         target.LyricsDisplayMode = source.LyricsDisplayMode;
+        target.ProgressAppearanceScope = source.ProgressAppearanceScope;
+        target.ProgressAppearanceMain = (source.ProgressAppearanceMain ?? new ProgressBarAppearance()).Clone();
+        target.ProgressAppearanceNowPlaying = (source.ProgressAppearanceNowPlaying ?? new ProgressBarAppearance()).Clone();
+        target.ProgressAppearanceMini = (source.ProgressAppearanceMini ?? new ProgressBarAppearance()).Clone();
         target.DiscordRichPresenceEnabled = source.DiscordRichPresenceEnabled;
         target.DiscordRichPresenceShowTrackInfo = source.DiscordRichPresenceShowTrackInfo;
         target.DiscordRichPresenceShowTimeline = source.DiscordRichPresenceShowTimeline;

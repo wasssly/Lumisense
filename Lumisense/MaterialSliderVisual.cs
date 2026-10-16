@@ -10,14 +10,54 @@ namespace Lumisense;
 // Размеры из документации Material (дорожка 16, ручка 4x44, зазор 6) уменьшены под плотность настольного окна.
 public sealed class MaterialSliderVisual : FrameworkElement
 {
-    private const double TrackThickness = 8.0;
-    private const double HandleWidth = 4.0;
-    private const double HandlePressedWidth = 2.0;
-    private const double HandleLength = 20.0;
+    private const double BaseTrackThickness = 8.0;
+    private const double BaseHandleWidth = 4.0;
+    private const double BaseHandlePressedWidth = 2.0;
+    private const double BaseHandleLength = 20.0;
     private const double HandleGap = 4.0;
-    private const double InnerCornerRadius = 2.0;
+    private const double BaseInnerCornerRadius = 2.0;
     private const double StopDotSize = 3.0;
     private const double DisabledOpacity = 0.38;
+
+    public static readonly DependencyProperty ThicknessScaleProperty = DependencyProperty.Register(
+        nameof(ThicknessScale), typeof(double), typeof(MaterialSliderVisual),
+        new FrameworkPropertyMetadata(1.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // Множитель толщины дорожки (ProgressBarAppearance.TrackThickness); у остальных ползунков остаётся 1.0.
+    public double ThicknessScale
+    {
+        get => (double)GetValue(ThicknessScaleProperty);
+        set => SetValue(ThicknessScaleProperty, value);
+    }
+
+    public static readonly DependencyProperty HandleScaleProperty = DependencyProperty.Register(
+        nameof(HandleScale), typeof(double), typeof(MaterialSliderVisual),
+        new FrameworkPropertyMetadata(1.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // Множитель размера ручки (ProgressBarAppearance.ThumbSize).
+    public double HandleScale
+    {
+        get => (double)GetValue(HandleScaleProperty);
+        set => SetValue(HandleScaleProperty, value);
+    }
+
+    public static readonly DependencyProperty IsFlatProperty = DependencyProperty.Register(
+        nameof(IsFlat), typeof(bool), typeof(MaterialSliderVisual),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // true — прямые концы дорожки и ручки вместо скруглённых (ProgressBarAppearance.EndShape).
+    public bool IsFlat
+    {
+        get => (bool)GetValue(IsFlatProperty);
+        set => SetValue(IsFlatProperty, value);
+    }
+
+    private double TrackThickness => BaseTrackThickness * (double.IsFinite(ThicknessScale) ? ThicknessScale : 1.0);
+    private double HandleFactor => double.IsFinite(HandleScale) ? HandleScale : 1.0;
+    private double HandleWidth => BaseHandleWidth * HandleFactor;
+    private double HandlePressedWidth => BaseHandlePressedWidth * HandleFactor;
+    private double HandleLength => BaseHandleLength * HandleFactor;
+    private double InnerCornerRadius => IsFlat ? 0.0 : BaseInnerCornerRadius;
 
     // Для слайдеров с отрицательным диапазоном (эквалайзер) активная часть идёт от нуля, а не от края.
     public static readonly DependencyProperty IsCenteredProperty = DependencyProperty.Register(
@@ -198,7 +238,7 @@ public sealed class MaterialSliderVisual : FrameworkElement
         // Нажатая ручка сужается, как в Material.
         double handleWidth = isDragging ? HandlePressedWidth : HandleWidth;
         double gapHalf = handleWidth / 2 + HandleGap;
-        double radius = TrackThickness / 2;
+        double radius = IsFlat ? 0.0 : TrackThickness / 2;
 
         // Три участка вдоль слайдера: неактивный до p1, активный между p1 и p2, неактивный после p2.
         bool handleFirst = handleX <= originX;
@@ -231,7 +271,8 @@ public sealed class MaterialSliderVisual : FrameworkElement
                 dc.DrawEllipse(ActiveBrush, null, new Point(length - dotX, 0), dotRadius, dotRadius);
         }
 
-        DrawRoundedBar(dc, ActiveBrush, handleX - handleWidth / 2, handleX + handleWidth / 2, HandleLength, handleWidth / 2, handleWidth / 2);
+        double handleRadius = IsFlat ? 0.0 : handleWidth / 2;
+        DrawRoundedBar(dc, ActiveBrush, handleX - handleWidth / 2, handleX + handleWidth / 2, HandleLength, handleRadius, handleRadius);
 
         dc.Pop();
         if (!enabled) dc.Pop();
@@ -272,7 +313,7 @@ public sealed class MaterialSliderVisual : FrameworkElement
     }
 
     // Участок дорожки [from, to] со срезами у соседей; внешние края (у 0 и length) скруглены полностью, внутренние — на 2.
-    private static void DrawSegment(DrawingContext dc, Brush brush, double from, double to, double trimStart, double trimEnd,
+    private void DrawSegment(DrawingContext dc, Brush brush, double from, double to, double trimStart, double trimEnd,
         double outerRadius, double length)
     {
         double leftRadius = from <= 0.01 ? outerRadius : InnerCornerRadius;

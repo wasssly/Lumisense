@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Media;
 
 namespace Lumisense;
 
@@ -35,6 +36,8 @@ internal interface ISettingsAppearanceHost
     void ApplySliderStyle();
     void ApplyTrackStateBadgeMode();
     void RefreshLyricsDisplayMode();
+    void ApplyProgressAppearance();
+    Color GetProgressBarColor(ProgressSurface surface);
     void PreviewTrackChangeToast();
     void PickToastPosition(Action<ToastPositionPickResult?> completed);
 }

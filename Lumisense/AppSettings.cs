@@ -192,6 +192,13 @@ public class AppSettings
     // без привязки ко времени (LyricsService.ApplyDisplayMode). У трека только с обычным текстом ничего не меняется.
     public string LyricsDisplayMode { get; set; } = "Synced";
 
+    // Вид полосы воспроизведения (ProgressBarAppearance): "Shared" — один профиль (ProgressAppearanceMain) на все окна,
+    // "PerWindow" — у главного окна, Now Playing и мини-плеера свои профили (ProgressAppearanceApplier.For).
+    public string ProgressAppearanceScope { get; set; } = "Shared";
+    public ProgressBarAppearance ProgressAppearanceMain { get; set; } = new();
+    public ProgressBarAppearance ProgressAppearanceNowPlaying { get; set; } = new();
+    public ProgressBarAppearance ProgressAppearanceMini { get; set; } = new();
+
     // Discord Rich Presence использует локальный Discord IPC и публичный Application ID Lumisense; по умолчанию
     // выключено, публикация названия, исполнителя и таймлайна настраивается отдельно.
     public bool DiscordRichPresenceEnabled { get; set; }

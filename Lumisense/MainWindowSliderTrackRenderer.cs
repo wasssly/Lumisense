@@ -24,7 +24,34 @@ public sealed class MainWindowSliderTrackRenderer : FrameworkElement
             typeof(MainWindowSliderTrackRenderer),
             new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
 
+    public static readonly DependencyProperty TrackThicknessScaleProperty =
+        DependencyProperty.Register(
+            nameof(TrackThicknessScale),
+            typeof(double),
+            typeof(MainWindowSliderTrackRenderer),
+            new FrameworkPropertyMetadata(1.0, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    public static readonly DependencyProperty IsFlatProperty =
+        DependencyProperty.Register(
+            nameof(IsFlat),
+            typeof(bool),
+            typeof(MainWindowSliderTrackRenderer),
+            new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
     private WpfSlider? _slider;
+
+    // Множитель толщины дорожки и прямые концы (ProgressBarAppearance); по умолчанию дорожка прежняя: 5 px со скруглением.
+    public double TrackThicknessScale
+    {
+        get => (double)GetValue(TrackThicknessScaleProperty);
+        set => SetValue(TrackThicknessScaleProperty, value);
+    }
+
+    public bool IsFlat
+    {
+        get => (bool)GetValue(IsFlatProperty);
+        set => SetValue(IsFlatProperty, value);
+    }
 
     public Brush? BackgroundBrush
     {
@@ -100,13 +127,14 @@ public sealed class MainWindowSliderTrackRenderer : FrameworkElement
             return;
         }
 
-        const double trackHeight = 5.0;
+        double trackHeight = 5.0 * (double.IsFinite(TrackThicknessScale) ? TrackThicknessScale : 1.0);
+        double radius = IsFlat ? 0.0 : trackHeight / 2.0;
         double top = trackOrigin.Y + (track.ActualHeight - trackHeight) / 2.0;
         double width = track.ActualWidth;
         if (width <= 0) return;
 
         var fullTrack = new Rect(trackOrigin.X, top, width, trackHeight);
-        drawingContext.DrawRoundedRectangle(BackgroundBrush, null, fullTrack, trackHeight / 2.0, trackHeight / 2.0);
+        drawingContext.DrawRoundedRectangle(BackgroundBrush, null, fullTrack, radius, radius);
 
         double availableLength = Math.Max(0, width - thumb.ActualWidth);
         double progress = Math.Clamp((_slider.Value - _slider.Minimum) / (_slider.Maximum - _slider.Minimum), 0.0, 1.0);
@@ -117,6 +145,6 @@ public sealed class MainWindowSliderTrackRenderer : FrameworkElement
             ? new Rect(trackOrigin.X + width - fillWidth, top, fillWidth, trackHeight)
             : new Rect(trackOrigin.X, top, fillWidth, trackHeight);
 
-        drawingContext.DrawRoundedRectangle(FillBrush, null, fillTrack, trackHeight / 2.0, trackHeight / 2.0);
+        drawingContext.DrawRoundedRectangle(FillBrush, null, fillTrack, radius, radius);
     }
 }

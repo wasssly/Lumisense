@@ -72,7 +72,9 @@ public partial class MainWindow
     // Material остаются как были.
     private void UpdateProgressHover(FrameworkElement overlay, double x)
     {
-        if (_audioFile == null || ProgressWaveform.Visibility != Visibility.Visible || overlay.ActualWidth <= 0)
+        ProgressBarAppearance appearance = ProgressAppearanceApplier.For(_settings, ProgressSurface.Main);
+        if (_audioFile == null || ProgressWaveform.Visibility != Visibility.Visible || overlay.ActualWidth <= 0
+            || (!appearance.HoverTime && !appearance.HoverHighlight))
         {
             HideProgressHover();
             return;
@@ -80,7 +82,13 @@ public partial class MainWindow
 
         double ratio = Math.Clamp(x / overlay.ActualWidth, 0.0, 1.0);
         var time = TimeSpan.FromSeconds(_audioFile.TotalTime.TotalSeconds * ratio);
-        ProgressWaveform.HoverRatio = ratio;
+        ProgressWaveform.HoverRatio = appearance.HoverHighlight ? ratio : null;
+
+        if (!appearance.HoverTime)
+        {
+            if (_progressHoverTip != null) _progressHoverTip.IsOpen = false;
+            return;
+        }
 
         _progressHoverTip ??= new System.Windows.Controls.ToolTip
         {
