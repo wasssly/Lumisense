@@ -82,7 +82,7 @@
                                 <local:SvgPathIcon Icon="IconSearch" Size="13" />
                             </ui:Button.Icon>
                         </ui:Button>
-                        <ui:Button x:Name="RemoveCoverButton" Content="Удалить обложку" Appearance="Secondary"
+                        <ui:Button x:Name="RemoveCoverButton" Content="Удалить обложку" Appearance="Danger"
                                    HorizontalAlignment="Left"
                                    Click="RemoveCoverButton_Click" Visibility="Collapsed">
                             <ui:Button.Icon>
