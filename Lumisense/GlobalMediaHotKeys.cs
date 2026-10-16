@@ -2,6 +2,7 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Threading;
 
 namespace Lumisense;
 
@@ -44,8 +45,27 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private const int IdCustomToggleLyrics = 0xA01E;
     private const int IdCustomToggleMiniPlayer = 0xA01F;
 
+    private const uint VK_SHIFT = 0x10;
+    private const uint VK_CONTROL = 0x11;
+    private const uint VK_MENU = 0x12;
+    private const uint VK_LWIN = 0x5B;
+    private const uint VK_RWIN = 0x5C;
+
+    // Игра с эксклюзивным вводом не получает WM_HOTKEY, поэтому комбинации дополнительно опрашиваются по физическому
+    // состоянию клавиш. Опрос ждёт, не придёт ли настоящий WM_HOTKEY, чтобы не сработать дважды.
+    private const int PollIntervalMilliseconds = 30;
+    private const int PollConfirmMilliseconds = 80;
+    private const int SystemHotkeyToleranceMilliseconds = 50;
+
+    private readonly record struct PolledHotkey(int Id, int VirtualKey, bool Ctrl, bool Alt, bool Shift, bool Win);
+
     private readonly IntPtr _handle;
     private readonly HwndSource _source;
+    private readonly DispatcherTimer _pollTimer;
+    private readonly List<PolledHotkey> _polled = [];
+    private readonly Dictionary<int, bool> _polledDown = [];
+    private readonly Dictionary<int, long> _polledEdge = [];
+    private readonly Dictionary<int, long> _lastSystemHotkey = [];
 
     private int _disposed;
     private bool _customPlayPauseRegistered;
@@ -96,6 +116,15 @@ public sealed class GlobalMediaHotKeys : IDisposable
         RegisterHotKey(_handle, IdPrev, 0, VK_MEDIA_PREV_TRACK);
         RegisterHotKey(_handle, IdStop, MOD_NOREPEAT, VK_MEDIA_STOP);
         RegisterHotKey(_handle, IdPlayPause, MOD_NOREPEAT, VK_MEDIA_PLAY_PAUSE);
+
+        _polled.Add(new PolledHotkey(IdNext, (int)VK_MEDIA_NEXT_TRACK, false, false, false, false));
+        _polled.Add(new PolledHotkey(IdPrev, (int)VK_MEDIA_PREV_TRACK, false, false, false, false));
+        _polled.Add(new PolledHotkey(IdStop, (int)VK_MEDIA_STOP, false, false, false, false));
+        _polled.Add(new PolledHotkey(IdPlayPause, (int)VK_MEDIA_PLAY_PAUSE, false, false, false, false));
+
+        _pollTimer = new DispatcherTimer(DispatcherPriority.Normal) { Interval = TimeSpan.FromMilliseconds(PollIntervalMilliseconds) };
+        _pollTimer.Tick += PollTick;
+        _pollTimer.Start();
     }
 
     // Перерегистрирует хоткеи под текущие настройки; безопасно вызывать повторно — старые комбинации снимаются.
@@ -116,6 +145,8 @@ public sealed class GlobalMediaHotKeys : IDisposable
         if (_customToggleFavoriteRegistered) UnregisterHotKey(_handle, IdCustomToggleFavorite);
         if (_customToggleLyricsRegistered) UnregisterHotKey(_handle, IdCustomToggleLyrics);
         if (_customToggleMiniPlayerRegistered) UnregisterHotKey(_handle, IdCustomToggleMiniPlayer);
+
+        _polled.RemoveAll(p => p.Id >= IdCustomPlayPause);
 
         _customPlayPauseRegistered = TryRegister(IdCustomPlayPause, settings.HotkeyPlayPause);
         _customNextRegistered = TryRegister(IdCustomNext, settings.HotkeyNext, allowRepeat: true);
@@ -152,83 +183,125 @@ public sealed class GlobalMediaHotKeys : IDisposable
         if (binding.Win) modifiers |= MOD_WIN;
 
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
-        return RegisterHotKey(_handle, id, modifiers, vk);
+        if (!RegisterHotKey(_handle, id, modifiers, vk)) return false;
+
+        _polled.Add(new PolledHotkey(id, (int)vk, binding.Ctrl, binding.Alt, binding.Shift, binding.Win));
+        return true;
+    }
+
+    private void PollTick(object? sender, EventArgs e)
+    {
+        long now = Environment.TickCount64;
+        bool foreignForeground = IsForeignProcessForeground();
+
+        foreach (var hotkey in _polled)
+        {
+            bool down = foreignForeground && IsCombinationDown(hotkey);
+            _polledDown.TryGetValue(hotkey.Id, out bool wasDown);
+            _polledDown[hotkey.Id] = down;
+
+            if (down && !wasDown)
+            {
+                _polledEdge[hotkey.Id] = now;
+            }
+            else if (_polledEdge.TryGetValue(hotkey.Id, out long edge) && now - edge >= PollConfirmMilliseconds)
+            {
+                _polledEdge.Remove(hotkey.Id);
+                bool handledBySystem = _lastSystemHotkey.TryGetValue(hotkey.Id, out long systemTick)
+                                       && systemTick >= edge - SystemHotkeyToleranceMilliseconds;
+                if (handledBySystem) continue;
+
+                Logger.Info($"Хоткей {hotkey.Id:X} сработал через опрос клавиш: WM_HOTKEY не пришёл (в фокусе другое приложение).");
+                DispatchHotkey(hotkey.Id, hotkey.VirtualKey);
+            }
+        }
+    }
+
+    // Модификаторы сверяются точно, как у RegisterHotKey: лишняя зажатая клавиша не должна давать срабатывание.
+    private static bool IsCombinationDown(PolledHotkey hotkey) =>
+        IsVirtualKeyDown(hotkey.VirtualKey)
+        && IsVirtualKeyDown((int)VK_CONTROL) == hotkey.Ctrl
+        && IsVirtualKeyDown((int)VK_MENU) == hotkey.Alt
+        && IsVirtualKeyDown((int)VK_SHIFT) == hotkey.Shift
+        && (IsVirtualKeyDown((int)VK_LWIN) || IsVirtualKeyDown((int)VK_RWIN)) == hotkey.Win;
+
+    // Пока в фокусе наше окно, хоткеи доставляет система, и опрос не нужен.
+    private static bool IsForeignProcessForeground()
+    {
+        var foreground = GetForegroundWindow();
+        if (foreground == IntPtr.Zero) return false;
+        GetWindowThreadProcessId(foreground, out uint processId);
+        return processId != 0 && processId != (uint)Environment.ProcessId;
     }
 
     private IntPtr WndProc(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
     {
         if (msg == WM_HOTKEY)
         {
-            switch (wParam.ToInt32())
-            {
-                case IdNext:
-                case IdCustomNext:
-                    NextPressed?.Invoke(GetVirtualKey(lParam));
-                    handled = true;
-                    break;
-                case IdPrev:
-                case IdCustomPrevious:
-                    PreviousPressed?.Invoke(GetVirtualKey(lParam));
-                    handled = true;
-                    break;
-                case IdStop:
-                case IdCustomStop:
-                    StopPressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdPlayPause:
-                case IdCustomPlayPause:
-                    PlayPausePressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomVolumeUp:
-                    VolumeUpPressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomVolumeDown:
-                    VolumeDownPressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomMute:
-                    MutePressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomShuffle:
-                    ShufflePressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomRepeat:
-                    RepeatPressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomDeleteTrack:
-                    DeleteTrackPressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomSeekForward:
-                    SeekForwardPressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomSeekBackward:
-                    SeekBackwardPressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomToggleFavorite:
-                    ToggleFavoritePressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomToggleLyrics:
-                    ToggleLyricsPressed?.Invoke();
-                    handled = true;
-                    break;
-                case IdCustomToggleMiniPlayer:
-                    ToggleMiniPlayerPressed?.Invoke();
-                    handled = true;
-                    break;
-            }
+            int id = wParam.ToInt32();
+            _lastSystemHotkey[id] = Environment.TickCount64;
+            handled = DispatchHotkey(id, GetVirtualKey(lParam));
         }
 
         return IntPtr.Zero;
+    }
+
+    private bool DispatchHotkey(int id, int virtualKey)
+    {
+        switch (id)
+        {
+            case IdNext:
+            case IdCustomNext:
+                NextPressed?.Invoke(virtualKey);
+                return true;
+            case IdPrev:
+            case IdCustomPrevious:
+                PreviousPressed?.Invoke(virtualKey);
+                return true;
+            case IdStop:
+            case IdCustomStop:
+                StopPressed?.Invoke();
+                return true;
+            case IdPlayPause:
+            case IdCustomPlayPause:
+                PlayPausePressed?.Invoke();
+                return true;
+            case IdCustomVolumeUp:
+                VolumeUpPressed?.Invoke();
+                return true;
+            case IdCustomVolumeDown:
+                VolumeDownPressed?.Invoke();
+                return true;
+            case IdCustomMute:
+                MutePressed?.Invoke();
+                return true;
+            case IdCustomShuffle:
+                ShufflePressed?.Invoke();
+                return true;
+            case IdCustomRepeat:
+                RepeatPressed?.Invoke();
+                return true;
+            case IdCustomDeleteTrack:
+                DeleteTrackPressed?.Invoke();
+                return true;
+            case IdCustomSeekForward:
+                SeekForwardPressed?.Invoke();
+                return true;
+            case IdCustomSeekBackward:
+                SeekBackwardPressed?.Invoke();
+                return true;
+            case IdCustomToggleFavorite:
+                ToggleFavoritePressed?.Invoke();
+                return true;
+            case IdCustomToggleLyrics:
+                ToggleLyricsPressed?.Invoke();
+                return true;
+            case IdCustomToggleMiniPlayer:
+                ToggleMiniPlayerPressed?.Invoke();
+                return true;
+            default:
+                return false;
+        }
     }
 
     // Физическое состояние клавиши надёжнее ожидания следующего WM_HOTKEY: у системного повтора есть
@@ -240,6 +313,8 @@ public sealed class GlobalMediaHotKeys : IDisposable
     public void Dispose()
     {
         if (Interlocked.Exchange(ref _disposed, 1) != 0) return;
+        _pollTimer.Stop();
+        _pollTimer.Tick -= PollTick;
         UnregisterHotKey(_handle, IdNext);
         UnregisterHotKey(_handle, IdPrev);
         UnregisterHotKey(_handle, IdStop);
@@ -266,6 +341,12 @@ public sealed class GlobalMediaHotKeys : IDisposable
 
     [DllImport("user32.dll")]
     private static extern short GetAsyncKeyState(int vKey);
+
+    [DllImport("user32.dll")]
+    private static extern IntPtr GetForegroundWindow();
+
+    [DllImport("user32.dll")]
+    private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint processId);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
