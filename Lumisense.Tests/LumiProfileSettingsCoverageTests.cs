@@ -31,6 +31,9 @@ public sealed class LumiProfileSettingsCoverageTests
         nameof(AppSettings.SaveQueueBetweenRestarts),                    // сброс настроек его не трогает (решение 0026)
         nameof(AppSettings.SkippedUpdateVersion),                        // относится к этой установке
         nameof(AppSettings.UpdateMirrorWarningSuppressed),               // подтверждение пользователя на этой установке
+        nameof(AppSettings.LastSuccessfulUpdateCheckUtc),                // состояние проверки обновлений на этой установке
+        nameof(AppSettings.UpdateCheckFailingSinceUtc),                  // то же
+        nameof(AppSettings.UpdateCheckHintShownUtc),                     // то же
         nameof(AppSettings.HklmWildcardContextMenuCleanupAttempted),     // служебная отметка этой машины
         nameof(AppSettings.TrackLoadTraceEnabled),                       // локальная диагностика
         nameof(AppSettings.EqualizerPresets)                             // у пресетов свой импорт и экспорт (.json)

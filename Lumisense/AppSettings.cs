@@ -466,6 +466,12 @@ public class AppSettings
     // «Больше не спрашивать» в предупреждении о зеркале загрузки (SettingsWindow.ConfirmMirrorUse).
     public bool UpdateMirrorWarningSuppressed { get; set; }
 
+    // Здоровье проверки обновлений на старте (UpdateCheckHealth, строки ISO 8601 UTC): когда последняя проверка удалась,
+    // с какого момента проверки подряд не удаются и когда в последний раз показывалась подсказка про ручную загрузку.
+    public string? LastSuccessfulUpdateCheckUtc { get; set; }
+    public string? UpdateCheckFailingSinceUtc { get; set; }
+    public string? UpdateCheckHintShownUtc { get; set; }
+
     // 10 ISO-полос графического EQ (EqualizerSampleProvider); при другой длине сохранённого массива SettingsWindow и
     // MainWindow подстраиваются под BandFrequencies, а не доверяют длине массива.
     public bool EqualizerEnabled { get; set; }

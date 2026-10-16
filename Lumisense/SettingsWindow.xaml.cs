@@ -825,8 +825,11 @@ public partial class SettingsWindow : FluentWindow
 
                 case UpdateCheckStatus.Error:
                 default:
-                    CheckUpdatesButtonSubtitle.Text = UpdateFailureExperience.Describe(
-                        result.FailureKind, result.HttpStatusCode);
+                    // Если GitHub недоступен, подсказываем запасной путь: релизы дублируются в Telegram-канале.
+                    CheckUpdatesButtonSubtitle.Text = UpdateFailureExperience.Describe(result.FailureKind, result.HttpStatusCode)
+                        + " " + string.Format(
+                            LocalizationService.Translate("Новые версии также публикуются в Telegram: {0}"),
+                            UpdateCheckHealth.TelegramChannelName);
                     break;
             }
         }
@@ -1189,6 +1192,7 @@ public partial class SettingsWindow : FluentWindow
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
+        Add("Вид полосы воспроизведения", "Воспроизведение", "Playback", ProgressScopeSharedRadio, "полоса воспроизведения цвет толщина ручка форма концов волна waveform material предпросмотр progress bar color thickness wave thumb");
         Add("Режим текста песни", "Оформление", "Appearance", LyricsDisplayPlainRadio, "текст песни синхронный обычный lrc txt переключить режим synced plain lyrics");
         Add("Показать пример уведомления", "Уведомления", "Notifications", ToastPreviewButton, "уведомление пример предпросмотр показать toast preview");
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");

@@ -527,7 +527,7 @@ public partial class UpdateAvailableWindow : FluentWindow
 
         try
         {
-            var service = new VelopackUpdateService();
+            var service = new VelopackUpdateService(_result.VelopackFeedUrl ?? VelopackUpdateService.PublicReleaseFeedUrl);
             await service.DownloadAsync(_result.VelopackUpdate, progress, _downloadCts.Token);
 
             _velopackDiagnostics?.Prepared();

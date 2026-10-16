@@ -596,7 +596,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // первый разворот из мини-режима на большой библиотеке может занять время.
 
     // Тихая проверка на старте: в фоне и с задержкой, чтобы не отвлекать ресурсы от загрузки плейлиста/обложки; не показывает
-    // диалог для версии, отклонённой кнопкой "Позже" (SkippedUpdateVersion); ошибки молча глотаются, ручная проверка их покажет.
+    // диалог для версии, отклонённой кнопкой "Позже" (SkippedUpdateVersion). Сбой повторяется через 30 с и 5 мин
+    // (StartupUpdateCheck); если проверки не удаются больше недели, раз в сутки подсказываем канал Telegram (UpdateCheckHealth).
     private async System.Threading.Tasks.Task CheckForUpdatesOnStartupAsync()
     {
         try
@@ -604,8 +605,18 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             await System.Threading.Tasks.Task.Delay(System.TimeSpan.FromSeconds(3), _lifetimeCts.Token);
             if (_isExiting) return;
 
-            var result = await UpdateChecker.CheckAsync();
-            if (_isExiting || result.Status != UpdateCheckStatus.UpdateAvailable) return;
+            var result = await StartupUpdateCheck.RunAsync(
+                UpdateChecker.CheckAsync, StartupUpdateCheck.RetryDelays, System.Threading.Tasks.Task.Delay, _lifetimeCts.Token);
+            if (_isExiting) return;
+
+            RecordStartupUpdateCheckOutcome(result);
+            if (result.Status == UpdateCheckStatus.Error)
+            {
+                ShowUpdateCheckFailureHintIfNeeded();
+                return;
+            }
+
+            if (result.Status != UpdateCheckStatus.UpdateAvailable) return;
             if (result.LatestVersion != null && result.LatestVersion == _settings.SkippedUpdateVersion) return;
 
             if (_isExiting || !IsVisible) return;
@@ -622,6 +633,61 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         catch
         {
             // Фоновая необязательная проверка — молча игнорируем любые сбои
+        }
+    }
+
+    private void RecordStartupUpdateCheckOutcome(UpdateCheckResult result)
+    {
+        string now = UpdateCheckHealth.Format(DateTime.UtcNow);
+        if (result.Status == UpdateCheckStatus.Error)
+        {
+            _settings.UpdateCheckFailingSinceUtc ??= now;
+        }
+        else
+        {
+            _settings.LastSuccessfulUpdateCheckUtc = now;
+            _settings.UpdateCheckFailingSinceUtc = null;
+        }
+
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // Не навязчиво: только когда проверки не удаются больше недели, не чаще раза в сутки и только при видимом окне.
+    private void ShowUpdateCheckFailureHintIfNeeded()
+    {
+        DateTime now = DateTime.UtcNow;
+        if (!UpdateCheckHealth.ShouldShowFailureHint(now,
+                UpdateCheckHealth.Parse(_settings.UpdateCheckFailingSinceUtc),
+                UpdateCheckHealth.Parse(_settings.UpdateCheckHintShownUtc)))
+            return;
+        if (_isExiting || !IsVisible) return;
+
+        _settings.UpdateCheckHintShownUtc = UpdateCheckHealth.Format(now);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+
+        DateTime? lastSuccess = UpdateCheckHealth.Parse(_settings.LastSuccessfulUpdateCheckUtc);
+        string lastSuccessText = lastSuccess is { } success
+            ? success.ToLocalTime().ToString("d", System.Globalization.CultureInfo.CurrentCulture)
+            : "—";
+        string message = string.Format(
+            LocalizationService.Translate("Не удаётся проверить обновления уже больше недели (последняя успешная проверка: {0}).\n\nЕсли GitHub у вас недоступен, новые версии можно скачать в Telegram-канале {1}. Открыть канал?"),
+            lastSuccessText, UpdateCheckHealth.TelegramChannelName);
+        if (LocalizedMessageBox.Show(
+                this,
+                message,
+                LocalizationService.Translate("Проверка обновлений"),
+                System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Information,
+                System.Windows.MessageBoxResult.No) != System.Windows.MessageBoxResult.Yes)
+            return;
+
+        try
+        {
+            Process.Start(new ProcessStartInfo(UpdateCheckHealth.TelegramChannelUrl) { UseShellExecute = true });
+        }
+        catch
+        {
+            // Нет браузера по умолчанию — не критично, просто ничего не открылось.
         }
     }
 

@@ -52,6 +52,9 @@ public sealed class UpdateCheckResult
     // legacy Inno Setup-кодом, поэтому старые сценарии отката/переустановки остаются прежними.
     public UpdateInfo? VelopackUpdate { get; init; }
 
+    // Адрес feed, который нашёл обновление (UpdateFeedSources): скачивать нужно с него же, а не с адреса по умолчанию.
+    public string? VelopackFeedUrl { get; init; }
+
     public UpdateFailureKind FailureKind { get; init; }
     public int? HttpStatusCode { get; init; }
     public string? TechnicalDetail { get; init; }
@@ -223,7 +226,13 @@ public static class UpdateChecker
         var velopack = new VelopackUpdateService();
         if (velopack.IsManagedInstall)
         {
-            VelopackProbeResult probe = await velopack.CheckAsync(ct);
+            // Все адреса feed проверяются одновременно (UpdateFeedSources); без зеркал в списке один официальный адрес.
+            UpdateFeedRaceResult raced = await UpdateFeedRace.CheckAsync(
+                UpdateFeedSources.FeedUrls,
+                (feedUrl, token) => new VelopackUpdateService(feedUrl).CheckAsync(token),
+                UpdateFeedRace.DefaultUpToDateGrace,
+                ct);
+            VelopackProbeResult probe = raced.Result;
             return probe.Status switch
             {
                 VelopackProbeStatus.UpdateAvailable when probe.Update is not null => new UpdateCheckResult
@@ -234,7 +243,8 @@ public static class UpdateChecker
                     LatestVersion = probe.Update.TargetFullRelease.Version.ToString(),
                     ReleaseNotes = probe.Update.TargetFullRelease.NotesMarkdown,
                     ReleaseNotesUrl = $"https://github.com/{RepoOwner}/{RepoName}/releases/tag/v{probe.Update.TargetFullRelease.Version}",
-                    VelopackUpdate = probe.Update
+                    VelopackUpdate = probe.Update,
+                    VelopackFeedUrl = raced.FeedUrl
                 },
                 VelopackProbeStatus.UpToDate => new UpdateCheckResult
                 {
