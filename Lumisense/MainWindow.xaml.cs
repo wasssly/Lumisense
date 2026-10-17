@@ -835,6 +835,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     {
         base.OnSourceInitialized(e);
 
+        ApplyPlaybackProcessPriority();
         _integrations.InitializeMediaHotKeys(this);
         _integrations.InitializeNowPlayingIntegration(this);
         _integrations.InitializeTrayIcon(this);

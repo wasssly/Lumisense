@@ -177,6 +177,8 @@ public partial class SettingsWindow : FluentWindow
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
         InitializeOutputDeviceCombo();
         InitializeWasapiModeCombo();
+        InitializeWasapiLatencyCombo();
+        RaisePlaybackPriorityCheckBox.IsChecked = _settings.RaisePlaybackPriority;
         TrackLoadTraceCheckBox.IsChecked = _settings.TrackLoadTraceEnabled;
         NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked = _settings.NeverAutoPlayLastTrackOnStartup;
         TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
@@ -2068,6 +2070,44 @@ public partial class SettingsWindow : FluentWindow
         {
             _isRefreshingWasapiMode = false;
         }
+    }
+
+    private void InitializeWasapiLatencyCombo()
+    {
+        _isRefreshingWasapiMode = true;
+        try
+        {
+            var selected = WasapiLatencyCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+                .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.WasapiLatencyMilliseconds.ToString(), StringComparison.Ordinal));
+            WasapiLatencyCombo.SelectedItem = selected ?? WasapiLatencyCombo.Items[1];
+        }
+        finally
+        {
+            _isRefreshingWasapiMode = false;
+        }
+    }
+
+    private void WasapiLatencyCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing || _isRefreshingWasapiMode) return;
+
+        int milliseconds = WasapiLatencyCombo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag }
+                           && int.TryParse(tag, out int parsed)
+            ? parsed
+            : 100;
+        if (_settings.WasapiLatencyMilliseconds == milliseconds) return;
+
+        _settings.WasapiLatencyMilliseconds = milliseconds;
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void RaisePlaybackPriorityCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.RaisePlaybackPriority = RaisePlaybackPriorityCheckBox.IsChecked == true;
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        _owner.ApplyPlaybackProcessPriority();
     }
 
     // Вызывается из MainWindow после автоотката с монопольного на общий режим (см.

@@ -27,8 +27,12 @@ namespace Lumisense;
 public partial class MainWindow
 {
     // 30 мс вызывали щелчки на стыке треков (drain не успевал дождаться реального опустошения
-    // WASAPI-буфера) — 60 мс безопасный минимум для плеера с realtime DSP (SoundTouch, эквалайзер).
-    private const int WasapiRequestedLatencyMilliseconds = 60;
+    // WASAPI-буфера) — 60 мс безопасный минимум для плеера с realtime DSP (SoundTouch, эквалайзер). По умолчанию 100 мс:
+    // при загрузке процессора под 100% 60 мс не хватало, и звук щёлкал. Размер выбирает пользователь (AppSettings.WasapiLatencyMilliseconds);
+    // поле статическое, потому что от него считаются паузы drain в статических методах смены трека.
+    private const int DefaultWasapiLatencyMilliseconds = 100;
+    private static int _wasapiLatencyMilliseconds = DefaultWasapiLatencyMilliseconds;
+    private static int WasapiRequestedLatencyMilliseconds => _wasapiLatencyMilliseconds;
 
     // Следующее открытие устройства идёт через системное, но сохранённый выбор пользователя остаётся прежним.
     private bool _forceSystemOutputOnce;
@@ -129,8 +133,14 @@ public partial class MainWindow
         }
     }
 
+    // Применяет AppSettings.RaisePlaybackPriority: AboveNormal, пока включено; Normal возвращаем, только если приоритет повысили мы.
+    public void ApplyPlaybackProcessPriority() => PlaybackProcessPriority.Apply(_settings.RaisePlaybackPriority);
+
     private WasapiPlayer BuildWasapiPlayer(MMDevice device, bool useExclusiveMode)
     {
+        _wasapiLatencyMilliseconds = _settings.WasapiLatencyMilliseconds is 60 or 100 or 200
+            ? _settings.WasapiLatencyMilliseconds
+            : DefaultWasapiLatencyMilliseconds;
         var builder = new WasapiPlayerBuilder()
             .WithDevice(device)
             .WithEventSync()

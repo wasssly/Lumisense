@@ -232,6 +232,9 @@ internal static class SettingsIntegrityService
         settings.PlaybackChannelMode = Allowed(settings.PlaybackChannelMode, defaults.PlaybackChannelMode, "Stereo", "Mono");
         settings.TrackStateBadgeMode = Allowed(settings.TrackStateBadgeMode, defaults.TrackStateBadgeMode,
             "State", "Extension", "Quality", "FileSize", "Custom");
+        settings.WasapiLatencyMilliseconds = settings.WasapiLatencyMilliseconds is 60 or 100 or 200
+            ? settings.WasapiLatencyMilliseconds
+            : defaults.WasapiLatencyMilliseconds;
         settings.LyricsDisplayMode = Allowed(settings.LyricsDisplayMode, defaults.LyricsDisplayMode, "Synced", "Plain");
         settings.ProgressAppearanceScope = Allowed(settings.ProgressAppearanceScope, defaults.ProgressAppearanceScope, "Shared", "PerWindow");
         settings.NowPlayingProgressStyle = Allowed(settings.NowPlayingProgressStyle, defaults.NowPlayingProgressStyle,

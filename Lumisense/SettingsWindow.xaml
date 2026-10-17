@@ -1602,6 +1602,21 @@
                                 </ComboBox>
                                 <TextBlock Text="Монопольный режим отдаёт устройство целиком Lumisense — другие приложения на время воспроизведения теряют звук на этом устройстве. Поддерживается не всеми звуковыми картами: если устройство откажется работать в этом режиме, Lumisense автоматически вернётся к общему."
                                            Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" />
+
+                                <!-- Буфер вывода и приоритет: AppSettings.WasapiLatencyMilliseconds / RaisePlaybackPriority (щелчки при загрузке процессора). -->
+                                <TextBlock Text="Размер буфера" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,16,0,8" />
+                                <ComboBox x:Name="WasapiLatencyCombo" SelectionChanged="WasapiLatencyCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="Малая задержка (60 мс)" Tag="60" />
+                                    <ComboBoxItem Content="Стандартный (100 мс, по умолчанию)" Tag="100" />
+                                    <ComboBoxItem Content="Устойчивый к нагрузке (200 мс)" Tag="200" />
+                                </ComboBox>
+                                <TextBlock Text="Чем больше буфер, тем реже звук щёлкает, когда процессор загружен почти полностью; пауза и перемотка при этом срабатывают на доли секунды позже. Применяется со следующего трека."
+                                           Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" />
+                                <CheckBox x:Name="RaisePlaybackPriorityCheckBox" Content="Повышенный приоритет плеера" Margin="0,12,0,0"
+                                          Checked="RaisePlaybackPriorityCheckBox_Changed" Unchecked="RaisePlaybackPriorityCheckBox_Changed" />
+                                <TextBlock Text="Плеер получает процессор раньше фоновых программ, поэтому при загрузке под 100% звук щёлкает реже. Остальные программы от этого не страдают заметно."
+                                           Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" Margin="0,4,0,0" />
                                 <Border Background="{DynamicResource ControlFillColorTertiaryBrush}" CornerRadius="6" Padding="10,8" Margin="0,10,0,0">
                                     <StackPanel>
                                         <TextBlock x:Name="OutputDeviceRuntimeTitleText" Text="Фактическое устройство"

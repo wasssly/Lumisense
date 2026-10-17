@@ -31,6 +31,10 @@ public partial class App : Application
     {
         base.OnStartup(e);
 
+        // Блокирующая сборка мусора останавливает все потоки, включая аудио: при нагрузке на процессор это щелчок в звуке.
+        // SustainedLowLatency просит среду выполнения обходиться фоновыми сборками и не делать полных блокирующих без нужды.
+        System.Runtime.GCSettings.LatencyMode = System.Runtime.GCLatencyMode.SustainedLowLatency;
+
         // Все окна получают текущий язык после построения визуального дерева — без копирования вызова во все конструкторы.
         EventManager.RegisterClassHandler(typeof(Window), FrameworkElement.LoadedEvent,
             new RoutedEventHandler((sender, _) =>

@@ -329,6 +329,14 @@ public class AppSettings
     // откатывает это значение на "Shared" и просит SettingsWindow обновить ComboBox.
     public string WasapiMode { get; set; } = "Shared";
 
+    // Размер буфера вывода WASAPI, мс: 60 (малая задержка), 100 (по умолчанию) или 200 (максимальная устойчивость к щелчкам,
+    // когда процессор загружен). Настройка машины: в профиль не переносится. Применяется при следующем открытии вывода.
+    public int WasapiLatencyMilliseconds { get; set; } = 100;
+
+    // Повышенный приоритет процесса: при загрузке процессора под 100% плеер получает его раньше фоновых программ и сборщик
+    // мусора не ждёт «голодные» потоки, из-за чего звук щёлкал. Настройка машины: в профиль не переносится.
+    public bool RaisePlaybackPriority { get; set; } = true;
+
     // Однократная попытка удалить унаследованный HKLM-ключ контекстного меню уже была — не
     // повторять, даже если пользователь отклонил UAC (см. TryCleanupLegacyHklmWildcardContextMenu).
     public bool HklmWildcardContextMenuCleanupAttempted { get; set; }
