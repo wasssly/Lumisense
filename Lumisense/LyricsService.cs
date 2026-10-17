@@ -81,6 +81,8 @@ public static class LyricsService
     private static readonly string ManagedLrcDirectory = Path.Combine(ManagedLyricsDirectory, "lrc");
     private static readonly HttpClient Http = CreateHttpClient();
     private static readonly SemaphoreSlim SearchGate = new(1, 1);
+    private const int MaxLrcLibRateLimitAttempts = 3;
+    private const int MaxLrcLibTransientAttempts = 2;
 
     private static readonly Regex TimestampRegex = new(
         @"\[(?<minutes>\d{1,3}):(?<seconds>\d{2})(?:[\.:](?<fraction>\d{1,3}))?\]",
@@ -426,64 +428,83 @@ public static class LyricsService
         if (!generalQuery && !string.IsNullOrWhiteSpace(artist) && artist != "—")
             query.Add($"artist_name={Uri.EscapeDataString(artist)}");
 
-        await SearchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
-        try
-        {
-            using var request = new HttpRequestMessage(HttpMethod.Get, LrcLibSearchEndpoint + "?" + string.Join("&", query));
-            using HttpResponseMessage response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
-                .ConfigureAwait(false);
+        string url = LrcLibSearchEndpoint + "?" + string.Join("&", query);
 
-            if (response.StatusCode == HttpStatusCode.TooManyRequests)
+        // 429 и сетевые сбои — обычное дело для публичного сервиса: повторяем запрос с паузой, не удерживая SearchGate,
+        // чтобы не блокировать остальные поиски, и только после исчерпания попыток сообщаем об ошибке.
+        for (int attempt = 1; ; attempt++)
+        {
+            bool rateLimited = false;
+            TimeSpan? retryAfter = null;
+
+            await SearchGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+            try
             {
-                TimeSpan? retryAfter = response.Headers.RetryAfter?.Delta;
-                throw new LyricsRateLimitException(retryAfter);
+                using var request = new HttpRequestMessage(HttpMethod.Get, url);
+                using HttpResponseMessage response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken)
+                    .ConfigureAwait(false);
+
+                if (response.StatusCode == HttpStatusCode.TooManyRequests)
+                {
+                    rateLimited = true;
+                    retryAfter = response.Headers.RetryAfter?.Delta;
+                }
+                else
+                {
+                    if (!response.IsSuccessStatusCode)
+                        return Array.Empty<OnlineLyricsResult>();
+
+                    if (response.Content.Headers.ContentLength is long length && length > MaxSearchResponseBytes)
+                        return Array.Empty<OnlineLyricsResult>();
+
+                    string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                    if (json.Length > MaxSearchResponseBytes)
+                        return Array.Empty<OnlineLyricsResult>();
+
+                    var records = JsonSerializer.Deserialize<List<LrcLibRecord>>(json, JsonOptions) ?? new List<LrcLibRecord>();
+                    return records
+                        .Where(record => !string.IsNullOrWhiteSpace(record.TrackName) &&
+                                         (!string.IsNullOrWhiteSpace(record.SyncedLyrics) || !string.IsNullOrWhiteSpace(record.PlainLyrics)))
+                        .Take(20)
+                        .Select(record => new OnlineLyricsResult(
+                            record.Id,
+                            record.TrackName ?? string.Empty,
+                            record.ArtistName ?? string.Empty,
+                            record.AlbumName ?? string.Empty,
+                            record.Duration,
+                            record.PlainLyrics,
+                            record.SyncedLyrics))
+                        .ToList();
+                }
+            }
+            catch (HttpRequestException)
+            {
+            }
+            catch (JsonException)
+            {
+                return Array.Empty<OnlineLyricsResult>();
+            }
+            catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+            {
+                // Таймаут HttpClient, а не отмена пользователем.
+            }
+            finally
+            {
+                SearchGate.Release();
             }
 
-            if (!response.IsSuccessStatusCode)
-                return Array.Empty<OnlineLyricsResult>();
+            int maxAttempts = rateLimited ? MaxLrcLibRateLimitAttempts : MaxLrcLibTransientAttempts;
+            if (attempt >= maxAttempts)
+            {
+                if (rateLimited) throw new LyricsRateLimitException(retryAfter);
+                throw new LrcLibUnavailableException();
+            }
 
-            if (response.Content.Headers.ContentLength is long length && length > MaxSearchResponseBytes)
-                return Array.Empty<OnlineLyricsResult>();
-
-            string json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            if (json.Length > MaxSearchResponseBytes)
-                return Array.Empty<OnlineLyricsResult>();
-
-            var records = JsonSerializer.Deserialize<List<LrcLibRecord>>(json, JsonOptions) ?? new List<LrcLibRecord>();
-            return records
-                .Where(record => !string.IsNullOrWhiteSpace(record.TrackName) &&
-                                 (!string.IsNullOrWhiteSpace(record.SyncedLyrics) || !string.IsNullOrWhiteSpace(record.PlainLyrics)))
-                .Take(20)
-                .Select(record => new OnlineLyricsResult(
-                    record.Id,
-                    record.TrackName ?? string.Empty,
-                    record.ArtistName ?? string.Empty,
-                    record.AlbumName ?? string.Empty,
-                    record.Duration,
-                    record.PlainLyrics,
-                    record.SyncedLyrics))
-                .ToList();
+            TimeSpan delay = rateLimited
+                ? TimeSpan.FromSeconds(Math.Clamp((retryAfter ?? TimeSpan.FromSeconds(2 * attempt)).TotalSeconds, 1, 6))
+                : TimeSpan.FromSeconds(1);
+            await Task.Delay(delay, cancellationToken).ConfigureAwait(false);
         }
-        finally
-        {
-            SearchGate.Release();
-        }
-    }
-
-    // Онлайн-поиск текстов: основной источник LRCLIB, а при включённой настройке — ещё и NetEase (LyricifyLyricsSource).
-    // Результаты дополнительного источника идут после LRCLIB, чтобы не вытеснять привычную выдачу.
-    public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineAsync(
-        string trackName,
-        string artistName,
-        CancellationToken cancellationToken,
-        bool generalQuery = false,
-        bool includeExtra = true)
-    {
-        IReadOnlyList<OnlineLyricsResult> primary = await SearchLrcLibAsync(trackName, artistName, cancellationToken, generalQuery);
-        if (!includeExtra || !ExtraSourceEnabled) return primary;
-
-        IReadOnlyList<OnlineLyricsResult> extra = await LyricifyLyricsSource.SearchAsync(trackName, artistName, cancellationToken);
-        return extra.Count == 0 ? primary : primary.Concat(extra).ToList();
     }
 
     // Теги исполнителя и названия часто записаны по-разному: пробуем до трёх вариантов и останавливаемся
@@ -497,20 +518,36 @@ public static class LyricsService
         // Сначала только LRCLIB: он быстрый. Дополнительные источники опрашиваются один раз в конце и дописываются к выдаче,
         // а не повторяются на каждом варианте запроса.
         IReadOnlyList<OnlineLyricsResult> primary = Array.Empty<OnlineLyricsResult>();
-        foreach ((string title, string artist) in LyricsMatcher.BuildQueryVariants(trackName, artistName))
+        LyricsRateLimitException? rateLimit = null;
+        try
         {
-            primary = await SearchOnlineAsync(title, artist, cancellationToken, includeExtra: false);
-            if (primary.Count > 0) break;
+            foreach ((string title, string artist) in LyricsMatcher.BuildQueryVariants(trackName, artistName))
+            {
+                primary = await SearchLrcLibAsync(title, artist, cancellationToken);
+                if (primary.Count > 0) break;
+            }
+
+            string? generalQuery = BuildGeneralQuery(trackName, artistName);
+            if (primary.Count == 0 && generalQuery is not null)
+                primary = await SearchLrcLibAsync(generalQuery, string.Empty, cancellationToken, generalQuery: true);
+        }
+        catch (LyricsRateLimitException ex)
+        {
+            // Недоступность или лимит LRCLIB не должны отменять поиск в остальных источниках.
+            rateLimit = ex;
+        }
+        catch (LrcLibUnavailableException)
+        {
         }
 
-        string? generalQuery = BuildGeneralQuery(trackName, artistName);
-        if (primary.Count == 0 && generalQuery is not null)
-            primary = await SearchOnlineAsync(generalQuery, string.Empty, cancellationToken, generalQuery: true, includeExtra: false);
+        IReadOnlyList<OnlineLyricsResult> extra = Array.Empty<OnlineLyricsResult>();
+        if (ExtraSourceEnabled)
+        {
+            (string extraTitle, string extraArtist) = ExtraSourceQuery(trackName, artistName);
+            extra = await LyricifyLyricsSource.SearchAsync(extraTitle, extraArtist, cancellationToken);
+        }
 
-        if (!ExtraSourceEnabled) return primary;
-
-        (string extraTitle, string extraArtist) = ExtraSourceQuery(trackName, artistName);
-        IReadOnlyList<OnlineLyricsResult> extra = await LyricifyLyricsSource.SearchAsync(extraTitle, extraArtist, cancellationToken);
+        if (primary.Count == 0 && extra.Count == 0 && rateLimit is not null) throw rateLimit;
         return extra.Count == 0 ? primary : primary.Concat(extra).ToList();
     }
 
@@ -536,7 +573,7 @@ public static class LyricsService
         var candidates = new List<OnlineLyricsResult>();
 
         // 1) LRCLIB по всем вариантам запроса — быстро и без внешних китайских серверов.
-        IReadOnlyList<OnlineLyricsResult> matches = await CollectLrcLibMatchesAsync(
+        (IReadOnlyList<OnlineLyricsResult> matches, LyricsRateLimitException? rateLimit) = await CollectLrcLibMatchesAsync(
             candidates, trackName, artistName, durationSeconds, cancellationToken);
 
         // 2) Дополнительные источники — только если LRCLIB не дал уверенного совпадения и они включены; один запрос с таймаутом.
@@ -547,6 +584,9 @@ public static class LyricsService
             matches = LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds);
         }
 
+        // Лимит сообщаем, только если ни один источник ничего не дал: иначе результат уже есть.
+        if (candidates.Count == 0 && rateLimit is not null) throw rateLimit;
+
         return new AutomaticLyricsLookup(matches.FirstOrDefault(), candidates.Count, matches);
     }
 
@@ -556,7 +596,20 @@ public static class LyricsService
         string artistName,
         double durationSeconds,
         CancellationToken cancellationToken) =>
-        await CollectLrcLibMatchesAsync(new List<OnlineLyricsResult>(), trackName, artistName, durationSeconds, cancellationToken);
+        await FindLrcLibVariantsCoreAsync(trackName, artistName, durationSeconds, cancellationToken);
+
+    private static async Task<IReadOnlyList<OnlineLyricsResult>> FindLrcLibVariantsCoreAsync(
+        string trackName,
+        string artistName,
+        double durationSeconds,
+        CancellationToken cancellationToken)
+    {
+        var candidates = new List<OnlineLyricsResult>();
+        (IReadOnlyList<OnlineLyricsResult> matches, LyricsRateLimitException? rateLimit) = await CollectLrcLibMatchesAsync(
+            candidates, trackName, artistName, durationSeconds, cancellationToken);
+        if (candidates.Count == 0 && rateLimit is not null) throw rateLimit;
+        return matches;
+    }
 
     // Варианты из дополнительных источников (NetEase, QQ Music); пусто, если источник выключен. Запрашиваются по требованию:
     // обычно хватает LRCLIB, а китайские серверы медленнее.
@@ -574,28 +627,41 @@ public static class LyricsService
     }
 
     // LRCLIB по вариантам запроса и общему запросу; останавливается, когда появились уверенные совпадения.
-    private static async Task<IReadOnlyList<OnlineLyricsResult>> CollectLrcLibMatchesAsync(
+    // Лимит или недоступность LRCLIB не бросаются наружу: вызывающий код продолжит с другими источниками,
+    // а лимит получит отдельным значением, чтобы показать его, только если текст так и не найден.
+    private static async Task<(IReadOnlyList<OnlineLyricsResult> Matches, LyricsRateLimitException? RateLimit)> CollectLrcLibMatchesAsync(
         List<OnlineLyricsResult> candidates,
         string trackName,
         string artistName,
         double durationSeconds,
         CancellationToken cancellationToken)
     {
-        foreach ((string title, string artist) in LyricsMatcher.BuildQueryVariants(trackName, artistName))
+        try
         {
-            AddCandidates(candidates, await SearchOnlineAsync(title, artist, cancellationToken, includeExtra: false));
-            IReadOnlyList<OnlineLyricsResult> matches = LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds);
-            if (matches.Count > 0) return matches;
+            foreach ((string title, string artist) in LyricsMatcher.BuildQueryVariants(trackName, artistName))
+            {
+                AddCandidates(candidates, await SearchLrcLibAsync(title, artist, cancellationToken));
+                IReadOnlyList<OnlineLyricsResult> matches = LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds);
+                if (matches.Count > 0) return (matches, null);
+            }
+
+            string? generalQuery = BuildGeneralQuery(trackName, artistName);
+            if (generalQuery is not null)
+            {
+                AddCandidates(candidates, await SearchLrcLibAsync(generalQuery, string.Empty, cancellationToken, generalQuery: true));
+                return (LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds), null);
+            }
+        }
+        catch (LyricsRateLimitException ex)
+        {
+            return (LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds), ex);
+        }
+        catch (LrcLibUnavailableException)
+        {
+            return (LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds), null);
         }
 
-        string? generalQuery = BuildGeneralQuery(trackName, artistName);
-        if (generalQuery is not null)
-        {
-            AddCandidates(candidates, await SearchOnlineAsync(generalQuery, string.Empty, cancellationToken, generalQuery: true, includeExtra: false));
-            return LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds);
-        }
-
-        return Array.Empty<OnlineLyricsResult>();
+        return (Array.Empty<OnlineLyricsResult>(), null);
     }
 
     private static void AddCandidates(List<OnlineLyricsResult> candidates, IReadOnlyList<OnlineLyricsResult> found)
@@ -778,3 +844,6 @@ public sealed class LyricsRateLimitException(TimeSpan? retryAfter) : Exception
 {
     public TimeSpan? RetryAfter { get; } = retryAfter;
 }
+
+// Внутренний признак: LRCLIB не ответил после повторов. Не показывается пользователю, а лишь переключает поиск на другие источники.
+internal sealed class LrcLibUnavailableException : Exception;
