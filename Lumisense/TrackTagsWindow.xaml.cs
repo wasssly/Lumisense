@@ -165,13 +165,15 @@ public partial class TrackTagsWindow : FluentWindow
         RemoveCoverButton.Visibility = Visibility.Collapsed;
     }
 
-    private void SaveButton_Click(object sender, RoutedEventArgs e)
+    private async void SaveButton_Click(object sender, RoutedEventArgs e)
     {
         ErrorText.Visibility = Visibility.Collapsed;
+        SaveButton.IsEnabled = false;
 
         // Играющий файл держит NAudio, и ATL может не суметь его переписать (блок обложки мог вырасти). Хендл плеера
-        // освобождается на время записи, воспроизведение возобновляется с той же позиции при любом исходе.
-        var resumeInfo = _owner?.ReleaseFileForExternalWrite(_filePath);
+        // освобождается на время записи (после плавного затухания, без щелчка), воспроизведение возобновляется с той же
+        // позиции при любом исходе.
+        var resumeInfo = _owner is null ? null : await _owner.ReleaseFileForExternalWriteAsync(_filePath);
 
         try
         {
@@ -204,6 +206,7 @@ public partial class TrackTagsWindow : FluentWindow
             // Файл может быть занят, доступен только для чтения, без поддержки записи тегов
             // для этого формата и т.п. — сообщаем прямо в окне, а не роняем весь плеер
             ShowError($"Не удалось сохранить: {ex.Message}");
+            SaveButton.IsEnabled = true;
         }
         finally
         {

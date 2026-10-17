@@ -421,12 +421,13 @@ public partial class MainWindow
 
     // Координация с внешней записью в файл (теги/обложка, см. TrackTagsWindow.SaveButton_Click), пока файл открыт NAudio-потоком:
     // null, если играет другой трек; иначе освобождает хендл и возвращает точку для ResumeAfterExternalWrite после записи.
-    public (TimeSpan Position, bool WasPlaying)? ReleaseFileForExternalWrite(string filePath)
+    // Звук сначала плавно затухает и допроигрывает тишину (как при смене трека): обрыв на полуволне давал щелчок в момент сохранения.
+    public async Task<(TimeSpan Position, bool WasPlaying)?> ReleaseFileForExternalWriteAsync(string filePath)
     {
         if (!PathEquals(filePath, _currentTrackPath) || _audioFile == null) return null;
 
         var snapshot = (_audioFile.CurrentTime, _isPlaying);
-        StopPlayback(disposeOnly: true);
+        await FadeOutBeforeTrackChangeAsync(CancellationToken.None);
         return snapshot;
     }
 
