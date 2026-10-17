@@ -319,6 +319,14 @@ Do not modify installer configuration unless the task requires it.
 
 When changing update-check behavior, preserve a useful distinction between network errors, invalid release data, unavailable assets, and UI errors while opening update dialogs. Do not report every failure as a GitHub connection problem.
 
+## Versioning
+
+Lumisense uses `X.Y.Z` (SemVer).
+
+- A release with new features raises the minor number (`1.23.0` → `1.24.0`); a release with only bug fixes raises the patch number.
+- The major number is raised once a year, on the anniversary of the first release (5 July). The minor and patch numbers then start again from 0.
+- Do not change the version number unless the user asks for it.
+
 ---
 
 # 9. Git
