@@ -37,6 +37,9 @@ public sealed class SemanticVersionTests
     [InlineData("1.0.0-beta.2", "1.0.0-beta.11")]
     [InlineData("1.0.0-rc.1", "1.0.0")]
     [InlineData("1.14.1", "1.15.0")]
+    [InlineData("1.99.0", "1.100.0")]
+    [InlineData("1.100.0", "2.0.0-beta.1")]
+    [InlineData("2.0.0-beta.1", "2.0.0")]
     public void CompareTo_FollowsSemVerPrecedence(string lower, string higher)
     {
         Assert.True(SemanticVersion.TryParse(lower, out var left));
