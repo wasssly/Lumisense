@@ -429,4 +429,44 @@ public sealed class ShuffleSessionTests
         session.Reset();
         Assert.False(session.HasPlayedAll(active));
     }
+
+    [Fact]
+    public void Back_AfterSkippingSeveralTracksQuickly_ReturnsToTheLastShownTrack()
+    {
+        var tracks = new List<string> { "a", "b", "c", "d", "e", "f" };
+        var session = CreateEnabled();
+        session.StartStandardSession("a", useImprovedShuffle: false);
+
+        // Три быстрых шага вперёд, загрузился только последний: первые два трека пользователь не видел.
+        string current = "a";
+        for (int step = 0; step < 3; step++)
+            current = session.GetHistoryTrack(+1, tracks, current) ?? session.AppendNew(tracks, current);
+        session.CommitShown(current);
+
+        Assert.Equal("a", session.GetHistoryTrack(-1, tracks, current));
+    }
+
+    [Fact]
+    public void Back_ThroughTracksThatWereShown_KeepsTheirOrder()
+    {
+        var tracks = new List<string> { "a", "b", "c", "d", "e", "f" };
+        var session = CreateEnabled();
+        session.StartStandardSession("a", useImprovedShuffle: false);
+
+        var shown = new List<string> { "a" };
+        string current = "a";
+        for (int step = 0; step < 4; step++)
+        {
+            current = session.GetHistoryTrack(+1, tracks, current) ?? session.AppendNew(tracks, current);
+            session.CommitShown(current);
+            shown.Add(current);
+        }
+
+        for (int index = shown.Count - 2; index >= 0; index--)
+        {
+            current = session.GetHistoryTrack(-1, tracks, current)!;
+            session.CommitShown(current);
+            Assert.Equal(shown[index], current);
+        }
+    }
 }

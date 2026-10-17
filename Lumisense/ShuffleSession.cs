@@ -8,7 +8,12 @@ internal sealed class ShuffleSession
 
     private readonly Random _random;
     private readonly List<string> _history = new();
+    // Параллельно _history: true, если трек реально загружался (CommitShown). Остальные — шаги, пропущенные при быстром листании,
+    // и соседи, спланированные для превью.
+    private readonly List<bool> _shown = new();
     private int _historyIndex = -1;
+    // Позиция в истории последнего реально загруженного трека: между ним и новым загруженным пропущенные шаги убираются.
+    private int _committedIndex = -1;
     private List<string> _bag = new();
     private readonly HashSet<string> _playedInRound = new(StringComparer.OrdinalIgnoreCase);
 
@@ -23,9 +28,61 @@ internal sealed class ShuffleSession
     public void Reset()
     {
         _history.Clear();
+        _shown.Clear();
         _historyIndex = -1;
+        _committedIndex = -1;
         _bag.Clear();
         _playedInRound.Clear();
+    }
+
+    // Загрузка трека дошла до конца: он действительно показан. Пропущенные при быстром листании шаги между прошлым показанным
+    // треком и этим удаляем, иначе «Назад» вернул бы треки, которых пользователь не видел. Позиция навигации не меняется.
+    public void CommitShown(string path)
+    {
+        if (!IsEnabled) return;
+
+        int index = FindNearestIndex(path);
+        if (index < 0) return;
+
+        if (_committedIndex >= 0 && _committedIndex != index)
+        {
+            int low = Math.Min(_committedIndex, index);
+            for (int k = Math.Max(_committedIndex, index) - 1; k > low; k--)
+            {
+                if (_shown[k]) continue;
+
+                _history.RemoveAt(k);
+                _shown.RemoveAt(k);
+                if (k < _historyIndex) _historyIndex--;
+                if (k < _committedIndex) _committedIndex--;
+                if (k < index) index--;
+            }
+        }
+
+        _shown[index] = true;
+        _committedIndex = index;
+    }
+
+    private void AddToHistory(string path, bool shown)
+    {
+        _history.Add(path);
+        _shown.Add(shown);
+    }
+
+    private void InsertAtHistoryStart(string path)
+    {
+        _history.Insert(0, path);
+        _shown.Insert(0, false);
+        if (_committedIndex >= 0) _committedIndex++;
+    }
+
+    // Единственная точка, где история начинается с текущего трека: он уже показан.
+    private void StartHistoryWith(string path)
+    {
+        _history.Add(path);
+        _shown.Add(true);
+        _historyIndex = 0;
+        _committedIndex = 0;
     }
 
     // Колода может быть уже раздана наперёд (превью соседей), поэтому «круг закончен» считаем по реально начатым трекам.
@@ -47,8 +104,8 @@ internal sealed class ShuffleSession
         if (!IsEnabled || useImprovedShuffle) return;
 
         _history.Clear();
-        _history.Add(currentPath);
-        _historyIndex = 0;
+        _shown.Clear();
+        StartHistoryWith(currentPath);
         _bag.Clear();
     }
 
@@ -64,8 +121,7 @@ internal sealed class ShuffleSession
         {
             // Первое переключение в шафле: заводим историю с текущего трека, чтобы было
             // куда возвращаться "назад" после первого же "вперёд".
-            _history.Add(currentPath);
-            _historyIndex = 0;
+            StartHistoryWith(currentPath);
         }
 
         int newIndex = _historyIndex + shift;
@@ -77,10 +133,20 @@ internal sealed class ShuffleSession
             // Трек пропал из активного плейлиста — обрезаем историю на этом месте и
             // считаем, что дальше в эту сторону двигаться некуда.
             if (shift > 0)
+            {
                 _history.RemoveRange(newIndex, _history.Count - newIndex);
+                _shown.RemoveRange(newIndex, _shown.Count - newIndex);
+            }
             else
+            {
                 _history.RemoveRange(0, newIndex + 1);
+                _shown.RemoveRange(0, newIndex + 1);
+                _historyIndex -= newIndex + 1;
+                _committedIndex -= newIndex + 1;
+            }
+
             _historyIndex = Math.Clamp(_historyIndex, -1, _history.Count - 1);
+            _committedIndex = Math.Clamp(_committedIndex, -1, _history.Count - 1);
             return null;
         }
 
@@ -103,20 +169,17 @@ internal sealed class ShuffleSession
         if (activeTracks.Count < 2) return;
 
         if (_history.Count == 0)
-        {
-            _history.Add(path);
-            _historyIndex = 0;
-        }
+            StartHistoryWith(path);
 
         int found = FindNearestIndex(path);
         if (found < 0) return;
 
         while (_history.Count - 1 - found < reach)
-            _history.Add(GetNext(activeTracks, _history[^1]));
+            AddToHistory(GetNext(activeTracks, _history[^1]), shown: false);
 
         while (found < reach)
         {
-            _history.Insert(0, GetNext(activeTracks, _history[0]));
+            InsertAtHistoryStart(GetNext(activeTracks, _history[0]));
             found++;
             if (_historyIndex >= 0) _historyIndex++;
         }
@@ -142,9 +205,9 @@ internal sealed class ShuffleSession
         var next = GetNext(activeTracks, currentPath);
 
         if (_history.Count == 0 && currentPath != null)
-            _history.Add(currentPath);
+            StartHistoryWith(currentPath);
 
-        _history.Add(next);
+        AddToHistory(next, shown: false);
         _historyIndex = _history.Count - 1;
         return next;
     }
@@ -156,9 +219,9 @@ internal sealed class ShuffleSession
         var prev = GetNext(activeTracks, currentPath);
 
         if (_history.Count == 0 && currentPath != null)
-            _history.Add(currentPath);
+            StartHistoryWith(currentPath);
 
-        _history.Insert(0, prev);
+        InsertAtHistoryStart(prev);
         _historyIndex = 0;
         return prev;
     }
@@ -191,6 +254,8 @@ internal sealed class ShuffleSession
         _history.AddRange((settings.ShuffleHistory ?? new List<string>())
             .Where(path => !string.IsNullOrWhiteSpace(path) && activePaths.Contains(path))
             .TakeLast(MaxPersistedHistory));
+        // В файле настроек не видно, какие записи реально играли, поэтому после восстановления считаем показанными все.
+        _shown.AddRange(Enumerable.Repeat(true, _history.Count));
 
         if (_history.Count > 0)
         {
@@ -202,6 +267,8 @@ internal sealed class ShuffleSession
                 if (lastTrackIndex >= 0)
                     _historyIndex = lastTrackIndex;
             }
+
+            _committedIndex = _historyIndex;
         }
 
         _bag = (settings.ShuffleBag ?? new List<string>())

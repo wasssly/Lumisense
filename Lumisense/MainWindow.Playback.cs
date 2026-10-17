@@ -249,6 +249,7 @@ public partial class MainWindow
             _shuffleSession.ResetRound();
         }
         _shuffleSession.MarkPlayed(filePath);
+        _shuffleSession.CommitShown(filePath);
 
         _halfPlayCounted = false;
         _actuallyPlayedSeconds = 0;
