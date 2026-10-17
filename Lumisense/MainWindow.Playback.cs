@@ -419,6 +419,11 @@ public partial class MainWindow
 
         _trackUserState = _playbackStateMachine.Current;
         UpdateTrackUserStatePresentation();
+
+        // Карточка «Фактическое устройство» в настройках показывает состояние вывода (Воспроизводится/На паузе/Остановлен),
+        // а раньше обновлялась только при открытии вывода, до Play(), и застывала на «Остановлен» при играющем треке.
+        if (_settingsWindow?.IsLoaded == true)
+            _settingsWindow.RefreshOutputDeviceRuntimeStatus();
     }
 
     private void UpdateTrackUserStatePresentation()
