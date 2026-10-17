@@ -311,6 +311,11 @@ public partial class TrackChangeToastWindow : Window
         {
             WindowSnapHelper.SetWindowPos(hwnd, IntPtr.Zero, placement.X, placement.Y, placement.Width, placement.Height,
                 WindowSnapHelper.SWP_NOZORDER | WindowSnapHelper.SWP_NOACTIVATE);
+
+            // Переезд на монитор с другим масштабом вызывает WM_DPICHANGED, и WPF пересчитывает размер и место окна по-своему;
+            // второй SetWindowPos возвращает карточке нужные физические пиксели уже после этого пересчёта.
+            WindowSnapHelper.SetWindowPos(hwnd, IntPtr.Zero, placement.X, placement.Y, placement.Width, placement.Height,
+                WindowSnapHelper.SWP_NOZORDER | WindowSnapHelper.SWP_NOACTIVATE);
             return;
         }
 

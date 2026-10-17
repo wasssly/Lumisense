@@ -1349,9 +1349,45 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     {
         if (!_settings.ShowTrackChangeToast || !ShouldShowTrackChangeToast(origin, autoPlay)) return;
 
-        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         _trackChangeToastController.Show(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
-            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, handle), _settings, ResolveToastTint());
+            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, ResolveToastTint());
+    }
+
+    // Монитор окна плеера для автоматического выбора: главное окно, пока оно на экране, иначе мини-плеер, иначе главное окно,
+    // спрятанное в трей или свёрнутое (по его прежним границам). Без этого при свёрнутом плеере уведомление уходило на основной монитор.
+    private System.Windows.Forms.Screen? GetPlayerWindowScreen()
+    {
+        bool mainShown = IsVisible && WindowState != WindowState.Minimized;
+        if (!mainShown && _miniPlayerWindow is { IsVisible: true, WindowState: not WindowState.Minimized } mini)
+            return ScreenOfWindow(mini, parked: false);
+
+        return ScreenOfWindow(this, parked: !mainShown);
+    }
+
+    private static System.Windows.Forms.Screen? ScreenOfWindow(Window window, bool parked)
+    {
+        try
+        {
+            IntPtr handle = new System.Windows.Interop.WindowInteropHelper(window).Handle;
+            if (handle == IntPtr.Zero) return null;
+            if (!parked) return System.Windows.Forms.Screen.FromHandle(handle);
+
+            // RestoreBounds — границы до сворачивания в DIP; в пиксели переводим масштабом окна.
+            Rect bounds = window.RestoreBounds;
+            if (bounds.IsEmpty || !double.IsFinite(bounds.Left) || !double.IsFinite(bounds.Top)
+                || ToastMonitorResolver.IsParkedPosition(bounds.Left, bounds.Top))
+                return null;
+
+            DpiScale dpi = VisualTreeHelper.GetDpi(window);
+            var center = new System.Drawing.Point(
+                (int)Math.Round((bounds.Left + bounds.Width / 2) * dpi.DpiScaleX),
+                (int)Math.Round((bounds.Top + bounds.Height / 2) * dpi.DpiScaleY));
+            return System.Windows.Forms.Screen.FromPoint(center);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+        {
+            return null;
+        }
     }
 
     // Цвет карточки по AppSettings.TrackChangeToastColorMode. "Cover" берётся из обложки текущего трека на момент показа
@@ -1368,8 +1404,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // для уведомлений, запоминаем и его, иначе доли свободной области относились бы к чужому экрану.
     public void PickToastPosition(Action<ToastPositionPickResult?> completed)
     {
-        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-        var screen = ToastMonitorResolver.Resolve(_settings, handle);
+        var screen = ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen);
         _trackChangeToastController.PickPosition(
             LocalizationService.Translate("Перетащите карточку"), LocalizationService.Translate("Двойной клик — сохранить"),
             CurrentArtBrush, _settings.IsLightThemeResolved(), screen, _settings, ResolveToastTint(), result =>
@@ -1384,13 +1419,12 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // чтобы размер, ширину и выравнивание можно было проверить и без воспроизведения.
     public void PreviewTrackChangeToast()
     {
-        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
         bool hasTrack = _currentTrackPath != null;
         _trackChangeToastController.Show(
             hasTrack ? TrackTitleText.Text : LocalizationService.Translate("Название трека"),
             hasTrack ? TrackArtistText.Text : LocalizationService.Translate("Исполнитель"),
             hasTrack ? CurrentArtBrush : null,
-            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, handle), _settings, ResolveToastTint());
+            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, ResolveToastTint());
     }
 
     private bool ShouldShowTrackChangeToast(TrackChangeOrigin origin, bool autoPlay) =>

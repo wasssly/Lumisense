@@ -174,6 +174,38 @@ public sealed class ToastPlacementCalculatorTests
     }
 }
 
+public sealed class ToastMonitorResolverTests
+{
+    [Theory]
+    [InlineData(-32000.0, -32000.0, true)]
+    [InlineData(-32000.0, 100.0, false)]
+    [InlineData(1920.0, 0.0, false)]
+    [InlineData(-1500.0, 200.0, false)]
+    public void IsParkedPosition_RecognizesTheMinimizedWindowParkingSpot(double left, double top, bool expected) =>
+        Assert.Equal(expected, ToastMonitorResolver.IsParkedPosition(left, top));
+
+    [Fact]
+    public void Resolve_PrefersThePlayerScreenWhenNoMonitorIsChosen()
+    {
+        var playerScreen = System.Windows.Forms.Screen.AllScreens[^1];
+
+        var resolved = ToastMonitorResolver.Resolve(new AppSettings(), () => playerScreen);
+
+        Assert.Equal(playerScreen.DeviceName, resolved.DeviceName);
+    }
+
+    [Fact]
+    public void Resolve_FallsBackWhenTheChosenMonitorIsNotConnected()
+    {
+        var settings = new AppSettings { TrackChangeToastMonitor = "\\\\.\\DISPLAY999" };
+        var playerScreen = System.Windows.Forms.Screen.AllScreens[0];
+
+        var resolved = ToastMonitorResolver.Resolve(settings, () => playerScreen);
+
+        Assert.Equal(playerScreen.DeviceName, resolved.DeviceName);
+    }
+}
+
 public sealed class ChangeTypeCatalogTests
 {
     [Theory]

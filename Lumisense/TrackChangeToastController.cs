@@ -46,9 +46,9 @@ internal sealed class TrackChangeToastController : IDisposable
 
 internal static class ToastMonitorResolver
 {
-    // Конкретный DeviceName приоритетнее автоматического выбора. Если монитор больше не
-    // подключён, используем монитор HWND главного окна, а не жёстко основной экран Windows.
-    public static System.Windows.Forms.Screen Resolve(AppSettings settings, IntPtr ownerHandle)
+    // Конкретный DeviceName приоритетнее автоматического выбора. Если монитор не выбран или больше не подключён,
+    // берётся монитор окна плеера (playerScreen), а при его отсутствии — основной экран Windows.
+    public static System.Windows.Forms.Screen Resolve(AppSettings settings, Func<System.Windows.Forms.Screen?> playerScreen)
     {
         if (!string.IsNullOrEmpty(settings.TrackChangeToastMonitor))
         {
@@ -57,7 +57,10 @@ internal static class ToastMonitorResolver
             if (saved is not null) return saved;
         }
 
-        if (ownerHandle != IntPtr.Zero) return System.Windows.Forms.Screen.FromHandle(ownerHandle);
-        return System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
+        return playerScreen() ?? System.Windows.Forms.Screen.PrimaryScreen ?? System.Windows.Forms.Screen.AllScreens[0];
     }
+
+    // Свёрнутое окно Windows «паркует» в (-32000; -32000), а спрятанное в трей сохраняет прежнее место только в RestoreBounds:
+    // по HWND такого окна монитор не определить, он всегда оказывался основным, и уведомление «сбрасывалось» туда при смене трека.
+    internal static bool IsParkedPosition(double left, double top) => left <= -30000 && top <= -30000;
 }
