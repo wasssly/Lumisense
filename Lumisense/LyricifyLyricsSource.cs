@@ -5,9 +5,10 @@ using Lyricify.Lyrics.Searchers;
 
 namespace Lumisense;
 
-// Дополнительные источники текстов песен: NetEase Cloud Music и QQ Music через библиотеку Lyricify.Lyrics.Helper (Apache-2.0).
+// Дополнительные источники текстов песен: NetEase Cloud Music и QQ Music через библиотеку Lyricify.Lyrics.Helper (Apache-2.0);
+// Kugou и Paxsenix подключены напрямую (KugouLyricsSource, PaxsenixLyricsSource) и опрашиваются здесь же.
 // Включается отдельной настройкой (AppSettings.UseExtraLyricsSource, по умолчанию выключена); запрос с названием и
-// исполнителем трека уходит на серверы NetEase и QQ Music. Библиотека сама подписывает запросы и разбирает ответы; сбой источника
+// исполнителем трека уходит на серверы NetEase, QQ Music, Kugou, Paxsenix и Apple (поиск в iTunes). Библиотека сама подписывает запросы и разбирает ответы; сбой источника
 // не должен мешать основному поиску по LRCLIB, поэтому любые ошибки превращаются в пустой список.
 internal static class LyricifyLyricsSource
 {
@@ -42,7 +43,11 @@ internal static class LyricifyLyricsSource
             (result, sourceToken) => result is QQMusicSearchResult qqResult ? LoadQqAsync(qqResult, sourceToken) : Task.FromResult<OnlineLyricsResult?>(null),
             token);
 
-        IReadOnlyList<OnlineLyricsResult>[] groups = await Task.WhenAll(neteaseSearch, qqSearch).ConfigureAwait(false);
+        // Kugou и Paxsenix сами обрабатывают сбои и таймауты; их результаты идут после NetEase и QQ Music.
+        Task<IReadOnlyList<OnlineLyricsResult>> kugouSearch = KugouLyricsSource.SearchAsync(title, artist, token);
+        Task<IReadOnlyList<OnlineLyricsResult>> paxsenixSearch = PaxsenixLyricsSource.SearchAsync(title, artist, token);
+
+        IReadOnlyList<OnlineLyricsResult>[] groups = await Task.WhenAll(neteaseSearch, qqSearch, kugouSearch, paxsenixSearch).ConfigureAwait(false);
         return groups.SelectMany(group => group).ToList();
     }
 
@@ -131,7 +136,7 @@ internal static class LyricifyLyricsSource
     }
 
     // FNV-1a, 32 бита: детерминированный хеш строки.
-    private static long StableHash(string value)
+    internal static long StableHash(string value)
     {
         uint hash = 2166136261;
         foreach (char symbol in value)

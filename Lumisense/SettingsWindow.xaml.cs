@@ -1194,7 +1194,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
         Add("Выравнивание текста песни", "Оформление", "Appearance", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
-        Add("Дополнительный источник текстов", "Оформление", "Appearance", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease lyricify русские исполнители extra source");
+        Add("Дополнительный источник текстов", "Оформление", "Appearance", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease qq kugou paxsenix lyricify русские исполнители extra source");
         Add("Фон Now Playing", "Оформление", "Appearance", NowPlayingBackgroundCloudsRadio, "фон now playing облака цветные шары волны background orbs clouds waves");
         Add("Скрывать обложку при тексте песни", "Оформление", "Appearance", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
         Add("Анимация избранного", "Оформление", "Appearance", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
