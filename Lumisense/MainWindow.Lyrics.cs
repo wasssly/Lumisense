@@ -41,7 +41,7 @@ public partial class MainWindow
         public System.Windows.Media.Effects.DropShadowEffect GlowEffect { get; } = new()
         {
             Color = Colors.White,
-            BlurRadius = 16,
+            BlurRadius = LyricsHighlightStyle.GlowBlurRadius,
             ShadowDepth = 0,
             Opacity = 0
         };
@@ -469,13 +469,13 @@ public partial class MainWindow
         line.FontSize = fontSize;
         line.LineHeight = Math.Max(21, Math.Round(fontSize * 1.58));
 
-        // Масштабирование больше не предлагается в настройках: остаются нейтральный режим
-        // и мягкое свечение. Старые значения Scale/GlowScale безопасно читаются как Glow.
+        // В панели главного окна выделение — только свечение; подложка, полоска, увеличение и затухание живут в Now Playing.
+        // Старые значения Scale/GlowScale безопасно читаются как Glow.
         bool useScale = false;
-        bool useGlow = active && _settings.SyncedLyricsHighlightEffect != "None";
+        bool useGlow = active && LyricsHighlightStyle.HasGlow(_settings.SyncedLyricsHighlightEffect);
         Color foreground = active ? Colors.White : Color.FromRgb(142, 142, 142);
         double scale = useScale ? 1.055 : 1.0;
-        double glowOpacity = useGlow ? 0.62 : 0.0;
+        double glowOpacity = useGlow ? LyricsHighlightStyle.GlowOpacity : 0.0;
 
         if (!animate)
         {

@@ -104,6 +104,9 @@ public static class LumiProfileIO
             settings.InterfaceScale > AccessibilityPreferences.MaximumInterfaceScale)
             return false;
         if (!double.IsFinite(settings.SyncedLyricsFontSize) || settings.SyncedLyricsFontSize < 11 || settings.SyncedLyricsFontSize > 28 ||
+            settings.SyncedLyricsFadeStrength is < 0 or > 100 ||
+            settings.SyncedLyricsScalePercent is < LyricsHighlightStyle.MinScalePercent or > LyricsHighlightStyle.MaxScalePercent ||
+            settings.SyncedLyricsVisibleLines is < 0 or > LyricsHighlightStyle.MaxVisibleLines ||
             (settings.SyncedLyricsHighlightEffect?.Length ?? 0) > 32 ||
             (settings.LyricsTextAlignment?.Length ?? 0) > 32 ||
             (settings.FavoriteHeartAnimation?.Length ?? 0) > 32 ||
@@ -164,6 +167,11 @@ public static class LumiProfileIO
         target.ReduceMotion = source.ReduceMotion;
         target.SyncedLyricsFontSize = source.SyncedLyricsFontSize;
         target.SyncedLyricsHighlightEffect = source.SyncedLyricsHighlightEffect;
+        target.SyncedLyricsScaleActiveLine = source.SyncedLyricsScaleActiveLine;
+        target.SyncedLyricsFadeDistantLines = source.SyncedLyricsFadeDistantLines;
+        target.SyncedLyricsFadeStrength = source.SyncedLyricsFadeStrength;
+        target.SyncedLyricsScalePercent = source.SyncedLyricsScalePercent;
+        target.SyncedLyricsVisibleLines = source.SyncedLyricsVisibleLines;
         target.CoverBaseFromCover = source.CoverBaseFromCover;
         target.WindowBackdropType = source.WindowBackdropType;
         target.ProgressBarStyle = source.ProgressBarStyle;

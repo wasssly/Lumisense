@@ -7,12 +7,21 @@
         <StackPanel>
             <TextBlock x:Name="Line1" Text="Первая строка текста песни"
                        Foreground="#FF8E8E8E" TextWrapping="Wrap" Margin="0,0,0,6" />
-            <TextBlock x:Name="Line2" Text="Активная строка подсвечена"
-                       Foreground="White" TextWrapping="Wrap" Margin="0,0,0,6">
-                <TextBlock.Effect>
-                    <DropShadowEffect x:Name="Glow" Color="White" BlurRadius="16" ShadowDepth="0" Opacity="0.62" />
-                </TextBlock.Effect>
-            </TextBlock>
+            <Border x:Name="Pill" CornerRadius="8" Padding="8,3" Margin="-8,0,-8,6" Background="Transparent">
+                <Grid>
+                    <Border x:Name="Bar" Width="3" CornerRadius="2" Margin="-6,0,0,0" HorizontalAlignment="Left"
+                            Background="White" Opacity="0" />
+                    <TextBlock x:Name="Line2" Text="Активная строка подсвечена"
+                               Foreground="White" TextWrapping="Wrap" RenderTransformOrigin="0,0.5">
+                        <TextBlock.RenderTransform>
+                            <ScaleTransform x:Name="Line2Scale" ScaleX="1" ScaleY="1" />
+                        </TextBlock.RenderTransform>
+                        <TextBlock.Effect>
+                            <DropShadowEffect x:Name="Glow" Color="White" BlurRadius="7" ShadowDepth="0" Opacity="0.5" />
+                        </TextBlock.Effect>
+                    </TextBlock>
+                </Grid>
+            </Border>
             <TextBlock x:Name="Line3" Text="Следующая строка ждёт своей очереди"
                        Foreground="#FF8E8E8E" TextWrapping="Wrap" />
         </StackPanel>

@@ -15,29 +15,31 @@
         TextOptions.TextFormattingMode="Display">
 
     <Window.Resources>
+        <!-- Размер и насыщенность шрифта у всех строк одинаковы: смена активной строки не перекомпоновывает список.
+             Прозрачность, подложка, полоска и масштаб текста выставляются из NowPlayingWindow.ApplyLyricLineStates
+             по настройкам выделения; здесь только заготовка с неактивным видом. -->
         <Style x:Key="LyricsLineStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="14,10" />
             <Setter Property="Margin" Value="0,2" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
-            <Setter Property="Foreground" Value="#B8FFFFFF" />
-            <Setter Property="FontSize" Value="17" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="18" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Opacity" Value="0.65" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
-                        <Border x:Name="Root" CornerRadius="12" Background="Transparent" Padding="{TemplateBinding Padding}">
-                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                              SnapsToDevicePixels="True" />
+                        <Border x:Name="Root" CornerRadius="12" Background="{TemplateBinding Background}">
+                            <Grid>
+                                <Border x:Name="Bar" Width="3" CornerRadius="2" Margin="4,8" HorizontalAlignment="Left"
+                                        Background="White" Opacity="0" />
+                                <ContentPresenter x:Name="Content" Margin="{TemplateBinding Padding}"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                                  VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
+                                                  RenderTransformOrigin="0,0.5" SnapsToDevicePixels="True" />
+                            </Grid>
                         </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsSelected" Value="True">
-                                <Setter TargetName="Root" Property="Background" Value="#3BFFFFFF" />
-                                <Setter Property="Foreground" Value="White" />
-                                <Setter Property="FontWeight" Value="SemiBold" />
-                                <Setter Property="FontSize" Value="20" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
@@ -223,26 +225,48 @@
                                Margin="0,7,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
-                    <Border x:Name="LyricsPanel" Grid.Column="2" Grid.Row="2" Width="900" Height="620" CornerRadius="22" Background="#1EFFFFFF"
-                            BorderBrush="#2BFFFFFF" BorderThickness="1" Padding="24">
+                    <Border x:Name="LyricsPanel" Grid.Column="2" Grid.Row="2" Width="900" Height="620" CornerRadius="22" Background="Transparent"
+                            BorderBrush="Transparent" BorderThickness="1" Padding="24">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
-                            <Grid>
+                            <Grid x:Name="LyricsControlsPanel" Background="Transparent">
+                                <Grid.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.35"
+                                                                 BeginTime="0:0:2.5" Duration="0:0:0.8" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Mouse.MouseEnter">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="1" Duration="0:0:0.2" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                    <EventTrigger RoutedEvent="Mouse.MouseLeave">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" To="0.35"
+                                                                 BeginTime="0:0:1.5" Duration="0:0:0.8" />
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Grid.Triggers>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <local:SvgPathIcon Icon="IconMusicNote" Size="16" Foreground="#B3FFFFFF" VerticalAlignment="Center" />
-                                    <TextBlock x:Name="LyricsHeaderText" Text="Текст песни" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="#F2FFFFFF" Margin="9,0,0,0" VerticalAlignment="Center" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock x:Name="LyricsModeText" Text="Нет текста" FontSize="12" Foreground="#A8FFFFFF"
-                                               VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <!-- Подпись и кнопки приглушены, чтобы внимание было на тексте: при наведении на строку
+                                     возвращается полная непрозрачность, а через паузу после ухода курсора она снова гаснет. -->
+                                <TextBlock x:Name="LyricsModeText" Text="Нет текста" FontSize="12" Foreground="#A8FFFFFF"
+                                           VerticalAlignment="Center" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis" />
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
                                     <ui:Button x:Name="LyricsDisplayModeButton" Height="30" MinWidth="30" Padding="8,0" Margin="0,0,6,0"
                                                Appearance="Secondary" FontSize="11" Visibility="Collapsed"
                                                Click="LyricsDisplayModeButton_Click" />
@@ -266,21 +290,21 @@
                             </Grid>
 
                             <Grid Grid.Row="1" Margin="0,16,0,0">
-                                <ListBox x:Name="SyncedLyricsList" BorderThickness="0" Background="Transparent" Padding="0,0,18,0"
+                                <ListBox x:Name="SyncedLyricsList" BorderThickness="0" Background="Transparent"
                                          ItemContainerStyle="{StaticResource LyricsLineStyle}"
                                          SelectionChanged="SyncedLyricsList_SelectionChanged"
+                                         PreviewMouseLeftButtonDown="SyncedLyricsList_PreviewMouseLeftButtonDown"
                                          PreviewMouseLeftButtonUp="SyncedLyricsList_PreviewMouseLeftButtonUp"
                                          ScrollViewer.CanContentScroll="False"
-                                         ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                         ScrollViewer.VerticalScrollBarVisibility="Hidden">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding Text}" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" />
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
-                                <ScrollViewer x:Name="PlainLyricsScroll" Padding="0,0,18,0" Visibility="Collapsed" VerticalScrollBarVisibility="Auto">
-                                    <TextBlock x:Name="PlainLyricsText" TextWrapping="Wrap" FontSize="17" LineHeight="28" Foreground="#E6FFFFFF"
-                                               Padding="0,0,12,0" />
+                                <ScrollViewer x:Name="PlainLyricsScroll" Visibility="Collapsed" VerticalScrollBarVisibility="Hidden">
+                                    <TextBlock x:Name="PlainLyricsText" TextWrapping="Wrap" FontSize="17" LineHeight="28" Foreground="#E6FFFFFF" />
                                 </ScrollViewer>
                                 <StackPanel x:Name="NoLyricsPanel" Width="330" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed">
                                     <local:SvgPathIcon Icon="IconMusicNote" Size="28" Foreground="#62FFFFFF" HorizontalAlignment="Center" />

@@ -112,7 +112,17 @@ public class AppSettings
     // Оформление синхронного LRC-текста в панели главного окна. Старые settings.json не
     // содержат эти поля, поэтому значения по умолчанию сохраняют нейтральный читаемый вид.
     public double SyncedLyricsFontSize { get; set; } = 14.0;
+    // "Glow" | "GlowPill" | "Pill" | "Bar" | "None" (см. LyricsHighlightStyle).
     public string SyncedLyricsHighlightEffect { get; set; } = "Glow";
+    // Дополнительные приёмы выделения строки; применяются в Now Playing.
+    public bool SyncedLyricsScaleActiveLine { get; set; }
+    public bool SyncedLyricsFadeDistantLines { get; set; }
+    // Степень приглушения дальних строк, 0–100 %.
+    public int SyncedLyricsFadeStrength { get; set; } = 50;
+    // Насколько увеличивается активная строка, 2–15 %.
+    public int SyncedLyricsScalePercent { get; set; } = 5;
+    // Сколько строк видно в Now Playing: 0 — все, иначе нечётное 3–15.
+    public int SyncedLyricsVisibleLines { get; set; }
 
     // Выравнивание текста песни в панели главного окна и в Now Playing: "Left" | "Center" | "Right".
     public string LyricsTextAlignment { get; set; } = "Left";

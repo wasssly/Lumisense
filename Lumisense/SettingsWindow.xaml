@@ -1224,13 +1224,82 @@
                                         Background="{DynamicResource ControlFillColorSecondaryBrush}">
                                     <StackPanel>
                                         <TextBlock Text="Эффект активной строки" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                        <RadioButton x:Name="SyncedLyricsEffectNoneRadio" Content="Без эффекта"
+                                        <RadioButton x:Name="SyncedLyricsEffectGlowRadio" Content="Мягкое свечение"
                                                      GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed"
                                                      Margin="0,0,0,8" />
-                                        <RadioButton x:Name="SyncedLyricsEffectGlowRadio" Content="Мягкое свечение"
+                                        <RadioButton x:Name="SyncedLyricsEffectGlowPillRadio" Content="Свечение и подложка"
+                                                     GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed"
+                                                     Margin="0,0,0,8" />
+                                        <RadioButton x:Name="SyncedLyricsEffectPillRadio" Content="Только подложка"
+                                                     GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed"
+                                                     Margin="0,0,0,8" />
+                                        <RadioButton x:Name="SyncedLyricsEffectBarRadio" Content="Полоска слева"
+                                                     GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed"
+                                                     Margin="0,0,0,8" />
+                                        <RadioButton x:Name="SyncedLyricsEffectNoneRadio" Content="Без эффекта"
                                                      GroupName="SyncedLyricsEffect" Checked="SyncedLyricsEffectRadio_Changed" />
-                                        <TextBlock Text="Активная строка остаётся белой, неактивные — приглушённо-серыми. Настройки применяются сразу в панели текста главного окна."
-                                                   Style="{StaticResource SettingsHelperTextStyle}" Margin="0,10,0,0" />
+                                        <CheckBox x:Name="SyncedLyricsScaleCheckBox" Content="Увеличивать активную строку"
+                                                  Checked="SyncedLyricsEffectRadio_Changed" Unchecked="SyncedLyricsEffectRadio_Changed"
+                                                  Margin="0,14,0,0" />
+                                        <CheckBox x:Name="SyncedLyricsFadeCheckBox" Content="Приглушать дальние строки"
+                                                  Checked="SyncedLyricsEffectRadio_Changed" Unchecked="SyncedLyricsEffectRadio_Changed"
+                                                  Margin="0,8,0,0" />
+                                        <TextBlock Text="Степень приглушения дальних строк" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,14,0,6" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Grid.Column="0" Height="28">
+                                                <Slider x:Name="SyncedLyricsFadeStrengthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                        Minimum="0" Maximum="100" TickFrequency="10"
+                                                        IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                        ValueChanged="SyncedLyricsHighlightSlider_ValueChanged" />
+                                            </Grid>
+                                            <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                                    Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                                <TextBlock x:Name="SyncedLyricsFadeStrengthValueText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           FontWeight="SemiBold" TextAlignment="Center" />
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="Степень увеличения активной строки" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,14,0,6" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Grid.Column="0" Height="28">
+                                                <Slider x:Name="SyncedLyricsScalePercentSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                        Minimum="2" Maximum="15" TickFrequency="1"
+                                                        IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                        ValueChanged="SyncedLyricsHighlightSlider_ValueChanged" />
+                                            </Grid>
+                                            <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                                    Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                                <TextBlock x:Name="SyncedLyricsScalePercentValueText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           FontWeight="SemiBold" TextAlignment="Center" />
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="Видимых строк в Now Playing" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,14,0,6" />
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Grid Grid.Column="0" Height="28">
+                                                <Slider x:Name="SyncedLyricsVisibleLinesSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                        Minimum="3" Maximum="17" TickFrequency="2"
+                                                        IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                        ValueChanged="SyncedLyricsHighlightSlider_ValueChanged" />
+                                            </Grid>
+                                            <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                                    Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                                <TextBlock x:Name="SyncedLyricsVisibleLinesValueText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           FontWeight="SemiBold" TextAlignment="Center" />
+                                            </Border>
+                                        </Grid>
+                                        <TextBlock Text="Активная строка остаётся белой, неактивные — приглушённо-серыми. Свечение применяется в панели текста главного окна и в Now Playing; подложка, полоска, увеличение, приглушение и число видимых строк — только в Now Playing."
+                                                   Style="{StaticResource SettingsHelperTextStyle}" Margin="0,10,0,0" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
 
@@ -1330,13 +1399,13 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.UseExtraLyricsSource и LyricifyLyricsSource.cs. -->
+                        <!-- См. AppSettings.UseExtraLyricsSource, LyricifyLyricsSource.cs, KugouLyricsSource.cs и PaxsenixLyricsSource.cs. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Дополнительный источник текстов" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <CheckBox x:Name="UseExtraLyricsSourceCheckBox" Content="NetEase Cloud Music и QQ Music (через Lyricify)"
+                                <CheckBox x:Name="UseExtraLyricsSourceCheckBox" Content="NetEase Cloud Music, QQ Music, Kugou и Paxsenix"
                                           Checked="UseExtraLyricsSourceCheckBox_Changed" Unchecked="UseExtraLyricsSourceCheckBox_Changed" />
-                                <TextBlock Text="Помогает найти тексты русских и других исполнителей, которых нет в LRCLIB. При онлайн-поиске название и исполнитель трека отправляются на серверы NetEase и QQ Music. Результаты идут после LRCLIB и помечены источником."
+                                <TextBlock Text="Помогает найти тексты русских и других исполнителей, которых нет в LRCLIB. При онлайн-поиске название и исполнитель трека отправляются на серверы NetEase, QQ Music, Kugou и Paxsenix (для текстов Apple Music трек ещё ищется в каталоге iTunes). Результаты идут после LRCLIB и помечены источником; сбой одного источника не прерывает поиск в остальных."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>

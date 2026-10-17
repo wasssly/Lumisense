@@ -245,8 +245,11 @@ internal static class SettingsIntegrityService
         settings.ProgressAppearanceMain.Normalize();
         settings.ProgressAppearanceNowPlaying.Normalize();
         settings.ProgressAppearanceMini.Normalize();
-        settings.SyncedLyricsHighlightEffect = Allowed(settings.SyncedLyricsHighlightEffect, defaults.SyncedLyricsHighlightEffect, "None", "Glow");
+        settings.SyncedLyricsHighlightEffect = Allowed(settings.SyncedLyricsHighlightEffect, defaults.SyncedLyricsHighlightEffect, "None", "Glow", "GlowPill", "Pill", "Bar");
         settings.SyncedLyricsFontSize = ClampFinite(settings.SyncedLyricsFontSize, 11, 28, defaults.SyncedLyricsFontSize);
+        settings.SyncedLyricsFadeStrength = Math.Clamp(settings.SyncedLyricsFadeStrength, 0, 100);
+        settings.SyncedLyricsScalePercent = Math.Clamp(settings.SyncedLyricsScalePercent, LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
+        settings.SyncedLyricsVisibleLines = LyricsHighlightStyle.NormalizeVisibleLines(settings.SyncedLyricsVisibleLines);
         settings.InterfaceScale = ClampFinite(settings.InterfaceScale, 0.85, 1.35, defaults.InterfaceScale);
         settings.SavedVolume = ClampFinite(settings.SavedVolume, 0, 1, defaults.SavedVolume);
         settings.PlaybackSpeed = ClampFinite(settings.PlaybackSpeed, 0.5, 2.0, defaults.PlaybackSpeed);

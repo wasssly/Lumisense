@@ -145,9 +145,20 @@ public partial class SettingsWindow : FluentWindow
 
         SyncedLyricsFontSizeSlider.Value = Math.Clamp(_settings.SyncedLyricsFontSize, 12, 20);
         SyncedLyricsFontSizeValueText.Text = $"{SyncedLyricsFontSizeSlider.Value:0} px";
-        SyncedLyricsEffectNoneRadio.IsChecked = _settings.SyncedLyricsHighlightEffect == "None";
+        string lyricsEffect = _settings.SyncedLyricsHighlightEffect;
+        SyncedLyricsEffectNoneRadio.IsChecked = lyricsEffect == "None";
+        SyncedLyricsEffectGlowPillRadio.IsChecked = lyricsEffect == "GlowPill";
+        SyncedLyricsEffectPillRadio.IsChecked = lyricsEffect == "Pill";
+        SyncedLyricsEffectBarRadio.IsChecked = lyricsEffect == "Bar";
         // Старые значения Scale/GlowScale после обновления корректно воспринимаются как Glow.
-        SyncedLyricsEffectGlowRadio.IsChecked = !SyncedLyricsEffectNoneRadio.IsChecked.GetValueOrDefault();
+        SyncedLyricsEffectGlowRadio.IsChecked = lyricsEffect is not ("None" or "GlowPill" or "Pill" or "Bar");
+        SyncedLyricsScaleCheckBox.IsChecked = _settings.SyncedLyricsScaleActiveLine;
+        SyncedLyricsFadeCheckBox.IsChecked = _settings.SyncedLyricsFadeDistantLines;
+        SyncedLyricsFadeStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsFadeStrength, 0, 100);
+        SyncedLyricsScalePercentSlider.Value = Math.Clamp(_settings.SyncedLyricsScalePercent, LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
+        int savedVisibleLines = LyricsHighlightStyle.NormalizeVisibleLines(_settings.SyncedLyricsVisibleLines);
+        SyncedLyricsVisibleLinesSlider.Value = savedVisibleLines == 0 ? SyncedLyricsVisibleLinesSlider.Maximum : savedVisibleLines;
+        UpdateSyncedLyricsHighlightTexts();
         NowPlayingBackgroundOrbsRadio.IsChecked = _settings.NowPlayingBackground == "Orbs";
         NowPlayingBackgroundWavesRadio.IsChecked = _settings.NowPlayingBackground == "Waves";
         NowPlayingBackgroundCloudsRadio.IsChecked = _settings.NowPlayingBackground is not ("Orbs" or "Waves");
@@ -1790,11 +1801,48 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
 
-        _settings.SyncedLyricsHighlightEffect = SyncedLyricsEffectNoneRadio.IsChecked == true
-            ? "None"
+        _settings.SyncedLyricsHighlightEffect =
+            SyncedLyricsEffectNoneRadio.IsChecked == true ? "None"
+            : SyncedLyricsEffectGlowPillRadio.IsChecked == true ? "GlowPill"
+            : SyncedLyricsEffectPillRadio.IsChecked == true ? "Pill"
+            : SyncedLyricsEffectBarRadio.IsChecked == true ? "Bar"
             : "Glow";
+        _settings.SyncedLyricsScaleActiveLine = SyncedLyricsScaleCheckBox.IsChecked == true;
+        _settings.SyncedLyricsFadeDistantLines = SyncedLyricsFadeCheckBox.IsChecked == true;
+        UpdateSyncedLyricsHighlightTexts();
         UpdateLyricsPreview();
         _owner.ApplySyncedLyricsAppearance();
+    }
+
+    private void SyncedLyricsHighlightSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        // ValueChanged приходит во время загрузки XAML, пока часть элементов ещё не создана.
+        if (_isInitializing || SyncedLyricsVisibleLinesValueText is null || SyncedLyricsScalePercentValueText is null ||
+            SyncedLyricsFadeStrengthValueText is null || SyncedLyricsFadeStrengthSlider is null ||
+            SyncedLyricsScalePercentSlider is null || SyncedLyricsVisibleLinesSlider is null)
+            return;
+
+        _settings.SyncedLyricsFadeStrength = (int)Math.Clamp(Math.Round(SyncedLyricsFadeStrengthSlider.Value), 0, 100);
+        _settings.SyncedLyricsScalePercent = (int)Math.Clamp(Math.Round(SyncedLyricsScalePercentSlider.Value),
+            LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
+        // Крайнее правое положение ползунка — «Все строки», в настройках это 0.
+        int lines = (int)Math.Round(SyncedLyricsVisibleLinesSlider.Value);
+        _settings.SyncedLyricsVisibleLines = lines >= SyncedLyricsVisibleLinesSlider.Maximum ? 0 : LyricsHighlightStyle.NormalizeVisibleLines(lines);
+        UpdateSyncedLyricsHighlightTexts();
+        UpdateLyricsPreview();
+        _owner.ApplySyncedLyricsAppearance();
+    }
+
+    private void UpdateSyncedLyricsHighlightTexts()
+    {
+        SyncedLyricsFadeStrengthValueText.Text = $"{SyncedLyricsFadeStrengthSlider.Value:0}%";
+        SyncedLyricsScalePercentValueText.Text = $"+{SyncedLyricsScalePercentSlider.Value:0}%";
+        SyncedLyricsVisibleLinesValueText.Text = SyncedLyricsVisibleLinesSlider.Value >= SyncedLyricsVisibleLinesSlider.Maximum
+            ? LocalizationService.Translate("Все")
+            : $"{SyncedLyricsVisibleLinesSlider.Value:0}";
+        // Ползунки степени имеют смысл только при включённом соответствующем приёме.
+        SyncedLyricsFadeStrengthSlider.IsEnabled = SyncedLyricsFadeCheckBox.IsChecked == true;
+        SyncedLyricsScalePercentSlider.IsEnabled = SyncedLyricsScaleCheckBox.IsChecked == true;
     }
 
 

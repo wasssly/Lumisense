@@ -7,6 +7,7 @@ namespace Lumisense;
 public partial class LyricsPreviewControl : UserControl
 {
     private static readonly Brush DimBrush = Freeze(new SolidColorBrush(Color.FromRgb(142, 142, 142)));
+    private static readonly Brush PillBrush = Freeze(new SolidColorBrush(Color.FromArgb(0x3B, 0xFF, 0xFF, 0xFF)));
     private static readonly Brush NormalBrush = Freeze(new SolidColorBrush(Color.FromArgb(230, 255, 255, 255)));
 
     public LyricsPreviewControl() => InitializeComponent();
@@ -28,7 +29,26 @@ public partial class LyricsPreviewControl : UserControl
         Line1.Foreground = plain ? NormalBrush : DimBrush;
         Line2.Foreground = plain ? NormalBrush : Brushes.White;
         Line3.Foreground = plain ? NormalBrush : DimBrush;
-        Glow.Opacity = !plain && settings.SyncedLyricsHighlightEffect != "None" ? 0.62 : 0.0;
+        string effect = settings.SyncedLyricsHighlightEffect;
+        Glow.BlurRadius = LyricsHighlightStyle.GlowBlurRadius;
+        Glow.Opacity = !plain && LyricsHighlightStyle.HasGlow(effect) ? LyricsHighlightStyle.GlowOpacity : 0.0;
+        Pill.Background = !plain && LyricsHighlightStyle.HasPill(effect) ? PillBrush : Brushes.Transparent;
+        Bar.Opacity = !plain && LyricsHighlightStyle.HasBar(effect) ? 1.0 : 0.0;
+
+        // Увеличение и приглушение действуют в Now Playing; здесь показываем их так же, чтобы выбор был наглядным.
+        double scale = !plain && settings.SyncedLyricsScaleActiveLine ? LyricsHighlightStyle.ScaleFactor(settings.SyncedLyricsScalePercent) : 1.0;
+        Line2Scale.ScaleX = scale;
+        Line2Scale.ScaleY = scale;
+        Line2.RenderTransformOrigin = new Point(alignment switch
+        {
+            TextAlignment.Center => 0.5,
+            TextAlignment.Right => 1.0,
+            _ => 0.0,
+        }, 0.5);
+        bool fade = !plain && settings.SyncedLyricsFadeDistantLines;
+        double neighbourOpacity = fade ? 1.0 - 0.5 * Math.Clamp(settings.SyncedLyricsFadeStrength, 0, 100) / 100.0 : 1.0;
+        Line1.Opacity = neighbourOpacity;
+        Line3.Opacity = neighbourOpacity;
     }
 
     private static Brush Freeze(SolidColorBrush brush)
