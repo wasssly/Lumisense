@@ -34,16 +34,28 @@ public partial class UpdateReadyDialog : Window
         DialogResult = true;
     }
 
+    // Клик по свободному месту диалога ничего не закрывает: раньше он равнялся «Позже», и окно пропадало от случайного клика.
+    // Закрыть диалог можно только кнопками или Esc. Окно без рамки, поэтому за свободное место его можно перетащить.
     private void DialogBorder_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
     {
-        // Клики по кнопкам уже помечаются ими как обработанные и сюда не доходят. Клик по
-        // остальной области диалога равносилен «Позже» — не хотим, чтобы случайный клик мимо
-        // кнопок трактовался как согласие на немедленный рестарт.
-        if (e.OriginalSource is not Button)
+        if (e.OriginalSource is Button || e.OriginalSource is DependencyObject source && FindParentButton(source) is not null)
+            return;
+
+        if (e.ButtonState == MouseButtonState.Pressed)
         {
             e.Handled = true;
-            LaterButton_Click(sender, e);
+            DragMove();
         }
+    }
+
+    private static Button? FindParentButton(DependencyObject element)
+    {
+        for (DependencyObject? current = element; current is not null; current = System.Windows.Media.VisualTreeHelper.GetParent(current))
+        {
+            if (current is Button button) return button;
+        }
+
+        return null;
     }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
