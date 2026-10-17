@@ -271,7 +271,7 @@ public partial class MainWindow
             ResetShuffleState();
     }
 
-    // Вызывается из настроек при переключении "Шаффл без повторов": колода старого/нового алгоритма после смены режима
+    // Вызывается из настроек при смене режима шаффла (AppSettings.ShuffleMode): колода старого/нового алгоритма после смены режима
     // бессмысленна, поэтому начинаем заново.
     public void ResetShuffleState() => _shuffleSession.Reset();
 

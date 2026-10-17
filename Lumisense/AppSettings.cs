@@ -450,9 +450,9 @@ public class AppSettings
     // а не рискует удалить трек хоткеем по умолчанию.
     public HotkeyBinding HotkeyDeleteTrack { get; set; } = new();
 
-    // "Шаффл без повторов": один раз тасует весь плейлист, каждый трек играет один раз до повторов. Имя поля осталось
-    // от "Улучшенного шаффла": переименование сбросило бы выбор у тех, у кого уже true.
-    public bool UseImprovedShuffle { get; set; }
+    // Как выбирается следующий трек при включённом шаффле (ShuffleModes): "Deck" — колода без повторов (по умолчанию),
+    // "Random", "Favorites", "Rare", "Folders". Старое булево UseImprovedShuffle убрано: оно не влияло на выбор трека.
+    public string ShuffleMode { get; set; } = ShuffleModes.Deck;
 
     // Экспериментальные функции — выключены по умолчанию: выбор пользователя, а не смена поведения без согласия.
 

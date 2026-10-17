@@ -248,7 +248,7 @@ public static class LumiProfileIO
         target.HotkeySeekForward = source.HotkeySeekForward;
         target.HotkeySeekBackward = source.HotkeySeekBackward;
         target.HotkeyDeleteTrack = source.HotkeyDeleteTrack;
-        target.UseImprovedShuffle = source.UseImprovedShuffle;
+        target.ShuffleMode = source.ShuffleMode;
         target.HidePlaybackButtons = source.HidePlaybackButtons;
         target.UpdateDownloadSource = source.UpdateDownloadSource;
         target.EqualizerEnabled = source.EqualizerEnabled;

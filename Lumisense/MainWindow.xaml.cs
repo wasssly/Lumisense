@@ -360,7 +360,12 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     public MainWindow()
     {
         // Field-инициализатор не может ссылаться на _random (CS0236 — нестатическое поле), поэтому здесь, а не в объявлении поля.
-        _shuffleSession = new ShuffleSession(_random);
+        _shuffleSession = new ShuffleSession(_random)
+        {
+            ModeProvider = () => _settings.ShuffleMode,
+            PlayCountProvider = PlayCountManager.GetCount,
+            FavoriteProvider = FavoritesManager.IsFavorite
+        };
 
         // Должно быть до InitializeComponent(): SvgPathIcon читает IconPacks.Current при первом построении дерева; дальнейшую
         // смену пака применяет IconPackContext, здесь только начальное значение.

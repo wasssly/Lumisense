@@ -232,7 +232,7 @@ public partial class SettingsWindow : FluentWindow
         FileNameNormalizationResultText.Visibility = Visibility.Collapsed;
         InitializeTrackContextMenuActionCheckBoxes();
         InitializeMiniPlayerContextMenuActionCheckBoxes();
-        ImprovedShuffleCheckBox.IsChecked = _settings.UseImprovedShuffle;
+        LoadShuffleModeControls();
         SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
         MiniArtworkProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "Material";
         MiniArtworkProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "MaterialSlider";
@@ -1179,7 +1179,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Показать / скрыть текст", "Горячие клавиши", "Hotkeys", HotkeyToggleLyricsButton, "текст lyrics панель показать скрыть переключить горячая клавиша");
         Add("Переключить мини-плеер", "Горячие клавиши", "Hotkeys", HotkeyToggleMiniPlayerButton, "мини плеер mini player переключить показать скрыть горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
-        Add("Шаффл без повторов", "Воспроизведение", "Playback", ImprovedShuffleCheckBox, "шаффл перемешать shuffle bag колода без повторов");
+        Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
         Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output wasapi shared");
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels");
@@ -3017,11 +3017,39 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    private void ImprovedShuffleCheckBox_Changed(object sender, RoutedEventArgs e)
+    private void LoadShuffleModeControls()
+    {
+        string mode = ShuffleModes.Normalize(_settings.ShuffleMode);
+        ShuffleModeDeckRadio.IsChecked = mode == ShuffleModes.Deck;
+        ShuffleModeRandomRadio.IsChecked = mode == ShuffleModes.Random;
+        ShuffleModeFavoritesRadio.IsChecked = mode == ShuffleModes.Favorites;
+        ShuffleModeRareRadio.IsChecked = mode == ShuffleModes.Rare;
+        ShuffleModeFoldersRadio.IsChecked = mode == ShuffleModes.Folders;
+        ShuffleModeDescriptionText.Text = LocalizationService.Translate(ShuffleModeDescription(mode));
+    }
+
+    private static string ShuffleModeDescription(string mode) => mode switch
+    {
+        ShuffleModes.Random => "Каждый следующий трек выбирается случайно из всего плейлиста, повторы возможны, но не два раза подряд.",
+        ShuffleModes.Favorites => "Случайный выбор, при котором треки из избранного выпадают втрое чаще остальных.",
+        ShuffleModes.Rare => "Случайный выбор, при котором чаще выпадают треки, которые вы слушали реже всего (по счётчику прослушиваний).",
+        ShuffleModes.Folders => "Папка или альбом играет подряд в порядке плейлиста, затем случайная ещё не игравшая папка; пока не сыграют все папки, они не повторяются.",
+        _ => "Весь плейлист один раз тасуется, и треки играют по порядку из этой тасовки: трек не повторится, пока не сыграют все остальные."
+    };
+
+    private void ShuffleModeRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
 
-        _settings.UseImprovedShuffle = ImprovedShuffleCheckBox.IsChecked == true;
+        string mode = ShuffleModeRandomRadio.IsChecked == true ? ShuffleModes.Random
+            : ShuffleModeFavoritesRadio.IsChecked == true ? ShuffleModes.Favorites
+            : ShuffleModeRareRadio.IsChecked == true ? ShuffleModes.Rare
+            : ShuffleModeFoldersRadio.IsChecked == true ? ShuffleModes.Folders
+            : ShuffleModes.Deck;
+        if (mode == _settings.ShuffleMode) return;
+
+        _settings.ShuffleMode = mode;
+        ShuffleModeDescriptionText.Text = LocalizationService.Translate(ShuffleModeDescription(mode));
 
         // Колода/история от предыдущего режима шаффла не имеет смысла в новом —
         // начинаем с чистого листа, а не пытаемся домешать её в новую логику.

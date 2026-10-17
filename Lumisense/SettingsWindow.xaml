@@ -1722,14 +1722,22 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Раньше "Улучшенный шаффл" на странице "Экспериментальное": имя настройки UseImprovedShuffle сохранено, чтобы не сбросить выбор,
-                             изменилась только подпись в интерфейсе. -->
+                        <!-- См. AppSettings.ShuffleMode и ShuffleModeSelector: как выбирается следующий трек, когда включён шаффл. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <CheckBox x:Name="ImprovedShuffleCheckBox" Content="Шаффл без повторов"
-                                          Checked="ImprovedShuffleCheckBox_Changed" Unchecked="ImprovedShuffleCheckBox_Changed" />
-                                <TextBlock Text="Вместо чисто случайного выбора трека на каждом шаге сначала тасуется весь плейлист целиком, а треки проигрываются по порядку из этой тасовки — так один и тот же трек не может повториться, пока не сыграют все остальные."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Режим шаффла" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="ShuffleModeDeckRadio" Content="Колода (по умолчанию)"
+                                             GroupName="ShuffleMode" Checked="ShuffleModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ShuffleModeRandomRadio" Content="Случайный"
+                                             GroupName="ShuffleMode" Checked="ShuffleModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ShuffleModeFavoritesRadio" Content="Любимые чаще"
+                                             GroupName="ShuffleMode" Checked="ShuffleModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ShuffleModeRareRadio" Content="Редкие чаще"
+                                             GroupName="ShuffleMode" Checked="ShuffleModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ShuffleModeFoldersRadio" Content="По папкам"
+                                             GroupName="ShuffleMode" Checked="ShuffleModeRadio_Changed" />
+                                <TextBlock x:Name="ShuffleModeDescriptionText" Style="{StaticResource SettingsHelperTextStyle}"
+                                           TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 

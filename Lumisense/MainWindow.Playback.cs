@@ -245,7 +245,7 @@ public partial class MainWindow
         // пройденную последовательность; кнопки, hotkey и автопереход явно передают preserveShuffleSession=true.
         if (!preserveShuffleSession && changeOrigin == TrackChangeOrigin.User)
         {
-            _shuffleSession.StartStandardSession(filePath, _settings.UseImprovedShuffle);
+            _shuffleSession.StartStandardSession(filePath);
             _shuffleSession.ResetRound();
         }
         _shuffleSession.MarkPlayed(filePath);

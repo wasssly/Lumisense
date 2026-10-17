@@ -311,6 +311,7 @@ internal static class SettingsIntegrityService
         settings.PinnedFavoriteTracks = NormalizePaths(settings.PinnedFavoriteTracks)
             .Where(favorites.Contains)
             .ToList();
+        settings.ShuffleMode = ShuffleModes.Normalize(settings.ShuffleMode);
         settings.ShuffleHistory = NormalizePaths(settings.ShuffleHistory);
         settings.ShuffleBag = NormalizePaths(settings.ShuffleBag);
         settings.SavedQueue = settings.SaveQueueBetweenRestarts

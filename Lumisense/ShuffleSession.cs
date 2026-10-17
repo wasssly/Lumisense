@@ -19,11 +19,17 @@ internal sealed class ShuffleSession
 
     public ShuffleSession(Random random) => _random = random;
 
+    // MainWindow подставляет живые источники: режим из настроек, число прослушиваний и признак избранного. Значения по умолчанию
+    // дают прежнюю колоду без повторов.
+    public Func<string> ModeProvider { get; set; } = () => ShuffleModes.Deck;
+    public Func<string, int>? PlayCountProvider { get; set; }
+    public Func<string, bool>? FavoriteProvider { get; set; }
+
     public bool IsEnabled { get; private set; }
 
     public void SetEnabled(bool enabled) => IsEnabled = enabled;
 
-    // Вызывается из настроек при переключении "Шаффл без повторов": колода старого/нового алгоритма после смены режима
+    // Вызывается из настроек при смене режима шаффла (AppSettings.ShuffleMode): колода старого/нового алгоритма после смены режима
     // бессмысленна, поэтому начинаем заново.
     public void Reset()
     {
@@ -95,13 +101,13 @@ internal sealed class ShuffleSession
 
     public string GetRandom(List<string> activeTracks, string? excludePath)
     {
-        return ShuffleBagSelector.TakeNext(_bag, activeTracks, excludePath, _random)
+        return ShuffleModeSelector.TakeNext(ModeProvider(), _bag, activeTracks, excludePath, _random, PlayCountProvider, FavoriteProvider)
             ?? throw new InvalidOperationException("Не удалось выбрать следующий трек из пустого плейлиста.");
     }
 
-    public void StartStandardSession(string currentPath, bool useImprovedShuffle)
+    public void StartStandardSession(string currentPath)
     {
-        if (!IsEnabled || useImprovedShuffle) return;
+        if (!IsEnabled) return;
 
         _history.Clear();
         _shown.Clear();
@@ -109,8 +115,7 @@ internal sealed class ShuffleSession
         _bag.Clear();
     }
 
-    // Обычный shuffle и UseImprovedShuffle используют одну колоду: нет повторов до конца цикла и повтора текущего трека на границе колоды;
-    // различия режимов — только в настройках и UI.
+    // Как выбирается следующий трек, определяет режим из настроек (ShuffleModes); во всех режимах трек не повторяется подряд.
     public string GetNext(List<string> activeTracks, string? excludePath) => GetRandom(activeTracks, excludePath);
 
     // Двигается по истории шафла на shift (-1 назад, +1 вперёд); null, если в эту сторону больше некуда. Треки, удалённые из

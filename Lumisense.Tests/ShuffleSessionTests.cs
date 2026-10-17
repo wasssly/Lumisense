@@ -72,7 +72,7 @@ public sealed class ShuffleSessionTests
         var withBag = new AppSettings { IsShuffleEnabled = true, ShuffleBag = new List<string> { "b.mp3", "c.mp3" } };
         session.RestoreFrom(withBag, new HashSet<string> { "a.mp3", "b.mp3", "c.mp3" }, null);
 
-        session.StartStandardSession("c.mp3", useImprovedShuffle: false);
+        session.StartStandardSession("c.mp3");
         AppSettings settings = Persist(session);
 
         Assert.Equal(new[] { "c.mp3" }, settings.ShuffleHistory);
@@ -81,17 +81,13 @@ public sealed class ShuffleSessionTests
     }
 
     [Fact]
-    public void StartStandardSession_DoesNothingWhenShuffleIsDisabledOrImproved()
+    public void StartStandardSession_DoesNothingWhenShuffleIsDisabled()
     {
         var disabled = new ShuffleSession(new Random(1));
-        disabled.StartStandardSession("a.mp3", useImprovedShuffle: false);
+        disabled.StartStandardSession("a.mp3");
         // Выключенный shuffle PersistTo всё равно очищает, поэтому включаем и смотрим, что истории нет.
         disabled.SetEnabled(true);
         Assert.Empty(Persist(disabled).ShuffleHistory);
-
-        var improved = CreateEnabled();
-        improved.StartStandardSession("a.mp3", useImprovedShuffle: true);
-        Assert.Empty(Persist(improved).ShuffleHistory);
     }
 
     [Fact]
@@ -435,7 +431,7 @@ public sealed class ShuffleSessionTests
     {
         var tracks = new List<string> { "a", "b", "c", "d", "e", "f" };
         var session = CreateEnabled();
-        session.StartStandardSession("a", useImprovedShuffle: false);
+        session.StartStandardSession("a");
 
         // Три быстрых шага вперёд, загрузился только последний: первые два трека пользователь не видел.
         string current = "a";
@@ -451,7 +447,7 @@ public sealed class ShuffleSessionTests
     {
         var tracks = new List<string> { "a", "b", "c", "d", "e", "f" };
         var session = CreateEnabled();
-        session.StartStandardSession("a", useImprovedShuffle: false);
+        session.StartStandardSession("a");
 
         var shown = new List<string> { "a" };
         string current = "a";
