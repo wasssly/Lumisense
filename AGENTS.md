@@ -408,6 +408,32 @@ minor changes
 
 ---
 
+## Commit Body
+
+The subject line is enough for most commits. Add a body only when the reason for the change is not obvious from the subject.
+
+The body is one or two short sentences (about 25 words at most) after a blank line. It says why the change was made, not how.
+
+Do not list changed files, repeat the subject, or retell the implementation.
+
+Good:
+
+```text
+fix: drop skipped tracks from shuffle history
+
+Quick forward skips left unseen tracks in the history, so Back could show a track that was never played.
+```
+
+Bad:
+
+```text
+fix: drop skipped tracks from shuffle history
+
+Added a shown flag to every history entry, introduced CommitShown, updated ShuffleSession and MainWindow.Playback, and added two tests covering several scenarios of quick skipping and returning.
+```
+
+---
+
 ## Commit Scope
 
 Prefer one logical change per commit.
