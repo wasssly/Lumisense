@@ -35,6 +35,21 @@ public sealed class LyricsDisplayModeTests
         Assert.Equal("LRC", plain.SourceLabel);
     }
 
+    [Theory]
+    [InlineData("Синхронный LRC", "Текст из LRC")]
+    [InlineData("LRCLIB · синхронный текст", "LRCLIB · текст")]
+    [InlineData("NetEase · синхронный текст", "NetEase · текст")]
+    public void ApplyDisplayMode_PlainModeDoesNotCallTextSynced(string sourceLabel, string expected)
+    {
+        var document = new LyricsDocument(
+            LyricsKind.Synced,
+            new[] { new LyricLine(TimeSpan.FromSeconds(1), "First line") },
+            string.Empty,
+            sourceLabel);
+
+        Assert.Equal(expected, LyricsService.ApplyDisplayMode(document, "Plain").SourceLabel);
+    }
+
     [Fact]
     public void ApplyDisplayMode_LeavesPlainAndEmptyDocumentsAlone()
     {

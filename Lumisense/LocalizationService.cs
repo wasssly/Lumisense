@@ -1070,6 +1070,7 @@ public static class LocalizationService
         ["Скачать Lumisense"] = "Download Lumisense",
         ["Неизвестная композиция"] = "Unknown track",
         ["Синхронный LRC"] = "Synced LRC",
+        ["Текст из LRC"] = "Text from LRC",
         ["Текстовый файл"] = "Text file",
         ["Текст из тега"] = "Text from tag",
         ["Кэш вставленного текста"] = "Pasted lyrics cache",

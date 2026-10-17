@@ -195,7 +195,17 @@ public static class LyricsService
         string text = string.Join(Environment.NewLine, document.Lines.Select(line => line.Text)).Trim();
         return text.Length == 0
             ? document
-            : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), text, document.SourceLabel);
+            : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), text, PlainSourceLabel(document.SourceLabel));
+    }
+
+    // Подпись источника не должна называть текст синхронным, когда он показан обычным.
+    private static string PlainSourceLabel(string label)
+    {
+        const string syncedSuffix = " · синхронный текст";
+        if (label == "Синхронный LRC") return "Текст из LRC";
+        return label.EndsWith(syncedSuffix, StringComparison.Ordinal)
+            ? label[..^syncedSuffix.Length] + " · текст"
+            : label;
     }
 
     private static async Task<LyricsDocument> LoadPlainTextAsync(string textPath, CancellationToken cancellationToken)
