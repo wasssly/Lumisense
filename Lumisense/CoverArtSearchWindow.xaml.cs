@@ -77,6 +77,7 @@ public partial class CoverArtSearchWindow : FluentWindow
         StatusText.Visibility = Visibility.Visible;
         StatusText.Text = LocalizationService.Translate("Поиск отменён");
         ResultsScrollViewer.Visibility = Visibility.Collapsed;
+        HideSearchLoading();
 
         SearchButton.IsEnabled = true;
         CancelSearchButton.Visibility = Visibility.Collapsed;
@@ -99,6 +100,8 @@ public partial class CoverArtSearchWindow : FluentWindow
         ResultsScrollViewer.Visibility = Visibility.Collapsed;
         StatusText.Visibility = Visibility.Visible;
         StatusText.Text = LocalizationService.Translate("Ищем…");
+        StatusText.Margin = new Thickness(0, 84, 0, 0);
+        SearchLoadingIndicator.Visibility = Visibility.Visible;
         SearchButton.IsEnabled = false;
         CancelSearchButton.Visibility = Visibility.Visible;
 
@@ -158,8 +161,15 @@ public partial class CoverArtSearchWindow : FluentWindow
             {
                 SearchButton.IsEnabled = true;
                 CancelSearchButton.Visibility = Visibility.Collapsed;
+                HideSearchLoading();
             }
         }
+    }
+
+    private void HideSearchLoading()
+    {
+        SearchLoadingIndicator.Visibility = Visibility.Collapsed;
+        StatusText.Margin = new Thickness(0, 32, 0, 0);
     }
 
     // Чередование по одному результату из каждого источника, чтобы сразу было видно несколько источников;

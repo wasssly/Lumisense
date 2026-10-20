@@ -1025,6 +1025,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
         _nowPlayingWindow?.ApplyProgressBarStyle();
         ApplyProgressAppearance();
+        UpdateWaveformLoadingIndicator();
 
         if (isWaveform)
             FireAndForget(EnsureWaveformForCurrentTrackAsync(), "EnsureWaveformForCurrentTrackAsync");
@@ -1043,11 +1044,15 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         if (filePath == null)
         {
             ProgressWaveform.Peaks = null;
+            _waveformCts = null;
+            UpdateWaveformLoadingIndicator();
             return;
         }
 
         if (_waveformCache.TryGetValue(filePath, out var cached))
         {
+            _waveformCts = null;
+            UpdateWaveformLoadingIndicator();
             ProgressWaveform.Peaks = cached;
             _settingsWindow?.RefreshProgressPreview();
             TouchWaveformCache(filePath);
@@ -1058,6 +1063,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         ProgressWaveform.Peaks = null;
         var cts = CancellationTokenSource.CreateLinkedTokenSource(_lifetimeCts.Token);
         _waveformCts = cts;
+        UpdateWaveformLoadingIndicator();
 
         try
         {
@@ -1094,7 +1100,16 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         {
             if (ReferenceEquals(_waveformCts, cts)) _waveformCts = null;
             cts.Dispose();
+            UpdateWaveformLoadingIndicator();
         }
+    }
+
+    // Индикатор виден, пока считается форма звука и выбран вид полосы Waveform (иначе её не видно, и крутить его незачем).
+    private void UpdateWaveformLoadingIndicator()
+    {
+        bool loading = _waveformCts is { IsCancellationRequested: false } && ProgressWaveform.Visibility == Visibility.Visible;
+        WaveformLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+        WaveformLoadingIndicator.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
     }
 
     // Вызывается и при cache hit, иначе часто переслушиваемый трек вытеснялся бы как в FIFO.

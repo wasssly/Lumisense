@@ -58,6 +58,11 @@
         </WrapPanel>
 
         <Grid Grid.Row="3" Margin="24,0,24,8">
+            <!-- Индикатор ожидания на время поиска (RunSearch); подпись «Ищем…» сдвигается под него. -->
+            <local:MaterialLoadingIndicator x:Name="SearchLoadingIndicator" Width="48" Height="48"
+                                            HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,24,0,0"
+                                            Visibility="Collapsed"
+                                            ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
             <TextBlock x:Name="StatusText" HorizontalAlignment="Center" VerticalAlignment="Top"
                        Margin="0,32,0,0" Opacity="0.6" FontSize="13" TextWrapping="Wrap"
                        TextAlignment="Center" MaxWidth="320"

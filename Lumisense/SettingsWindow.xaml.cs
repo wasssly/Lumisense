@@ -818,10 +818,12 @@ public partial class SettingsWindow : FluentWindow
     {
         CheckUpdatesButton.IsEnabled = false;
         CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate("Проверяем…");
+        SetUpdateCheckBusy(true);
 
         try
         {
             var result = await UpdateChecker.CheckAsync();
+            SetUpdateCheckBusy(false);
             if (result.Status != UpdateCheckStatus.Error)
             {
                 // Только legacy Inno Setup проверяет EXE-asset. Velopack сам определяет
@@ -860,8 +862,17 @@ public partial class SettingsWindow : FluentWindow
         }
         finally
         {
+            SetUpdateCheckBusy(false);
             CheckUpdatesButton.IsEnabled = true;
         }
+    }
+
+    // Пока идёт проверка, вместо галочки в карточке крутится индикатор Material.
+    private void SetUpdateCheckBusy(bool busy)
+    {
+        CheckUpdatesLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+        CheckUpdatesLoadingIndicator.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
+        CheckUpdatesIcon.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
     }
 
         // Источник применяется сразу: UpdateAvailableWindow использует ту же in-memory модель _settings; выбор сохраняем
@@ -3174,6 +3185,7 @@ public partial class SettingsWindow : FluentWindow
         NormalizePlaylistFileNamesButton.IsEnabled = false;
         FileNameNormalizationResultText.Text = LocalizationService.Translate("Подготавливается предпросмотр файлов…");
         FileNameNormalizationResultText.Visibility = Visibility.Visible;
+        FileNameNormalizationLoadingIndicator.Visibility = Visibility.Visible;
 
         try
         {
@@ -3194,6 +3206,7 @@ public partial class SettingsWindow : FluentWindow
         }
         finally
         {
+            FileNameNormalizationLoadingIndicator.Visibility = Visibility.Collapsed;
             NormalizePlaylistFileNamesButton.IsEnabled = true;
         }
     }

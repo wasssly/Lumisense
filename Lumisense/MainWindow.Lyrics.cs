@@ -177,6 +177,7 @@ public partial class MainWindow
 
     private void ApplyMainWindowLyricsLoading()
     {
+        LyricsPanelLoadingIndicator.Visibility = Visibility.Visible;
         _mainWindowSyncedLyrics.Clear();
         _activeMainWindowLyricIndex = -2;
         ResetMainWindowSyncedLyricsScroll();
@@ -229,6 +230,7 @@ public partial class MainWindow
 
     private void ApplyMainWindowLyricsDocument(LyricsDocument document)
     {
+        LyricsPanelLoadingIndicator.Visibility = Visibility.Collapsed;
         _mainWindowSyncedLyrics.Clear();
         _activeMainWindowLyricIndex = -2;
         ResetMainWindowSyncedLyricsScroll();
@@ -275,6 +277,7 @@ public partial class MainWindow
 
     private void ApplyMainWindowLyricsEmpty(string status)
     {
+        LyricsPanelLoadingIndicator.Visibility = Visibility.Collapsed;
         _mainWindowSyncedLyrics.Clear();
         _activeMainWindowLyricIndex = -2;
         ResetMainWindowSyncedLyricsScroll();

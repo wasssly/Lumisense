@@ -814,6 +814,11 @@
                 <local:WaveformView x:Name="ProgressWaveform" Height="28" IsHitTestVisible="False"
                                      Visibility="Collapsed"
                                      UnplayedBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                <!-- Пока считается форма звука, на её месте крутится индикатор Material (UpdateWaveformLoadingIndicator). -->
+                <local:MaterialLoadingIndicator x:Name="WaveformLoadingIndicator" Width="26" Height="26"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
+                                                Visibility="Collapsed"
+                                                ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
 
                 <!-- Третий вид полосы — Material (AppSettings.ProgressBarStyle == "Material"): волнистая линия,
                      тоже только рисует, позиция и перемотка остаются у ProgressSlider. -->
@@ -1526,6 +1531,10 @@
                                    FontSize="14" LineHeight="23" Opacity="0.9" />
                     </ScrollViewer>
 
+                    <!-- Индикатор ожидания, пока ищется текст (MainWindow.Lyrics: ApplyMainWindowLyricsLoading). -->
+                    <local:MaterialLoadingIndicator x:Name="LyricsPanelLoadingIndicator" Grid.Row="1" Width="48" Height="48"
+                                                    HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"
+                                                    ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
                     <StackPanel x:Name="LyricsPanelEmptyState" Grid.Row="1"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Width="260" Visibility="Collapsed">

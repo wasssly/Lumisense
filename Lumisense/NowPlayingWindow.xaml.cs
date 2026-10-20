@@ -707,6 +707,13 @@ public partial class NowPlayingWindow : Window
         }
     }
 
+    // Подпись над текстом песни; loading показывает индикатор ожидания Material (поиск текста и вариантов).
+    private void SetLyricsStatusText(string text, bool loading = false)
+    {
+        LyricsModeText.Text = text;
+        LyricsLoadingIndicator.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
+    }
+
     private void SetLyrics(LyricsDocument source)
     {
         _lyricsSource = source;
@@ -732,15 +739,15 @@ public partial class NowPlayingWindow : Window
 
         if (_owner.Settings.LyricsSearchPolicy != "AutoExact")
         {
-            LyricsModeText.Text = LocalizationService.Translate(_owner.Settings.LyricsSearchPolicy == "ManualOnly"
+            SetLyricsStatusText(LocalizationService.Translate(_owner.Settings.LyricsSearchPolicy == "ManualOnly"
                 ? "Текст можно найти вручную"
-                : "Онлайн-поиск текста отключён");
+                : "Онлайн-поиск текста отключён"));
             return;
         }
 
         try
         {
-            LyricsModeText.Text = LocalizationService.Translate("Ищем текст…");
+            SetLyricsStatusText(LocalizationService.Translate("Ищем текст…"), loading: true);
             LyricsService.AutomaticLyricsLookup lookup = await LyricsService.FindAutomaticAsync(
                 _owner.CurrentTitle, _owner.CurrentArtist, _owner.CurrentTrackDurationSeconds, token);
             if (token.IsCancellationRequested || !string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
@@ -749,7 +756,7 @@ public partial class NowPlayingWindow : Window
             OnlineLyricsResult? exact = lookup.Best;
             if (exact is null)
             {
-                LyricsModeText.Text = LocalizationService.Translate(lookup.CandidateCount > 0 ? "Нужен выбор варианта" : "Нет текста");
+                SetLyricsStatusText(LocalizationService.Translate(lookup.CandidateCount > 0 ? "Нужен выбор варианта" : "Нет текста"));
                 return;
             }
 
@@ -770,7 +777,7 @@ public partial class NowPlayingWindow : Window
         }
         catch (LyricsRateLimitException)
         {
-            LyricsModeText.Text = LocalizationService.Translate("Поиск временно ограничен");
+            SetLyricsStatusText(LocalizationService.Translate("Поиск временно ограничен"));
         }
         catch (OperationCanceledException)
         {
@@ -778,7 +785,7 @@ public partial class NowPlayingWindow : Window
         }
         catch
         {
-            LyricsModeText.Text = LocalizationService.Translate("Нет текста");
+            SetLyricsStatusText(LocalizationService.Translate("Нет текста"));
         }
         finally
         {
@@ -811,7 +818,7 @@ public partial class NowPlayingWindow : Window
 
         if (_owner.Settings.LyricsSearchPolicy == "LocalOnly")
         {
-            LyricsModeText.Text = LocalizationService.Translate("Онлайн-поиск текста отключён");
+            SetLyricsStatusText(LocalizationService.Translate("Онлайн-поиск текста отключён"));
             return;
         }
 
@@ -841,14 +848,14 @@ public partial class NowPlayingWindow : Window
 
             if (!_lyricsVariantsLrcLibLoaded)
             {
-                LyricsModeText.Text = LocalizationService.Translate("Ищем другие варианты…");
+                SetLyricsStatusText(LocalizationService.Translate("Ищем другие варианты…"), loading: true);
                 AddVariants(await LyricsService.FindLrcLibVariantsAsync(title, artist, duration, token));
                 _lyricsVariantsLrcLibLoaded = true;
             }
 
             if (_lyricsVariantIndex + 1 >= _lyricsVariants.Count && !_lyricsVariantsExtraLoaded)
             {
-                LyricsModeText.Text = LocalizationService.Translate("Ищем другие варианты…");
+                SetLyricsStatusText(LocalizationService.Translate("Ищем другие варианты…"), loading: true);
                 AddVariants(await LyricsService.FindExtraVariantsAsync(title, artist, duration, token));
                 _lyricsVariantsExtraLoaded = true;
             }
@@ -858,9 +865,9 @@ public partial class NowPlayingWindow : Window
 
             if (_lyricsVariants.Count == 0 || (_lyricsVariants.Count == 1 && _lyricsVariantIndex == 0))
             {
-                LyricsModeText.Text = LocalizationService.Translate(_lyricsVariants.Count == 0
+                SetLyricsStatusText(LocalizationService.Translate(_lyricsVariants.Count == 0
                     ? "Подходящих вариантов не найдено"
-                    : "Других вариантов нет");
+                    : "Других вариантов нет"));
                 return;
             }
 
@@ -877,7 +884,7 @@ public partial class NowPlayingWindow : Window
         }
         catch (LyricsRateLimitException)
         {
-            LyricsModeText.Text = LocalizationService.Translate("Поиск временно ограничен");
+            SetLyricsStatusText(LocalizationService.Translate("Поиск временно ограничен"));
         }
         catch (OperationCanceledException)
         {
@@ -885,7 +892,7 @@ public partial class NowPlayingWindow : Window
         }
         catch
         {
-            LyricsModeText.Text = LocalizationService.Translate("Не удалось сменить вариант текста");
+            SetLyricsStatusText(LocalizationService.Translate("Не удалось сменить вариант текста"));
         }
         finally
         {
@@ -903,7 +910,7 @@ public partial class NowPlayingWindow : Window
         foreach (LyricLine line in document.Lines)
             _syncedLines.Add(line);
 
-        LyricsModeText.Text = LocalizationService.Translate(document.SourceLabel);
+        SetLyricsStatusText(LocalizationService.Translate(document.SourceLabel));
         SyncedLyricsList.Visibility = document.Kind == LyricsKind.Synced ? Visibility.Visible : Visibility.Collapsed;
         PlainLyricsScroll.Visibility = document.Kind == LyricsKind.Plain ? Visibility.Visible : Visibility.Collapsed;
         NoLyricsPanel.Visibility = document.Kind == LyricsKind.None ? Visibility.Visible : Visibility.Collapsed;
