@@ -356,6 +356,14 @@ public partial class MainWindow
     public void ApplyWindowBackdrop(bool forceReapply = false)
     {
         var desiredBackdrop = WindowBackdropOptions.ToWpfUi(_settings.WindowBackdropType);
+        bool blur = WindowBackdropOptions.IsBlur(_settings.WindowBackdropType);
+
+        // После «Размытия» основу WPF-UI нужно наложить заново: наше размытие уже сняло системную основу окна.
+        if (!blur && DwmBlurBackdrop.IsApplied(this))
+        {
+            DwmBlurBackdrop.Clear(this);
+            forceReapply = true;
+        }
 
         // DependencyProperty не вызывает callback при присваивании того же значения, а после ApplicationThemeManager.Apply WPF-UI 4
         // может вернуть Mica при выбранном Acrylic; переход через None вызывает OnBackdropTypeChanged и накладывает нужный backdrop.
@@ -363,6 +371,7 @@ public partial class MainWindow
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
 
         WindowBackdropType = desiredBackdrop;
+        DwmBlurBackdrop.Sync(this, blur);
         ApplyCoverBaseBackground();
     }
 }

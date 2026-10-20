@@ -9,16 +9,22 @@ internal static class WindowBackdropOptions
     public const string MicaAlt = "MicaAlt";
     public const string Acrylic = "Acrylic";
 
+    // Обычное размытие позади окна без тонировки: см. DwmBlurBackdrop.
+    public const string Blur = "Blur";
+
     // DWMSBT_TABBEDWINDOW появился в Windows 11 22H2; на более раннем билде Mica Alt молча не рисуется.
     private const int MicaAltMinimumBuild = 22621;
 
-    public static string Normalize(string? value) => value is Acrylic or MicaAlt ? value : Mica;
+    public static string Normalize(string? value) => value is Acrylic or MicaAlt or Blur ? value : Mica;
+
+    public static bool IsBlur(string? value) => value == Blur;
 
     public static WindowBackdropType ToWpfUi(string? value) => ToWpfUi(value, Environment.OSVersion.Version.Build);
 
     internal static WindowBackdropType ToWpfUi(string? value, int osBuild) => Normalize(value) switch
     {
-        Acrylic => WindowBackdropType.Acrylic,
+        // Blur держится на Acrylic: он даёт прозрачный фон окна и работает в Windows 10, а размытие накладывает DwmBlurBackdrop.
+        Acrylic or Blur => WindowBackdropType.Acrylic,
         MicaAlt when osBuild >= MicaAltMinimumBuild => WindowBackdropType.Tabbed,
         _ => WindowBackdropType.Mica
     };

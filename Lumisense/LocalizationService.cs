@@ -419,6 +419,8 @@ public static class LocalizationService
         ["Маленькая карточка с обложкой и названием в углу экрана — появляется на пару секунд при каждом переключении трека и пропадает сама."] = "A small card with cover art and title in the corner of the screen — appears for a few seconds on each track change and then disappears.",
         ["Расположение уведомления"] = "Notification position",
         ["Выбрать своё положение…"] = "Choose custom position…",
+        ["Основа применяется к главному окну, окну настроек и статистике."] = "The base applies to the main window, Settings, and Statistics.",
+        ["Размытие"] = "Blur",
         ["Размер буфера"] = "Buffer size",
         ["Малая задержка (60 мс)"] = "Low latency (60 ms)",
         ["Стандартный (100 мс, по умолчанию)"] = "Standard (100 ms, default)",

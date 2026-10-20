@@ -76,6 +76,13 @@ public partial class SettingsWindow : FluentWindow
     private void ApplyWindowBackdrop(AppSettings settings, bool forceReapply = false)
     {
         var desiredBackdrop = WindowBackdropOptions.ToWpfUi(settings.WindowBackdropType);
+        bool blur = WindowBackdropOptions.IsBlur(settings.WindowBackdropType);
+
+        if (!blur && DwmBlurBackdrop.IsApplied(this))
+        {
+            DwmBlurBackdrop.Clear(this);
+            forceReapply = true;
+        }
 
         // См. MainWindow.ApplyWindowBackdrop: при смене темы WPF-UI может оставить Acrylic в свойстве, но наложить Mica;
         // None → desired заставляет FluentWindow заново применить нужный backdrop.
@@ -83,6 +90,7 @@ public partial class SettingsWindow : FluentWindow
             WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
 
         WindowBackdropType = desiredBackdrop;
+        DwmBlurBackdrop.Sync(this, blur);
     }
 
     protected override void OnSourceInitialized(EventArgs e)
@@ -135,6 +143,7 @@ public partial class SettingsWindow : FluentWindow
 
         string backdrop = WindowBackdropOptions.Normalize(_settings.WindowBackdropType);
         BackdropAcrylicRadio.IsChecked = backdrop == WindowBackdropOptions.Acrylic;
+        BackdropBlurRadio.IsChecked = backdrop == WindowBackdropOptions.Blur;
         BackdropMicaAltRadio.IsChecked = backdrop == WindowBackdropOptions.MicaAlt;
         BackdropMicaRadio.IsChecked = backdrop == WindowBackdropOptions.Mica;
         CoverBaseFromCoverCheckBox.IsChecked = _settings.CoverBaseFromCover;
@@ -1545,7 +1554,8 @@ public partial class SettingsWindow : FluentWindow
         private void WindowBackdropRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
-        _settings.WindowBackdropType = BackdropAcrylicRadio.IsChecked == true ? WindowBackdropOptions.Acrylic
+        _settings.WindowBackdropType = BackdropBlurRadio.IsChecked == true ? WindowBackdropOptions.Blur
+            : BackdropAcrylicRadio.IsChecked == true ? WindowBackdropOptions.Acrylic
             : BackdropMicaAltRadio.IsChecked == true ? WindowBackdropOptions.MicaAlt
             : WindowBackdropOptions.Mica;
         _owner.ApplyWindowBackdrop();

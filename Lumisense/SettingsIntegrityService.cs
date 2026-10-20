@@ -226,7 +226,7 @@ internal static class SettingsIntegrityService
         settings.AccentColorHex = ColorRegex.IsMatch(settings.AccentColorHex ?? string.Empty)
             ? settings.AccentColorHex ?? defaults.AccentColorHex
             : defaults.AccentColorHex;
-        settings.WindowBackdropType = Allowed(settings.WindowBackdropType, defaults.WindowBackdropType, "Mica", "MicaAlt", "Acrylic");
+        settings.WindowBackdropType = Allowed(settings.WindowBackdropType, defaults.WindowBackdropType, "Mica", "MicaAlt", "Acrylic", "Blur");
         settings.ProgressBarStyle = Allowed(settings.ProgressBarStyle, defaults.ProgressBarStyle, "Slider", "Waveform", "Material", "MaterialSlider");
         settings.SliderStyle = Allowed(settings.SliderStyle, defaults.SliderStyle, "Default", "Material");
         settings.PlaybackChannelMode = Allowed(settings.PlaybackChannelMode, defaults.PlaybackChannelMode, "Stereo", "Mono");

@@ -178,7 +178,8 @@ public class AppSettings
     // акцент с цветной основой или взять акцент от обложки без изменения основы.
     public bool CoverBaseFromCover { get; set; }
 
-    // "Mica" (по умолчанию), "MicaAlt" или "Acrylic" через DWM backdrop Windows 11 (WindowBackdropOptions); только для MainWindow/SettingsWindow/
+    // "Mica" (по умолчанию), "MicaAlt", "Acrylic" через DWM backdrop Windows 11 или "Blur" — обычное размытие (DwmBlurBackdrop)
+    // (WindowBackdropOptions); только для MainWindow/SettingsWindow/
     // StatisticsWindow — мелкие диалоги открываются слишком быстро, чтобы разница была заметна.
     public string WindowBackdropType { get; set; } = "Mica";
 

@@ -36,7 +36,15 @@ public partial class StatisticsWindow : FluentWindow
     // своя копия, потому что применяется к собственному HWND этого окна.
     private void ApplyWindowBackdrop()
     {
+        bool blur = WindowBackdropOptions.IsBlur(_settings.WindowBackdropType);
+        if (!blur && DwmBlurBackdrop.IsApplied(this))
+        {
+            DwmBlurBackdrop.Clear(this);
+            WindowBackdropType = Wpf.Ui.Controls.WindowBackdropType.None;
+        }
+
         WindowBackdropType = WindowBackdropOptions.ToWpfUi(_settings.WindowBackdropType);
+        DwmBlurBackdrop.Sync(this, blur);
     }
 
     protected override void OnSourceInitialized(EventArgs e)

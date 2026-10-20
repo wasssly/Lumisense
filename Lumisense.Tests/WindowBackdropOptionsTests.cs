@@ -9,6 +9,7 @@ public sealed class WindowBackdropOptionsTests
     [InlineData("Mica", "Mica")]
     [InlineData("MicaAlt", "MicaAlt")]
     [InlineData("Acrylic", "Acrylic")]
+    [InlineData("Blur", "Blur")]
     [InlineData("Unknown", "Mica")]
     [InlineData(null, "Mica")]
     public void Normalize_KeepsKnownValuesAndFallsBackToMica(string? value, string expected) =>
@@ -21,6 +22,16 @@ public sealed class WindowBackdropOptionsTests
     [Fact]
     public void MicaAlt_FallsBackToMicaOnOlderBuilds() =>
         Assert.Equal(WindowBackdropType.Mica, WindowBackdropOptions.ToWpfUi("MicaAlt", 22000));
+
+    [Fact]
+    public void Blur_IsBuiltOnAcrylicSoTheWindowBackgroundIsTransparent()
+    {
+        Assert.Equal(WindowBackdropType.Acrylic, WindowBackdropOptions.ToWpfUi("Blur", 19045));
+        Assert.Equal(WindowBackdropType.Acrylic, WindowBackdropOptions.ToWpfUi("Blur", 22631));
+        Assert.True(WindowBackdropOptions.IsBlur("Blur"));
+        Assert.False(WindowBackdropOptions.IsBlur("Acrylic"));
+        Assert.False(WindowBackdropOptions.IsBlur(null));
+    }
 
     [Fact]
     public void AcrylicAndMica_DoNotDependOnBuild()
