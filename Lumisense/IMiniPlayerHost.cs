@@ -1,3 +1,4 @@
+using System.Windows;
 using System.Windows.Media;
 
 namespace Lumisense;
@@ -13,6 +14,7 @@ internal interface IMiniPlayerHost
     event Action<bool>? ShuffleStateChanged;
 
     bool IsPlayingNow { get; }
+    double CurrentVolume { get; }
     string CurrentTitle { get; }
     string CurrentArtist { get; }
     Brush? CurrentArtBrush { get; }
@@ -35,6 +37,7 @@ internal interface IMiniPlayerHost
     void ExitMiniMode(bool returnToMiniOnNextTaskbarMinimize = false);
     void ShowSettingsWindow(string? section = null);
     void ShowNowPlayingWindow();
+    void ShowCoverPreview(Window owner);
 
     void ApplyMiniPlayerProgressBarVisibilityLive();
     void ApplyMiniPlayerArtworkProgressVisibilityLive();

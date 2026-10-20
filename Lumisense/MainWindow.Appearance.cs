@@ -348,6 +348,7 @@ public partial class MainWindow
 
         _miniPlayerWindow?.UpdateSecondaryButton();
         _miniPlayerWindow?.RefreshAccentButtons();
+        _islandWindow?.RefreshAccent();
     }
 
     // Подложка главного окна (AppSettings.WindowBackdropType): на старте и из окна настроек при смене настройки

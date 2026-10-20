@@ -232,6 +232,7 @@ public partial class MainWindow
         _integrations.NowPlaying?.Dispose();
         _integrations.Tray?.Dispose();
         _miniPlayerWindow?.Close();
+        _islandWindow?.Close();
         _settingsWindow?.Close();
         _statisticsWindow?.Close();
         _trackChangeToastController.Dispose();

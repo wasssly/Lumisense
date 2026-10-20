@@ -108,8 +108,12 @@ public partial class MainWindow
 
     // Просмотр обложки остаётся доступен из контекстного меню. Так короткий клик на самой
     // обложке можно использовать как предсказуемый жест пуск/пауза, не теряя эту функцию.
-    private void OpenAlbumArtPreview()
+    public void ShowCoverPreview(Window owner) => OpenAlbumArtPreview(owner);
+
+    // owner нужен мини-режиму: главное окно там скрыто, а окно со скрытым владельцем не показалось бы.
+    private void OpenAlbumArtPreview(Window? owner = null)
     {
+        owner ??= this;
         // У трека может не быть обложки (показан плейсхолдер-иконка) — тогда открывать нечего
         BitmapImage? previewArt = DecodeOriginalAlbumArt() ?? _currentAlbumArt;
         if (previewArt is null) return;
@@ -118,14 +122,14 @@ public partial class MainWindow
         {
             _coverArtWindow = new CoverArtWindow(previewArt, TrackTitleText.Text, _settings)
             {
-                Owner = this
+                Owner = owner
             };
 
             // Screen.WorkingArea в физических пикселях, а Left/Top/Width/Height окна — в DIP: прямое присваивание давало окно больше
             // рабочей области при масштабе 125/150/200%, поэтому пересчитываем через DPI главного окна.
-            var screen = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(this).Handle);
+            var screen = System.Windows.Forms.Screen.FromHandle(new WindowInteropHelper(owner).Handle);
             var workArea = screen.WorkingArea;
-            var fromDevice = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformFromDevice
+            var fromDevice = PresentationSource.FromVisual(owner)?.CompositionTarget?.TransformFromDevice
                              ?? Matrix.Identity;
             var workTopLeft = fromDevice.Transform(new Point(workArea.Left, workArea.Top));
 

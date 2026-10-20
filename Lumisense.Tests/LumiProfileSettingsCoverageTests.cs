@@ -69,6 +69,7 @@ public sealed class LumiProfileSettingsCoverageTests
             case nameof(AppSettings.LyricsTextAlignment): return current as string == "Left" ? "Right" : "Left";
             case nameof(AppSettings.FavoriteHeartAnimation): return current as string == "Fill" ? "Ring" : "Fill";
             case nameof(AppSettings.MiniPlayerSizePreset): return current as string == "Classic" ? "Compact" : "Classic";
+            case nameof(AppSettings.MiniPlayerStyle): return current as string == "Classic" ? "Island" : "Classic";
             case nameof(AppSettings.NowPlayingBackground): return current as string == "Clouds" ? "Orbs" : "Clouds";
             case nameof(AppSettings.SettingsNavigationStyle): return current as string == "Sidebar" ? "Pills" : "Sidebar";
             case nameof(AppSettings.SettingsNavigationLabelMode): return current as string == "Below" ? "Selected" : "Below";

@@ -150,6 +150,27 @@ public class AppSettings
     // Размер мини-плеера: "Compact" | "Current" | "Classic" (по умолчанию размер версии 1.21.0).
     public string MiniPlayerSizePreset { get; set; } = "Classic";
 
+    // Вид мини-плеера: "Classic" (плавающая карточка) | "Island" (капсула у верхнего края экрана, раскрывается по клику).
+    public string MiniPlayerStyle { get; set; } = "Classic";
+
+    // Монитор острова: пусто — основной экран, иначе Screen.DeviceName; если монитор пропал, остров уходит на основной.
+    public string IslandMonitor { get; set; } = "";
+
+    // Настройки острова: масштаб 80–120 %, отступ от верхнего края 0–40 px. Размытия в прозрачном окне считаются на процессоре,
+    // поэтому по умолчанию выключены; скрытие по средней кнопке — 3–60 с.
+    public int IslandScalePercent { get; set; } = 100;
+    public int IslandTopGap { get; set; } = 6;
+    public bool IslandTrackToast { get; set; } = true;
+    public bool IslandAutoCollapse { get; set; } = true;
+    public bool IslandShowEqualizer { get; set; } = true;
+    public bool IslandAccentRim { get; set; } = true;
+    public bool IslandBlurTransitions { get; set; }
+    public int IslandHideSeconds { get; set; } = 10;
+    public bool IslandMotionBlur { get; set; }
+    public bool IslandCoverPreview { get; set; } = true;
+    public bool IslandExternalVolume { get; set; } = true;
+    public bool IslandQuietInGames { get; set; } = true;
+
     // Прятать обложку, пока открыта панель «Текст песни», чтобы тексту хватало места.
     public bool HideCoverInLyricsPanel { get; set; } = true;
 

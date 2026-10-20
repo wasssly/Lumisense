@@ -111,10 +111,14 @@ public static class LumiProfileIO
             (settings.LyricsTextAlignment?.Length ?? 0) > 32 ||
             (settings.FavoriteHeartAnimation?.Length ?? 0) > 32 ||
             (settings.MiniPlayerSizePreset?.Length ?? 0) > 32 ||
+            (settings.MiniPlayerStyle?.Length ?? 0) > 32 ||
             (settings.NowPlayingBackground?.Length ?? 0) > 32 ||
             (settings.AlbumArtTransitionStyle?.Length ?? 0) > 32 ||
             (settings.SettingsNavigationStyle?.Length ?? 0) > 32 ||
             (settings.SettingsNavigationLabelMode?.Length ?? 0) > 32)
+            return false;
+        if (settings.IslandScalePercent is < 80 or > 120 || settings.IslandTopGap is < 0 or > 40
+            || settings.IslandHideSeconds is < 3 or > 60)
             return false;
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
             return false;
@@ -293,6 +297,21 @@ public static class LumiProfileIO
         target.SettingsNavigationShowLabels = source.SettingsNavigationShowLabels;
         if (source.SettingsNavigationLabelMode is "Below" or "Selected")
             target.SettingsNavigationLabelMode = source.SettingsNavigationLabelMode;
+        if (source.MiniPlayerStyle is "Classic" or "Island")
+            target.MiniPlayerStyle = source.MiniPlayerStyle;
+        target.IslandMonitor = source.IslandMonitor;
+        target.IslandScalePercent = source.IslandScalePercent;
+        target.IslandTopGap = source.IslandTopGap;
+        target.IslandHideSeconds = source.IslandHideSeconds;
+        target.IslandTrackToast = source.IslandTrackToast;
+        target.IslandAutoCollapse = source.IslandAutoCollapse;
+        target.IslandShowEqualizer = source.IslandShowEqualizer;
+        target.IslandAccentRim = source.IslandAccentRim;
+        target.IslandBlurTransitions = source.IslandBlurTransitions;
+        target.IslandMotionBlur = source.IslandMotionBlur;
+        target.IslandCoverPreview = source.IslandCoverPreview;
+        target.IslandExternalVolume = source.IslandExternalVolume;
+        target.IslandQuietInGames = source.IslandQuietInGames;
         if (MiniPlayerSizePreset.IsKnown(source.MiniPlayerSizePreset))
             target.MiniPlayerSizePreset = source.MiniPlayerSizePreset;
         if (source.TrackChangeToastTextAlignment is "Left" or "Center" or "Right")

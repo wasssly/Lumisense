@@ -234,6 +234,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private readonly MainWindowIntegrationController _integrations = new();
     private readonly DiscordRichPresenceManager _discordRichPresence = new();
     private MiniPlayerWindow? _miniPlayerWindow;
+    private IslandPlayerWindow? _islandWindow;
 
     private SettingsWindow? _settingsWindow;
     private StatisticsWindow? _statisticsWindow;
@@ -335,6 +336,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     public double CurrentPlaybackSeconds => _audioFile?.CurrentTime.TotalSeconds ?? 0;
     public double CurrentTrackDurationSeconds => _audioFile?.TotalTime.TotalSeconds ?? 0;
     public bool IsPlayingNow => _isPlaying;
+    public double CurrentVolume => VolumeSlider.Value;
     public AudioLevelSampleProvider? AudioLevelMeter => _audioLevelMeter;
 
     // Для мини-плеера: узнать режим повтора сразу при открытии, до первого RepeatModeChanged (как трек и состояние
@@ -562,6 +564,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             // RestorePlayerViewMode() выше мог уже создать и показать MiniPlayerWindow
             // (EnterMiniMode вызывает Show() безусловно, не зная про эту настройку) — прячем и его.
             _miniPlayerWindow?.Hide();
+            _islandWindow?.Hide();
 
             // Если стартовый вид — мини-плеер, EnterMiniMode уже показал значок в трее —
             // не перезатираем его повторным Show().
@@ -1360,6 +1363,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         bool mainShown = IsVisible && WindowState != WindowState.Minimized;
         if (!mainShown && _miniPlayerWindow is { IsVisible: true, WindowState: not WindowState.Minimized } mini)
             return ScreenOfWindow(mini, parked: false);
+        if (!mainShown && _islandWindow is { IsVisible: true } island)
+            return ScreenOfWindow(island, parked: false);
 
         return ScreenOfWindow(this, parked: !mainShown);
     }

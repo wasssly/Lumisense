@@ -298,6 +298,11 @@ internal static class SettingsIntegrityService
             "Sidebar", "Pills", "FloatingBar");
         settings.SettingsNavigationLabelMode = Allowed(settings.SettingsNavigationLabelMode, defaults.SettingsNavigationLabelMode,
             "Below", "Selected");
+        settings.IslandScalePercent = Math.Clamp(settings.IslandScalePercent, 80, 120);
+        settings.IslandTopGap = Math.Clamp(settings.IslandTopGap, 0, 40);
+        settings.IslandHideSeconds = Math.Clamp(settings.IslandHideSeconds, 3, 60);
+        settings.MiniPlayerStyle = Allowed(settings.MiniPlayerStyle, defaults.MiniPlayerStyle,
+            "Classic", "Island");
         settings.MiniPlayerSizePreset = Allowed(settings.MiniPlayerSizePreset, defaults.MiniPlayerSizePreset,
             "Compact", "Current", "Classic");
         settings.FavoriteHeartAnimation = Allowed(settings.FavoriteHeartAnimation, defaults.FavoriteHeartAnimation,

@@ -296,7 +296,7 @@ public partial class MainWindow
 
         // Владелец диалога — реально видимое окно: в мини-режиме MainWindow скрыто (Hide в ShowMiniPlayer), и диалог
         // с невидимым владельцем не выходит на передний план, поэтому берём мини-плеер.
-        Window ownerWindow = _isMiniMode && _miniPlayerWindow != null ? _miniPlayerWindow : this;
+        Window ownerWindow = (_isMiniMode ? (Window?)_miniPlayerWindow ?? _islandWindow : null) ?? this;
 
         // Хоткей глобальный: плеер почти наверняка не в фокусе, и MessageBox оказался бы под чужим окном (Windows блокирует
         // кражу фокуса); Topmost-моргание (ForceForeground) чинит это, для контекстного меню — безвредный no-op.

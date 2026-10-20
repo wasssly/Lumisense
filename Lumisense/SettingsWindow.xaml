@@ -2490,6 +2490,86 @@
                         <TextBlock Text="Мини-плеер" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Компактный режим, оформление и поведение мини-плеера." Style="{StaticResource PageDescriptionStyle}" />
 
+                        <!-- См. AppSettings.MiniPlayerStyle/IslandMonitor и IslandPlayerWindow. -->
+                        <Border x:Name="MiniStyleCard" Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Вид мини-плеера" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="MiniStyleClassicRadio" Content="Карточка (по умолчанию)" GroupName="MiniPlayerStyle"
+                                             Checked="MiniStyleRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="MiniStyleIslandRadio" Content="Остров — капсула у верхнего края экрана, раскрывается по клику"
+                                             GroupName="MiniPlayerStyle" Checked="MiniStyleRadio_Changed" />
+                                <StackPanel x:Name="IslandMonitorPanel" Margin="0,16,0,0">
+                                    <TextBlock Text="Монитор острова" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                    <ComboBox x:Name="IslandMonitorCombo" SelectionChanged="IslandMonitorCombo_SelectionChanged"
+                                              HorizontalAlignment="Left" MinWidth="220" />
+                                    <TextBlock Text="Остров остаётся по центру верхнего края выбранного монитора; если монитор отключён, он переезжает на основной."
+                                               Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="IslandCustomCard" Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Настройки острова" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Размер острова" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandScaleSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="120"
+                                            TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandScaleSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandScaleValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="Отступ от верхнего края" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandTopGapSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="0" Maximum="40"
+                                            TickFrequency="2" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandTopGapSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandTopGapValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="Скрытие по средней кнопке мыши" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandHideSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="3" Maximum="60"
+                                            TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandHideSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandHideValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <CheckBox x:Name="IslandTrackToastCheckBox" Content="Раскрываться при смене трека" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandAutoCollapseCheckBox" Content="Сворачиваться, когда курсор ушёл" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandEqualizerCheckBox" Content="Эквалайзер в свёрнутом виде" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandAccentRimCheckBox" Content="Обводка цветом акцента во время игры" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandBlurTransitionsCheckBox" Content="Размытие при смене вида" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandCoverPreviewCheckBox" Content="Клик по обложке открывает её крупно" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandExternalVolumeCheckBox" Content="Показывать громкость, когда её меняют не на острове" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandQuietInGamesCheckBox" Content="Не раскрываться при смене трека в играх" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandMotionBlurCheckBox" Content="Размытие движения при растяжении"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <TextBlock Text="Размытия нагружают видеокарту: если остров подтормаживает, отключите их."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <Grid Margin="0,0,0,6">

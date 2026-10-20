@@ -196,6 +196,25 @@ public partial class SettingsWindow : FluentWindow
         InitializeToastPolicy();
         InitializeToastPositionAndSize();
         InitializeToastMonitorCombo();
+        MiniStyleIslandRadio.IsChecked = _settings.MiniPlayerStyle == "Island";
+        MiniStyleClassicRadio.IsChecked = !MiniStyleIslandRadio.IsChecked.GetValueOrDefault();
+        IslandMonitorPanel.Visibility = IslandCustomCard.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        InitializeIslandMonitorCombo();
+        IslandScaleSlider.Value = _settings.IslandScalePercent;
+        IslandScaleValueText.Text = $"{_settings.IslandScalePercent}%";
+        IslandTopGapSlider.Value = _settings.IslandTopGap;
+        IslandTopGapValueText.Text = $"{_settings.IslandTopGap} px";
+        IslandHideSlider.Value = _settings.IslandHideSeconds;
+        IslandHideValueText.Text = $"{_settings.IslandHideSeconds} с";
+        IslandTrackToastCheckBox.IsChecked = _settings.IslandTrackToast;
+        IslandAutoCollapseCheckBox.IsChecked = _settings.IslandAutoCollapse;
+        IslandEqualizerCheckBox.IsChecked = _settings.IslandShowEqualizer;
+        IslandAccentRimCheckBox.IsChecked = _settings.IslandAccentRim;
+        IslandBlurTransitionsCheckBox.IsChecked = _settings.IslandBlurTransitions;
+        IslandMotionBlurCheckBox.IsChecked = _settings.IslandMotionBlur;
+        IslandCoverPreviewCheckBox.IsChecked = _settings.IslandCoverPreview;
+        IslandExternalVolumeCheckBox.IsChecked = _settings.IslandExternalVolume;
+        IslandQuietInGamesCheckBox.IsChecked = _settings.IslandQuietInGames;
         MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
 
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
@@ -1168,6 +1187,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Приватность Discord: обложка трека", "Интеграции", "Integrations", DiscordRichPresenceShowCoverArtCheckBox, "discord обложка cover art musicbrainz itunes deezer" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("EQ Bypass", "Эквалайзер", "Equalizer", EqualizerBypassCheckBox, "bypass обход эквалайзер eq временно сравнение фильтры");
+        Add("Настройки острова", "Мини-плеер", "MiniPlayer", IslandCustomCard, "остров размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться island scale blur equalizer lag тормоза");
+        Add("Вид мини-плеера: карточка или остров", "Мини-плеер", "MiniPlayer", MiniStyleCard, "остров капсула dynamic island монитор экран вид мини плеер island monitor style");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
         Add("Закрепить положение (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniPinnedCheckBox, "закрепить перетаскивание pin мини плеер");
@@ -1977,6 +1998,7 @@ public partial class SettingsWindow : FluentWindow
         RefreshAppVersionText();
         InitializeOutputDeviceCombo();
         InitializeToastMonitorCombo();
+        InitializeIslandMonitorCombo();
         UpdateDiscordRichPresenceConnectionStatus();
 
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
@@ -2343,7 +2365,13 @@ public partial class SettingsWindow : FluentWindow
 
     // Мониторы собираем при каждом открытии: состав экранов мог измениться, а окно всё равно создаётся заново
     // (MainWindow.ShowSettingsWindow), так что кэш не нужен.
-    private void InitializeToastMonitorCombo()
+    private void InitializeToastMonitorCombo() =>
+        FillMonitorCombo(ToastMonitorCombo, _settings.TrackChangeToastMonitor, "Автоматически (тот же монитор, что и окно плеера)");
+
+    private void InitializeIslandMonitorCombo() =>
+        FillMonitorCombo(IslandMonitorCombo, _settings.IslandMonitor, "Основной монитор");
+
+    private void FillMonitorCombo(System.Windows.Controls.ComboBox combo, string savedMonitor, string autoText)
     {
         // Items.Clear и SelectedItem вызывают SelectionChanged: при смене языка выбранный DeviceName должен остаться
         // настройкой, а не временно стать пустым «Автоматически».
@@ -2351,14 +2379,10 @@ public partial class SettingsWindow : FluentWindow
         _isInitializing = true;
         try
         {
-            string savedMonitor = _settings.TrackChangeToastMonitor;
-            ToastMonitorCombo.Items.Clear();
+            combo.Items.Clear();
 
-            var autoItem = new System.Windows.Controls.ComboBoxItem
-            {
-                Content = LocalizationService.Translate("Автоматически (тот же монитор, что и окно плеера)"), Tag = ""
-            };
-            ToastMonitorCombo.Items.Add(autoItem);
+            var autoItem = new System.Windows.Controls.ComboBoxItem { Content = LocalizationService.Translate(autoText), Tag = "" };
+            combo.Items.Add(autoItem);
 
             var screens = System.Windows.Forms.Screen.AllScreens;
             for (int i = 0; i < screens.Length; i++)
@@ -2366,12 +2390,12 @@ public partial class SettingsWindow : FluentWindow
                 var s = screens[i];
                 string label = LocalizationService.Translate($"Монитор {i + 1} — {s.Bounds.Width}×{s.Bounds.Height}") +
                     (s.Primary ? LocalizationService.Translate(" (основной)") : "");
-                ToastMonitorCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = label, Tag = s.DeviceName });
+                combo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = label, Tag = s.DeviceName });
             }
 
-            var selected = ToastMonitorCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+            var selected = combo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
                 .FirstOrDefault(i => (string)i.Tag == savedMonitor);
-            ToastMonitorCombo.SelectedItem = selected ?? autoItem;
+            combo.SelectedItem = selected ?? autoItem;
         }
         finally
         {
@@ -2804,6 +2828,75 @@ public partial class SettingsWindow : FluentWindow
                 ? (Brush)FindResource("TextFillColorPrimaryBrush")
                 : Brushes.Transparent;
         }
+    }
+
+    private void MiniStyleRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MiniPlayerStyle = MiniStyleIslandRadio.IsChecked == true ? "Island" : "Classic";
+        IslandMonitorPanel.Visibility = IslandCustomCard.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        _owner.ApplyMiniPlayerStyleLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void SaveIslandSettings()
+    {
+        _owner.ApplyIslandSettingsLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void IslandScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing || IslandScaleValueText is null) return;
+
+        _settings.IslandScalePercent = (int)Math.Round(e.NewValue);
+        IslandScaleValueText.Text = $"{_settings.IslandScalePercent}%";
+        SaveIslandSettings();
+    }
+
+    private void IslandTopGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing || IslandTopGapValueText is null) return;
+
+        _settings.IslandTopGap = (int)Math.Round(e.NewValue);
+        IslandTopGapValueText.Text = $"{_settings.IslandTopGap} px";
+        SaveIslandSettings();
+    }
+
+    private void IslandHideSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing || IslandHideValueText is null) return;
+
+        _settings.IslandHideSeconds = (int)Math.Round(e.NewValue);
+        IslandHideValueText.Text = $"{_settings.IslandHideSeconds} с";
+        SaveIslandSettings();
+    }
+
+    private void IslandOption_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.IslandTrackToast = IslandTrackToastCheckBox.IsChecked == true;
+        _settings.IslandAutoCollapse = IslandAutoCollapseCheckBox.IsChecked == true;
+        _settings.IslandShowEqualizer = IslandEqualizerCheckBox.IsChecked == true;
+        _settings.IslandAccentRim = IslandAccentRimCheckBox.IsChecked == true;
+        _settings.IslandBlurTransitions = IslandBlurTransitionsCheckBox.IsChecked == true;
+        _settings.IslandMotionBlur = IslandMotionBlurCheckBox.IsChecked == true;
+        _settings.IslandCoverPreview = IslandCoverPreviewCheckBox.IsChecked == true;
+        _settings.IslandExternalVolume = IslandExternalVolumeCheckBox.IsChecked == true;
+        _settings.IslandQuietInGames = IslandQuietInGamesCheckBox.IsChecked == true;
+        SaveIslandSettings();
+    }
+
+    private void IslandMonitorCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.IslandMonitor =
+            IslandMonitorCombo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag } ? tag : "";
+        _owner.ApplyIslandMonitorLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void MiniSizePresetRadio_Changed(object sender, RoutedEventArgs e)

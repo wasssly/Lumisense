@@ -33,6 +33,14 @@ public partial class MainWindow
         Logger.Info($"EnterMiniMode: вызываю _integrations.Tray.Show() (стартовый вызов={_isApplyingStartupSettings}).");
         _integrations.Tray?.Show("Lumisense");
 
+        if (_settings.MiniPlayerStyle == "Island")
+        {
+            ShowIslandWindow();
+            _isMiniMode = true;
+            Hide();
+            return;
+        }
+
         _miniPlayerWindow = new MiniPlayerWindow(this)
         {
             Topmost = _settings.MiniPlayerAlwaysOnTop
@@ -60,6 +68,44 @@ public partial class MainWindow
         Hide();
     }
 
+    private void ShowIslandWindow()
+    {
+        // Остров всегда поверх окон (кроме чужих полноэкранных), поэтому настройка «поверх окон» мини-плеера на него не действует.
+        _islandWindow = new IslandPlayerWindow(this);
+        _islandWindow.ApplyOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
+        _islandWindow.Closed += (_, _) => _islandWindow = null;
+        _islandWindow.Show();
+    }
+
+    // Смена вида в настройках при открытом мини-плеере: пересоздаём окно, а не переключаем его на лету, потому что это разные окна.
+    public void ApplyMiniPlayerStyleLive()
+    {
+        if (!_isMiniMode) return;
+
+        _miniPlayerWindow?.Close();
+        _miniPlayerWindow = null;
+        _islandWindow?.Close();
+        _islandWindow = null;
+
+        if (_settings.MiniPlayerStyle == "Island")
+        {
+            ShowIslandWindow();
+            return;
+        }
+
+        _miniPlayerWindow = new MiniPlayerWindow(this) { Topmost = _settings.MiniPlayerAlwaysOnTop };
+        _miniPlayerWindow.ApplyOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
+        var workArea = SystemParameters.WorkArea;
+        _miniPlayerWindow.Left = _settings.MiniPlayerLeft ?? workArea.Right - _miniPlayerWindow.Width - 24;
+        _miniPlayerWindow.Top = _settings.MiniPlayerTop ?? workArea.Bottom - _miniPlayerWindow.Height - 24;
+        _miniPlayerWindow.Closed += (_, _) => _miniPlayerWindow = null;
+        _miniPlayerWindow.Show();
+    }
+
+    public void ApplyIslandMonitorLive() => _islandWindow?.PositionOnMonitor();
+
+    public void ApplyIslandSettingsLive() => _islandWindow?.ApplySettingsLive();
+
     // Вызывается из MiniPlayerWindow по кнопке "развернуть"; внешняя активация ярлыка передаёт true, чтобы следующий клик
     // по кнопке панели задач снова вернул мини-плеер (обычное разворачивание маркер не ставит).
     public void ExitMiniMode(bool returnToMiniOnNextTaskbarMinimize = false)
@@ -69,6 +115,8 @@ public partial class MainWindow
 
         _miniPlayerWindow?.Close();
         _miniPlayerWindow = null;
+        _islandWindow?.Close();
+        _islandWindow = null;
 
         Show();
         WindowState = WindowState.Normal;
@@ -111,6 +159,7 @@ public partial class MainWindow
     public void ApplyMiniPlayerOverlayCompatibilityLive(bool enabled)
     {
         _miniPlayerWindow?.ApplyOverlayCompatibilityLive(enabled);
+        _islandWindow?.ApplyOverlayCompatibilityLive(enabled);
         _trackChangeToastController.ApplyOverlayCompatibilityLive(enabled);
     }
 
