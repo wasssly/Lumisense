@@ -1458,7 +1458,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
     // Вызывается из окна настроек сразу после того, как пользователь записал новую
     // комбинацию клавиш (или очистил старую) — применяет её без перезапуска приложения
-    public void ReapplyHotkeys() => _integrations.HotKeys?.ApplyCustomHotkeys(_settings);
+    public IReadOnlyList<HotkeyBinding> ReapplyHotkeys() =>
+        _integrations.HotKeys?.ApplyCustomHotkeys(_settings) ?? Array.Empty<HotkeyBinding>();
 
     public void ExternalPlayPause() => PlayPauseButton_Click(this, new RoutedEventArgs());
     public void ExternalNext() => PlayNextTrack();

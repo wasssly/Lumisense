@@ -127,9 +127,15 @@ public sealed class GlobalMediaHotKeys : IDisposable
         _pollTimer.Start();
     }
 
+    // Комбинации, которые Windows отказалась регистрировать при последнем ApplyCustomHotkeys (чаще всего их уже заняло
+    // другое приложение). Окно настроек по ним предупреждает пользователя, иначе кнопка показывала бы «назначено», а клавиша молчала.
+    private readonly List<HotkeyBinding> _failedBindings = [];
+
     // Перерегистрирует хоткеи под текущие настройки; безопасно вызывать повторно — старые комбинации снимаются.
-    public void ApplyCustomHotkeys(AppSettings settings)
+    // Возвращает комбинации, которые не удалось зарегистрировать.
+    public IReadOnlyList<HotkeyBinding> ApplyCustomHotkeys(AppSettings settings)
     {
+        _failedBindings.Clear();
         if (_customPlayPauseRegistered) UnregisterHotKey(_handle, IdCustomPlayPause);
         if (_customNextRegistered) UnregisterHotKey(_handle, IdCustomNext);
         if (_customPreviousRegistered) UnregisterHotKey(_handle, IdCustomPrevious);
@@ -167,6 +173,19 @@ public sealed class GlobalMediaHotKeys : IDisposable
         _customToggleFavoriteRegistered = TryRegister(IdCustomToggleFavorite, settings.HotkeyToggleFavorite);
         _customToggleLyricsRegistered = TryRegister(IdCustomToggleLyrics, settings.HotkeyToggleLyrics);
         _customToggleMiniPlayerRegistered = TryRegister(IdCustomToggleMiniPlayer, settings.HotkeyToggleMiniPlayer);
+
+        return _failedBindings.ToArray();
+    }
+
+    private static string DescribeBinding(HotkeyBinding binding)
+    {
+        var parts = new List<string>();
+        if (binding.Ctrl) parts.Add("Ctrl");
+        if (binding.Alt) parts.Add("Alt");
+        if (binding.Shift) parts.Add("Shift");
+        if (binding.Win) parts.Add("Win");
+        parts.Add(binding.Key);
+        return string.Join("+", parts);
     }
 
     // allowRepeat=true снимает MOD_NOREPEAT, и Windows повторяет WM_HOTKEY при удержании (треки, громкость);
@@ -183,7 +202,14 @@ public sealed class GlobalMediaHotKeys : IDisposable
         if (binding.Win) modifiers |= MOD_WIN;
 
         uint vk = (uint)KeyInterop.VirtualKeyFromKey(key);
-        if (!RegisterHotKey(_handle, id, modifiers, vk)) return false;
+        if (!RegisterHotKey(_handle, id, modifiers, vk))
+        {
+            int error = Marshal.GetLastWin32Error();
+            _failedBindings.Add(binding);
+            Logger.Warn($"Не удалось зарегистрировать глобальную комбинацию {DescribeBinding(binding)} (id 0x{id:X}), ошибка Win32 {error}: " +
+                        "обычно её уже занято другим приложением или системой.");
+            return false;
+        }
 
         _polled.Add(new PolledHotkey(id, (int)vk, binding.Ctrl, binding.Alt, binding.Shift, binding.Win));
         return true;

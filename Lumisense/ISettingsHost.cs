@@ -114,7 +114,8 @@ internal interface ISettingsPlaylistHost
 internal interface ISettingsIntegrationsHost
 {
     void ApplyDiscordRichPresenceSettingsLive();
-    void ReapplyHotkeys();
+    // Возвращает комбинации, которые не удалось зарегистрировать (заняты другим приложением).
+    IReadOnlyList<HotkeyBinding> ReapplyHotkeys();
 }
 
 // Профиль: импорт, сброс данных, служебные окна.

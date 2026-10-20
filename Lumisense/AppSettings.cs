@@ -47,6 +47,13 @@ public class HotkeyBinding
     public string Key { get; set; } = "";
 
     public bool IsEmpty => string.IsNullOrEmpty(Key);
+
+    // Та же комбинация: все модификаторы совпадают, клавиша сравнивается без учёта регистра.
+    // Пустая комбинация ни с чем не совпадает (две не заданные функции — не конфликт).
+    public bool SameCombinationAs(HotkeyBinding? other) =>
+        other is not null && !IsEmpty && !other.IsEmpty &&
+        Ctrl == other.Ctrl && Alt == other.Alt && Shift == other.Shift && Win == other.Win &&
+        string.Equals(Key, other.Key, StringComparison.OrdinalIgnoreCase);
 }
 
 // Настройки приложения, сохраняемые между запусками

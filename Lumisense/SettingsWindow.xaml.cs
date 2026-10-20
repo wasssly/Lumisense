@@ -4490,12 +4490,40 @@ public partial class SettingsWindow : FluentWindow
             Key = key.ToString()
         };
 
+        // Две функции на одной комбинации: сработала бы только первая, вторая молча нет. Остаёмся в режиме записи,
+        // как и для комбинации без модификатора, чтобы пользователь сразу нажал другую.
+        if (FindConflictingTarget(_recordingTarget, binding) != HotkeyTarget.None)
+        {
+            GetHotkeyButton(_recordingTarget).Content = LocalizationService.Translate("Уже занято другим действием…");
+            return;
+        }
+
         var target = _recordingTarget;
         _recordingTarget = HotkeyTarget.None;
 
         SetHotkeyBinding(target, binding);
         RefreshHotkeyButtonText(target);
-        _owner.ReapplyHotkeys();
+
+        // Windows не регистрирует комбинацию, которую уже занял другой процесс; без сообщения кнопка показывала бы «назначено».
+        var failed = _owner.ReapplyHotkeys();
+        if (failed.Any(candidate => candidate.SameCombinationAs(binding)))
+        {
+            LocalizedMessageBox.Show(this,
+                string.Format(LocalizationService.Translate("Комбинация {0} не зарегистрирована: её уже заняло другое приложение или система. Действие не сработает, пока вы не выберете другую комбинацию."), FormatBinding(binding)),
+                LocalizationService.Translate("Горячая клавиша недоступна"),
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+        }
+    }
+
+    private HotkeyTarget FindConflictingTarget(HotkeyTarget target, HotkeyBinding binding)
+    {
+        foreach (HotkeyTarget other in Enum.GetValues<HotkeyTarget>())
+        {
+            if (other == HotkeyTarget.None || other == target) continue;
+            if (GetHotkeyBinding(other).SameCombinationAs(binding)) return other;
+        }
+
+        return HotkeyTarget.None;
     }
 
     private static bool IsModifierKey(Key key) =>
