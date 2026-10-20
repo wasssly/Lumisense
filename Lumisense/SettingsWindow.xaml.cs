@@ -188,6 +188,7 @@ public partial class SettingsWindow : FluentWindow
         UpdateLyricsPreview();
         UpdateBadgePreview();
         InitializeProgressAppearanceEditor();
+        AllVersionsLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
         LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
         LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
         LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
@@ -1075,6 +1076,7 @@ public partial class SettingsWindow : FluentWindow
         string TitleText, string SubtitleText, string ActionText, bool CanInstall, ReleaseListItem Release);
 
     private bool _allVersionsLoaded;
+    private bool _allVersionsLoading;
     private IReadOnlyList<ReleaseListItem>? _loadedReleases;
 
     // Список грузится лениво — при первом раскрытии аккордеона и один раз за жизнь окна, чтобы не бить по сети зря.
@@ -1083,30 +1085,99 @@ public partial class SettingsWindow : FluentWindow
 
     private async Task AllVersionsExpander_ExpandedAsync(object sender, RoutedEventArgs e)
     {
-        if (_allVersionsLoaded) return;
-        _allVersionsLoaded = true;
+        if (_allVersionsLoaded || _allVersionsLoading) return;
+        await LoadAllVersionsAsync();
+    }
 
-        ReleaseListResult releaseResult = await UpdateChecker.GetAllReleasesAsync();
+    private void AllVersionsRetryButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_allVersionsLoading) return;
+        BackgroundTask.FireAndForget(LoadAllVersionsAsync(), nameof(AllVersionsRetryButton_Click));
+    }
 
-        AllVersionsLoadingText.Visibility = Visibility.Collapsed;
+    // Загружает список версий; неудача не помечает список загруженным, поэтому «Повторить» и повторное раскрытие пробуют снова.
+    // Сбой GitHub (лимит 403/429, сеть) обрабатывает UpdateChecker.GetAllReleasesAsync: повторы и сохранённая копия списка.
+    private async Task LoadAllVersionsAsync()
+    {
+        _allVersionsLoading = true;
+        AllVersionsLoadingText.Visibility = Visibility.Visible;
+        AllVersionsErrorText.Visibility = Visibility.Collapsed;
+        AllVersionsStaleText.Visibility = Visibility.Collapsed;
+        AllVersionsRetryButton.Visibility = Visibility.Collapsed;
+        AllVersionsRetryButton.IsEnabled = false;
 
-        if (!releaseResult.IsSuccess)
+        try
         {
-            AllVersionsErrorText.Text = UpdateFailureExperience.DescribeVersionListFailure(releaseResult);
-            AllVersionsErrorText.Visibility = Visibility.Visible;
-            return;
-        }
+            // Сначала сразу показываем сохранённый список (если есть), а свежий подгружаем следом: раньше при медленном GitHub
+            // или VPN окно до конца запроса показывало только неменяющуюся надпись о загрузке.
+            if (_loadedReleases is null && UpdateChecker.GetCachedReleases() is { Releases.Count: > 0 } cached)
+            {
+                _loadedReleases = cached.Releases;
+                RenderAllVersions(cached.Releases);
+                AllVersionsLoadingText.Text = LocalizationService.Translate("Обновляем список версий…");
+            }
 
-        IReadOnlyList<ReleaseListItem> releases = releaseResult.Releases;
-        if (releases.Count == 0)
+            var attemptProgress = new Progress<int>(attempt =>
+            {
+                if (_loadedReleases is null)
+                    AllVersionsLoadingText.Text = string.Format(
+                        LocalizationService.Translate("Загружаем список версий… попытка {0} из {1}"),
+                        attempt, ReleaseListRetryPolicy.MaxAttempts);
+            });
+            ReleaseListResult releaseResult = await UpdateChecker.GetAllReleasesAsync(attemptProgress: attemptProgress);
+            AllVersionsLoadingText.Visibility = Visibility.Collapsed;
+
+            if (!releaseResult.IsSuccess)
+            {
+                AllVersionsErrorText.Text = DescribeVersionListFailure(releaseResult.FailureKind, releaseResult.HttpStatusCode,
+                    releaseResult.RateLimitResetAt, releaseResult);
+                AllVersionsErrorText.Visibility = Visibility.Visible;
+                AllVersionsRetryButton.Visibility = Visibility.Visible;
+                return;
+            }
+
+            IReadOnlyList<ReleaseListItem> releases = releaseResult.Releases;
+            if (releases.Count == 0)
+            {
+                _allVersionsLoaded = true;
+                AllVersionsErrorText.Text = LocalizationService.Translate("На GitHub пока нет ни одного опубликованного релиза.");
+                AllVersionsErrorText.Visibility = Visibility.Visible;
+                return;
+            }
+
+            _allVersionsLoaded = !releaseResult.IsFromCache;
+            _loadedReleases = releases;
+            RenderAllVersions(releases);
+
+            if (releaseResult.IsFromCache)
+            {
+                string reason = DescribeVersionListFailure(releaseResult.RefreshFailureKind, releaseResult.RefreshHttpStatusCode,
+                    releaseResult.RateLimitResetAt, null);
+                string saved = releaseResult.CachedAt is { } cachedAt
+                    ? string.Format(LocalizationService.Translate("Показан сохранённый список от {0}."), cachedAt.ToLocalTime().ToString("g"))
+                    : LocalizationService.Translate("Показан сохранённый список.");
+                AllVersionsStaleText.Text = $"{saved} {reason}";
+                AllVersionsStaleText.Visibility = Visibility.Visible;
+                AllVersionsRetryButton.Visibility = Visibility.Visible;
+            }
+        }
+        finally
         {
-            AllVersionsErrorText.Text = LocalizationService.Translate("На GitHub пока нет ни одного опубликованного релиза.");
-            AllVersionsErrorText.Visibility = Visibility.Visible;
-            return;
+            _allVersionsLoading = false;
+            AllVersionsRetryButton.IsEnabled = true;
         }
+    }
 
-        _loadedReleases = releases;
-        RenderAllVersions(releases);
+    // Лимит запросов GitHub объясняем словами; прочие сбои — стандартным текстом.
+    private static string DescribeVersionListFailure(UpdateFailureKind kind, int? httpStatusCode, DateTimeOffset? resetAt,
+        ReleaseListResult? fullResult)
+    {
+        if (UpdateFailureExperience.IsRateLimit(kind, httpStatusCode))
+            return UpdateFailureExperience.DescribeRateLimit(httpStatusCode!.Value, resetAt);
+
+        return fullResult is not null
+            ? UpdateFailureExperience.DescribeVersionListFailure(fullResult)
+            : UpdateFailureExperience.Describe(kind, httpStatusCode);
     }
 
     private void RenderAllVersions(IReadOnlyList<ReleaseListItem> releases)
@@ -4244,6 +4315,8 @@ public partial class SettingsWindow : FluentWindow
     private void OpenRepositoryButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly/Lumisense");
 
     private void DeveloperTelegramButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://t.me/dontwritetoblame");
+
+    private void OpenTelegramChannelButton_Click(object sender, RoutedEventArgs e) => OpenUrl(UpdateCheckHealth.TelegramChannelUrl);
 
     private void OpenLogsButton_Click(object sender, RoutedEventArgs e) => Logger.OpenLogsFolder();
 

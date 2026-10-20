@@ -68,6 +68,15 @@ public sealed class ReleaseListResult
     public int? HttpStatusCode { get; init; }
     public string? TechnicalDetail { get; init; }
     public bool IsSuccess => FailureKind == UpdateFailureKind.None;
+
+    // Список взят из сохранённой копии, потому что обновить его не удалось (RefreshFailureKind/RefreshHttpStatusCode — почему).
+    public bool IsFromCache { get; init; }
+    public DateTimeOffset? CachedAt { get; init; }
+    public UpdateFailureKind RefreshFailureKind { get; init; }
+    public int? RefreshHttpStatusCode { get; init; }
+
+    // Когда GitHub сбросит лимит запросов (из X-RateLimit-Reset), если сбой — это лимит.
+    public DateTimeOffset? RateLimitResetAt { get; init; }
 }
 
 // Подробность скачивания установщика для отображения в окне обновления.
@@ -343,24 +352,106 @@ public static class UpdateChecker
         }
     }
 
-    // Полный список опубликованных релизов для выбора версии и отката.
-    public static async Task<ReleaseListResult> GetAllReleasesAsync(CancellationToken ct = default)
+    // Полный список опубликованных релизов для выбора версии и отката. Сбой (лимит GitHub 403/429, сеть, 5xx) повторяется
+    // с короткой паузой (ReleaseListRetryPolicy), а если не прошло, возвращается сохранённая копия прошлого удачного списка
+    // с пометкой IsFromCache: так откат на старую версию доступен, даже когда API отвечает 403.
+    // Один запрос ждёт не больше ReleaseListRequestTimeout (общий таймаут клиента 30 с слишком долгий: три попытки подряд
+    // выглядели как зависание, особенно за VPN, где GitHub API режется или упирается в лимит общего адреса).
+    // attemptProgress получает номер текущей попытки, чтобы окно настроек показывало, что загрузка идёт.
+    private static readonly System.TimeSpan ReleaseListRequestTimeout = System.TimeSpan.FromSeconds(8);
+
+    public static async Task<ReleaseListResult> GetAllReleasesAsync(CancellationToken ct = default, IProgress<int>? attemptProgress = null)
     {
+        ReleaseListCacheData? cache = ReleaseListCache.TryLoad();
+        ReleaseListResult? failure = null;
+
+        for (int attempt = 0; attempt < ReleaseListRetryPolicy.MaxAttempts; attempt++)
+        {
+            if (attempt > 0)
+                await Task.Delay(ReleaseListRetryPolicy.DelayBeforeAttempt(attempt), ct);
+
+            attemptProgress?.Report(attempt + 1);
+
+            (ReleaseListResult result, bool retry) = await FetchReleaseListOnceAsync(cache, ct);
+            if (result.IsSuccess) return result;
+
+            failure = result;
+            if (!retry) break;
+        }
+
+        failure ??= new ReleaseListResult { FailureKind = UpdateFailureKind.Unknown };
+        if (cache is null) return failure;
+
+        return new ReleaseListResult
+        {
+            Releases = cache.Releases,
+            IsFromCache = true,
+            CachedAt = cache.FetchedAt,
+            RefreshFailureKind = failure.FailureKind,
+            RefreshHttpStatusCode = failure.HttpStatusCode,
+            RateLimitResetAt = failure.RateLimitResetAt
+        };
+    }
+
+    // Сохранённая копия списка для мгновенного показа, пока идёт запрос к GitHub; null, если копии нет.
+    public static ReleaseListResult? GetCachedReleases()
+    {
+        ReleaseListCacheData? cache = ReleaseListCache.TryLoad();
+        return cache is null
+            ? null
+            : new ReleaseListResult { Releases = cache.Releases, IsFromCache = true, CachedAt = cache.FetchedAt };
+    }
+
+    // Один запрос. retry — имеет ли смысл повторить (см. ReleaseListRetryPolicy). С кэшем запрос условный (If-None-Match):
+    // ответ 304 не расходует лимит GitHub.
+    private static async Task<(ReleaseListResult Result, bool Retry)> FetchReleaseListOnceAsync(
+        ReleaseListCacheData? cache, CancellationToken ct)
+    {
+        // Таймаут запроса — отменой связанного токена: настоящая отмена пользователем (ct) по-прежнему прерывает всё.
+        using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        timeoutCts.CancelAfter(ReleaseListRequestTimeout);
+        CancellationToken requestToken = timeoutCts.Token;
+
         try
         {
             string url = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases?per_page=100";
-            using var response = await Http.GetAsync(url, ct);
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            if (cache is { ETag: { Length: > 0 } cachedEtag })
+                request.Headers.TryAddWithoutValidation("If-None-Match", cachedEtag);
+
+            using var response = await Http.SendAsync(request, requestToken);
+            if (response.StatusCode == System.Net.HttpStatusCode.NotModified && cache is not null)
+            {
+                cache.FetchedAt = DateTimeOffset.UtcNow;
+                ReleaseListCache.TrySave(cache);
+                return (new ReleaseListResult { Releases = cache.Releases }, false);
+            }
+
             if (!response.IsSuccessStatusCode)
-                return new ReleaseListResult
+            {
+                int status = (int)response.StatusCode;
+                TimeSpan? retryAfter = response.Headers.RetryAfter?.Delta;
+                int? remaining = response.Headers.TryGetValues("X-RateLimit-Remaining", out var remainingValues)
+                                 && int.TryParse(remainingValues.FirstOrDefault(), out int parsedRemaining)
+                    ? parsedRemaining
+                    : null;
+                DateTimeOffset? resetAt = response.Headers.TryGetValues("X-RateLimit-Reset", out var resetValues)
+                    ? ReleaseListRetryPolicy.ParseRateLimitReset(resetValues.FirstOrDefault())
+                    : null;
+
+                return (new ReleaseListResult
                 {
                     FailureKind = UpdateFailureKind.HttpStatus,
-                    HttpStatusCode = (int)response.StatusCode
-                };
+                    HttpStatusCode = status,
+                    RateLimitResetAt = resetAt
+                }, ReleaseListRetryPolicy.ShouldRetry(status, retryAfter, remaining));
+            }
 
-            await using var stream = await response.Content.ReadAsStreamAsync(ct);
-            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: ct);
+            string? etag = response.Headers.ETag?.ToString();
+            await using var stream = await response.Content.ReadAsStreamAsync(requestToken);
+            using var doc = await JsonDocument.ParseAsync(stream, cancellationToken: requestToken);
             if (doc.RootElement.ValueKind != JsonValueKind.Array)
-                return new ReleaseListResult { FailureKind = UpdateFailureKind.InvalidResponse };
+                return (new ReleaseListResult { FailureKind = UpdateFailureKind.InvalidResponse }, false);
 
             var releases = new List<ReleaseListItem>();
             foreach (var releaseEl in doc.RootElement.EnumerateArray())
@@ -388,16 +479,23 @@ public static class UpdateChecker
                 });
             }
 
-            return new ReleaseListResult { Releases = releases };
+            if (releases.Count > 0)
+                ReleaseListCache.TrySave(new ReleaseListCacheData { ETag = etag, FetchedAt = DateTimeOffset.UtcNow, Releases = releases });
+
+            return (new ReleaseListResult { Releases = releases }, false);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
         }
         catch (System.Exception ex)
         {
             Logger.Warn($"Не удалось загрузить список релизов: {ex.Message}");
-            return new ReleaseListResult
+            return (new ReleaseListResult
             {
                 FailureKind = UpdateFailureKind.Network,
                 TechnicalDetail = ex.Message
-            };
+            }, true);
         }
     }
 

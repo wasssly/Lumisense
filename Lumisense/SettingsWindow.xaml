@@ -3426,10 +3426,23 @@
                                 <TextBlock Text="Полный список версий плеера с GitHub — можно поставить не только последнюю, но и любую другую, в том числе более старую."
                                            TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
 
-                                <TextBlock x:Name="AllVersionsLoadingText" Text="Загружаем список версий…"
-                                           FontSize="12" Opacity="0.6" />
+                                <!-- Индикатор загрузки Material 3 Expressive; показывается вместе с надписью (Visibility привязана к ней). -->
+                                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                                    <local:MaterialLoadingIndicator x:Name="AllVersionsLoadingIndicator" Width="32" Height="32"
+                                                                    Margin="0,0,12,0" VerticalAlignment="Center"
+                                                                    ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}"
+                                                                    Visibility="{Binding Visibility, ElementName=AllVersionsLoadingText}" />
+                                    <TextBlock x:Name="AllVersionsLoadingText" Text="Загружаем список версий…"
+                                               FontSize="12" Opacity="0.6" VerticalAlignment="Center" />
+                                </StackPanel>
                                 <TextBlock x:Name="AllVersionsErrorText" Text="" Visibility="Collapsed"
                                            TextWrapping="Wrap" FontSize="12" Opacity="0.6" />
+                                <!-- Список не загрузился или показан из сохранённой копии (GitHub API: лимит 403/429, сеть): повтор вручную. -->
+                                <TextBlock x:Name="AllVersionsStaleText" Text="" Visibility="Collapsed"
+                                           TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,8" />
+                                <ui:Button x:Name="AllVersionsRetryButton" Content="Повторить" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Margin="0,8,0,10" Visibility="Collapsed"
+                                           Click="AllVersionsRetryButton_Click" />
 
                                 <ItemsControl x:Name="AllVersionsList">
                                     <ItemsControl.ItemTemplate>
@@ -3581,6 +3594,30 @@
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                     <TextBlock Text="Открытый исходный код" FontWeight="SemiBold" />
                                     <TextBlock Text="Открыть репозиторий Lumisense на GitHub" FontSize="12" Opacity="0.6" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
+
+                        <!-- Telegram-канал проекта: новости, релизы и ручная загрузка, когда GitHub недоступен (UpdateCheckHealth.TelegramChannelUrl). -->
+                        <ui:Button x:Name="OpenTelegramChannelButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Margin="0,14,0,0" Click="OpenTelegramChannelButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconTelegram" Size="16"
+                                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Telegram-канал @LumisenseApp" FontWeight="SemiBold" />
+                                    <TextBlock Text="Новости, релизы и загрузка вручную, если GitHub недоступен" FontSize="12" Opacity="0.6" />
                                 </StackPanel>
                             </Grid>
                         </ui:Button>
