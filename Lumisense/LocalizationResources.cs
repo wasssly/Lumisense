@@ -17,6 +17,9 @@ public static class LocalizationKey
     public const string ProfileResetSnapshotCreateFailedFull = "profile.reset.snapshotCreateFailed.full";
     public const string ProfileResetCancelledTitle = "profile.reset.cancelledTitle";
     public const string ProfileResetFullConfirm = "profile.reset.fullConfirm";
+    public const string ProfileImportConfirm = "profile.import.confirm";
+    public const string ProfileImportConfirmTitle = "profile.import.confirmTitle";
+    public const string ProfileImportSnapshotCreateFailed = "profile.import.snapshotCreateFailed";
     public const string ProfileRestoreConfirm = "profile.restore.confirm";
     public const string ProfileRestoreConfirmTitle = "profile.restore.confirmTitle";
     public const string ProfileRestoreUnavailable = "profile.restore.unavailable";
@@ -161,6 +164,9 @@ internal static class LocalizationResources
         [LocalizationKey.ProfileResetSnapshotCreateFailedFull] = "Не удалось создать локальную точку восстановления. Полный сброс отменён, чтобы не потерять ваши данные.",
         [LocalizationKey.ProfileResetCancelledTitle] = "Сброс отменён",
         [LocalizationKey.ProfileResetFullConfirm] = "Перед очисткой будет создана локальная точка восстановления. Выполнить полный сброс сейчас?",
+        [LocalizationKey.ProfileImportConfirm] = "Импортировать настройки из этого профиля? Тема, акцент, вид и размер плеера, громкость, горячие клавиши, мини-плеер и остальные настройки будут заменены значениями из файла. Плейлист, избранное и статистика затронуты не будут.\n\nПеред импортом создаётся локальная точка восстановления: прежнее состояние можно вернуть в разделе «Профиль» кнопкой «Вернуть состояние до последнего сброса».",
+        [LocalizationKey.ProfileImportConfirmTitle] = "Импортировать профиль?",
+        [LocalizationKey.ProfileImportSnapshotCreateFailed] = "Не удалось создать локальную точку восстановления. Импорт отменён, чтобы не потерять текущие настройки.",
         [LocalizationKey.ProfileRestoreConfirm] = "Вернуть настройки, плейлист, избранное, статистику и пресеты из последней локальной точки, созданной перед сбросом? Текущие изменения будут заменены этим снимком.",
         [LocalizationKey.ProfileRestoreConfirmTitle] = "Вернуть состояние?",
         [LocalizationKey.ProfileRestoreUnavailable] = "Не удалось найти корректную точку восстановления. Она могла быть удалена или повреждена.",
@@ -309,6 +315,9 @@ internal static class LocalizationResources
         [LocalizationKey.ProfileResetSnapshotCreateFailedFull] = "A local recovery point could not be created. The full reset was cancelled to avoid losing your data.",
         [LocalizationKey.ProfileResetCancelledTitle] = "Reset cancelled",
         [LocalizationKey.ProfileResetFullConfirm] = "A local recovery point will be created before data is cleared. Perform the full reset now?",
+        [LocalizationKey.ProfileImportConfirm] = "Import settings from this profile? Theme, accent, player view and size, volume, hotkeys, mini player and other settings will be replaced by the values from the file. The playlist, favorites and statistics will not be affected.\n\nA local recovery point is created before the import: you can bring the previous state back in the Profile section with the “Restore state before the last reset” button.",
+        [LocalizationKey.ProfileImportConfirmTitle] = "Import profile?",
+        [LocalizationKey.ProfileImportSnapshotCreateFailed] = "A local recovery point could not be created. The import was cancelled to avoid losing your current settings.",
         [LocalizationKey.ProfileRestoreConfirm] = "Restore settings, playlist, favorites, statistics, and presets from the latest local recovery point created before a reset? Your current changes will be replaced by this snapshot.",
         [LocalizationKey.ProfileRestoreConfirmTitle] = "Restore state?",
         [LocalizationKey.ProfileRestoreUnavailable] = "No valid recovery point was found. It may have been deleted or corrupted.",

@@ -3480,6 +3480,20 @@ public partial class SettingsWindow : FluentWindow
             return;
         }
 
+        // Как у сброса: подтверждение и точка восстановления, чтобы неудачный (чужой или старый) профиль можно было откатить.
+        var confirm = LocalizedMessageBox.Show(this, LocalizationService.Get(LocalizationKey.ProfileImportConfirm),
+            LocalizationService.Get(LocalizationKey.ProfileImportConfirmTitle),
+            System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        if (!SettingsResetRecoveryService.TryCreateSnapshot(_settings))
+        {
+            LocalizedMessageBox.Show(this, LocalizationService.Get(LocalizationKey.ProfileImportSnapshotCreateFailed),
+                LocalizationService.Get(LocalizationKey.ProfileResetCancelledTitle),
+                System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            return;
+        }
+
         LumiProfileIO.Apply(profile.Settings, _settings);
         LocalizationService.ChangeLanguage(_settings, _settings.Language);
         _owner.ApplyImportedSettingsLive();
