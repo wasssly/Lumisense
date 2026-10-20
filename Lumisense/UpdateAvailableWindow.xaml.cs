@@ -18,6 +18,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     private readonly UpdateCheckResult _result;
     private readonly AppSettings? _settings;
     private CancellationTokenSource? _downloadCts;
+    private readonly CancellationTokenSource _notesCts = new();
     private DownloadPauseController? _pauseController;
     private bool _isVelopackDownload;
     private bool _isVelopackPaused;
@@ -52,6 +53,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         {
             _restartLegacyDownloadFromNewSource = false;
             _downloadCts?.Cancel();
+            _notesCts.Cancel();
         };
         Closed += (_, _) =>
         {
@@ -70,6 +72,34 @@ public partial class UpdateAvailableWindow : FluentWindow
         }
 
         MoreButton.Visibility = string.IsNullOrEmpty(result.ReleaseNotesUrl) ? Visibility.Collapsed : Visibility.Visible;
+
+        if (!_isMsiMigrationOnly)
+            BackgroundTask.FireAndForget(ShowSkippedReleaseNotesAsync(), nameof(ShowSkippedReleaseNotesAsync));
+    }
+
+    // Если пропущено несколько версий, заметки одной последней не дают полной картины. Диалог открывается сразу с заметками
+    // последней версии, а остальные подгружаются списком релизов; при любой неудаче остаётся то, что уже показано.
+    private async Task ShowSkippedReleaseNotesAsync()
+    {
+        CancellationToken token = _notesCts.Token;
+        if (_result.LatestVersion is not { } latestVersion) return;
+
+        IReadOnlyList<ReleaseListItem> skipped =
+            await UpdateChecker.GetSkippedReleasesAsync(_result.CurrentVersion, latestVersion, token);
+        if (token.IsCancellationRequested || skipped.Count < 2) return;
+
+        string versionLabel = LocalizationService.Translate("Версия ");
+        var sections = new List<string>();
+        foreach (ReleaseListItem release in skipped)
+        {
+            string notes = FormatReleaseNotes(release.ReleaseNotes);
+            if (notes.Length > 0) sections.Add(versionLabel + release.Version + Environment.NewLine + notes);
+        }
+
+        if (sections.Count < 2) return;
+
+        NotesText.Text = string.Join(Environment.NewLine + Environment.NewLine, sections);
+        NotesText.Visibility = Visibility.Visible;
     }
 
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)

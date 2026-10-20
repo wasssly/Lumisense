@@ -401,6 +401,31 @@ public static class UpdateChecker
         }
     }
 
+    // Диалог обновления показывает изменения всех пропущенных версий, а не только последней: берём релизы между
+    // установленной (не включая её) и последней (включая), новые сверху.
+    public static async Task<IReadOnlyList<ReleaseListItem>> GetSkippedReleasesAsync(
+        string currentVersion, string latestVersion, CancellationToken ct = default)
+    {
+        ReleaseListResult list = await GetAllReleasesAsync(ct);
+        return list.IsSuccess ? SelectSkippedReleases(list.Releases, currentVersion, latestVersion) : [];
+    }
+
+    internal static IReadOnlyList<ReleaseListItem> SelectSkippedReleases(
+        IEnumerable<ReleaseListItem> releases, string currentVersion, string latestVersion)
+    {
+        if (!SemanticVersion.TryParse(currentVersion, out SemanticVersion current) ||
+            !SemanticVersion.TryParse(latestVersion, out SemanticVersion latest))
+            return [];
+
+        return releases
+            .Where(release => !release.IsPrerelease && !string.IsNullOrWhiteSpace(release.ReleaseNotes))
+            .Select(release => (Release: release, Parsed: SemanticVersion.TryParse(release.Version, out SemanticVersion v) ? v : (SemanticVersion?)null))
+            .Where(item => item.Parsed is { } v && v.CompareTo(current) > 0 && v.CompareTo(latest) <= 0)
+            .OrderByDescending(item => item.Parsed!.Value)
+            .Select(item => item.Release)
+            .ToList();
+    }
+
     // Выбор привязан к версии release, который вернул GitHub API: исключает произвольный EXE/MSI и позволяет
     // переименовать публичные файлы без изменения Inno AppId и Velopack package identity.
     internal static (string? DownloadUrl, string? Sha256) FindInstallerAsset(JsonElement releaseRoot, string releaseVersion) =>
