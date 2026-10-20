@@ -69,6 +69,9 @@ public partial class NowPlayingWindow : Window
         AccessibilityPreferences.ApplyToWindow(this, _owner.Settings);
 
         SyncedLyricsList.ItemsSource = _syncedLines;
+        NowPlayingInfoPanel.SizeChanged += (_, _) => UpdateInfoPanelOffset();
+        // Запас под последней строкой зависит от высоты списка; при смене размера окна пересчитываем его.
+        SyncedLyricsList.SizeChanged += (_, _) => UpdateLyricsEndPadding();
         ApplyLyricsAppearance();
         ApplyBackgroundMode();
         SizeChanged += (_, _) => UpdateBackdropGeometry();
@@ -150,6 +153,7 @@ public partial class NowPlayingWindow : Window
     {
         // CanContentScroll=False: смещение, высота области и контейнера — в одних единицах (пикселях).
         SyncedLyricsList.UpdateLayout();
+        if (UpdateLyricsEndPadding()) SyncedLyricsList.UpdateLayout();
         var container = SyncedLyricsList.ItemContainerGenerator.ContainerFromItem(line) as FrameworkElement;
         if (container is null)
         {
@@ -167,8 +171,11 @@ public partial class NowPlayingWindow : Window
             Point itemTop = container.TranslatePoint(new Point(0, 0), SyncedLyricsList);
             double viewportHeight = Math.Min(viewer.ViewportHeight, SyncedLyricsList.ActualHeight);
             double maxOffset = Math.Max(0, viewer.ExtentHeight - viewer.ViewportHeight);
-            double target = Math.Clamp(
-                viewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) / 2, 0, maxOffset);
+            // Целое число пикселей: при нечётной разности высот центр даёт смещение x,5, и строка останавливалась между
+            // пикселями. Тогда её картинка с эффектами (свечение, размытие), которая привязана к целым пикселям, и обычный
+            // текст стояли на полпикселя по-разному, а при смене способа отрисовки текст «дёргался».
+            double target = Math.Clamp(Math.Round(
+                viewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) / 2), 0, Math.Floor(maxOffset));
 
             if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
             {
@@ -189,27 +196,90 @@ public partial class NowPlayingWindow : Window
         }
     }
 
+    // Запас под последней строкой: без него у конца трека список упирается в низ и последние строки «съезжают» вниз,
+    // а с ним их можно поднять к середине области (не выше: остаётся запас на половину высоты строки).
+    private bool UpdateLyricsEndPadding()
+    {
+        if (FindItemsPanel(SyncedLyricsList) is not { } panel) return false;
+
+        double bottom = Math.Max(0, SyncedLyricsList.ActualHeight / 2 - 28);
+        if (Math.Abs(panel.Margin.Bottom - bottom) < 0.5) return false;
+
+        panel.Margin = new Thickness(0, 0, 0, bottom);
+        return true;
+    }
+
+    private static Panel? FindItemsPanel(DependencyObject parent)
+    {
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(parent); i++)
+        {
+            DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+            if (child is Panel { IsItemsHost: true } panel) return panel;
+            if (FindItemsPanel(child) is { } nested) return nested;
+        }
+
+        return null;
+    }
+
     // Мягкое свечение только у текста активной строки (DropShadowEffect на каждой строке был бы дорог в длинных текстах);
     // эффект на самом TextBlock, а не на ListBoxItem, иначе светился бы весь скруглённый фон выделения.
     private void RefreshActiveLyricGlow()
     {
-        if (_glowElement is not null) _glowElement.Effect = null;
+        UIElement? wanted = null;
+        if (LyricsHighlightStyle.HasGlow(_owner.Settings.SyncedLyricsHighlightEffect) &&
+            _activeLyricIndex >= 0 && _activeLyricIndex < _syncedLines.Count &&
+            SyncedLyricsList.ItemContainerGenerator.ContainerFromItem(_syncedLines[_activeLyricIndex]) is DependencyObject container)
+        {
+            wanted = FindDescendant<TextBlock>(container);
+        }
+
+        int glowStrength = _owner.Settings.SyncedLyricsGlowStrength;
+        double glowRadius = LyricsHighlightStyle.GlowBlurRadius(glowStrength);
+        double glowOpacity = LyricsHighlightStyle.GlowOpacity(glowStrength);
+
+        // Повторный вызов для той же строки не пересоздаёт эффект (это мигало бы свечением), а лишь подстраивает силу.
+        if (wanted is not null && ReferenceEquals(wanted, _glowElement) &&
+            wanted.Effect is System.Windows.Media.Effects.DropShadowEffect current)
+        {
+            current.BlurRadius = glowRadius;
+            current.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty,
+                new DoubleAnimation(glowOpacity, TimeSpan.FromMilliseconds(150)));
+            return;
+        }
+
+        if (_glowElement is not null) FadeOutGlow(_glowElement);
         _glowElement = null;
+        if (wanted is null) return;
 
-        if (!LyricsHighlightStyle.HasGlow(_owner.Settings.SyncedLyricsHighlightEffect)) return;
-        if (_activeLyricIndex < 0 || _activeLyricIndex >= _syncedLines.Count) return;
-
-        if (SyncedLyricsList.ItemContainerGenerator.ContainerFromItem(_syncedLines[_activeLyricIndex]) is not DependencyObject container) return;
-        if (FindDescendant<TextBlock>(container) is not { } text) return;
-
-        text.Effect = new System.Windows.Media.Effects.DropShadowEffect
+        // Свечение проявляется плавно: мгновенное появление эффекта меняло отрисовку текста и давало «подёргивание».
+        var effect = new System.Windows.Media.Effects.DropShadowEffect
         {
             Color = Colors.White,
-            BlurRadius = LyricsHighlightStyle.GlowBlurRadius,
+            BlurRadius = glowRadius,
             ShadowDepth = 0,
-            Opacity = LyricsHighlightStyle.GlowOpacity,
+            Opacity = 0,
         };
-        _glowElement = text;
+        wanted.Effect = effect;
+        bool reduceMotion = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        if (reduceMotion)
+            effect.Opacity = glowOpacity;
+        else
+            effect.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty,
+                new DoubleAnimation(glowOpacity, TimeSpan.FromMilliseconds(300)));
+        _glowElement = wanted;
+    }
+
+    private static void FadeOutGlow(UIElement element)
+    {
+        if (element.Effect is not System.Windows.Media.Effects.DropShadowEffect effect) return;
+
+        var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(200));
+        // Если за это время на элемент уже повесили новый эффект, старый трогать нельзя.
+        fade.Completed += (_, _) =>
+        {
+            if (ReferenceEquals(element.Effect, effect)) element.Effect = null;
+        };
+        effect.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, fade);
     }
 
     private static T? FindDescendant<T>(DependencyObject parent) where T : DependencyObject
@@ -238,11 +308,20 @@ public partial class NowPlayingWindow : Window
     // (AppSettings.SyncedLyricsHighlightEffect). Вызывается при создании окна и из MainWindow при смене настроек.
     internal void ApplyLyricsAppearance()
     {
+        double fontSize = Math.Clamp(_owner.Settings.NowPlayingLyricsFontSize,
+            LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
+        bool fontChanged = Math.Abs(SyncedLyricsList.FontSize - fontSize) > 0.01;
+        SyncedLyricsList.FontSize = fontSize;
+        PlainLyricsText.FontSize = fontSize - 1;
+        PlainLyricsText.LineHeight = Math.Round((fontSize - 1) * 1.65);
         RefreshActiveLyricGlow();
         ApplyLyricLineStates(0, _syncedLines.Count - 1, animate: false);
         TextAlignment alignment = LyricsTextAlignmentMode.ToTextAlignment(_owner.Settings.LyricsTextAlignment);
         SyncedLyricsList.SetValue(System.Windows.Controls.TextBlock.TextAlignmentProperty, alignment);
         PlainLyricsText.TextAlignment = alignment;
+
+        // Смена размера перекомпоновывает строки, поэтому активную строку возвращаем в центр уже после layout.
+        if (fontChanged) RecenterActiveLyricLater();
     }
 
     public void ApplyAccessibilityPreferences()
@@ -300,11 +379,133 @@ public partial class NowPlayingWindow : Window
     {
         if (!_lyricsPanelVisible)
             UpdateLyricsLayout();
+        if (_focusMode && !_focusModeAnimating)
+            LyricsPanel.Height = GetLyricsPanelHeight();
+    }
+
+    // Режим «только название, обложка и текст». Скрываются управление над текстом, полоса прогресса под обложкой и кнопки
+    // на обложке; панель текста вырастает по высоте, чтобы занять освободившееся место.
+    private const double NormalLyricsPanelHeight = 620;
+    private bool _focusMode;
+    private bool _focusModeAnimating;
+
+    private double GetLyricsPanelHeight() =>
+        _focusMode ? Math.Clamp(ActualHeight - 260, NormalLyricsPanelHeight, 900) : NormalLyricsPanelHeight;
+
+    // В режиме без лишнего кнопки над обложкой не показываются; если панель текста скрыта, они единственный способ её вернуть.
+    private bool ArtworkOverlayAllowed => !(_focusMode && _lyricsPanelVisible);
+
+    private void FocusModeButton_Click(object sender, RoutedEventArgs e)
+    {
+        _focusMode = !_focusMode;
+        ApplyFocusMode(animate: IsLoaded && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings));
+    }
+
+    private void ApplyFocusMode(bool animate)
+    {
+        bool hide = _focusMode;
+        FocusModeButton.Opacity = hide ? 0.9 : 0.42;
+        FocusModeButton.ToolTip = LocalizationService.Translate(hide ? "Показать панель управления" : "Скрыть панель управления и всё лишнее");
+
+        LyricsControlsPanel.Visibility = hide ? Visibility.Collapsed : Visibility.Visible;
+        if (hide) AnimateArtworkControls(visible: false);
+        SetProgressHidden(hide, animate);
+
+        double target = GetLyricsPanelHeight();
+        if (!animate)
+        {
+            LyricsPanel.BeginAnimation(HeightProperty, null);
+            LyricsPanel.Height = target;
+            RecenterActiveLyricLater();
+            return;
+        }
+
+        _focusModeAnimating = true;
+        var animation = new DoubleAnimation(LyricsPanel.ActualHeight > 0 ? LyricsPanel.ActualHeight : NormalLyricsPanelHeight, target,
+            new Duration(TimeSpan.FromMilliseconds(360)))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+        };
+        animation.Completed += (_, _) =>
+        {
+            _focusModeAnimating = false;
+            LyricsPanel.BeginAnimation(HeightProperty, null);
+            LyricsPanel.Height = GetLyricsPanelHeight();
+            RecenterActiveLyricLater();
+        };
+        LyricsPanel.BeginAnimation(HeightProperty, animation, HandoffBehavior.SnapshotAndReplace);
+    }
+
+    // Полоса прогресса под обложкой плавно сворачивается по высоте (LayoutTransform), а не пропадает рывком: обложка и текст
+    // центрируются друг относительно друга, и мгновенное исчезновение строки сдвинуло бы их скачком.
+    private void SetProgressHidden(bool hide, bool animate)
+    {
+        UIElement wrap = ArtworkProgressWrap;
+        if (!animate)
+        {
+            wrap.BeginAnimation(OpacityProperty, null);
+            wrap.Opacity = 1;
+            ArtworkProgressWrap.LayoutTransform = Transform.Identity;
+            wrap.Visibility = hide ? Visibility.Collapsed : Visibility.Visible;
+            return;
+        }
+
+        double from = wrap.Visibility != Visibility.Visible
+            ? 0
+            : ArtworkProgressWrap.LayoutTransform is ScaleTransform current ? current.ScaleY : 1;
+        var scale = new ScaleTransform(1, Math.Max(from, 0.001));
+        ArtworkProgressWrap.LayoutTransform = scale;
+        wrap.Visibility = Visibility.Visible;
+
+        var duration = new Duration(TimeSpan.FromMilliseconds(360));
+        var easing = new CubicEase { EasingMode = EasingMode.EaseInOut };
+        var scaleAnimation = new DoubleAnimation(Math.Max(from, 0.001), hide ? 0.001 : 1, duration) { EasingFunction = easing };
+        scaleAnimation.Completed += (_, _) =>
+        {
+            // Пока шла анимация, режим могли переключить обратно: завершаем только своё действие.
+            if (hide && _focusMode)
+                wrap.Visibility = Visibility.Collapsed;
+            else if (!hide && !_focusMode)
+                ArtworkProgressWrap.LayoutTransform = Transform.Identity;
+        };
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, scaleAnimation);
+
+        double opacityFrom = wrap.Opacity;
+        wrap.BeginAnimation(OpacityProperty, hide
+            ? new DoubleAnimation(opacityFrom, 0, TimeSpan.FromMilliseconds(220))
+            : new DoubleAnimation(opacityFrom, 1, TimeSpan.FromMilliseconds(260)) { BeginTime = TimeSpan.FromMilliseconds(100) },
+            HandoffBehavior.SnapshotAndReplace);
+    }
+
+    // После смены высоты списка активная строка снова встаёт по центру.
+    private void RecenterActiveLyricLater()
+    {
+        int index = _activeLyricIndex;
+        if (index < 0 || index >= _syncedLines.Count) return;
+
+        LyricLine activeLine = _syncedLines[index];
+        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(() =>
+        {
+            if (_activeLyricIndex == index) SmoothScrollLyricsToLine(activeLine);
+        }));
+    }
+
+    // Название и исполнитель стоят над обложкой, не занимая места в раскладке: сдвигаем панель вверх на её высоту и зазор.
+    private const double InfoPanelGap = 22;
+
+    private void UpdateInfoPanelOffset()
+    {
+        if (NowPlayingInfoPanel.RenderTransform is TranslateTransform { IsFrozen: false } translate)
+            translate.Y = -(NowPlayingInfoPanel.ActualHeight + InfoPanelGap);
     }
 
     private bool _lyricsLayoutAnimating;
 
-    private async void ToggleLyricsButton_Click(object sender, RoutedEventArgs e)
+    // Запуск через FireAndForget, а не async void: исключение анимации должно попасть в журнал, а не в Dispatcher.
+    private void ToggleLyricsButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ToggleLyricsAsync(), nameof(ToggleLyricsButton_Click));
+
+    private async Task ToggleLyricsAsync()
     {
         if (_lyricsLayoutAnimating) return;
 
@@ -390,6 +591,9 @@ public partial class NowPlayingWindow : Window
 
     private void StartLayoutMove(FrameworkElement element, Point before, double widthBefore, Duration duration, IEasingFunction easing)
     {
+        // Скрытый (в том числе через родителя) элемент двигать незачем.
+        if (!element.IsVisible) return;
+
         Point after = element.TranslatePoint(new Point(), this);
         double widthAfter = element.ActualWidth;
         double scale = widthAfter > 0 && widthBefore > 0 ? widthBefore / widthAfter : 1.0;
@@ -407,12 +611,12 @@ public partial class NowPlayingWindow : Window
 
     private void ResetLyricsLayoutTransitionState()
     {
-        foreach (UIElement element in new UIElement[] { NowPlayingInfoPanel, LyricsPanel })
-        {
-            element.BeginAnimation(UIElement.OpacityProperty, null);
-            element.Opacity = 1;
-            element.RenderTransform = Transform.Identity;
-        }
+        // Трансформ панели с названием — это её постоянное положение над обложкой, его здесь не сбрасываем.
+        NowPlayingInfoPanel.BeginAnimation(UIElement.OpacityProperty, null);
+        NowPlayingInfoPanel.Opacity = 1;
+        LyricsPanel.BeginAnimation(UIElement.OpacityProperty, null);
+        LyricsPanel.Opacity = 1;
+        LyricsPanel.RenderTransform = Transform.Identity;
 
         foreach (FrameworkElement element in new FrameworkElement[] { ArtworkSurface, ArtworkProgressGrid })
         {
@@ -431,11 +635,6 @@ public partial class NowPlayingWindow : Window
             ArtworkColumn.Width = new GridLength(560);
             ArtworkGapColumn.Width = new GridLength(52);
             LyricsColumn.Width = new GridLength(1, GridUnitType.Star);
-            System.Windows.Controls.Grid.SetColumn(NowPlayingInfoPanel, 2);
-            System.Windows.Controls.Grid.SetColumnSpan(NowPlayingInfoPanel, 1);
-            NowPlayingInfoPanel.Width = 900;
-            NowPlayingInfoPanel.MinWidth = 900;
-            NowPlayingInfoPanel.HorizontalAlignment = HorizontalAlignment.Stretch;
             NowPlayingTitleText.HorizontalAlignment = HorizontalAlignment.Stretch;
             NowPlayingTitleText.TextAlignment = TextAlignment.Left;
             NowPlayingArtistText.HorizontalAlignment = HorizontalAlignment.Stretch;
@@ -447,18 +646,14 @@ public partial class NowPlayingWindow : Window
         ArtworkColumn.Width = new GridLength(1, GridUnitType.Star);
         ArtworkGapColumn.Width = new GridLength(0);
         LyricsColumn.Width = new GridLength(0);
-        System.Windows.Controls.Grid.SetColumn(NowPlayingInfoPanel, 0);
-        System.Windows.Controls.Grid.SetColumnSpan(NowPlayingInfoPanel, 3);
-        NowPlayingInfoPanel.Width = Math.Min(900, Math.Max(540, ActualWidth - 120));
-        NowPlayingInfoPanel.MinWidth = 0;
-        NowPlayingInfoPanel.HorizontalAlignment = HorizontalAlignment.Center;
         NowPlayingTitleText.HorizontalAlignment = HorizontalAlignment.Center;
         NowPlayingTitleText.TextAlignment = TextAlignment.Center;
         NowPlayingArtistText.HorizontalAlignment = HorizontalAlignment.Center;
         NowPlayingArtistText.TextAlignment = TextAlignment.Center;
 
         double availableWidth = Math.Max(540, Math.Min(ActualWidth - 140, 780));
-        double availableHeight = Math.Max(540, ActualHeight - 250);
+        // Над обложкой висят название и исполнитель (около 170 px), под ней полоса прогресса: на них оставляем место.
+        double availableHeight = Math.Max(540, ActualHeight - 400);
         SetArtworkSize(Math.Min(availableWidth, availableHeight));
     }
 
@@ -468,6 +663,7 @@ public partial class NowPlayingWindow : Window
         ArtworkSurface.Width = safeSize;
         ArtworkSurface.Height = safeSize;
         ArtworkProgressGrid.Width = safeSize;
+        NowPlayingInfoPanel.Width = safeSize;
         ArtworkImage.Clip = new RectangleGeometry(new Rect(0, 0, Math.Max(1, safeSize - 2), Math.Max(1, safeSize - 2)), 22, 22);
     }
 
@@ -700,8 +896,10 @@ public partial class NowPlayingWindow : Window
         {
             // Обычный переход между треками: более новая задача уже загрузит следующий текст.
         }
-        catch
+        catch (Exception ex)
         {
+            // Любая сбойная загрузка показывает пустой текст; причина остаётся в журнале для разбора.
+            Logger.Warn($"Не удалось загрузить текст песни для окна «Сейчас играет»: {ex.Message}");
             SetLyrics(LyricsDocument.Empty);
             ApplyLyricsDocument(_lyrics);
         }
@@ -927,6 +1125,8 @@ public partial class NowPlayingWindow : Window
         LyricsDisplayModeButton.ToolTip = LocalizationService.Translate(plainMode ? "Показать синхронный текст" : "Показать обычный текст");
     }
 
+    // У активной строки радиус не нулевой: при нулевом WPF обходит эффект, и строка меняла способ отрисовки в конце анимации.
+    private const double ActiveLineBlurRadius = 0.01;
     private const double InactiveLineOpacity = 0.65;
     private const double MinimumInactiveOpacity = 0.15;
 
@@ -939,6 +1139,7 @@ public partial class NowPlayingWindow : Window
         bool bar = LyricsHighlightStyle.HasBar(settings.SyncedLyricsHighlightEffect);
         bool scale = settings.SyncedLyricsScaleActiveLine;
         bool fade = settings.SyncedLyricsFadeDistantLines;
+        bool blur = settings.SyncedLyricsBlurInactive;
         double fadeStep = LyricsHighlightStyle.FadeStep(settings.SyncedLyricsFadeStrength);
         double activeScale = LyricsHighlightStyle.ScaleFactor(settings.SyncedLyricsScalePercent);
         int visibleRadius = LyricsHighlightStyle.VisibleRadius(LyricsHighlightStyle.NormalizeVisibleLines(settings.SyncedLyricsVisibleLines));
@@ -971,7 +1172,7 @@ public partial class NowPlayingWindow : Window
             item.IsHitTestVisible = inWindow;
 
             item.Padding = padding;
-            AnimateOpacity(item, opacity, animateNow);
+            AnimateTextAlpha(item, opacity, animateNow);
 
             item.ApplyTemplate();
             if (item.Template?.FindName("Bar", item) is Border barElement)
@@ -979,6 +1180,10 @@ public partial class NowPlayingWindow : Window
 
             if (item.Template?.FindName("Content", item) is ContentPresenter content)
             {
+                // Размытие только у неактивных строк рядом с активной; дальние строки и выключенная настройка — без эффекта.
+                bool blurHere = blur && inWindow && distance <= LyricsHighlightStyle.BlurReachLines;
+                ApplyBlur(content, blurHere, active ? ActiveLineBlurRadius : LyricsHighlightStyle.BlurRadius(settings.SyncedLyricsBlurStrength, distance), animateNow);
+
                 content.RenderTransformOrigin = new Point(originX, 0.5);
                 // Трансформ из шаблона заморожен и не анимируется, поэтому у каждой строки заводим собственный.
                 if (content.RenderTransform is not ScaleTransform { IsFrozen: false } transform)
@@ -999,13 +1204,14 @@ public partial class NowPlayingWindow : Window
     {
         AppSettings settings = _owner.Settings;
         int visible = LyricsHighlightStyle.NormalizeVisibleLines(settings.SyncedLyricsVisibleLines);
-        if (settings.SyncedLyricsFadeDistantLines || visible > 0)
+        if (settings.SyncedLyricsFadeDistantLines || settings.SyncedLyricsBlurInactive || visible > 0)
         {
             // Затронуты строки, у которых цель зависит от расстояния до активной: окрестность старой и новой позиции.
             int fadeReach = settings.SyncedLyricsFadeDistantLines
                 ? (int)Math.Ceiling((InactiveLineOpacity - MinimumInactiveOpacity) / LyricsHighlightStyle.FadeStep(settings.SyncedLyricsFadeStrength)) + 1
                 : 0;
-            int reach = Math.Max(fadeReach, visible > 0 ? LyricsHighlightStyle.VisibleRadius(visible) : 0) + 1;
+            int blurReach = settings.SyncedLyricsBlurInactive ? Math.Min(LyricsHighlightStyle.BlurReachLines, visible > 0 ? LyricsHighlightStyle.VisibleRadius(visible) : LyricsHighlightStyle.BlurReachLines) : 0;
+            int reach = Math.Max(Math.Max(fadeReach, blurReach), visible > 0 ? LyricsHighlightStyle.VisibleRadius(visible) : 0) + 1;
             int low = Math.Min(Math.Max(previous, 0), Math.Max(current, 0)) - reach;
             int high = Math.Max(previous, current) + reach;
             ApplyLyricLineStates(low, high, animate: true);
@@ -1018,6 +1224,30 @@ public partial class NowPlayingWindow : Window
 
     private static readonly Duration LineStateDuration = new(TimeSpan.FromMilliseconds(320));
 
+    // Яркость текста строки задаётся альфа-каналом цвета (Foreground наследуется текстом), а не Opacity элемента:
+    // так строка и её свечение всегда рисуются одним и тем же путём, без скачка в конце анимации.
+    private static void AnimateTextAlpha(ListBoxItem item, double alpha, bool animate)
+    {
+        Color to = Color.FromArgb((byte)Math.Round(Math.Clamp(alpha, 0, 1) * 255), 0xFF, 0xFF, 0xFF);
+        if (item.Foreground is not SolidColorBrush { IsFrozen: false } brush)
+        {
+            // Стартуем с цвета из стиля (он заморожен), иначе строка на миг вспыхнула бы белым.
+            brush = new SolidColorBrush(item.Foreground is SolidColorBrush style ? style.Color : to);
+            item.Foreground = brush;
+        }
+
+        if (!animate)
+        {
+            brush.BeginAnimation(SolidColorBrush.ColorProperty, null);
+            brush.Color = to;
+            return;
+        }
+
+        brush.BeginAnimation(SolidColorBrush.ColorProperty,
+            new ColorAnimation(to, LineStateDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
+            HandoffBehavior.SnapshotAndReplace);
+    }
+
     private static void AnimateOpacity(UIElement element, double to, bool animate)
     {
         if (!animate)
@@ -1029,6 +1259,42 @@ public partial class NowPlayingWindow : Window
 
         element.BeginAnimation(UIElement.OpacityProperty,
             new DoubleAnimation(to, LineStateDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
+            HandoffBehavior.SnapshotAndReplace);
+    }
+
+    // BlurEffect остаётся на строке даже при нулевом радиусе (у активной): так отрисовка текста не переключается скачком.
+    private static void ApplyBlur(UIElement element, bool enabled, double radius, bool animate)
+    {
+        if (!enabled)
+        {
+            if (element.Effect is System.Windows.Media.Effects.BlurEffect existing)
+            {
+                existing.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty, null);
+                element.Effect = null;
+            }
+            return;
+        }
+
+        if (element.Effect is not System.Windows.Media.Effects.BlurEffect { IsFrozen: false } blur)
+        {
+            blur = new System.Windows.Media.Effects.BlurEffect
+            {
+                Radius = 0,
+                KernelType = System.Windows.Media.Effects.KernelType.Gaussian,
+                RenderingBias = System.Windows.Media.Effects.RenderingBias.Performance,
+            };
+            element.Effect = blur;
+        }
+
+        if (!animate)
+        {
+            blur.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty, null);
+            blur.Radius = radius;
+            return;
+        }
+
+        blur.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty,
+            new DoubleAnimation(radius, LineStateDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
             HandoffBehavior.SnapshotAndReplace);
     }
 
@@ -1287,7 +1553,11 @@ public partial class NowPlayingWindow : Window
         e.Handled = true;
     }
 
-    private void ArtworkSurface_MouseEnter(object sender, MouseEventArgs e) => AnimateArtworkControls(visible: true);
+    private void ArtworkSurface_MouseEnter(object sender, MouseEventArgs e)
+    {
+        if (ArtworkOverlayAllowed) AnimateArtworkControls(visible: true);
+    }
+
     private void ArtworkSurface_MouseLeave(object sender, MouseEventArgs e) => AnimateArtworkControls(visible: false);
 
     private void AnimateArtworkControls(bool visible)
@@ -1602,7 +1872,20 @@ public partial class NowPlayingWindow : Window
                 : ".txt";
             string destination = Path.ChangeExtension(trackPath, extension);
             if (!string.Equals(source.FullName, destination, StringComparison.OrdinalIgnoreCase))
+            {
+                // Рядом может лежать собственный .lrc/.txt пользователя (ручной или от другого плеера): без вопроса и резервной
+                // копии он бы молча пропал.
+                if (File.Exists(destination))
+                {
+                    string existingName = Path.GetFileName(destination);
+                    var replace = LocalizedMessageBox.Show(this,
+                        $"Рядом с треком уже есть файл «{existingName}». Заменить его выбранным текстом?",
+                        "Загрузка текста", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                    if (replace != MessageBoxResult.Yes) return;
+                }
+
                 File.Copy(source.FullName, destination, overwrite: true);
+            }
 
             // Нельзя применять текст, если за время выбора файла успел смениться трек.
             if (!string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))

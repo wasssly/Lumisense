@@ -23,10 +23,11 @@
             <Setter Property="Margin" Value="0,2" />
             <Setter Property="HorizontalContentAlignment" Value="Stretch" />
             <Setter Property="VerticalContentAlignment" Value="Stretch" />
-            <Setter Property="Foreground" Value="White" />
-            <Setter Property="FontSize" Value="18" />
+            <!-- Неактивная строка — белый с прозрачностью 0,65. Яркость строк меняется через альфа-канал цвета текста, а не через
+                 Opacity элемента: при Opacity меньше 1 WPF рисует строку через промежуточную поверхность, и в момент, когда
+                 прозрачность достигает 1, свечение активной строки внезапно менялось. -->
+            <Setter Property="Foreground" Value="#A6FFFFFF" />
             <Setter Property="FontWeight" Value="SemiBold" />
-            <Setter Property="Opacity" Value="0.65" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ListBoxItem">
@@ -129,25 +130,28 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <ui:Button Grid.Column="1" Width="30" Height="30" Padding="0" Opacity="0.42" Appearance="Secondary"
-                           ToolTip="Закрыть полноэкранный режим (Esc)" Click="CloseButton_Click">
-                    <ui:Button.Icon><local:SvgPathIcon Icon="IconDismiss" Size="13" Foreground="#D0FFFFFF" /></ui:Button.Icon>
-                </ui:Button>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <!-- Режим «только название, обложка и текст»: прячет панель текста, полосу прогресса и кнопки на обложке. -->
+                    <ui:Button x:Name="FocusModeButton" Width="30" Height="30" Padding="0" Margin="0,0,8,0" Opacity="0.42" Appearance="Secondary"
+                               ToolTip="Скрыть панель управления и всё лишнее" Click="FocusModeButton_Click">
+                        <ui:Button.Icon><local:SvgPathIcon Icon="IconWindow" Size="13" Foreground="#D0FFFFFF" /></ui:Button.Icon>
+                    </ui:Button>
+                    <ui:Button Width="30" Height="30" Padding="0" Opacity="0.42" Appearance="Secondary"
+                               ToolTip="Закрыть полноэкранный режим (Esc)" Click="CloseButton_Click">
+                        <ui:Button.Icon><local:SvgPathIcon Icon="IconDismiss" Size="13" Foreground="#D0FFFFFF" /></ui:Button.Icon>
+                    </ui:Button>
+                </StackPanel>
             </Grid>
 
             <Grid x:Name="NowPlayingLayoutGrid" Grid.Row="1" Margin="48,0,48,88" MaxWidth="1560" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="22" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition x:Name="ArtworkColumn" Width="560" />
                     <ColumnDefinition x:Name="ArtworkGapColumn" Width="52" />
                     <ColumnDefinition x:Name="LyricsColumn" Width="*" />
                 </Grid.ColumnDefinitions>
 
-                <StackPanel Grid.Column="0" Grid.Row="2" VerticalAlignment="Top">
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <Grid x:Name="ArtworkTitleHost" HorizontalAlignment="Center">
                     <Border x:Name="ArtworkSurface" Width="540" Height="540" CornerRadius="22" Background="#28FFFFFF"
                             BorderBrush="#2FFFFFFF" BorderThickness="1" Padding="0" HorizontalAlignment="Center"
                             MouseEnter="ArtworkSurface_MouseEnter" MouseLeave="ArtworkSurface_MouseLeave">
@@ -194,8 +198,21 @@
                             </Border>
                         </Grid>
                     </Border>
+                        <!-- Название и исполнитель висят над обложкой: положение задаёт TranslateTransform (см. UpdateInfoPanelOffset),
+                             поэтому высота названия не сдвигает обложку и не влияет на центровку относительно текста. -->
+                        <StackPanel x:Name="NowPlayingInfoPanel" Width="540" VerticalAlignment="Top" IsHitTestVisible="False">
+                            <StackPanel.RenderTransform>
+                                <TranslateTransform />
+                            </StackPanel.RenderTransform>
+                            <TextBlock x:Name="NowPlayingTitleText" Text="Файл не выбран" FontSize="38" FontWeight="Bold"
+                                       Foreground="White" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="102" />
+                            <TextBlock x:Name="NowPlayingArtistText" Text="—" FontSize="18" Foreground="#C0FFFFFF"
+                                       Margin="0,7,0,0" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </Grid>
 
-                    <Grid x:Name="ArtworkProgressGrid" Width="540" Margin="0,18,0,0" HorizontalAlignment="Center">
+                    <Border x:Name="ArtworkProgressWrap" Padding="0,18,0,0" HorizontalAlignment="Center">
+                    <Grid x:Name="ArtworkProgressGrid" Width="540" HorizontalAlignment="Center">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
@@ -216,16 +233,11 @@
                         </Grid>
                         <TextBlock x:Name="PlaybackDurationText" Grid.Column="2" Text="00:00" Foreground="#D9FFFFFF" FontSize="13" VerticalAlignment="Center" />
                     </Grid>
+                    </Border>
                 </StackPanel>
 
-                <StackPanel x:Name="NowPlayingInfoPanel" Grid.Column="2" Grid.Row="0" Width="900" MinWidth="900" VerticalAlignment="Bottom">
-                    <TextBlock x:Name="NowPlayingTitleText" Text="Файл не выбран" FontSize="38" FontWeight="Bold"
-                               Foreground="White" TextWrapping="Wrap" TextTrimming="CharacterEllipsis" MaxHeight="102" />
-                    <TextBlock x:Name="NowPlayingArtistText" Text="—" FontSize="18" Foreground="#C0FFFFFF"
-                               Margin="0,7,0,0" TextTrimming="CharacterEllipsis" />
-                </StackPanel>
 
-                    <Border x:Name="LyricsPanel" Grid.Column="2" Grid.Row="2" Width="900" Height="620" CornerRadius="22" Background="Transparent"
+                    <Border x:Name="LyricsPanel" Grid.Column="2" VerticalAlignment="Center" Width="900" Height="620" CornerRadius="22" Background="Transparent"
                             BorderBrush="Transparent" BorderThickness="1" Padding="24">
                         <Grid>
                             <Grid.RowDefinitions>
@@ -297,12 +309,14 @@
                             </Grid>
 
                             <Grid Grid.Row="1" Margin="0,16,0,0">
-                                <ListBox x:Name="SyncedLyricsList" BorderThickness="0" Background="Transparent"
+                                <ListBox x:Name="SyncedLyricsList" BorderThickness="0" Background="Transparent" FontSize="18"
+                                         TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="Grayscale"
                                          ItemContainerStyle="{StaticResource LyricsLineStyle}"
                                          SelectionChanged="SyncedLyricsList_SelectionChanged"
                                          PreviewMouseLeftButtonDown="SyncedLyricsList_PreviewMouseLeftButtonDown"
                                          PreviewMouseLeftButtonUp="SyncedLyricsList_PreviewMouseLeftButtonUp"
                                          ScrollViewer.CanContentScroll="False"
+                                         ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                          ScrollViewer.VerticalScrollBarVisibility="Hidden">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>

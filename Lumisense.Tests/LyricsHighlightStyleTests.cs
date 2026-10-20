@@ -71,6 +71,29 @@ public sealed class LyricsHighlightStyleTests
     }
 
     [Fact]
+    public void Glow_GrowsWithStrength_AndDefaultIsStrongerThanBefore()
+    {
+        Assert.True(LyricsHighlightStyle.GlowOpacity(100) > LyricsHighlightStyle.GlowOpacity(10));
+        Assert.True(LyricsHighlightStyle.GlowBlurRadius(100) > LyricsHighlightStyle.GlowBlurRadius(10));
+        // Раньше свечение было 7 px и 0,5; значение по умолчанию заметно ярче.
+        Assert.True(LyricsHighlightStyle.GlowOpacity(LyricsHighlightStyle.DefaultGlowStrength) > 0.5);
+        Assert.True(LyricsHighlightStyle.GlowBlurRadius(LyricsHighlightStyle.DefaultGlowStrength) > 7);
+        Assert.Equal(LyricsHighlightStyle.GlowOpacity(100), LyricsHighlightStyle.GlowOpacity(900), 6);
+    }
+
+    [Fact]
+    public void BlurRadius_GrowsWithDistance_AndStopsAtStrengthOnFourthLine()
+    {
+        Assert.Equal(0, LyricsHighlightStyle.BlurRadius(8, 0));
+        Assert.Equal(2, LyricsHighlightStyle.BlurRadius(8, 1));
+        Assert.Equal(4, LyricsHighlightStyle.BlurRadius(8, 2));
+        Assert.Equal(8, LyricsHighlightStyle.BlurRadius(8, 4));
+        Assert.Equal(8, LyricsHighlightStyle.BlurRadius(8, 9));
+        Assert.Equal(12, LyricsHighlightStyle.BlurRadius(99, 9));
+        Assert.Equal(1, LyricsHighlightStyle.BlurRadius(0, 9));
+    }
+
+    [Fact]
     public void ScaleFactor_AndPadding_AreClampedAndKeepPreviousDefault()
     {
         Assert.Equal(1.05, LyricsHighlightStyle.ScaleFactor(5), 3);
@@ -88,5 +111,9 @@ public sealed class LyricsHighlightStyleTests
         Assert.Equal(50, settings.SyncedLyricsFadeStrength);
         Assert.Equal(5, settings.SyncedLyricsScalePercent);
         Assert.Equal(0, settings.SyncedLyricsVisibleLines);
+        Assert.Equal(18, settings.NowPlayingLyricsFontSize);
+        Assert.False(settings.SyncedLyricsBlurInactive);
+        Assert.Equal(60, settings.SyncedLyricsGlowStrength);
+        Assert.Equal(4, settings.SyncedLyricsBlurStrength);
     }
 }

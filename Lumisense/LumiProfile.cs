@@ -107,6 +107,9 @@ public static class LumiProfileIO
             settings.SyncedLyricsFadeStrength is < 0 or > 100 ||
             settings.SyncedLyricsScalePercent is < LyricsHighlightStyle.MinScalePercent or > LyricsHighlightStyle.MaxScalePercent ||
             settings.SyncedLyricsVisibleLines is < 0 or > LyricsHighlightStyle.MaxVisibleLines ||
+            settings.NowPlayingLyricsFontSize is < LyricsHighlightStyle.MinNowPlayingFontSize or > LyricsHighlightStyle.MaxNowPlayingFontSize ||
+            settings.SyncedLyricsGlowStrength is < 0 or > 100 ||
+            settings.SyncedLyricsBlurStrength is < LyricsHighlightStyle.MinBlurStrength or > LyricsHighlightStyle.MaxBlurStrength ||
             (settings.SyncedLyricsHighlightEffect?.Length ?? 0) > 32 ||
             (settings.LyricsTextAlignment?.Length ?? 0) > 32 ||
             (settings.FavoriteHeartAnimation?.Length ?? 0) > 32 ||
@@ -176,6 +179,10 @@ public static class LumiProfileIO
         target.SyncedLyricsFadeStrength = source.SyncedLyricsFadeStrength;
         target.SyncedLyricsScalePercent = source.SyncedLyricsScalePercent;
         target.SyncedLyricsVisibleLines = source.SyncedLyricsVisibleLines;
+        target.NowPlayingLyricsFontSize = source.NowPlayingLyricsFontSize;
+        target.SyncedLyricsBlurInactive = source.SyncedLyricsBlurInactive;
+        target.SyncedLyricsGlowStrength = source.SyncedLyricsGlowStrength;
+        target.SyncedLyricsBlurStrength = source.SyncedLyricsBlurStrength;
         target.CoverBaseFromCover = source.CoverBaseFromCover;
         target.WindowBackdropType = source.WindowBackdropType;
         target.ProgressBarStyle = source.ProgressBarStyle;

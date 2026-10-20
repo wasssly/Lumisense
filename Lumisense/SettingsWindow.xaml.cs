@@ -163,6 +163,13 @@ public partial class SettingsWindow : FluentWindow
         SyncedLyricsEffectGlowRadio.IsChecked = lyricsEffect is not ("None" or "GlowPill" or "Pill" or "Bar");
         SyncedLyricsScaleCheckBox.IsChecked = _settings.SyncedLyricsScaleActiveLine;
         SyncedLyricsFadeCheckBox.IsChecked = _settings.SyncedLyricsFadeDistantLines;
+        NowPlayingLyricsFontSizeSlider.Value = Math.Clamp(_settings.NowPlayingLyricsFontSize,
+            LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
+        NowPlayingLyricsFontSizeValueText.Text = $"{NowPlayingLyricsFontSizeSlider.Value:0} px";
+        SyncedLyricsGlowStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsGlowStrength, 10, 100);
+        SyncedLyricsBlurCheckBox.IsChecked = _settings.SyncedLyricsBlurInactive;
+        SyncedLyricsBlurStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsBlurStrength,
+            LyricsHighlightStyle.MinBlurStrength, LyricsHighlightStyle.MaxBlurStrength);
         SyncedLyricsFadeStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsFadeStrength, 0, 100);
         SyncedLyricsScalePercentSlider.Value = Math.Clamp(_settings.SyncedLyricsScalePercent, LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
         int savedVisibleLines = LyricsHighlightStyle.NormalizeVisibleLines(_settings.SyncedLyricsVisibleLines);
@@ -1922,8 +1929,19 @@ public partial class SettingsWindow : FluentWindow
             : "Glow";
         _settings.SyncedLyricsScaleActiveLine = SyncedLyricsScaleCheckBox.IsChecked == true;
         _settings.SyncedLyricsFadeDistantLines = SyncedLyricsFadeCheckBox.IsChecked == true;
+        _settings.SyncedLyricsBlurInactive = SyncedLyricsBlurCheckBox.IsChecked == true;
         UpdateSyncedLyricsHighlightTexts();
         UpdateLyricsPreview();
+        _owner.ApplySyncedLyricsAppearance();
+    }
+
+    private void NowPlayingLyricsFontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing || NowPlayingLyricsFontSizeValueText is null) return;
+
+        NowPlayingLyricsFontSizeValueText.Text = $"{e.NewValue:0} px";
+        _settings.NowPlayingLyricsFontSize = (int)Math.Clamp(Math.Round(e.NewValue),
+            LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
         _owner.ApplySyncedLyricsAppearance();
     }
 
@@ -1932,8 +1950,15 @@ public partial class SettingsWindow : FluentWindow
         // ValueChanged приходит во время загрузки XAML, пока часть элементов ещё не создана.
         if (_isInitializing || SyncedLyricsVisibleLinesValueText is null || SyncedLyricsScalePercentValueText is null ||
             SyncedLyricsFadeStrengthValueText is null || SyncedLyricsFadeStrengthSlider is null ||
-            SyncedLyricsScalePercentSlider is null || SyncedLyricsVisibleLinesSlider is null)
+            SyncedLyricsScalePercentSlider is null || SyncedLyricsVisibleLinesSlider is null ||
+            SyncedLyricsBlurStrengthSlider is null || SyncedLyricsBlurStrengthValueText is null ||
+            SyncedLyricsGlowStrengthSlider is null || SyncedLyricsGlowStrengthValueText is null)
             return;
+
+        _settings.SyncedLyricsGlowStrength = (int)Math.Clamp(Math.Round(SyncedLyricsGlowStrengthSlider.Value), 0, 100);
+
+        _settings.SyncedLyricsBlurStrength = (int)Math.Clamp(Math.Round(SyncedLyricsBlurStrengthSlider.Value),
+            LyricsHighlightStyle.MinBlurStrength, LyricsHighlightStyle.MaxBlurStrength);
 
         _settings.SyncedLyricsFadeStrength = (int)Math.Clamp(Math.Round(SyncedLyricsFadeStrengthSlider.Value), 0, 100);
         _settings.SyncedLyricsScalePercent = (int)Math.Clamp(Math.Round(SyncedLyricsScalePercentSlider.Value),
@@ -1949,6 +1974,11 @@ public partial class SettingsWindow : FluentWindow
     private void UpdateSyncedLyricsHighlightTexts()
     {
         SyncedLyricsFadeStrengthValueText.Text = $"{SyncedLyricsFadeStrengthSlider.Value:0}%";
+        SyncedLyricsGlowStrengthValueText.Text = $"{SyncedLyricsGlowStrengthSlider.Value:0}%";
+        // Ползунок имеет смысл только у стилей со свечением.
+        SyncedLyricsGlowStrengthSlider.IsEnabled = LyricsHighlightStyle.HasGlow(_settings.SyncedLyricsHighlightEffect);
+        SyncedLyricsBlurStrengthValueText.Text = $"{SyncedLyricsBlurStrengthSlider.Value:0} px";
+        SyncedLyricsBlurStrengthSlider.IsEnabled = SyncedLyricsBlurCheckBox.IsChecked == true;
         SyncedLyricsScalePercentValueText.Text = $"+{SyncedLyricsScalePercentSlider.Value:0}%";
         SyncedLyricsVisibleLinesValueText.Text = SyncedLyricsVisibleLinesSlider.Value >= SyncedLyricsVisibleLinesSlider.Maximum
             ? LocalizationService.Translate("Все")

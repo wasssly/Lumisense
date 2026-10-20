@@ -133,6 +133,13 @@ public class AppSettings
     public int SyncedLyricsScalePercent { get; set; } = 5;
     // Сколько строк видно в Now Playing: 0 — все, иначе нечётное 3–15.
     public int SyncedLyricsVisibleLines { get; set; }
+    // Сила свечения активной строки, 0–100 % (в Now Playing и в панели текста главного окна).
+    public int SyncedLyricsGlowStrength { get; set; } = LyricsHighlightStyle.DefaultGlowStrength;
+    // Размытие неактивных строк в Now Playing и его сила (радиус дальних строк, px).
+    public bool SyncedLyricsBlurInactive { get; set; }
+    public int SyncedLyricsBlurStrength { get; set; } = LyricsHighlightStyle.DefaultBlurStrength;
+    // Размер шрифта текста песни в Now Playing, px (синхронный и обычный текст).
+    public int NowPlayingLyricsFontSize { get; set; } = LyricsHighlightStyle.DefaultNowPlayingFontSize;
 
     // Выравнивание текста песни в панели главного окна и в Now Playing: "Left" | "Center" | "Right".
     public string LyricsTextAlignment { get; set; } = "Left";

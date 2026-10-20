@@ -250,6 +250,11 @@ internal static class SettingsIntegrityService
         settings.SyncedLyricsFadeStrength = Math.Clamp(settings.SyncedLyricsFadeStrength, 0, 100);
         settings.SyncedLyricsScalePercent = Math.Clamp(settings.SyncedLyricsScalePercent, LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
         settings.SyncedLyricsVisibleLines = LyricsHighlightStyle.NormalizeVisibleLines(settings.SyncedLyricsVisibleLines);
+        settings.SyncedLyricsGlowStrength = Math.Clamp(settings.SyncedLyricsGlowStrength, 0, 100);
+        settings.SyncedLyricsBlurStrength = Math.Clamp(settings.SyncedLyricsBlurStrength,
+            LyricsHighlightStyle.MinBlurStrength, LyricsHighlightStyle.MaxBlurStrength);
+        settings.NowPlayingLyricsFontSize = Math.Clamp(settings.NowPlayingLyricsFontSize,
+            LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
         settings.InterfaceScale = ClampFinite(settings.InterfaceScale, 0.85, 1.35, defaults.InterfaceScale);
         settings.SavedVolume = ClampFinite(settings.SavedVolume, 0, 1, defaults.SavedVolume);
         settings.PlaybackSpeed = ClampFinite(settings.PlaybackSpeed, 0.5, 2.0, defaults.PlaybackSpeed);

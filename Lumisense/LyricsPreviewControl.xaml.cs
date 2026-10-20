@@ -30,8 +30,8 @@ public partial class LyricsPreviewControl : UserControl
         Line2.Foreground = plain ? NormalBrush : Brushes.White;
         Line3.Foreground = plain ? NormalBrush : DimBrush;
         string effect = settings.SyncedLyricsHighlightEffect;
-        Glow.BlurRadius = LyricsHighlightStyle.GlowBlurRadius;
-        Glow.Opacity = !plain && LyricsHighlightStyle.HasGlow(effect) ? LyricsHighlightStyle.GlowOpacity : 0.0;
+        Glow.BlurRadius = LyricsHighlightStyle.GlowBlurRadius(settings.SyncedLyricsGlowStrength);
+        Glow.Opacity = !plain && LyricsHighlightStyle.HasGlow(effect) ? LyricsHighlightStyle.GlowOpacity(settings.SyncedLyricsGlowStrength) : 0.0;
         Pill.Background = !plain && LyricsHighlightStyle.HasPill(effect) ? PillBrush : Brushes.Transparent;
         Bar.Opacity = !plain && LyricsHighlightStyle.HasBar(effect) ? 1.0 : 0.0;
 
@@ -49,6 +49,13 @@ public partial class LyricsPreviewControl : UserControl
         double neighbourOpacity = fade ? 1.0 - 0.5 * Math.Clamp(settings.SyncedLyricsFadeStrength, 0, 100) / 100.0 : 1.0;
         Line1.Opacity = neighbourOpacity;
         Line3.Opacity = neighbourOpacity;
+
+        // В предпросмотре соседние строки размыты вдвое сильнее, чем в окне: иначе на трёх строках разница не видна.
+        double previewBlur = !plain && settings.SyncedLyricsBlurInactive
+            ? Math.Clamp(settings.SyncedLyricsBlurStrength, LyricsHighlightStyle.MinBlurStrength, LyricsHighlightStyle.MaxBlurStrength) * 0.5
+            : 0;
+        Line1.Effect = previewBlur > 0 ? new System.Windows.Media.Effects.BlurEffect { Radius = previewBlur } : null;
+        Line3.Effect = previewBlur > 0 ? new System.Windows.Media.Effects.BlurEffect { Radius = previewBlur } : null;
     }
 
     private static Brush Freeze(SolidColorBrush brush)

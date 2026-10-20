@@ -41,7 +41,7 @@ public partial class MainWindow
         public System.Windows.Media.Effects.DropShadowEffect GlowEffect { get; } = new()
         {
             Color = Colors.White,
-            BlurRadius = LyricsHighlightStyle.GlowBlurRadius,
+            BlurRadius = LyricsHighlightStyle.GlowBlurRadius(LyricsHighlightStyle.DefaultGlowStrength),
             ShadowDepth = 0,
             Opacity = 0
         };
@@ -478,7 +478,8 @@ public partial class MainWindow
         bool useGlow = active && LyricsHighlightStyle.HasGlow(_settings.SyncedLyricsHighlightEffect);
         Color foreground = active ? Colors.White : Color.FromRgb(142, 142, 142);
         double scale = useScale ? 1.055 : 1.0;
-        double glowOpacity = useGlow ? LyricsHighlightStyle.GlowOpacity : 0.0;
+        line.GlowEffect.BlurRadius = LyricsHighlightStyle.GlowBlurRadius(_settings.SyncedLyricsGlowStrength);
+        double glowOpacity = useGlow ? LyricsHighlightStyle.GlowOpacity(_settings.SyncedLyricsGlowStrength) : 0.0;
 
         if (!animate)
         {
