@@ -17,6 +17,9 @@ public class SavedPlaylistFolder
     public bool IsExpanded { get; set; } = true;  // развёрнут ли список треков этой группы в UI
     public List<string> Tracks { get; set; } = new();
 
+    // Треки папки-источника, которые пользователь убрал из плейлиста: пересканирование их не возвращает.
+    public List<string> ExcludedTracks { get; set; } = new();
+
     // true только у автосоздаваемой группы "Отдельные файлы" — отличает её от папок,
     // созданных вручную через "Новую папку…" (у обеих SourcePath == null)
     public bool IsLooseFilesBucket { get; set; }

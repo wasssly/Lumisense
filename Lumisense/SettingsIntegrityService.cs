@@ -381,7 +381,8 @@ internal static class SettingsIntegrityService
             IsEnabled = folder.IsEnabled,
             IsExpanded = folder.IsExpanded,
             IsLooseFilesBucket = folder.IsLooseFilesBucket,
-            Tracks = NormalizePaths(folder.Tracks)
+            Tracks = NormalizePaths(folder.Tracks),
+            ExcludedTracks = NormalizePaths(folder.ExcludedTracks)
         }).ToList();
     }
 

@@ -121,6 +121,30 @@ public sealed class PlaybackQueue
         Changed?.Invoke();
     }
 
+    // Меняет пути в очереди после переименования файлов (например, нормализации имён). Без этого PruneMissing молча
+    // выбросил бы переименованные треки как пропавшие. remap возвращает исходный путь, если менять его не нужно.
+    public void RemapPaths(Func<string, string> remap)
+    {
+        bool changed = false;
+        for (int i = 0; i < _items.Count; i++)
+        {
+            string remapped = remap(_items[i]);
+            if (string.Equals(remapped, _items[i], StringComparison.Ordinal)) continue;
+
+            _items[i] = remapped;
+            changed = true;
+        }
+
+        // Порядок до сортировки хранит те же пути: без замены «вернуть порядок добавления» потеряет переименованные.
+        if (_orderBeforeSort is not null)
+        {
+            for (int i = 0; i < _orderBeforeSort.Count; i++)
+                _orderBeforeSort[i] = remap(_orderBeforeSort[i]);
+        }
+
+        if (changed) Changed?.Invoke();
+    }
+
     // Вызывается при восстановлении очереди на старте: убирает файлы, пропавшие за время простоя.
     public int PruneMissing()
     {

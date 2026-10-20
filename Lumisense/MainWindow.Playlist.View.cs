@@ -108,9 +108,17 @@ public partial class MainWindow
         if (folder.SourcePath == null) return;
 
         int before = folder.Tracks.Count;
-        bool foundAnything = await AddFolderPathAsync(folder.SourcePath);
+        IReadOnlyList<string> vanished = Array.Empty<string>();
+        bool foundAnything = await AddFolderPathAsync(folder.SourcePath, fresh => vanished = fresh);
         if (_isExiting) return;
         int addedCount = folder.Tracks.Count - before;
+
+        // Недоступные файлы из плейлиста не удаляются (решает пользователь), но о новых пропажах сообщаем.
+        if (vanished.Count > 0)
+        {
+            ShowFilesBecameUnavailableMessage(folder, vanished);
+            return;
+        }
 
         if (!foundAnything || addedCount <= 0)
         {
@@ -149,6 +157,9 @@ public partial class MainWindow
         StopPlayback();
         _currentTrackPath = null;
         _folders.Clear();
+        // Очередь и история шаффла ссылаются на треки очищенного плейлиста: без сброса «Далее» продолжило бы играть их.
+        _playbackQueue.Clear();
+        ResetShuffleState();
         RefreshPlaylistView();
         StartFolderWatchers();
 
@@ -293,8 +304,8 @@ public partial class MainWindow
             if (string.IsNullOrEmpty(path)) return;
 
             PlaylistFolder? folder = _isFavoritesView
-                ? (_favoritesFolder.Tracks.Contains(path) ? _favoritesFolder : null)
-                : _folders.FirstOrDefault(f => f.Tracks.Contains(path));
+                ? (_favoritesFolder.Tracks.Contains(path, PlaylistPaths.Comparer) ? _favoritesFolder : null)
+                : _folders.FirstOrDefault(f => f.Tracks.Contains(path, PlaylistPaths.Comparer));
             if (folder is null || (!_isFavoritesView && !folder.IsExpanded)) return;
 
             HighlightAndScrollToTrack(folder, path);
@@ -667,8 +678,12 @@ public partial class MainWindow
                 .OrderByDescending(entry => entry.Index)
                 .ToList();
 
-            foreach (var (index, _) in indexed)
+            foreach (var (index, path) in indexed)
+            {
                 folder.Tracks.RemoveAt(index);
+                // У папок с диска запоминаем удаление, иначе следующее пересканирование вернёт трек.
+                folder.ExcludeTrack(path);
+            }
 
             foreach (var (index, path) in indexed.OrderBy(entry => entry.Index))
             {
@@ -681,6 +696,7 @@ public partial class MainWindow
                     // удалением и отменой.
                     int insertAt = Math.Min(capturedIndex, capturedFolder.Tracks.Count);
                     capturedFolder.Tracks.Insert(insertAt, capturedPath);
+                    capturedFolder.IncludeTrack(capturedPath);
                 });
             }
         }

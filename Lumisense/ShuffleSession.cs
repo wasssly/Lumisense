@@ -133,7 +133,7 @@ internal sealed class ShuffleSession
         if (newIndex < 0 || newIndex >= _history.Count) return null;
 
         var path = _history[newIndex];
-        if (!activeTracks.Contains(path))
+        if (!activeTracks.Contains(path, PlaylistPaths.Comparer))
         {
             // Трек пропал из активного плейлиста — обрезаем историю на этом месте и
             // считаем, что дальше в эту сторону двигаться некуда.

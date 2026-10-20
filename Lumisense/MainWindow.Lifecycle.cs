@@ -169,6 +169,7 @@ public partial class MainWindow
             IsEnabled = f.IsEnabled,
             IsExpanded = f.IsExpanded,
             Tracks = f.Tracks.ToList(),
+            ExcludedTracks = f.ExcludedTracks.ToList(),
             IsLooseFilesBucket = f.IsLooseFilesBucket
         }).ToList();
 

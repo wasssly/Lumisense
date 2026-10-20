@@ -280,7 +280,18 @@
              (выбирается PlaylistDisplayItemTemplateSelector); DataContext — сам PlaylistFolder. -->
         <DataTemplate x:Key="PlaylistFolderHeaderTemplate">
             <Border Margin="2,2,2,10" CornerRadius="8" Padding="10,8"
-                    Background="{DynamicResource ControlFillColorSecondaryBrush}">
+                    Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                    ContextMenuOpening="PlaylistFolderHeader_ContextMenuOpening">
+                <!-- Меню открывается, только если у папки есть убранные пользователем треки (см. PlaylistFolderHeader_ContextMenuOpening). -->
+                <Border.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Вернуть убранные треки" Click="RestoreExcludedTracksMenuItem_Click">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconRefresh" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                    </ContextMenu>
+                </Border.ContextMenu>
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />

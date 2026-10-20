@@ -208,4 +208,51 @@ public sealed class PlaybackQueueTests
 
         Assert.Equal(new[] { "a.mp3", "b.mp3" }, queue.Items);
     }
+
+    [Fact]
+    public void RemapPaths_RenamesQueuedTracks_KeepingOrder_AndRaisesChanged()
+    {
+        var queue = new PlaybackQueue();
+        queue.AddToEnd(new[] { @"C:\Music\old a.mp3", @"C:\Music\keep.mp3", @"C:\Music\old b.mp3" });
+        int changed = 0;
+        queue.Changed += () => changed++;
+        var renames = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [@"C:\Music\old a.mp3"] = @"C:\Music\Artist - A.mp3",
+            [@"C:\Music\old b.mp3"] = @"C:\Music\Artist - B.mp3",
+        };
+
+        queue.RemapPaths(path => renames.TryGetValue(path, out string? renamed) ? renamed : path);
+
+        Assert.Equal(new[] { @"C:\Music\Artist - A.mp3", @"C:\Music\keep.mp3", @"C:\Music\Artist - B.mp3" }, queue.Items);
+        Assert.Equal(1, changed);
+    }
+
+    [Fact]
+    public void RemapPaths_WithNothingToRename_DoesNotRaiseChanged()
+    {
+        var queue = new PlaybackQueue();
+        queue.AddToEnd(new[] { "a.mp3", "b.mp3" });
+        int changed = 0;
+        queue.Changed += () => changed++;
+
+        queue.RemapPaths(path => path);
+
+        Assert.Equal(new[] { "a.mp3", "b.mp3" }, queue.Items);
+        Assert.Equal(0, changed);
+    }
+
+    [Fact]
+    public void RemapPaths_AlsoFixesOrderRememberedBeforeSort()
+    {
+        var queue = new PlaybackQueue();
+        queue.AddToEnd(new[] { "b.mp3", "a.mp3" });
+        queue.SortByDisplayName(descending: false);
+
+        queue.RemapPaths(path => path == "a.mp3" ? "renamed a.mp3" : path);
+        queue.RestoreInsertionOrder();
+
+        // Порядок добавления сохраняется, а переименованный трек не потерян.
+        Assert.Equal(new[] { "b.mp3", "renamed a.mp3" }, queue.Items);
+    }
 }

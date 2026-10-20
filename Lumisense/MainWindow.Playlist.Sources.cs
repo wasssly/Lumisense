@@ -62,7 +62,7 @@ public partial class MainWindow
                 foundAnyFolder = true;
                 foundAnything = await AddFolderPathAsync(path) || foundAnything;
             }
-            else if (File.Exists(path) && SupportedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant()))
+            else if (File.Exists(path) && SupportedExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase))
             {
                 newFiles.Add(path);
                 foundAnything = true;
@@ -99,9 +99,9 @@ public partial class MainWindow
     {
         var dialog = new OpenFileDialog
         {
-            Filter = "Аудиофайлы (*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg)|*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg|Все файлы (*.*)|*.*",
+            Filter = LocalizationService.Translate("Аудиофайлы (*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg)|*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg|Все файлы (*.*)|*.*"),
             Multiselect = true,
-            Title = "Выберите аудиофайлы"
+            Title = LocalizationService.Translate("Выберите аудиофайлы")
         };
 
         if (dialog.ShowDialog() != true) return;
@@ -135,17 +135,18 @@ public partial class MainWindow
 
         var dialog = new OpenFileDialog
         {
-            Filter = "Аудиофайлы (*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg)|*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg|Все файлы (*.*)|*.*",
+            Filter = LocalizationService.Translate("Аудиофайлы (*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg)|*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg|Все файлы (*.*)|*.*"),
             Multiselect = true,
-            Title = $"Добавить файлы в «{folder.DisplayName}»"
+            Title = LocalizationService.Translate($"Добавить файлы в «{folder.DisplayName}»")
         };
 
         if (dialog.ShowDialog() != true) return;
 
         bool wasEmptyBeforeAdd = FlattenAll().Count == 0;
 
-        var allExisting = FlattenAll();
-        var actuallyNew = dialog.FileNames.Where(f => !allExisting.Contains(f)).ToList();
+        // HashSet без учёта регистра: быстрее List.Contains на больших плейлистах, а Add заодно убирает повторы внутри самой выборки.
+        var allExisting = PlaylistPaths.ToSet(FlattenAll());
+        var actuallyNew = dialog.FileNames.Where(f => allExisting.Add(f)).ToList();
         if (actuallyNew.Count == 0) return;
 
         folder.Tracks.AddRange(actuallyNew);
@@ -291,7 +292,8 @@ public partial class MainWindow
                 if (!_folders.Any(folder => string.Equals(folder.SourcePath, folderPath, StringComparison.OrdinalIgnoreCase)))
                     continue;
 
-                await AddFolderPathAsync(folderPath);
+                // Автообновление не вмешивается диалогами: о новых пропажах говорит баннер недоступных файлов с раскрытым списком.
+                await AddFolderPathAsync(folderPath, _ => ShowUnavailableFilesPopup());
             }
         }
         catch (OperationCanceledException)
@@ -317,7 +319,7 @@ public partial class MainWindow
     {
         var dialog = new OpenFolderDialog
         {
-            Title = "Выберите папку с музыкой",
+            Title = LocalizationService.Translate("Выберите папку с музыкой"),
             Multiselect = true
         };
 
@@ -339,22 +341,60 @@ public partial class MainWindow
 
     // Сканирует папку рекурсивно и добавляет как группу; false, если аудиофайлов не нашлось (нет доступа или пусто) —
     // по нему решается, показывать ли предупреждение "ничего не найдено".
-    private async Task<bool> AddFolderPathAsync(string folderPath)
+    private readonly UnavailableFilesTracker _unavailableFilesTracker = new();
+
+    // onNewlyUnavailable вызывается в UI-потоке, если после обхода у уже известной папки появились файлы, ставшие недоступными
+    // с прошлого раза. Записи при этом не удаляются.
+    private async Task<bool> AddFolderPathAsync(string folderPath, Action<IReadOnlyList<string>>? onNewlyUnavailable = null)
     {
         try
         {
-            var filesInFolder = await Task.Run(() => Directory.EnumerateFiles(folderPath, "*.*", new EnumerationOptions
-                {
-                    RecurseSubdirectories = true,
-                    IgnoreInaccessible = true,
-                    ReturnSpecialDirectories = false
-                })
-                .Where(f => SupportedExtensions.Contains(Path.GetExtension(f).ToLowerInvariant()))
-                .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
-                .ToList(), _lifetimeCts.Token);
+            // Снимок путей известной папки берём в UI-потоке: перечислять ObservableCollection из фона небезопасно.
+            PlaylistFolder? knownFolder = _folders.FirstOrDefault(f =>
+                f.SourcePath != null && string.Equals(f.SourcePath, folderPath, StringComparison.OrdinalIgnoreCase));
+            List<string> knownTracks = knownFolder?.Tracks.ToList() ?? new List<string>();
 
-            if (filesInFolder.Count == 0) return false;
+            (List<string> filesInFolder, List<string> missing) = await Task.Run(() =>
+            {
+                List<string> files;
+                try
+                {
+                    files = Directory.EnumerateFiles(folderPath, "*.*", new EnumerationOptions
+                        {
+                            RecurseSubdirectories = true,
+                            IgnoreInaccessible = true,
+                            ReturnSpecialDirectories = false
+                        })
+                        .Where(f => SupportedExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
+                        .OrderBy(f => f, StringComparer.OrdinalIgnoreCase)
+                        .ToList();
+                }
+                catch (DirectoryNotFoundException)
+                {
+                    // Папка или диск исчезли: считаем её пустой, чтобы пропавшие треки попали в уведомление.
+                    files = new List<string>();
+                }
+
+                // Недоступен тот, кого нет ни в обходе папки, ни на диске: добавленный в папку из другого места файл остаётся.
+                var scanned = PlaylistPaths.ToSet(files);
+                List<string> gone = knownTracks.Where(path => !scanned.Contains(path) && !File.Exists(path)).ToList();
+                return (files, gone);
+            }, _lifetimeCts.Token);
+
+            List<string> newlyUnavailable = knownFolder is null
+                ? new List<string>()
+                : _unavailableFilesTracker.Update(knownTracks, missing);
+
+            if (filesInFolder.Count == 0)
+            {
+                // Папка пуста или недоступна: записи остаются как «Файл недоступен», но баннер и уведомление обновляем.
+                if (missing.Count > 0) RefreshPlaylistView();
+                if (newlyUnavailable.Count > 0 && !_isExiting) onNewlyUnavailable?.Invoke(newlyUnavailable);
+                return false;
+            }
+
             AddFolderGroup(folderPath, filesInFolder);
+            if (newlyUnavailable.Count > 0 && !_isExiting) onNewlyUnavailable?.Invoke(newlyUnavailable);
             return true;
         }
         catch (OperationCanceledException)
@@ -382,6 +422,45 @@ public partial class MainWindow
         }
     }
 
+    // Контекстное меню заголовка папки есть только для возврата убранных треков: без них показывать его незачем.
+    private void PlaylistFolderHeader_ContextMenuOpening(object sender, System.Windows.Controls.ContextMenuEventArgs e)
+    {
+        if (sender is not FrameworkElement { DataContext: PlaylistFolder folder } || !folder.HasExcludedTracks)
+            e.Handled = true;
+    }
+
+    private void RestoreExcludedTracksMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistFolder { SourcePath: { } sourcePath } folder }) return;
+
+        folder.RestoreAllExcluded();
+        BackgroundTask.FireAndForget(AddFolderPathAsync(sourcePath), nameof(RestoreExcludedTracksMenuItem_Click));
+    }
+
+    private void ShowUnavailableFilesPopup()
+    {
+        if (_unavailableFileRows.Count > 0 && UnavailableFilesBanner.Visibility == Visibility.Visible)
+            UnavailableFilesPopup.IsOpen = true;
+    }
+
+    private void ShowFilesBecameUnavailableMessage(PlaylistFolder folder, IReadOnlyList<string> paths)
+    {
+        const int maxNames = 8;
+        string names = string.Join("\n", paths.Take(maxNames).Select(path => "• " + Path.GetFileName(path)));
+        if (paths.Count > maxNames)
+            names += "\n" + string.Format(LocalizationService.Translate("…и ещё {0}"), paths.Count - maxNames);
+
+        string message = string.Format(
+            LocalizationService.Translate("В папке «{0}» стали недоступны файлы: {1}\n\n{2}\n\nЗаписи остались в плейлисте как «Файл недоступен». Убрать их можно через «Проверить недоступные файлы»."),
+            folder.DisplayName, paths.Count, names);
+        LocalizedMessageBox.Show(
+            this,
+            message,
+            LocalizationService.Translate("Недоступные файлы"),
+            System.Windows.MessageBoxButton.OK,
+            System.Windows.MessageBoxImage.Warning);
+    }
+
     // Добавляет группу без дубликата; новые файлы подхватываются автоматически, исчезнувшие остаются как «Файл недоступен»:
     // заменить путь или убрать запись решает пользователь.
     private void AddFolderGroup(string folderPath, List<string> filesInFolder)
@@ -396,7 +475,9 @@ public partial class MainWindow
 
         if (existingFolder != null)
         {
-            var newOnes = filesInFolder.Where(f => !existingFolder.Tracks.Contains(f)).ToList();
+            var existingTracks = PlaylistPaths.ToSet(existingFolder.Tracks);
+            // Убранные пользователем треки не возвращаем: файлы лежат на диске, но в плейлист их никто не просил.
+            var newOnes = filesInFolder.Where(f => !existingTracks.Contains(f) && !existingFolder.IsExcluded(f)).ToList();
 
             // Пересобираем UI даже без новых треков: так после удаления/перемещения появляется
             // карточка недоступного файла, а после возврата файла по прежнему пути она исчезает.
@@ -439,8 +520,8 @@ public partial class MainWindow
 
         bool wasEmptyBeforeAdd = FlattenAll().Count == 0;
 
-        var allExisting = FlattenAll();
-        var actuallyNew = newTracks.Where(f => !allExisting.Contains(f)).ToList();
+        var allExisting = PlaylistPaths.ToSet(FlattenAll());
+        var actuallyNew = newTracks.Where(f => allExisting.Add(f)).ToList();
         if (actuallyNew.Count == 0)
         {
             // Всё уже в плейлисте (например, файл лежит в добавленной папке): дубликат не создаём, но показываем, где трек,
@@ -473,7 +554,7 @@ public partial class MainWindow
     // Раскрывает папку с уже имеющимся треком и подсвечивает его: так видно, что перетащенный/выбранный файл уже в плейлисте.
     private void RevealExistingTrack(string filePath)
     {
-        var folder = _folders.FirstOrDefault(f => f.Tracks.Contains(filePath));
+        var folder = _folders.FirstOrDefault(f => f.Tracks.Contains(filePath, PlaylistPaths.Comparer));
         if (folder == null) return;
 
         if (_isFavoritesView)
@@ -631,8 +712,10 @@ public partial class MainWindow
         PlayCountManager.Initialize(remappedCounts);
         PlayCountChangeNotifier.Instance.Bump();
 
-        // Очередь и история шаффла содержат абсолютные пути. Перезапускаем их вместо частичного
-        // исправления, чтобы кнопки «следующий» и «предыдущий» никогда не ссылались на старое имя.
+        // Очередь «Играть следующим» переименовываем на месте: иначе PruneMissing выбросил бы её треки как пропавшие.
+        _playbackQueue.RemapPaths(Remap);
+        // История шаффла тоже содержит абсолютные пути: перезапускаем её вместо частичного исправления,
+        // чтобы кнопки «следующий» и «предыдущий» никогда не ссылались на старое имя.
         ResetShuffleState();
         RefreshPlaylistView();
         if (_isFavoritesView) RefreshFavoritesTrackList();

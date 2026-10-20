@@ -268,6 +268,7 @@ public partial class MainWindow
         // Если убираемый трек сейчас играет — не прерываем воспроизведение (он уже
         // загружен в память и от списка не зависит), просто убираем строку из плейлиста.
         row.Folder.Tracks.Remove(row.FilePath);
+        row.Folder.ExcludeTrack(row.FilePath);
         RefreshPlaylistView();
     }
 

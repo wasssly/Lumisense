@@ -90,7 +90,10 @@ public partial class MainWindow
                    ?? AppendNewShuffleTrack(active, currentPath);
         }
 
-        int posInActive = currentPath != null ? active.IndexOf(currentPath) : -1;
+        int posInActive = PlaylistPaths.IndexOf(active, currentPath);
+        // Текущий файл исчез (диск отключён, файл удалён): «Далее» идёт к следующему по порядку, а не к первому треку.
+        if (posInActive < 0 && TryFindNeighborOfMissingCurrent(currentPath, active, +1) is { } neighbor)
+            return neighbor;
         int nextPos = posInActive < 0 ? 0 : (posInActive + 1) % active.Count;
         return active[nextPos];
     }
@@ -110,9 +113,20 @@ public partial class MainWindow
                    ?? PrependNewShuffleTrack(active, currentPath);
         }
 
-        int posInActive = currentPath != null ? active.IndexOf(currentPath) : -1;
+        int posInActive = PlaylistPaths.IndexOf(active, currentPath);
+        if (posInActive < 0 && TryFindNeighborOfMissingCurrent(currentPath, active, -1) is { } neighbor)
+            return neighbor;
         int prevPos = posInActive <= 0 ? active.Count - 1 : posInActive - 1;
         return active[prevPos];
+    }
+
+    // Список «активных» без проверки существования файлов хранит и пропавший текущий трек, поэтому по нему можно найти,
+    // где он стоял; редкий путь, массовую проверку File.Exists он не добавляет (доступные берём из уже проверенного списка).
+    private string? TryFindNeighborOfMissingCurrent(string? currentPath, List<string> available, int direction)
+    {
+        if (string.IsNullOrEmpty(currentPath)) return null;
+
+        return PlaylistPaths.FindNeighborAvailable(FlattenActive(), currentPath, PlaylistPaths.ToSet(available), direction);
     }
 
     // Быстрое переключение зажатой хоткей-клавишей: первый переход сразу, при удержании через 280 мс — собственный повтор каждые 140 мс

@@ -758,6 +758,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
                 if (saved.Tracks.Count > 0) foldersThatWereNonEmpty.Add(folder);
 
                 folder.Tracks.AddRange(saved.Tracks);
+                folder.LoadExcluded(saved.ExcludedTracks ?? new List<string>());
                 _folders.Add(folder);
             }
 

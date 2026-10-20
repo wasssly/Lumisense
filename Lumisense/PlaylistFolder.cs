@@ -48,6 +48,45 @@ public class PlaylistFolder : INotifyPropertyChanged
     // AddRange/RemoveAll ниже — extension-методы, которых у него нет.
     public ObservableCollection<string> Tracks { get; } = new();
 
+    // Пути, которые пользователь убрал из этой папки-источника (Delete, «Убрать из плейлиста»). Файлы остаются на диске,
+    // поэтому без списка пересканирование (автообновление, запуск, кнопка) вернуло бы их. Только для папок с SourcePath.
+    private readonly HashSet<string> _excludedTracks = new(PlaylistPaths.Comparer);
+
+    public IReadOnlyCollection<string> ExcludedTracks => _excludedTracks;
+
+    public bool HasExcludedTracks => _excludedTracks.Count > 0;
+
+    public bool IsExcluded(string path) => _excludedTracks.Contains(path);
+
+    public void ExcludeTrack(string path)
+    {
+        if (SourcePath != null && _excludedTracks.Add(path))
+            OnPropertyChanged(nameof(HasExcludedTracks));
+    }
+
+    public void IncludeTrack(string path)
+    {
+        if (_excludedTracks.Remove(path))
+            OnPropertyChanged(nameof(HasExcludedTracks));
+    }
+
+    public void RestoreAllExcluded()
+    {
+        if (_excludedTracks.Count == 0) return;
+
+        _excludedTracks.Clear();
+        OnPropertyChanged(nameof(HasExcludedTracks));
+    }
+
+    // Восстановление из settings.json: без уведомлений, список строится до показа в UI.
+    public void LoadExcluded(IEnumerable<string> paths)
+    {
+        if (SourcePath == null) return;
+
+        foreach (string path in paths)
+            _excludedTracks.Add(path);
+    }
+
     public PlaylistFolder()
     {
         Tracks.CollectionChanged += (_, _) => OnPropertyChanged(nameof(SubtitleText));
