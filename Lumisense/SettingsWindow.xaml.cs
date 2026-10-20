@@ -3423,9 +3423,10 @@ public partial class SettingsWindow : FluentWindow
 
         if (activePage is not null)
         {
-            // Горизонтальные виды: страница въезжает на той же пружине, что и панель; боковая панель — прежняя анимация снизу.
+            // Элементы страницы проявляются по очереди во всех видах навигации; в горизонтальных видах сама страница
+            // дополнительно въезжает на той же пружине, что и панель.
+            AnimateSettingsPage(activePage);
             if (direction != 0) StartPageSpring(activePage, direction);
-            else AnimateSettingsPage(activePage);
         }
 
         if (_navigationStyle != "Sidebar")
@@ -3952,27 +3953,58 @@ public partial class SettingsWindow : FluentWindow
     }
 
     // Въезд страницы снизу (боковая панель).
-    private static void AnimateSettingsPage(FrameworkElement page)
+    private const int StaggerMaxItems = 10;
+    private const int StaggerStepMs = 50;
+
+    // Элементы страницы проявляются по очереди; прежняя целостная анимация страницы остаётся для сдвига пружиной в горизонтальных видах.
+    private void AnimateSettingsPage(FrameworkElement page)
     {
-        page.Opacity = 0;
-        var translate = new System.Windows.Media.TranslateTransform(0, 10);
-        page.RenderTransform = translate;
-        page.RenderTransformOrigin = new Point(0.5, 0);
+        FinishPageSpring();
+
+        if (page is not System.Windows.Controls.Panel panel || AccessibilityPreferences.ShouldReduceMotion(_settings) || !IsLoaded) return;
 
         var easing = new System.Windows.Media.Animation.CubicEase
         {
             EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
         };
-        page.BeginAnimation(UIElement.OpacityProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220))
+
+        int index = 0;
+        foreach (UIElement child in panel.Children)
+        {
+            if (child.Visibility != Visibility.Visible) continue;
+            if (index >= StaggerMaxItems) break;
+
+            // Свой RenderTransform у элемента (например, из XAML) не затираем: для него остаётся только проявление.
+            System.Windows.Media.TranslateTransform? translate = null;
+            if (child.RenderTransform is null || child.RenderTransform == System.Windows.Media.Transform.Identity)
             {
-                EasingFunction = easing
-            });
-        translate.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
-            new System.Windows.Media.Animation.DoubleAnimation(10, 0, TimeSpan.FromMilliseconds(260))
+                translate = new System.Windows.Media.TranslateTransform(0, 18);
+                child.RenderTransform = translate;
+            }
+
+            var begin = TimeSpan.FromMilliseconds(index * StaggerStepMs);
+            child.Opacity = 0;
+            var fade = new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(260))
             {
+                BeginTime = begin,
                 EasingFunction = easing
-            });
+            };
+            // После конца снимаем анимацию, иначе она удерживала бы Opacity и позже мешала бы локальным изменениям.
+            fade.Completed += (_, _) =>
+            {
+                child.BeginAnimation(UIElement.OpacityProperty, null);
+                child.Opacity = 1;
+            };
+            child.BeginAnimation(UIElement.OpacityProperty, fade);
+
+            translate?.BeginAnimation(System.Windows.Media.TranslateTransform.YProperty,
+                new System.Windows.Media.Animation.DoubleAnimation(18, 0, TimeSpan.FromMilliseconds(360))
+                {
+                    BeginTime = begin,
+                    EasingFunction = easing
+                });
+            index++;
+        }
     }
 
     // ----- Прогрев страниц -----
