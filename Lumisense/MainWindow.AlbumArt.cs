@@ -225,9 +225,9 @@ public partial class MainWindow
         string extension = MimeTypeToExtension(_currentAlbumArtMimeType);
         var dialog = new SaveFileDialog
         {
-            Title = "Сохранить обложку",
+            Title = LocalizationService.Translate("Сохранить обложку"),
             FileName = SuggestAlbumArtFileName() + extension,
-            Filter = MimeTypeToFilter(extension)
+            Filter = LocalizationService.Translate(MimeTypeToFilter(extension))
         };
 
         if (dialog.ShowDialog() != true) return;

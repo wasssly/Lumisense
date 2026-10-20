@@ -110,8 +110,8 @@ public partial class TrackTagsWindow : FluentWindow
     {
         var dialog = new OpenFileDialog
         {
-            Title = "Выберите обложку",
-            Filter = "Изображения (*.jpg;*.jpeg;*.png;*.bmp;*.gif)|*.jpg;*.jpeg;*.png;*.bmp;*.gif|Все файлы (*.*)|*.*"
+            Title = LocalizationService.Translate("Выберите обложку"),
+            Filter = LocalizationService.Translate("Изображения (*.jpg;*.jpeg;*.png;*.bmp;*.gif)|*.jpg;*.jpeg;*.png;*.bmp;*.gif|Все файлы (*.*)|*.*")
         };
 
         if (dialog.ShowDialog() != true) return;

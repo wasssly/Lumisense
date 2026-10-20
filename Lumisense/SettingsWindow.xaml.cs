@@ -2912,6 +2912,7 @@ public partial class SettingsWindow : FluentWindow
         }
         catch
         {
+            // Сохранённый цвет повреждён (не HTML-формат): диалог открывается со стандартным синим.
             initialColor = System.Drawing.Color.FromArgb(0x00, 0x78, 0xD4);
         }
 
@@ -3196,8 +3197,8 @@ public partial class SettingsWindow : FluentWindow
 
         var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            Title = "Поделиться пресетом эквалайзера",
-            Filter = "Пресет эквалайзера (*.json)|*.json",
+            Title = LocalizationService.Translate("Поделиться пресетом эквалайзера"),
+            Filter = LocalizationService.Translate("Пресет эквалайзера (*.json)|*.json"),
             FileName = $"{preset.Name}.json"
         };
         if (dialog.ShowDialog(this) != true) return;
@@ -3217,8 +3218,8 @@ public partial class SettingsWindow : FluentWindow
     {
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
-            Title = "Импортировать пресет эквалайзера",
-            Filter = "Пресет эквалайзера (*.json)|*.json|Все файлы (*.*)|*.*"
+            Title = LocalizationService.Translate("Импортировать пресет эквалайзера"),
+            Filter = LocalizationService.Translate("Пресет эквалайзера (*.json)|*.json|Все файлы (*.*)|*.*")
         };
         if (dialog.ShowDialog(this) != true) return;
 
@@ -3447,7 +3448,7 @@ public partial class SettingsWindow : FluentWindow
     {
         var saveDialog = new Microsoft.Win32.SaveFileDialog
         {
-            Filter = LumiProfileIO.FileFilter,
+            Filter = LocalizationService.Translate(LumiProfileIO.FileFilter),
             DefaultExt = LumiProfileIO.FileExtension,
             FileName = "Lumisense" + LumiProfileIO.FileExtension
         };
@@ -3469,7 +3470,7 @@ public partial class SettingsWindow : FluentWindow
 
     private void ImportProfileButton_Click(object sender, RoutedEventArgs e)
     {
-        var openDialog = new Microsoft.Win32.OpenFileDialog { Filter = LumiProfileIO.FileFilter };
+        var openDialog = new Microsoft.Win32.OpenFileDialog { Filter = LocalizationService.Translate(LumiProfileIO.FileFilter) };
         if (openDialog.ShowDialog(this) != true) return;
 
         var profile = LumiProfileIO.TryReadFile(openDialog.FileName);
@@ -4423,7 +4424,10 @@ public partial class SettingsWindow : FluentWindow
             {
                 if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
             }
-            catch { }
+            catch
+            {
+                // Временный файл аватара остаётся до очистки временной папки: на работу окна это не влияет.
+            }
         }
     }
 
@@ -4433,9 +4437,10 @@ public partial class SettingsWindow : FluentWindow
         {
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(url) { UseShellExecute = true });
         }
-        catch
+        catch (Exception ex)
         {
-            // Нет браузера по умолчанию и т.п. — не критично, просто ничего не открылось
+            // Нет браузера по умолчанию и т.п. — не критично, но без записи в журнал нажатие выглядело бы поломкой.
+            Logger.Warn($"Не удалось открыть ссылку {url}: {ex.Message}");
         }
     }
 
