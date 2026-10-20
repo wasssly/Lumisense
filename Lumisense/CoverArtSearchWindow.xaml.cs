@@ -111,6 +111,8 @@ public partial class CoverArtSearchWindow : FluentWindow
             if (DeezerSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchDeezerAsync(query, token));
             if (MusicBrainzSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchMusicBrainzAsync(query, token));
             if (YandexMusicSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchYandexMusicAsync(query, token));
+            if (GeniusSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchGeniusAsync(query, token));
+            if (SoundCloudSourceCheckBox.IsChecked == true) searchTasks.Add(CoverArtProviders.SearchSoundCloudAsync(query, token));
 
             if (searchTasks.Count == 0)
             {

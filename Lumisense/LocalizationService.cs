@@ -105,6 +105,8 @@ public static class LocalizationService
         ["Отмена"] = "Cancel",
         ["Введите исполнителя и название и нажмите «Искать»"] = "Enter the artist and title and click 'Search'",
         ["Источники обложек — каталоги iTunes, Deezer, MusicBrainz/Cover Art Archive (без регистрации и ключей) и неофициальный поиск Yandex Music"] = "Cover sources: the iTunes, Deezer and MusicBrainz/Cover Art Archive catalogs (no registration or keys) and the unofficial Yandex Music search",
+        ["Источники обложек — каталоги iTunes, Deezer, MusicBrainz/Cover Art Archive (без регистрации и ключей) и неофициальный поиск Yandex Music; для малоизвестных треков — Genius и ссылка SoundCloud (по умолчанию выключены)"] = "Cover sources: the iTunes, Deezer and MusicBrainz/Cover Art Archive catalogs (no registration or keys) and the unofficial Yandex Music search; for obscure tracks, Genius and a SoundCloud link (both off by default)",
+        ["SoundCloud (ссылка)"] = "SoundCloud (link)",
         ["Закрыть"] = "Close",
         ["Обложка"] = "Cover",
         ["Воспроизвести"] = "Play",

@@ -1,4 +1,5 @@
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -20,7 +21,8 @@ public static class CoverArtProviders
 
     public static readonly HashSet<string> TrustedImageHosts = new(StringComparer.OrdinalIgnoreCase)
     {
-        "mzstatic.com", "apple.com", "deezer.com", "dzcdn.net", "coverartarchive.org", "archive.org", "yandex.net"
+        "mzstatic.com", "apple.com", "deezer.com", "dzcdn.net", "coverartarchive.org", "archive.org", "yandex.net",
+        "genius.com", "rapgenius.com", "sndcdn.com"
     };
 
     // Единая карточка результата независимо от источника. Source — только для UI (подпись/фильтр
@@ -207,6 +209,161 @@ public static class CoverArtProviders
         }
 
         return entries;
+    }
+
+    // Genius: у треков, которых нет в каталогах, обложка часто есть только здесь. Поиск идёт по неофициальному
+    // веб-эндпоинту сайта (ключа нет), поэтому при смене формата ответа результат будет пустым. Ссылка на картинку
+    // images.genius.com или на страницу песни тоже принимается.
+    public static async Task<List<ArtResult>> SearchGeniusAsync(string query, CancellationToken token)
+    {
+        query = query.Trim();
+        if (query.Length == 0) return new List<ArtResult>();
+
+        try
+        {
+            if (IsGeniusLink(query))
+            {
+                if (new Uri(query).Host.StartsWith("images.", StringComparison.OrdinalIgnoreCase))
+                    return new List<ArtResult> { new(query, query, "", "Genius") };
+
+                return await ReadGeniusPageAsync(query, token);
+            }
+
+            var url = $"https://genius.com/api/search/song?q={Uri.EscapeDataString(query)}&per_page=10";
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.UserAgent.ParseAdd(MusicBrainzUserAgent);
+            using var response = await Http.SendAsync(request, token);
+            response.EnsureSuccessStatusCode();
+            var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
+            return ParseGeniusSearchResults(json);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return new List<ArtResult>();
+        }
+    }
+
+    private static async Task<List<ArtResult>> ReadGeniusPageAsync(string url, CancellationToken token)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+        request.Headers.UserAgent.ParseAdd(MusicBrainzUserAgent);
+        using var response = await Http.SendAsync(request, token);
+        response.EnsureSuccessStatusCode();
+        var html = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes * 2, token));
+        return ParseGeniusPage(html);
+    }
+
+    // SoundCloud не даёт поиска по названию без ключа клиента, поэтому работает только вставленная ссылка на трек.
+    public static async Task<List<ArtResult>> SearchSoundCloudAsync(string query, CancellationToken token)
+    {
+        query = query.Trim();
+        if (!IsHostedLink(query, "soundcloud.com")) return new List<ArtResult>();
+
+        try
+        {
+            var url = $"https://soundcloud.com/oembed?format=json&url={Uri.EscapeDataString(query)}";
+            using var response = await Http.GetAsync(url, token);
+            response.EnsureSuccessStatusCode();
+            var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
+            return ParseSoundCloudOEmbed(json);
+        }
+        catch (OperationCanceledException) when (token.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch
+        {
+            return new List<ArtResult>();
+        }
+    }
+
+    internal static bool IsHostedLink(string text, string domain)
+    {
+        return Uri.TryCreate(text, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps &&
+               (uri.Host.Equals(domain, StringComparison.OrdinalIgnoreCase) ||
+                uri.Host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase));
+    }
+
+    internal static bool IsGeniusLink(string text) => IsHostedLink(text, "genius.com") || IsHostedLink(text, "rapgenius.com");
+
+    // Ответ сайта: response.sections[].hits[].result; у официального API — response.hits[].result. Понимаем оба вида.
+    internal static List<ArtResult> ParseGeniusSearchResults(string json)
+    {
+        var results = new List<ArtResult>();
+        var seen = new HashSet<string>();
+
+        using var doc = JsonDocument.Parse(json);
+        if (!doc.RootElement.TryGetProperty("response", out var response)) return results;
+
+        var hits = new List<JsonElement>();
+        if (response.TryGetProperty("sections", out var sections) && sections.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var section in sections.EnumerateArray())
+                if (section.TryGetProperty("hits", out var sectionHits) && sectionHits.ValueKind == JsonValueKind.Array)
+                    hits.AddRange(sectionHits.EnumerateArray());
+        }
+        else if (response.TryGetProperty("hits", out var directHits) && directHits.ValueKind == JsonValueKind.Array)
+        {
+            hits.AddRange(directHits.EnumerateArray());
+        }
+
+        foreach (var hit in hits)
+        {
+            if (!hit.TryGetProperty("result", out var result) || result.ValueKind != JsonValueKind.Object) continue;
+
+            var full = ReadString(result, "song_art_image_url");
+            var thumb = ReadString(result, "song_art_image_thumbnail_url");
+            if (string.IsNullOrEmpty(full)) full = thumb;
+            if (string.IsNullOrEmpty(full) || !IsGeniusLink(full)) continue;
+            if (string.IsNullOrEmpty(thumb) || !IsGeniusLink(thumb)) thumb = full;
+            if (full.Contains("default_cover_image", StringComparison.OrdinalIgnoreCase) || !seen.Add(full)) continue;
+
+            var artist = ReadString(result, "artist_names");
+            var title = ReadString(result, "title");
+            var label = string.IsNullOrEmpty(artist) ? title ?? "" : $"{artist} — {title}";
+            results.Add(new ArtResult(thumb, full, label, "Genius"));
+            if (results.Count >= 8) break;
+        }
+        return results;
+    }
+
+    internal static List<ArtResult> ParseGeniusPage(string html)
+    {
+        var image = Regex.Match(html, "<meta[^>]+property=\"og:image\"[^>]+content=\"([^\"]+)\"");
+        if (!image.Success) return new List<ArtResult>();
+
+        var url = WebUtility.HtmlDecode(image.Groups[1].Value);
+        if (!IsGeniusLink(url)) return new List<ArtResult>();
+
+        var title = Regex.Match(html, "<meta[^>]+property=\"og:title\"[^>]+content=\"([^\"]*)\"");
+        var label = title.Success ? CleanHtmlText(title.Groups[1].Value) : "";
+        return new List<ArtResult> { new(url, url, label, "Genius") };
+    }
+
+    private static string? ReadString(JsonElement element, string name) =>
+        element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String ? value.GetString() : null;
+
+    internal static List<ArtResult> ParseSoundCloudOEmbed(string json)
+    {
+        using var doc = JsonDocument.Parse(json);
+        var root = doc.RootElement;
+        var thumb = root.TryGetProperty("thumbnail_url", out var t) && t.ValueKind == JsonValueKind.String ? t.GetString() : null;
+        if (string.IsNullOrEmpty(thumb) || !IsHostedLink(thumb, "sndcdn.com")) return new List<ArtResult>();
+
+        // oEmbed отдаёт 100 px (-large); -t500x500 есть у всех обложек SoundCloud.
+        var full = Regex.Replace(thumb, @"-(large|t\d+x\d+)(\.\w+)$", "-t500x500$2");
+        var label = root.TryGetProperty("title", out var l) && l.ValueKind == JsonValueKind.String ? l.GetString() ?? "" : "";
+        return new List<ArtResult> { new(thumb, full, label, "SoundCloud") };
+    }
+
+    private static string CleanHtmlText(string html)
+    {
+        var text = WebUtility.HtmlDecode(Regex.Replace(html, "<[^>]+>", " "));
+        return Regex.Replace(text, @"\s+", " ").Trim();
     }
 
     public static async Task<List<ArtResult>> SearchMusicBrainzAsync(string query, CancellationToken token)
