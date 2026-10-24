@@ -2587,6 +2587,18 @@
                                     <TextBlock x:Name="IslandScaleValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Grid>
+                                <TextBlock Text="Ширина острова" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="130"
+                                            TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandWidthSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandWidthValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
                                 <TextBlock Text="Отступ от верхнего края" Style="{StaticResource SettingsFieldLabelStyle}" />
                                 <Grid Margin="0,0,0,12">
                                     <Grid.ColumnDefinitions>
@@ -2611,7 +2623,21 @@
                                     <TextBlock x:Name="IslandHideValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
                                                HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Grid>
+                                <TextBlock Text="Сворачивание после ухода курсора" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandCollapseSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="1" Maximum="15"
+                                            TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandCollapseSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandCollapseValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
                                 <CheckBox x:Name="IslandTrackToastCheckBox" Content="Раскрываться при смене трека" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandHideSystemToastCheckBox" Content="Не показывать уведомление о смене трека в виде «Остров»" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <CheckBox x:Name="IslandAutoCollapseCheckBox" Content="Сворачиваться, когда курсор ушёл" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
@@ -2627,6 +2653,69 @@
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <CheckBox x:Name="IslandQuietInGamesCheckBox" Content="Не раскрываться при смене трека в играх" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandSwipeInvertedCheckBox" Content="Перетягивание острова: влево — назад, вправо — вперёд" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandRoundCoverCheckBox" Content="Круглая обложка" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <TextBlock Text="Левая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
+                                <ComboBox x:Name="IslandLeftButtonCombo" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Избранное" Tag="Favorite" />
+                                    <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
+                                    <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
+                                </ComboBox>
+                                <TextBlock Text="Правая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandRightButtonCombo" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Избранное" Tag="Favorite" />
+                                    <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
+                                    <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
+                                </ComboBox>
+                                <TextBlock Text="Эквалайзер свёрнутого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandEqualizerStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Полоски" Tag="Bars" />
+                                    <ComboBoxItem Content="Точки" Tag="Dots" />
+                                </ComboBox>
+                                <TextBlock Text="Фон раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandBackdropCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Без фона" Tag="None" />
+                                    <ComboBoxItem Content="Свечение" Tag="Glow" />
+                                    <ComboBoxItem Content="Матрица из точек" Tag="Matrix" />
+                                    <ComboBoxItem Content="Волна" Tag="Wave" />
+                                </ComboBox>
+                                <TextBlock Text="Полоса перемотки раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandSeekStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Сплошная" Tag="Plain" />
+                                    <ComboBoxItem Content="Сегменты" Tag="Segments" />
+                                </ComboBox>
+                                <CheckBox x:Name="IslandLyricsShimmerCheckBox" Content="Мерцание, пока ищется текст песни" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <TextBlock Text="Пункты контекстного меню острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,4,0,8" />
+                                <CheckBox x:Name="IslandMenuPlayPauseCheckBox" Tag="PlayPause" Content="Пауза / продолжить" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuNextCheckBox" Tag="Next" Content="Следующий трек" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuPreviousCheckBox" Tag="Previous" Content="Предыдущий трек" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuHideCheckBox" Tag="Hide" Content="Скрыть остров" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuExpandCheckBox" Tag="Expand" Content="Развернуть плеер" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuSpeedCheckBox" Tag="Speed" Content="Скорость" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuPitchCheckBox" Tag="Pitch" Content="Тон" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuOverlayCheckBox" Tag="Overlay" Content="Совместимость с играми и оверлеем" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuSettingsCheckBox" Tag="Settings" Content="Настройки острова" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <TextBlock Text="Если скрыть все пункты, меню по правой кнопке мыши не откроется."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,2,0,12" TextWrapping="Wrap" />
                                 <CheckBox x:Name="IslandMotionBlurCheckBox" Content="Размытие движения при растяжении"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <TextBlock Text="Размытия нагружают видеокарту: если остров подтормаживает, отключите их."

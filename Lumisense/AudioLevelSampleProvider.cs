@@ -8,16 +8,47 @@ namespace Lumisense;
 // звучание: значение используется только для визуальной реакции Now Playing на музыку.
 public sealed class AudioLevelSampleProvider : ISampleProvider
 {
-    private readonly ISampleProvider _source;
-    private double _normalizedLevel;
+    private const long SpectrumStaleMs = 150, SpectrumRefreshMs = 8;
 
-    public AudioLevelSampleProvider(ISampleProvider source) => _source = source;
+    private readonly ISampleProvider _source;
+    private readonly SpectrumAnalyzer _analyzer;
+    private readonly object _spectrumGate = new();
+    private readonly float[] _spectrum = new float[SpectrumAnalyzer.Bands];
+    private double _normalizedLevel;
+    private long _lastDataAt, _analyzedAt;
+
+    public AudioLevelSampleProvider(ISampleProvider source)
+    {
+        _source = source;
+        _analyzer = new SpectrumAnalyzer(source.WaveFormat.SampleRate);
+    }
 
     public WaveFormat WaveFormat => _source.WaveFormat;
 
     // Поток аудиодрайвера записывает уровень, UI-поток читает его. Volatile не допускает
     // устаревшего значения без блокировки/выделений памяти в горячем Read-пути.
     public double NormalizedLevel => Volatile.Read(ref _normalizedLevel);
+
+    // Спектр из 40 полос для острова. false, если звука давно не было: полоски тогда опускаются.
+    // Анализ делается не чаще раза в несколько миллисекунд, остальным вызовам достаётся готовый результат.
+    internal bool ReadSpectrum(float[] bands)
+    {
+        long now = Environment.TickCount64;
+        if (now - Volatile.Read(ref _lastDataAt) > SpectrumStaleMs) return false;
+
+        lock (_spectrumGate)
+        {
+            if (now - _analyzedAt >= SpectrumRefreshMs)
+            {
+                _analyzer.Analyze(_spectrum);
+                _analyzedAt = now;
+            }
+
+            Array.Copy(_spectrum, bands, SpectrumAnalyzer.Bands);
+        }
+
+        return true;
+    }
 
     public int Read(Span<float> buffer)
     {
@@ -27,6 +58,9 @@ public sealed class AudioLevelSampleProvider : ISampleProvider
             Volatile.Write(ref _normalizedLevel, 0d);
             return read;
         }
+
+        _analyzer.Push(buffer[..read], WaveFormat.Channels);
+        Volatile.Write(ref _lastDataAt, Environment.TickCount64);
 
         double sumSquares = 0;
         for (int index = 0; index < read; index++)

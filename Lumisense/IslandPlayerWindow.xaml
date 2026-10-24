@@ -4,7 +4,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:Lumisense"
         Title="Lumisense"
-        Width="540" Height="330"
+        Width="740" Height="560"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -48,11 +48,42 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        <Style x:Key="IslandLyricLineStyle" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Padding" Value="14,0" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="TextAlignment" Value="Center" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+            <Setter Property="LineHeight" Value="18" />
+            <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+            <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        </Style>
+        <Style x:Key="IslandMenuRowStyle" TargetType="Button">
+            <Setter Property="Height" Value="38" />
+            <Setter Property="Focusable" Value="False" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Row" Background="Transparent" CornerRadius="12">
+                            <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Row" Property="Background" Value="#26FFFFFF" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Window.Resources>
 
     <!-- Островок: форму (ширину, высоту, радиус) каждый кадр ведут пружины в IslandPlayerWindow.ApplyShape;
          виды внутри лежат в Host и обрезаются по той же форме. -->
-    <Grid x:Name="Island" Width="460" Height="262" HorizontalAlignment="Center" VerticalAlignment="Top"
+    <Grid x:Name="Island" Width="640" Height="490" HorizontalAlignment="Center" VerticalAlignment="Top"
           RenderTransformOrigin="0.5,0"
           MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
           MouseLeftButtonDown="Island_MouseLeftButtonDown" MouseMove="Island_MouseMove"
@@ -71,14 +102,14 @@
         <Path x:Name="ShadowNear" Fill="Black" Stroke="Black" StrokeThickness="16" StrokeLineJoin="Round" Opacity="0" IsHitTestVisible="False" />
 
         <Grid x:Name="Host">
-            <Path x:Name="Body" Fill="#FF000000" Stroke="#24FFFFFF" StrokeThickness="0.8" />
+            <Path x:Name="Body" Fill="#FF000000" Stroke="#40FFFFFF" StrokeThickness="1.5" />
 
             <Grid x:Name="CompactView" Width="210" Height="34" HorizontalAlignment="Center" VerticalAlignment="Top">
                 <TextBlock x:Name="CompactTitle" Foreground="White" FontSize="12.5" FontWeight="SemiBold"
-                           Margin="36,0,41,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                           Margin="41,0" TextAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            IsHitTestVisible="False" />
-                <StackPanel x:Name="EqualizerPanel" Orientation="Horizontal" HorizontalAlignment="Right"
-                            VerticalAlignment="Center" Height="16" Margin="0,0,13,0" IsHitTestVisible="False" />
+                <local:IslandEqualizer x:Name="IslandBars" Width="21" Height="16" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" Margin="0,0,13,0" IsHitTestVisible="False" />
             </Grid>
 
             <Grid x:Name="ToastView" Width="340" Height="68" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed">
@@ -102,52 +133,183 @@
                         <ScaleTransform x:Name="VolumeStretch" />
                     </Grid.RenderTransform>
                     <Border CornerRadius="2.5" Background="#33FFFFFF" />
-                    <Border x:Name="VolumeFill" CornerRadius="2.5" Background="White" HorizontalAlignment="Stretch"
-                            RenderTransformOrigin="0,0.5">
-                        <Border.RenderTransform>
-                            <ScaleTransform x:Name="VolumeScale" ScaleX="0" />
-                        </Border.RenderTransform>
-                    </Border>
+                    <!-- Ширина, а не масштаб: растянутый ScaleX сплющивал бы скруглённое начало полосы при малой громкости. -->
+                    <Border x:Name="VolumeFill" CornerRadius="2.5" Background="White" HorizontalAlignment="Left" Width="5" />
                 </Grid>
                 <local:RollingDigits x:Name="VolumeText" Grid.Column="2" FontSize="12.5" FontWeight="SemiBold" Foreground="White"
                                      HorizontalAlignment="Center" VerticalAlignment="Center" />
             </Grid>
 
-            <Grid x:Name="OpenView" Width="380" Height="176" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
-                <StackPanel Margin="98,20,52,0" Height="64" VerticalAlignment="Top" IsHitTestVisible="False">
+            <Grid x:Name="MenuView" Width="270" Height="252" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
+                <!-- Подсветка пункта перетекает от одной строки к другой вслед за курсором (MoveMenuHighlight). -->
+                <Border x:Name="MenuHighlight" Margin="10,0,10,0" Height="38" VerticalAlignment="Top" CornerRadius="12" Background="#1FFFFFFF"
+                        Opacity="0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                    <Border.RenderTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="MenuHighlightStretch" />
+                            <TranslateTransform x:Name="MenuHighlightMove" />
+                        </TransformGroup>
+                    </Border.RenderTransform>
+                </Border>
+                <StackPanel x:Name="MenuStack" Margin="10,12,10,0" VerticalAlignment="Top">
+                    <Button Style="{StaticResource IslandMenuRowStyle}" Tag="PlayPause" Click="MenuPlayPause_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon x:Name="MenuPlayIcon" Icon="IconPlay" Size="16" Foreground="White" Margin="12,0,12,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MenuPlayText" Foreground="White" FontSize="13.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IslandMenuRowStyle}" Tag="Next" Click="MenuNext_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconNext" Size="16" Foreground="White" Margin="12,0,12,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MenuNextText" Foreground="White" FontSize="13.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IslandMenuRowStyle}" Tag="Previous" Click="MenuPrevious_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconPrevious" Size="16" Foreground="White" Margin="12,0,12,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MenuPreviousText" Foreground="White" FontSize="13.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IslandMenuRowStyle}" Tag="Hide" Click="MenuHide_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconMinimizePlayer" Size="16" Foreground="White" Margin="12,0,12,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MenuHideText" Foreground="White" FontSize="13.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IslandMenuRowStyle}" Tag="Expand" Click="MenuExpand_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconWindow" Size="16" Foreground="White" Margin="12,0,12,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MenuExpandText" Foreground="White" FontSize="13.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IslandMenuRowStyle}" Tag="NowPlaying" Click="MenuNowPlaying_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconExpand" Size="16" Foreground="White" Margin="12,0,12,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MenuNowPlayingText" Foreground="White" FontSize="13.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Grid Tag="Speed" Height="38" Background="Transparent">
+                        <local:SvgPathIcon Icon="IconSpeed" Size="16" Foreground="White" Margin="12,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <TextBlock x:Name="MenuSpeedText" Foreground="White" FontSize="13" Margin="40,0,0,0" Width="108" HorizontalAlignment="Left" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <local:IslandSlider x:Name="MenuSpeedSlider" Height="24" Margin="154,0,14,0" VerticalAlignment="Center" />
+                    </Grid>
+                    <Grid Tag="Pitch" Height="38" Background="Transparent">
+                        <local:SvgPathIcon Icon="IconMusicNote" Size="16" Foreground="White" Margin="12,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" />
+                        <TextBlock x:Name="MenuPitchText" Foreground="White" FontSize="13" Margin="40,0,0,0" Width="108" HorizontalAlignment="Left" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        <local:IslandSlider x:Name="MenuPitchSlider" Height="24" Margin="154,0,14,0" VerticalAlignment="Center" />
+                    </Grid>
+                    <Button Style="{StaticResource IslandMenuRowStyle}" Tag="Overlay" Click="MenuOverlay_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconWrench" Size="16" Foreground="White" Margin="12,0,12,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MenuOverlayText" Foreground="White" FontSize="13.5" VerticalAlignment="Center" />
+                            <local:SvgPathIcon x:Name="MenuOverlayCheck" Icon="IconCheckmark" Size="14" Foreground="White" Margin="8,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource IslandMenuRowStyle}" Tag="Settings" Click="MenuSettings_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconSettings" Size="16" Foreground="White" Margin="12,0,12,0" VerticalAlignment="Center" />
+                            <TextBlock x:Name="MenuSettingsText" Foreground="White" FontSize="13.5" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+
+            <Grid x:Name="OpenView" UseLayoutRounding="True" SnapsToDevicePixels="True" Width="400" Height="176" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
+                <!-- Фон раскрытого острова (свечение, звёзды, матрица): сам решает, что рисовать, по настройке «Фон острова». -->
+                <local:IslandBackdrop x:Name="IslandBackdropLayer" Visibility="Collapsed" />
+                <!-- Эквалайзер раскрытого острова: 8 колонок справа сверху, как в архиве; свёрнутый остров показывает свой. -->
+                <local:IslandEqualizer x:Name="OpenBars" Bars="8" Width="38" Height="26" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                       Margin="0,25,30,0" IsHitTestVisible="False" />
+                <StackPanel x:Name="OpenTitleStack" Margin="98,20,74,0" Height="64" VerticalAlignment="Top" IsHitTestVisible="False">
                     <TextBlock x:Name="OpenTitle" Foreground="White" FontSize="16" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" Margin="0,11,0,0" />
                     <TextBlock x:Name="OpenArtist" Foreground="#99FFFFFF" FontSize="13" Margin="0,2,0,0"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
 
-                <Grid Height="20" Margin="20,0,20,59" VerticalAlignment="Bottom">
+                <Grid x:Name="LyricsPanel" Margin="24,92,24,90" Visibility="Collapsed" Opacity="0">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="Auto" />
+                    </Grid.RowDefinitions>
+                    <!-- Строки синхронного текста по две строки высотой: длинная строка переносится, а не обрезается. -->
+                    <Grid ClipToBounds="True">
+                        <StackPanel x:Name="LyricsLines" VerticalAlignment="Center">
+                            <Grid Height="40"><TextBlock x:Name="LyricLine0" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
+                            <Grid Height="40"><TextBlock x:Name="LyricLine1" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
+                            <Grid Height="40"><TextBlock x:Name="LyricLine2" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
+                            <Grid Height="40"><TextBlock x:Name="LyricLine3" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
+                            <Grid Height="40"><TextBlock x:Name="LyricLine4" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
+                        </StackPanel>
+                        <!-- Простой текст прокручивается колесом мыши (громкость над ним не меняется, пока есть что листать). -->
+                        <ScrollViewer x:Name="LyricsScroll" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled"
+                                      Focusable="False" Visibility="Collapsed" PreviewMouseWheel="LyricsScroll_PreviewMouseWheel">
+                            <TextBlock x:Name="LyricsPlain" Foreground="#CCFFFFFF" FontSize="13.5" TextAlignment="Center" TextWrapping="Wrap"
+                                       Padding="14,6" LineHeight="20" LineStackingStrategy="BlockLineHeight" />
+                        </ScrollViewer>
+                        <local:IslandShimmer x:Name="LyricsShimmer" Width="260" Height="110" Visibility="Collapsed" />
+                        <TextBlock x:Name="LyricsStatus" Foreground="#99FFFFFF" FontSize="13.5" TextAlignment="Center" VerticalAlignment="Center" />
+                    </Grid>
+                    <Button x:Name="LyricsVariantButton" Grid.Row="1" Style="{StaticResource IslandIconButtonStyle}" Width="Auto" MinWidth="28" Height="26"
+                            HorizontalAlignment="Center" ToolTip="Другой вариант текста" Click="LyricsVariantButton_Click">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconRefresh" Size="13" Foreground="#99FFFFFF" VerticalAlignment="Center" />
+                            <TextBlock x:Name="LyricsVariantText" Foreground="#99FFFFFF" FontSize="10.5" Margin="4,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <Grid x:Name="OpenSeekRow" Height="20" Margin="20,0,20,59" VerticalAlignment="Bottom">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="40" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="40" />
                     </Grid.ColumnDefinitions>
-                    <TextBlock x:Name="ElapsedText" Foreground="#99FFFFFF" FontSize="11" Typography.NumeralAlignment="Tabular" VerticalAlignment="Center" Text="0:00" />
+                    <TextBlock x:Name="ElapsedText" Foreground="#B3FFFFFF" FontSize="12" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="Grayscale" VerticalAlignment="Center" Text="0:00" />
                     <!-- Прозрачный фон: мышь ловит вся высота 20 px, а не только тонкая полоса. -->
                     <Grid x:Name="SeekHost" Grid.Column="1" Background="Transparent" Cursor="Hand"
                           MouseLeftButtonDown="SeekHost_MouseLeftButtonDown" MouseMove="SeekHost_MouseMove"
-                          MouseLeftButtonUp="SeekHost_MouseLeftButtonUp" SizeChanged="SeekHost_SizeChanged">
+                          MouseLeftButtonUp="SeekHost_MouseLeftButtonUp" MouseLeave="SeekHost_MouseLeave" SizeChanged="SeekHost_SizeChanged">
+                        <local:IslandSeekBar x:Name="SeekSegments" Visibility="Collapsed" />
                         <Border x:Name="SeekTrack" Height="5" CornerRadius="2.5" Background="#33FFFFFF"
                                 VerticalAlignment="Center" IsHitTestVisible="False" />
                         <Border x:Name="SeekFill" Height="5" CornerRadius="2.5" Background="White" Width="0"
                                 HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False" />
                     </Grid>
-                    <TextBlock x:Name="RemainingText" Grid.Column="2" Foreground="#99FFFFFF" FontSize="11" Typography.NumeralAlignment="Tabular"
+                    <TextBlock x:Name="RemainingText" Grid.Column="2" Foreground="#B3FFFFFF" FontSize="12" FontWeight="SemiBold" Typography.NumeralAlignment="Tabular" TextOptions.TextFormattingMode="Ideal" TextOptions.TextRenderingMode="Grayscale"
                                HorizontalAlignment="Right" VerticalAlignment="Center" Text="–0:00" />
                 </Grid>
 
-                <StackPanel x:Name="OpenVolume" Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Bottom"
-                            Margin="22,0,0,24" Opacity="0" IsHitTestVisible="False">
+                <StackPanel x:Name="OpenVolume" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
+                            Margin="0,55,30,0" Opacity="0.6" IsHitTestVisible="False">
                     <local:SvgPathIcon x:Name="OpenVolumeIcon" Icon="IconSpeaker2" Size="13" Foreground="#99FFFFFF" VerticalAlignment="Center" />
                     <local:RollingDigits x:Name="OpenVolumeText" FontSize="11" Foreground="#99FFFFFF" Margin="5,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
 
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,8">
+                <!-- Боковые кнопки: функцию каждой (избранное, повтор, текст песни) выбирают в настройках. У повтора
+                     перемешивание включается ПКМ или вытягиванием кнопки вверх/вниз. -->
+                <Button x:Name="LeftSideButton" Style="{StaticResource IslandIconButtonStyle}" Width="42" Height="42"
+                        HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="34,0,0,13" Click="SideButton_Click"
+                        MouseRightButtonUp="SideButton_MouseRightButtonUp"
+                        PreviewMouseLeftButtonDown="SideButton_PreviewMouseLeftButtonDown" PreviewMouseMove="SideButton_PreviewMouseMove">
+                    <Grid>
+                        <local:SvgPathIcon x:Name="LeftSideIcon" Icon="IconHeart" Size="18" Foreground="#CCFFFFFF" />
+                        <Ellipse x:Name="LeftSideDot" Width="4" Height="4" Fill="White" HorizontalAlignment="Center"
+                                 VerticalAlignment="Bottom" Margin="0,0,0,-7" Opacity="0" />
+                    </Grid>
+                </Button>
+                <Button x:Name="RightSideButton" Style="{StaticResource IslandIconButtonStyle}" Width="42" Height="42"
+                        HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,34,13" Click="SideButton_Click"
+                        MouseRightButtonUp="SideButton_MouseRightButtonUp"
+                        PreviewMouseLeftButtonDown="SideButton_PreviewMouseLeftButtonDown" PreviewMouseMove="SideButton_PreviewMouseMove">
+                    <Grid>
+                        <local:SvgPathIcon x:Name="RightSideIcon" Icon="IconLyrics" Size="18" Foreground="#CCFFFFFF" />
+                        <Ellipse x:Name="RightSideDot" Width="4" Height="4" Fill="White" HorizontalAlignment="Center"
+                                 VerticalAlignment="Bottom" Margin="0,0,0,-7" Opacity="0" />
+                    </Grid>
+                </Button>
+
+                <StackPanel x:Name="OpenTransport" Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,8">
                     <Button Style="{StaticResource IslandIconButtonStyle}" Click="PrevButton_Click">
                         <Grid>
                             <Grid.RenderTransform>

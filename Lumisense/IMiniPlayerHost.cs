@@ -22,6 +22,12 @@ internal interface IMiniPlayerHost
     bool CurrentIsShuffleEnabled { get; }
     string CurrentRepeatModeName { get; }
     bool EffectiveGameOverlayCompatibilityEnabled { get; }
+    // +1, если трек сменили вперёд, -1 — назад (кнопки, остров, горячие клавиши): по нему обложка выезжает с нужной стороны.
+    int LastTrackChangeDirection { get; }
+    // Живое положение и длительность: снимок состояния на паузе не обновляется, и остров показывал бы старое время.
+    double CurrentPlaybackSeconds { get; }
+    double CurrentTrackDurationSeconds { get; }
+    AudioLevelSampleProvider? AudioLevelMeter { get; }
     Color GetResolvedAccentColor();
     Color GetProgressBarColor(ProgressSurface surface);
 

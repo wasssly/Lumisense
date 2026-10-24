@@ -304,10 +304,22 @@ internal static class SettingsIntegrityService
         settings.SettingsNavigationLabelMode = Allowed(settings.SettingsNavigationLabelMode, defaults.SettingsNavigationLabelMode,
             "Below", "Selected");
         settings.IslandScalePercent = Math.Clamp(settings.IslandScalePercent, 80, 120);
+        settings.IslandWidthPercent = Math.Clamp(settings.IslandWidthPercent, 80, 130);
+        settings.DisabledIslandMenuActions = [.. (settings.DisabledIslandMenuActions ?? []).Where(action => action is { Length: > 0 and <= 64 }).Distinct().Take(20)];
         settings.IslandTopGap = Math.Clamp(settings.IslandTopGap, 0, 40);
         settings.IslandHideSeconds = Math.Clamp(settings.IslandHideSeconds, 3, 60);
+        settings.IslandCollapseSeconds = Math.Clamp(settings.IslandCollapseSeconds, 1, 15);
         settings.MiniPlayerStyle = Allowed(settings.MiniPlayerStyle, defaults.MiniPlayerStyle,
             "Classic", "Island");
+        settings.IslandLeftButton = Allowed(settings.IslandLeftButton, defaults.IslandLeftButton,
+            "Favorite", "Repeat", "Lyrics");
+        settings.IslandRightButton = Allowed(settings.IslandRightButton, defaults.IslandRightButton,
+            "Favorite", "Repeat", "Lyrics");
+        settings.IslandEqualizerStyle = Allowed(settings.IslandEqualizerStyle, defaults.IslandEqualizerStyle, "Bars", "Dots");
+        settings.IslandBackdrop = Allowed(settings.IslandBackdrop, defaults.IslandBackdrop, "None", "Glow", "Matrix", "Wave");
+        settings.IslandSeekStyle = Allowed(settings.IslandSeekStyle, defaults.IslandSeekStyle, "Plain", "Segments");
+        if (settings.IslandLeftButton == settings.IslandRightButton)
+            settings.IslandRightButton = settings.IslandLeftButton == defaults.IslandRightButton ? defaults.IslandLeftButton : defaults.IslandRightButton;
         settings.MiniPlayerSizePreset = Allowed(settings.MiniPlayerSizePreset, defaults.MiniPlayerSizePreset,
             "Compact", "Current", "Classic");
         settings.FavoriteHeartAnimation = Allowed(settings.FavoriteHeartAnimation, defaults.FavoriteHeartAnimation,

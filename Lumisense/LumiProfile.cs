@@ -120,8 +120,8 @@ public static class LumiProfileIO
             (settings.SettingsNavigationStyle?.Length ?? 0) > 32 ||
             (settings.SettingsNavigationLabelMode?.Length ?? 0) > 32)
             return false;
-        if (settings.IslandScalePercent is < 80 or > 120 || settings.IslandTopGap is < 0 or > 40
-            || settings.IslandHideSeconds is < 3 or > 60)
+        if (settings.IslandScalePercent is < 80 or > 120 || settings.IslandWidthPercent is < 80 or > 130 || settings.IslandTopGap is < 0 or > 40
+            || settings.IslandHideSeconds is < 3 or > 60 || settings.IslandCollapseSeconds is < 1 or > 15)
             return false;
         if (!double.IsFinite(settings.PlaybackSpeed) || settings.PlaybackSpeed < 0.5 || settings.PlaybackSpeed > 2.0)
             return false;
@@ -132,11 +132,14 @@ public static class LumiProfileIO
             (settings.SavedPlaylistFolders?.Count ?? int.MaxValue) > 100 ||
             (settings.DisabledTrackContextMenuActions?.Count ?? int.MaxValue) > 20 ||
             (settings.DisabledMiniPlayerContextMenuActions?.Count ?? int.MaxValue) > 20 ||
+            (settings.DisabledIslandMenuActions?.Count ?? int.MaxValue) > 20 ||
             HasOverlongHotkey(settings))
             return false;
 
         return settings.EqualizerPresets is not null && settings.DisabledTrackContextMenuActions is not null &&
                settings.DisabledTrackContextMenuActions.All(action => (action?.Length ?? int.MaxValue) <= 64) &&
+               settings.DisabledIslandMenuActions is not null &&
+               settings.DisabledIslandMenuActions.All(action => (action?.Length ?? int.MaxValue) <= 64) &&
                settings.DisabledMiniPlayerContextMenuActions is not null &&
                settings.DisabledMiniPlayerContextMenuActions.All(action => (action?.Length ?? int.MaxValue) <= 64) &&
                settings.EqualizerPresets.All(p =>
@@ -308,8 +311,12 @@ public static class LumiProfileIO
             target.MiniPlayerStyle = source.MiniPlayerStyle;
         target.IslandMonitor = source.IslandMonitor;
         target.IslandScalePercent = source.IslandScalePercent;
+        target.IslandWidthPercent = source.IslandWidthPercent;
+        target.IslandHideSystemToast = source.IslandHideSystemToast;
+        target.DisabledIslandMenuActions = [.. source.DisabledIslandMenuActions.Where(action => action is { Length: > 0 and <= 64 }).Distinct().Take(20)];
         target.IslandTopGap = source.IslandTopGap;
         target.IslandHideSeconds = source.IslandHideSeconds;
+        target.IslandCollapseSeconds = source.IslandCollapseSeconds;
         target.IslandTrackToast = source.IslandTrackToast;
         target.IslandAutoCollapse = source.IslandAutoCollapse;
         target.IslandShowEqualizer = source.IslandShowEqualizer;
@@ -319,6 +326,18 @@ public static class LumiProfileIO
         target.IslandCoverPreview = source.IslandCoverPreview;
         target.IslandExternalVolume = source.IslandExternalVolume;
         target.IslandQuietInGames = source.IslandQuietInGames;
+        target.IslandSwipeInverted = source.IslandSwipeInverted;
+        if (source.IslandLeftButton is "Favorite" or "Repeat" or "Lyrics")
+            target.IslandLeftButton = source.IslandLeftButton;
+        if (source.IslandRightButton is "Favorite" or "Repeat" or "Lyrics")
+            target.IslandRightButton = source.IslandRightButton;
+        if (target.IslandLeftButton == target.IslandRightButton)
+            target.IslandRightButton = target.IslandLeftButton == "Lyrics" ? "Favorite" : "Lyrics";
+        target.IslandRoundCover = source.IslandRoundCover;
+        if (source.IslandEqualizerStyle is "Bars" or "Dots") target.IslandEqualizerStyle = source.IslandEqualizerStyle;
+        if (source.IslandBackdrop is "None" or "Glow" or "Matrix" or "Wave") target.IslandBackdrop = source.IslandBackdrop;
+        if (source.IslandSeekStyle is "Plain" or "Segments") target.IslandSeekStyle = source.IslandSeekStyle;
+        target.IslandLyricsShimmer = source.IslandLyricsShimmer;
         if (MiniPlayerSizePreset.IsKnown(source.MiniPlayerSizePreset))
             target.MiniPlayerSizePreset = source.MiniPlayerSizePreset;
         if (source.TrackChangeToastTextAlignment is "Left" or "Center" or "Right")

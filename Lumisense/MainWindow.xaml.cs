@@ -338,6 +338,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     public bool IsPlayingNow => _isPlaying;
     public double CurrentVolume => VolumeSlider.Value;
     public AudioLevelSampleProvider? AudioLevelMeter => _audioLevelMeter;
+    private int _lastTrackChangeDirection = 1;
+    public int LastTrackChangeDirection => _lastTrackChangeDirection;
 
     // Для мини-плеера: узнать режим повтора сразу при открытии, до первого RepeatModeChanged (как трек и состояние
     // воспроизведения в конструкторе MiniPlayerWindow).
@@ -1151,13 +1153,15 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             _settingsWindow = new SettingsWindow(_settings, this, section);
             _settingsWindow.Closed += (_, _) => _settingsWindow = null;
             _settingsWindow.Show();
+            // Остров не берёт фокус, и окно, открытое из его меню, иначе остаётся под чужими окнами.
+            ForceForeground(_settingsWindow);
         }
         else
         {
             // Окно уже открыто, возможно на другой странице (например, "Мини-плеер" из меню мини-плеера): переключаем страницу и
             // на открытом окне, а не только при создании.
             if (section != null) _settingsWindow.NavigateToPage(section);
-            _settingsWindow.Activate();
+            ForceForeground(_settingsWindow);
         }
     }
 
@@ -1367,6 +1371,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private void ShowTrackChangeToast(TrackChangeOrigin origin, bool autoPlay)
     {
         if (!_settings.ShowTrackChangeToast || !ShouldShowTrackChangeToast(origin, autoPlay)) return;
+        // В мини-плеере «Остров» карточку о смене трека показывает сам остров: системное уведомление по желанию скрывается.
+        if (_settings.IslandHideSystemToast && _isMiniMode && _settings.MiniPlayerStyle == "Island") return;
 
         _trackChangeToastController.Show(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
             _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, ResolveToastTint());

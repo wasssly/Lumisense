@@ -183,10 +183,32 @@ public class AppSettings
     public bool IslandAccentRim { get; set; } = true;
     public bool IslandBlurTransitions { get; set; }
     public int IslandHideSeconds { get; set; } = 10;
+    // Через сколько секунд после ухода курсора раскрытый остров сворачивается (1–15).
+    public int IslandCollapseSeconds { get; set; } = 2;
     public bool IslandMotionBlur { get; set; }
     public bool IslandCoverPreview { get; set; } = true;
     public bool IslandExternalVolume { get; set; } = true;
     public bool IslandQuietInGames { get; set; } = true;
+    // Перетягивание острова: по умолчанию влево — следующий трек; включённый флажок меняет направления местами.
+    public bool IslandSwipeInverted { get; set; }
+    // Функция боковых кнопок раскрытого острова: "Favorite" | "Repeat" | "Lyrics".
+    public string IslandLeftButton { get; set; } = "Favorite";
+    public string IslandRightButton { get; set; } = "Lyrics";
+    public bool IslandRoundCover { get; set; }
+    // Ширина свёрнутого и раскрытого острова в процентах от обычной (80–130).
+    public int IslandWidthPercent { get; set; } = 100;
+    // Не показывать уведомление о смене трека в углу экрана, пока мини-плеер в виде «Остров»: остров показывает его сам.
+    public bool IslandHideSystemToast { get; set; }
+    // Скрытые пункты контекстного меню острова: PlayPause, Next, Previous, Hide, Expand, NowPlaying, Speed, Pitch, Overlay, Settings.
+    // По умолчанию выключены скорость, тон и совместимость с оверлеем.
+    public List<string> DisabledIslandMenuActions { get; set; } = new() { "Speed", "Pitch", "Overlay" };
+    // Вид эквалайзера свёрнутого острова: "Bars" (полоски) | "Dots" (точки).
+    public string IslandEqualizerStyle { get; set; } = "Bars";
+    // Фон раскрытого острова: "None" | "Glow" | "Matrix" | "Wave".
+    public string IslandBackdrop { get; set; } = "Glow";
+    // Полоса перемотки раскрытого острова: "Plain" (сплошная) | "Segments" (сегменты).
+    public string IslandSeekStyle { get; set; } = "Plain";
+    public bool IslandLyricsShimmer { get; set; } = true;
 
     // Прятать обложку, пока открыта панель «Текст песни», чтобы тексту хватало места.
     public bool HideCoverInLyricsPanel { get; set; } = true;
