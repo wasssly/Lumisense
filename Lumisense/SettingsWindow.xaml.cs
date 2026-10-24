@@ -24,6 +24,7 @@ public partial class SettingsWindow : FluentWindow
     private readonly AppSettings _settings;
     private readonly ISettingsHost _owner;
     private bool _isInitializing = true;
+    private bool _isSyncingIslandButtons;
     private bool _interfaceScaleRestartNoticeShown;
     private bool _isRefreshingOutputDevices;
     private bool _isRefreshingWasapiMode;
@@ -219,10 +220,14 @@ public partial class SettingsWindow : FluentWindow
         InitializeIslandMonitorCombo();
         IslandScaleSlider.Value = _settings.IslandScalePercent;
         IslandScaleValueText.Text = $"{_settings.IslandScalePercent}%";
+        IslandWidthSlider.Value = _settings.IslandWidthPercent;
+        IslandWidthValueText.Text = $"{_settings.IslandWidthPercent}%";
         IslandTopGapSlider.Value = _settings.IslandTopGap;
         IslandTopGapValueText.Text = $"{_settings.IslandTopGap} px";
         IslandHideSlider.Value = _settings.IslandHideSeconds;
         IslandHideValueText.Text = $"{_settings.IslandHideSeconds} с";
+        IslandCollapseSlider.Value = _settings.IslandCollapseSeconds;
+        IslandCollapseValueText.Text = $"{_settings.IslandCollapseSeconds} с";
         IslandTrackToastCheckBox.IsChecked = _settings.IslandTrackToast;
         IslandAutoCollapseCheckBox.IsChecked = _settings.IslandAutoCollapse;
         IslandEqualizerCheckBox.IsChecked = _settings.IslandShowEqualizer;
@@ -232,6 +237,17 @@ public partial class SettingsWindow : FluentWindow
         IslandCoverPreviewCheckBox.IsChecked = _settings.IslandCoverPreview;
         IslandExternalVolumeCheckBox.IsChecked = _settings.IslandExternalVolume;
         IslandQuietInGamesCheckBox.IsChecked = _settings.IslandQuietInGames;
+        IslandSwipeInvertedCheckBox.IsChecked = _settings.IslandSwipeInverted;
+        IslandRoundCoverCheckBox.IsChecked = _settings.IslandRoundCover;
+        SelectComboByTag(IslandLeftButtonCombo, _settings.IslandLeftButton);
+        SelectComboByTag(IslandRightButtonCombo, _settings.IslandRightButton);
+        SelectComboByTag(IslandEqualizerStyleCombo, _settings.IslandEqualizerStyle);
+        SelectComboByTag(IslandBackdropCombo, _settings.IslandBackdrop);
+        SelectComboByTag(IslandSeekStyleCombo, _settings.IslandSeekStyle);
+        IslandLyricsShimmerCheckBox.IsChecked = _settings.IslandLyricsShimmer;
+        IslandHideSystemToastCheckBox.IsChecked = _settings.IslandHideSystemToast;
+        foreach (var box in IslandMenuActionBoxes())
+            box.IsChecked = !_settings.DisabledIslandMenuActions.Contains((string)box.Tag);
         MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
 
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
@@ -1285,7 +1301,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Приватность Discord: обложка трека", "Интеграции", "Integrations", DiscordRichPresenceShowCoverArtCheckBox, "discord обложка cover art musicbrainz itunes deezer" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("EQ Bypass", "Эквалайзер", "Equalizer", EqualizerBypassCheckBox, "bypass обход эквалайзер eq временно сравнение фильтры");
-        Add("Настройки острова", "Мини-плеер", "MiniPlayer", IslandCustomCard, "остров размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться island scale blur equalizer lag тормоза");
+        Add("Настройки острова", "Мини-плеер", "MiniPlayer", IslandCustomCard, "остров размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
         Add("Вид мини-плеера: карточка или остров", "Мини-плеер", "MiniPlayer", MiniStyleCard, "остров капсула dynamic island монитор экран вид мини плеер island monitor style");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
@@ -2978,6 +2994,15 @@ public partial class SettingsWindow : FluentWindow
         SaveIslandSettings();
     }
 
+    private void IslandWidthSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing || IslandWidthValueText is null) return;
+
+        _settings.IslandWidthPercent = (int)Math.Round(e.NewValue);
+        IslandWidthValueText.Text = $"{_settings.IslandWidthPercent}%";
+        SaveIslandSettings();
+    }
+
     private void IslandTopGapSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         if (_isInitializing || IslandTopGapValueText is null) return;
@@ -2996,6 +3021,15 @@ public partial class SettingsWindow : FluentWindow
         SaveIslandSettings();
     }
 
+    private void IslandCollapseSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        if (_isInitializing || IslandCollapseValueText is null) return;
+
+        _settings.IslandCollapseSeconds = (int)Math.Round(e.NewValue);
+        IslandCollapseValueText.Text = $"{_settings.IslandCollapseSeconds} с";
+        SaveIslandSettings();
+    }
+
     private void IslandOption_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -3009,6 +3043,67 @@ public partial class SettingsWindow : FluentWindow
         _settings.IslandCoverPreview = IslandCoverPreviewCheckBox.IsChecked == true;
         _settings.IslandExternalVolume = IslandExternalVolumeCheckBox.IsChecked == true;
         _settings.IslandQuietInGames = IslandQuietInGamesCheckBox.IsChecked == true;
+        _settings.IslandSwipeInverted = IslandSwipeInvertedCheckBox.IsChecked == true;
+        _settings.IslandRoundCover = IslandRoundCoverCheckBox.IsChecked == true;
+        _settings.IslandLyricsShimmer = IslandLyricsShimmerCheckBox.IsChecked == true;
+        _settings.IslandHideSystemToast = IslandHideSystemToastCheckBox.IsChecked == true;
+        SaveIslandSettings();
+    }
+
+    private System.Collections.Generic.IEnumerable<System.Windows.Controls.CheckBox> IslandMenuActionBoxes() =>
+        [IslandMenuPlayPauseCheckBox, IslandMenuNextCheckBox, IslandMenuPreviousCheckBox,
+         IslandMenuHideCheckBox, IslandMenuExpandCheckBox, IslandMenuNowPlayingCheckBox, IslandMenuSpeedCheckBox,
+         IslandMenuPitchCheckBox, IslandMenuOverlayCheckBox, IslandMenuSettingsCheckBox];
+
+    private void IslandMenuAction_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.DisabledIslandMenuActions = [.. IslandMenuActionBoxes().Where(box => box.IsChecked != true).Select(box => (string)box.Tag)];
+        SaveIslandSettings();
+    }
+
+    private void IslandLookCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.IslandEqualizerStyle = SelectedTag(IslandEqualizerStyleCombo, "Bars");
+        _settings.IslandBackdrop = SelectedTag(IslandBackdropCombo, "Glow");
+        _settings.IslandSeekStyle = SelectedTag(IslandSeekStyleCombo, "Plain");
+        SaveIslandSettings();
+    }
+
+    private static void SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag) =>
+        combo.SelectedItem = combo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+            .FirstOrDefault(item => item.Tag as string == tag) ?? combo.Items[0];
+
+    private static string SelectedTag(System.Windows.Controls.ComboBox combo, string fallback) =>
+        combo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag } ? tag : fallback;
+
+    private void IslandSideButtonCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing || _isSyncingIslandButtons) return;
+
+        string left = SelectedTag(IslandLeftButtonCombo, "Favorite"), right = SelectedTag(IslandRightButtonCombo, "Lyrics");
+        if (left == right)
+        {
+            // Выбранную функцию забирает у соседней кнопки, отдавая ей прежнюю функцию этой: кнопки меняются местами.
+            _isSyncingIslandButtons = true;
+            if (ReferenceEquals(sender, IslandLeftButtonCombo))
+            {
+                right = _settings.IslandLeftButton;
+                SelectComboByTag(IslandRightButtonCombo, right);
+            }
+            else
+            {
+                left = _settings.IslandRightButton;
+                SelectComboByTag(IslandLeftButtonCombo, left);
+            }
+            _isSyncingIslandButtons = false;
+        }
+
+        _settings.IslandLeftButton = left;
+        _settings.IslandRightButton = right;
         SaveIslandSettings();
     }
 

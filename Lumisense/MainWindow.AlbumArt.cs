@@ -276,6 +276,8 @@ public partial class MainWindow
 
     private void ApplyPreparedAlbumArt(PreparedTrack loaded, AlbumArtTransitionDirection direction)
     {
+        if (direction != AlbumArtTransitionDirection.None)
+            _lastTrackChangeDirection = direction == AlbumArtTransitionDirection.Previous ? -1 : 1;
         if (loaded.AlbumArt is not null)
         {
             ApplyAlbumArtImage(loaded.AlbumArt, direction);
