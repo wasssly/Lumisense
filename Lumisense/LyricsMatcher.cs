@@ -130,7 +130,12 @@ public static class LyricsMatcher
                 score += difference <= StrongDurationToleranceSeconds ? 2 : 0.5;
             }
 
-            if (result.HasSyncedLyrics) score += 2;
+            if (result.HasSyncedLyrics)
+            {
+                score += 2;
+                // Строки текста заканчиваются заметно позже трека: это версия другой длины (ремикс, замедленная).
+                if (durationSeconds > 0 && LastTimestampSeconds(result.SyncedLyrics) > durationSeconds + 3) score -= 1.5;
+            }
             if (NormalizeKey(result.TrackName) == rawTitleKey) score += 1;
             if (result.Source == "LRCLIB") score += 0.25;
 
@@ -139,6 +144,24 @@ public static class LyricsMatcher
 
         // OrderByDescending стабилен: равные по оценке остаются в исходном порядке.
         return scored.OrderByDescending(item => item.Score).Select(item => item.Result).ToList();
+    }
+
+    private static readonly System.Text.RegularExpressions.Regex TimestampPattern =
+        new(@"\[(\d{1,3}):(\d{2})(?:[.:]\d{1,3})?\]", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    // Время последней строки синхронного текста в секундах (0, если меток нет).
+    private static double LastTimestampSeconds(string? synced)
+    {
+        if (string.IsNullOrEmpty(synced)) return 0;
+
+        double last = 0;
+        foreach (System.Text.RegularExpressions.Match match in TimestampPattern.Matches(synced))
+        {
+            double seconds = int.Parse(match.Groups[1].Value) * 60 + int.Parse(match.Groups[2].Value);
+            if (seconds > last) last = seconds;
+        }
+
+        return last;
     }
 
     private static HashSet<string> ArtistKeys(string? artist)
