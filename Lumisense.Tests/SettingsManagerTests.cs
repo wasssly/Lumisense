@@ -68,6 +68,38 @@ public sealed class SettingsManagerTests : IDisposable
         Assert.Single(Directory.GetFiles(Path.Combine(_directory, "settings-backups"), "settings_*.json"));
     }
 
+    private string[] RecoveryGenerations() =>
+        Directory.GetFiles(Path.Combine(_directory, "settings-backups"), "settings_*.json");
+
+    [Fact]
+    public void Save_DoesNotWriteAnotherRecoveryGenerationWithinTheBackupInterval()
+    {
+        SettingsManager.Save(WithUserData("a.mp3"));
+        SettingsManager.Save(WithUserData("b.mp3"));
+
+        Assert.Single(RecoveryGenerations());
+        Assert.Equal(new[] { "b.mp3" }, SettingsManager.Load().FavoriteTracks);
+    }
+
+    [Fact]
+    public void Save_WithForceBackupStoresTheLatestState()
+    {
+        SettingsManager.Save(WithUserData("a.mp3"));
+        SettingsManager.Save(WithUserData("b.mp3"), forceBackup: true);
+
+        Assert.Equal(2, RecoveryGenerations().Length);
+        Assert.Contains("b.mp3", File.ReadAllText(Path.Combine(_directory, "settings.user-data-backup.json")));
+    }
+
+    [Fact]
+    public void Save_DoesNotBackUpAnUnchangedSnapshotAgainEvenWhenForced()
+    {
+        SettingsManager.Save(WithUserData("a.mp3"));
+        SettingsManager.Save(WithUserData("a.mp3"), forceBackup: true);
+
+        Assert.Single(RecoveryGenerations());
+    }
+
     [Fact]
     public void Save_WithoutUserDataDoesNotCreateRecoveryBackups()
     {
@@ -121,6 +153,54 @@ public sealed class SettingsManagerTests : IDisposable
 
         Assert.Equal(firstContent, File.ReadAllText(SettingsFile));
         Assert.Equal(firstWrite.AddMinutes(-5), File.GetLastWriteTimeUtc(SettingsFile));
+    }
+
+    [Fact]
+    public async Task SaveIfChangedAsync_DetectsEveryKindOfChangeAfterQuietChecks()
+    {
+        AppSettings settings = SettingsManager.Load();
+        settings.FavoriteTracks.Add("a.mp3");
+        await SettingsManager.SaveIfChangedAsync(settings);
+        await SettingsManager.SaveIfChangedAsync(settings);
+
+        // Крупные коллекции (отпечаток), счётчики (словарь) и обычные поля (лёгкий снимок) должны замечаться независимо.
+        settings.FavoriteTracks[0] = "b.mp3";
+        await SettingsManager.SaveIfChangedAsync(settings);
+        Assert.Contains("b.mp3", File.ReadAllText(SettingsFile));
+
+        settings.PlayCounts["b.mp3"] = 3;
+        await SettingsManager.SaveIfChangedAsync(settings);
+        Assert.Equal(3, SettingsManager.Load().PlayCounts["b.mp3"]);
+
+        settings.PlayCounts["b.mp3"] = 4;
+        await SettingsManager.SaveIfChangedAsync(settings);
+        Assert.Equal(4, SettingsManager.Load().PlayCounts["b.mp3"]);
+
+        settings.AccentColorHex = "#112233";
+        await SettingsManager.SaveIfChangedAsync(settings);
+        Assert.Equal("#112233", SettingsManager.Load().AccentColorHex);
+
+        settings.SavedPlaylistFolders.Add(new SavedPlaylistFolder { DisplayName = "F", Tracks = { "t1.mp3" } });
+        await SettingsManager.SaveIfChangedAsync(settings);
+        settings.SavedPlaylistFolders[0].Tracks.Add("t2.mp3");
+        await SettingsManager.SaveIfChangedAsync(settings);
+        Assert.Equal(new[] { "t1.mp3", "t2.mp3" }, SettingsManager.Load().SavedPlaylistFolders[0].Tracks);
+    }
+
+    [Fact]
+    public async Task SaveIfChangedAsync_RewritesAfterAnExplicitSaveWhenStateGoesBack()
+    {
+        AppSettings settings = SettingsManager.Load();
+        settings.FavoriteTracks.Add("keep.mp3");
+        await SettingsManager.SaveIfChangedAsync(settings);
+
+        // Явное сохранение другого состояния, затем возврат в памяти к прежнему без Save: файл должен вернуться к текущему состоянию.
+        settings.FavoriteTracks.Add("temporary.mp3");
+        SettingsManager.Save(settings);
+        settings.FavoriteTracks.RemoveAt(1);
+        await SettingsManager.SaveIfChangedAsync(settings);
+
+        Assert.Equal(new[] { "keep.mp3" }, SettingsManager.Load().FavoriteTracks);
     }
 
     [Fact]

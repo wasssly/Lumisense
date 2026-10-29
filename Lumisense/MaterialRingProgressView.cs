@@ -83,6 +83,23 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
     private double _perimeter;
     private double _wavelength = TargetWavelength;
 
+    // Точки и касательные контура через каждые SampleStep от начала: волнистая часть всегда стартует с нуля, и на каждом кадре
+    // менялась только фаза, поэтому дорогие вызовы GetPointAtFractionLength сводятся к одному (для конца дуги).
+    private Point[]? _samplePoints;
+    private Point[]? _sampleTangents;
+
+    // Неволнистые участки не зависят от фазы, их геометрию достаточно строить, когда меняются границы (то есть раз в такт прогресса).
+    private StaticSegment _trackSegment;
+    private StaticSegment _sliderPlayedSegment;
+    private StaticSegment _sliderTrackSegment;
+
+    private struct StaticSegment
+    {
+        public double From;
+        public double To;
+        public StreamGeometry? Geometry;
+    }
+
     protected override double Wavelength => _wavelength;
 
     protected override double WaveSpeed => 18.0;
@@ -91,6 +108,11 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
     {
         var view = (MaterialRingProgressView)d;
         view._outline = null;
+        view._samplePoints = null;
+        view._sampleTangents = null;
+        view._trackSegment = default;
+        view._sliderPlayedSegment = default;
+        view._sliderTrackSegment = default;
         view.InvalidateVisual();
     }
 
@@ -135,6 +157,12 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
         geometry.Freeze();
         _outline = geometry;
         _wavelength = _perimeter / Math.Max(1.0, Math.Round(_perimeter / TargetWavelength));
+
+        int count = (int)Math.Floor(_perimeter / SampleStep) + 1;
+        _samplePoints = new Point[count];
+        _sampleTangents = new Point[count];
+        for (int i = 0; i < count; i++)
+            geometry.GetPointAtFractionLength(i * SampleStep / _perimeter, out _samplePoints[i], out _sampleTangents[i]);
     }
 
     protected override void OnRender(DrawingContext dc)
@@ -175,7 +203,7 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
             double trackStart = progress > 0.0001 ? activeLength + gap / 2 : 0.0;
             double trackEnd = progress > 0.0001 ? _perimeter - gap / 2 : _perimeter;
             if (trackEnd - trackStart > 0.5)
-                dc.DrawGeometry(null, trackPen, BuildPolyline(trackStart, trackEnd, 0.0, wavy: false));
+                dc.DrawGeometry(null, trackPen, GetStaticPolyline(ref _trackSegment, trackStart, trackEnd));
         }
     }
 
@@ -191,11 +219,11 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
 
         double activeEnd = handleAt - handleGap;
         if (activeEnd - lowest > 0.5)
-            dc.DrawGeometry(null, playedPen, BuildPolyline(lowest, activeEnd, 0.0, wavy: false));
+            dc.DrawGeometry(null, playedPen, GetStaticPolyline(ref _sliderPlayedSegment, lowest, activeEnd));
 
         double trackStart = handleAt + handleGap;
         if (highest - trackStart > 0.5)
-            dc.DrawGeometry(null, trackPen, BuildPolyline(trackStart, highest, 0.0, wavy: false));
+            dc.DrawGeometry(null, trackPen, GetStaticPolyline(ref _sliderTrackSegment, trackStart, highest));
 
         // Ручка: короткая линия поперёк контура; длина ограничена запасом холста вокруг обложки (4 px с каждой стороны).
         _outline!.GetPointAtFractionLength(handleAt / _perimeter, out Point p, out Point tangent);
@@ -211,6 +239,20 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
         dc.DrawEllipse(PlayedBrush, null, p, thickness / 2, thickness / 2);
     }
 
+    private StreamGeometry GetStaticPolyline(ref StaticSegment segment, double from, double to)
+    {
+        StreamGeometry? geometry = segment.Geometry;
+        if (geometry is null || segment.From != from || segment.To != to)
+        {
+            geometry = BuildPolyline(from, to, 0.0, wavy: false);
+            segment.From = from;
+            segment.To = to;
+            segment.Geometry = geometry;
+        }
+
+        return geometry;
+    }
+
     // Точки вдоль контура; у волны каждая точка смещается по нормали на amplitude * sin, привязанному к длине дуги.
     private StreamGeometry BuildPolyline(double from, double to, double amplitude, bool wavy)
     {
@@ -223,7 +265,19 @@ public sealed class MaterialRingProgressView : MaterialWaveElement
             {
                 bool last = s >= to;
                 double at = last ? to : s;
-                _outline!.GetPointAtFractionLength(at / _perimeter, out Point p, out Point tangent);
+                Point p;
+                Point tangent;
+                if (!last && from == 0.0)
+                {
+                    // Тот же шаг от нуля, что и в таблице: s всегда целое кратное SampleStep, значения совпадают с прямым вызовом.
+                    int index = (int)Math.Round(s / SampleStep);
+                    p = _samplePoints![index];
+                    tangent = _sampleTangents![index];
+                }
+                else
+                {
+                    _outline!.GetPointAtFractionLength(at / _perimeter, out p, out tangent);
+                }
                 if (wavy && amplitude > 0.01)
                 {
                     double offset = amplitude * Math.Sin(k * (at - Phase));

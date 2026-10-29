@@ -23,11 +23,15 @@ public static class GameOverlayDetectionService
         "explorer", "dwm", "SearchHost", "StartMenuExperienceHost", "ShellExperienceHost", "ApplicationFrameHost"
     };
 
+    // Перечисление процессов и опрос user32 не должны занимать UI-поток: тик таймера уходит в пул потоков.
+    public static Task<bool> IsGameOrOverlayLikelyActiveAsync() => Task.Run(IsGameOrOverlayLikelyActive);
+
     public static bool IsGameOrOverlayLikelyActive()
     {
         try
         {
-            return IsKnownOverlayProcessRunning() || IsForegroundWindowFullscreenGame();
+            // Сначала дешёвая проверка окна переднего плана; список процессов нужен, только если она ничего не нашла.
+            return IsForegroundWindowFullscreenGame() || IsKnownOverlayProcessRunning();
         }
         catch
         {
@@ -39,11 +43,33 @@ public static class GameOverlayDetectionService
 
     private static bool IsKnownOverlayProcessRunning()
     {
-        foreach (string name in KnownOverlayProcessNames)
+        // Один снимок процессов вместо восьми вызовов GetProcessesByName (каждый перечислял всю систему),
+        // и Dispose для каждого объекта Process, иначе дескрипторы живут до сборщика мусора.
+        Process[] processes = Process.GetProcesses();
+        try
         {
-            if (Process.GetProcessesByName(name).Length > 0) return true;
+            foreach (Process process in processes)
+            {
+                string name;
+                try
+                {
+                    name = process.ProcessName;
+                }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception)
+                {
+                    continue; // процесс завершился во время перечисления
+                }
+
+                if (Array.Exists(KnownOverlayProcessNames, known => string.Equals(known, name, StringComparison.OrdinalIgnoreCase)))
+                    return true;
+            }
+
+            return false;
         }
-        return false;
+        finally
+        {
+            foreach (Process process in processes) process.Dispose();
+        }
     }
 
     private static bool IsForegroundWindowFullscreenGame()

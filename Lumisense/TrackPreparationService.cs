@@ -96,6 +96,7 @@ internal sealed class TrackPreparationService
             artist = !string.IsNullOrWhiteSpace(tagFile.Artist)
                 ? tagFile.Artist
                 : tagFile.AlbumArtist;
+            TrackMetadataCache.Remember(filePath, tagFile.Title, tagFile.Artist, tagFile.AlbumArtist);
             tagsMilliseconds = tagsTimer.ElapsedMilliseconds;
             tagsMeasured = true;
             if (tagFile.EmbeddedPictures.Count > 0)

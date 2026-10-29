@@ -77,4 +77,30 @@ public sealed class AudioOutputDeviceServiceTests
         Assert.Equal("Weird\uE000Name", name);
         Assert.Null(occurrenceIndex);
     }
+
+    [Fact]
+    public void FindLegacyNameMatch_PrefersExactNameOverPrefixMatch()
+    {
+        var devices = new List<AudioOutputDeviceService.Option>
+        {
+            new(0, "Speakers (USB Audio)", "Speakers (USB Audio)", OccurrenceIndex: 0),
+            new(1, "Speakers", "Speakers", OccurrenceIndex: 0),
+        };
+
+        AudioOutputDeviceService.Option? match = AudioOutputDeviceService.FindLegacyNameMatch(devices, "Speakers", occurrenceIndex: null);
+
+        Assert.Equal("Speakers", match?.DeviceName);
+    }
+
+    [Fact]
+    public void FindLegacyNameMatch_FallsBackToPrefixMatchWhenNoExactName()
+    {
+        var devices = new List<AudioOutputDeviceService.Option>
+        {
+            new(0, "Realtek HD Audio Output", "Realtek HD Audio Output", OccurrenceIndex: 0),
+        };
+
+        Assert.NotNull(AudioOutputDeviceService.FindLegacyNameMatch(devices, "Realtek HD Audio", occurrenceIndex: null));
+        Assert.Null(AudioOutputDeviceService.FindLegacyNameMatch(devices, "Bluetooth Headset", occurrenceIndex: null));
+    }
 }

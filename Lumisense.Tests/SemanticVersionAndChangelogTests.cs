@@ -242,3 +242,26 @@ public sealed class ChangeTypeCatalogTests
         Assert.Contains(ChangeTypeCatalog.Security, ChangeTypeCatalog.All);
     }
 }
+
+public sealed class ChangelogMatchesProjectVersionTests
+{
+    // Версии в changelog.json не хранятся, а считаются по тексту записей: правка старой записи сдвинула бы все следующие.
+    // Тест ловит такой сдвиг: версия последней записи должна совпадать с <Version> проекта.
+    [Fact]
+    public void LastChangelogEntry_HasTheProjectVersion()
+    {
+        string project = System.IO.Path.GetFullPath(System.IO.Path.Combine(
+            System.IO.Path.GetDirectoryName(SourceFile())!, "..", "Lumisense", "Lumisense.csproj"));
+        if (!System.IO.File.Exists(project))
+            return; // тесты запущены без исходников приложения: сверять не с чем
+
+        var declared = System.Text.RegularExpressions.Regex.Match(System.IO.File.ReadAllText(project), "<Version>([^<]+)</Version>");
+        Assert.True(declared.Success, "В Lumisense.csproj не найден <Version>.");
+
+        var entries = ChangelogLoader.Load();
+        Assert.Contains(entries, entry => entry.IsCurrent);
+        Assert.Equal(declared.Groups[1].Value.Trim(), entries.Single(entry => entry.IsCurrent).Version);
+    }
+
+    private static string SourceFile([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;
+}

@@ -19,9 +19,23 @@ internal static class ToastColorCalculator
             Mix(baseColor.B, color.B, amount));
     }
 
-    // Воспринимаемая яркость (Rec. 601): светлому фону нужен тёмный текст, тёмному — светлый.
-    public static bool IsLight(Color color) =>
-        (0.299 * color.R + 0.587 * color.G + 0.114 * color.B) / 255.0 > 0.6;
+    // Тёмный текст нужен, когда он контрастнее белого (WCAG): порог по яркости оставлял белый текст на средних тонах с контрастом ~2,8:1.
+    public static bool IsLight(Color color)
+    {
+        double luminance = 0.2126 * Linear(color.R) + 0.7152 * Linear(color.G) + 0.0722 * Linear(color.B);
+        double whiteContrast = 1.05 / (luminance + 0.05);
+        double darkContrast = (luminance + 0.05) / (DarkTextLuminance + 0.05);
+        return darkContrast >= whiteContrast;
+    }
+
+    // Относительная яркость цвета текста #1A1A1A, который окно уведомления берёт на светлом фоне.
+    private const double DarkTextLuminance = 0.0103;
+
+    private static double Linear(byte channel)
+    {
+        double value = channel / 255.0;
+        return value <= 0.04045 ? value / 12.92 : Math.Pow((value + 0.055) / 1.055, 2.4);
+    }
 
     public static Color? TryParse(string? hex)
     {

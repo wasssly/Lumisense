@@ -18,6 +18,7 @@ public static class ReplayGainReader
         }
         catch
         {
+            // Файл не открылся или тег повреждён: ReplayGain просто не применяется, воспроизведение не страдает.
             return 1.0;
         }
     }

@@ -25,7 +25,8 @@ public sealed class ToastColorCalculatorTests
     [InlineData(0xF2, 0xF2, 0xF2, true)]
     [InlineData(0xFF, 0xE0, 0x40, true)]
     [InlineData(0x20, 0x40, 0xC0, false)]
-    public void IsLight_PicksDarkTextOnlyOnBrightBackgrounds(byte r, byte g, byte b, bool expected) =>
+    [InlineData(0x99, 0x99, 0x99, true)]
+    public void IsLight_PicksTheTextColorWithTheBetterContrast(byte r, byte g, byte b, bool expected) =>
         Assert.Equal(expected, ToastColorCalculator.IsLight(Color.FromRgb(r, g, b)));
 
     [Theory]

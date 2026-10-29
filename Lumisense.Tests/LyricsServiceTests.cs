@@ -12,6 +12,7 @@ public sealed class LyricsServiceTests : IDisposable
     private readonly string _temporaryDirectory = Path.Combine(Path.GetTempPath(), "LumisenseLyricsTests", Guid.NewGuid().ToString("N"));
     private string? _managedLrcPath;
     private string? _managedTextPath;
+    private string? _managedSourcePath;
 
     [Fact]
     public async Task SaveOnlineResultAsync_SyncedLyrics_StoresLrcOutsideAudioDirectory()
@@ -70,6 +71,68 @@ public sealed class LyricsServiceTests : IDisposable
         Assert.Equal("Обычный текст", document.PlainText);
     }
 
+    [Fact]
+    public async Task SaveOnlineResultAsync_SyncedLyrics_RemembersSourceInLabel()
+    {
+        Directory.CreateDirectory(_temporaryDirectory);
+        string audioPath = Path.Combine(_temporaryDirectory, "source-track.mp3");
+        await File.WriteAllBytesAsync(audioPath, Array.Empty<byte>(), TestContext.Current.CancellationToken);
+        _managedLrcPath = LyricsService.GetManagedLrcPath(audioPath);
+        _managedSourcePath = LyricsService.GetManagedSourcePath(audioPath);
+
+        var result = new OnlineLyricsResult(
+            Id: 3, TrackName: "Track", ArtistName: "Artist", AlbumName: "Album", Duration: 180,
+            PlainLyrics: null, SyncedLyrics: "[00:01.00]Строка", Source: "NetEase");
+
+        await LyricsService.SaveOnlineResultAsync(audioPath, result, CancellationToken.None);
+
+        LyricsDocument document = await LyricsService.LoadAsync(audioPath, CancellationToken.None);
+        Assert.Equal(LyricsKind.Synced, document.Kind);
+        Assert.Equal("NetEase · синхронный текст", document.SourceLabel);
+    }
+
+    [Fact]
+    public async Task SavePastedLyricsAsync_AfterOnlineResult_DropsPreviousSource()
+    {
+        Directory.CreateDirectory(_temporaryDirectory);
+        string audioPath = Path.Combine(_temporaryDirectory, "pasted-after-online.mp3");
+        await File.WriteAllBytesAsync(audioPath, Array.Empty<byte>(), TestContext.Current.CancellationToken);
+        _managedTextPath = LyricsService.GetManagedTextPath(audioPath);
+        _managedSourcePath = LyricsService.GetManagedSourcePath(audioPath);
+
+        var result = new OnlineLyricsResult(
+            Id: 4, TrackName: "Track", ArtistName: "Artist", AlbumName: "Album", Duration: 180,
+            PlainLyrics: "Обычный текст", SyncedLyrics: null, Source: "QQ Music");
+        await LyricsService.SaveOnlineResultAsync(audioPath, result, CancellationToken.None);
+
+        LyricsDocument online = await LyricsService.LoadAsync(audioPath, CancellationToken.None);
+        Assert.Equal("QQ Music · текст", online.SourceLabel);
+
+        await LyricsService.SavePastedLyricsAsync(audioPath, "Вставленный вручную", CancellationToken.None);
+
+        LyricsDocument pasted = await LyricsService.LoadAsync(audioPath, CancellationToken.None);
+        Assert.Equal("Вставленный вручную", pasted.PlainText);
+        Assert.Equal("Кэш вставленного текста", pasted.SourceLabel);
+    }
+
+    [Theory]
+    [InlineData("NetEase", "NetEase")]
+    [InlineData("  QQ Music \r\n", "QQ Music")]
+    [InlineData("", null)]
+    [InlineData("   ", null)]
+    [InlineData("Две\nстроки", null)]
+    public void NormalizeStoredSource_AcceptsShortSingleLineNamesOnly(string raw, string? expected)
+    {
+        Assert.Equal(expected, LyricsService.NormalizeStoredSource(raw));
+    }
+
+    [Fact]
+    public void NormalizeStoredSource_RejectsTooLongNames()
+    {
+        Assert.Null(LyricsService.NormalizeStoredSource(new string('x', 41)));
+        Assert.Null(LyricsService.NormalizeStoredSource(null));
+    }
+
     public void Dispose()
     {
         try
@@ -78,6 +141,8 @@ public sealed class LyricsServiceTests : IDisposable
                 File.Delete(_managedLrcPath);
             if (_managedTextPath is not null && File.Exists(_managedTextPath))
                 File.Delete(_managedTextPath);
+            if (_managedSourcePath is not null && File.Exists(_managedSourcePath))
+                File.Delete(_managedSourcePath);
             if (Directory.Exists(_temporaryDirectory))
                 Directory.Delete(_temporaryDirectory, recursive: true);
         }

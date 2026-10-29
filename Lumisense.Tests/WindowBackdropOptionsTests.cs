@@ -26,17 +26,39 @@ public sealed class WindowBackdropOptionsTests
     [Fact]
     public void Blur_IsBuiltOnAcrylicSoTheWindowBackgroundIsTransparent()
     {
-        Assert.Equal(WindowBackdropType.Acrylic, WindowBackdropOptions.ToWpfUi("Blur", 19045));
+        Assert.Equal(WindowBackdropType.Acrylic, WindowBackdropOptions.ToWpfUi("Blur", 22000));
         Assert.Equal(WindowBackdropType.Acrylic, WindowBackdropOptions.ToWpfUi("Blur", 22631));
-        Assert.True(WindowBackdropOptions.IsBlur("Blur"));
-        Assert.False(WindowBackdropOptions.IsBlur("Acrylic"));
-        Assert.False(WindowBackdropOptions.IsBlur(null));
+        Assert.True(WindowBackdropOptions.IsBlur("Blur", 22631));
+        Assert.False(WindowBackdropOptions.IsBlur("Acrylic", 22631));
+        Assert.False(WindowBackdropOptions.IsBlur(null, 22631));
     }
 
     [Fact]
-    public void AcrylicAndMica_DoNotDependOnBuild()
+    public void AcrylicAndMica_AreAvailableOnWindows11()
     {
-        Assert.Equal(WindowBackdropType.Acrylic, WindowBackdropOptions.ToWpfUi("Acrylic", 19045));
-        Assert.Equal(WindowBackdropType.Mica, WindowBackdropOptions.ToWpfUi("Mica", 19045));
+        Assert.Equal(WindowBackdropType.Acrylic, WindowBackdropOptions.ToWpfUi("Acrylic", 22000));
+        Assert.Equal(WindowBackdropType.Mica, WindowBackdropOptions.ToWpfUi("Mica", 22000));
+    }
+
+    [Theory]
+    [InlineData(19044, false)]
+    [InlineData(19045, false)]
+    [InlineData(21999, false)]
+    [InlineData(22000, true)]
+    [InlineData(22631, true)]
+    public void BackdropSelection_IsAvailableOnlyOnWindows11(int build, bool expected) =>
+        Assert.Equal(expected, WindowBackdropOptions.IsSelectionSupported(build));
+
+    [Theory]
+    [InlineData("Acrylic")]
+    [InlineData("Blur")]
+    [InlineData("MicaAlt")]
+    [InlineData("Mica")]
+    [InlineData(null)]
+    public void OnWindows10_EveryChoiceBehavesAsMicaAndNeverAsBlur(string? value)
+    {
+        Assert.Equal("Mica", WindowBackdropOptions.Effective(value, 19045));
+        Assert.Equal(WindowBackdropType.Mica, WindowBackdropOptions.ToWpfUi(value, 19045));
+        Assert.False(WindowBackdropOptions.IsBlur(value, 19045));
     }
 }

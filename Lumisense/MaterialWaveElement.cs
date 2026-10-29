@@ -10,6 +10,10 @@ public abstract class MaterialWaveElement : FrameworkElement
     // Время выхода амплитуды на максимум или в ноль.
     private const double AmplitudeEaseSeconds = 0.4;
 
+    // Волна бежит медленно (около 32 px/с), поэтому 30 кадров в секунду выглядят так же плавно, как 60 или 144,
+    // а перерисовка волнистой линии на каждом кадре монитора давала заметную нагрузку на процессор.
+    // Порог чуть ниже 1/30 с, чтобы на 60 Гц рисовался каждый второй кадр, а не каждый третий.
+    private const double MinFrameIntervalSeconds = 0.030;
     // Скорость бега волны (px/с) задаёт потомок: у полосы и кольца вокруг обложки она своя.
     protected abstract double WaveSpeed { get; }
 
@@ -104,6 +108,8 @@ public abstract class MaterialWaveElement : FrameworkElement
 
         // WPF может вызвать событие несколько раз за один кадр.
         if (now == _lastFrame) return;
+
+        if (_lastFrame != TimeSpan.Zero && (now - _lastFrame).TotalSeconds < MinFrameIntervalSeconds) return;
 
         double dt = _lastFrame == TimeSpan.Zero ? 0.0 : Math.Min((now - _lastFrame).TotalSeconds, 0.1);
         _lastFrame = now;

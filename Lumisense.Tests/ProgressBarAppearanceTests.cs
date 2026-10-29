@@ -36,6 +36,7 @@ public sealed class ProgressBarAppearanceTests
             ColorMode = "Rainbow",
             ColorHex = "nope",
             EndShape = "Spiky",
+            WaveformShape = "Blocks",
             TrackThickness = 9,
             ThumbSize = 0,
             WaveAmplitude = double.NaN,
@@ -50,6 +51,7 @@ public sealed class ProgressBarAppearanceTests
         Assert.Equal("Accent", appearance.ColorMode);
         Assert.Equal("#0078D4", appearance.ColorHex);
         Assert.Equal("Round", appearance.EndShape);
+        Assert.Equal("Wave", appearance.WaveformShape);
         Assert.Equal(2.0, appearance.TrackThickness);
         Assert.Equal(0.6, appearance.ThumbSize);
         Assert.Equal(1.0, appearance.WaveAmplitude);

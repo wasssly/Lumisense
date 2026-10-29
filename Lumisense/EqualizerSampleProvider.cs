@@ -31,6 +31,9 @@ public sealed class EqualizerSampleProvider : ISampleProvider
     private int _targetEnabled;
     private float _wetMix;
 
+    // true, если фильтры не работали (эквалайзер был выключен): их состояние осталось от старого звука и перед включением сбрасывается.
+    private bool _filtersStale;
+
     // Переключение не обрывает sample stream: target меняется на UI-потоке, а audio thread
     // плавно доводит wet mix до нового значения за несколько миллисекунд.
     public bool Enabled
@@ -91,6 +94,22 @@ public sealed class EqualizerSampleProvider : ISampleProvider
         if (samplesRead == 0) return 0;
 
         float target = Volatile.Read(ref _targetEnabled) != 0 ? 1f : 0f;
+
+        // Выключен и плавный переход закончен: звук идёт как есть, а десять полос на каждый сэмпл считать незачем.
+        if (target == 0f && _wetMix <= 0f)
+        {
+            _filtersStale = true;
+            return samplesRead;
+        }
+
+        // Первый буфер после выключенного эквалайзера: фильтры стартуют с нуля, как после перестройки при смене усиления,
+        // а плавное нарастание wet mix скрывает начало.
+        if (_filtersStale)
+        {
+            ResetFilters();
+            _filtersStale = false;
+        }
+
         float mix = _wetMix;
         float bypassStep = 1f / Math.Max(1f,
             (float)(_source.WaveFormat.SampleRate * (BypassTransitionMilliseconds / 1000.0)));
@@ -133,6 +152,25 @@ public sealed class EqualizerSampleProvider : ISampleProvider
         _filterMix = filterMix;
         _wetMix = mix;
         return samplesRead;
+    }
+
+    private void ResetFilters()
+    {
+        lock (_filterUpdateLock)
+        {
+            for (int band = 0; band < _filters.Length; band++)
+            {
+                if (!_bandSupportedBySource[band]) continue;
+                for (int channel = 0; channel < _channels; channel++)
+                    _filters[band][channel] = MakeFilter(band, _gainsDb[band]);
+            }
+
+            // Усиления, изменённые за время выключения, уже учтены в _gainsDb.
+            _pendingFilterRebuild = 0;
+            Volatile.Write(ref _filterMixTarget, 1f);
+        }
+
+        _filterMix = 1f;
     }
 
     private void ApplyPendingFilters()

@@ -30,6 +30,64 @@ public sealed class EqualizerSampleProviderTests
     }
 
     [Fact]
+    public void DisabledEqualizer_PassesSamplesThroughUnchanged()
+    {
+        float[] samples = CreateTone(100, 0.4f, 48000, 20000);
+        var provider = new EqualizerSampleProvider(new TestSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(48000, 1), samples));
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            provider.SetBandGain(band, 6);
+
+        var output = new float[samples.Length];
+        int read = provider.Read(output);
+
+        Assert.Equal(samples.Length, read);
+        Assert.Equal(samples, output);
+    }
+
+    [Fact]
+    public void GainChangedWhileDisabled_IsAppliedAfterEnabling()
+    {
+        float[] tone = CreateTone(1000, 0.2f, 48000, 48000);
+        var provider = new EqualizerSampleProvider(new TestSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(48000, 1), tone));
+        provider.Read(new float[4800]);
+
+        provider.SetBandGain(5, 12.0);
+        provider.Enabled = true;
+        var output = new float[4800];
+        provider.Read(output);
+        provider.Read(output);
+
+        double rms = Math.Sqrt(output.Sum(sample => (double)sample * sample) / output.Length);
+        double ratio = rms / (0.2 / Math.Sqrt(2));
+        Assert.InRange(ratio, 3.4, 4.4);
+    }
+
+    [Fact]
+    public void ReEnablingAfterLongBypass_DoesNotClick()
+    {
+        float[] tone = CreateTone(100, 0.4f, 48000, 48000 * 3);
+        var provider = new EqualizerSampleProvider(new TestSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(48000, 1), tone));
+        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            provider.SetBandGain(band, band % 2 == 0 ? 9 : -9);
+
+        provider.Enabled = true;
+        provider.Read(new float[9600]);
+        provider.Enabled = false;
+        provider.Read(new float[9600]);
+        provider.Read(new float[9600]);
+        provider.Enabled = true;
+        var after = new float[4800];
+        provider.Read(after);
+
+        double maxJump = 0;
+        for (int index = 1; index < after.Length; index++)
+            maxJump = Math.Max(maxJump, Math.Abs(after[index] - after[index - 1]));
+
+        Assert.All(after, sample => Assert.True(float.IsFinite(sample)));
+        Assert.True(maxJump < 0.12, $"Скачок между соседними сэмплами {maxJump:F4}");
+    }
+
+    [Fact]
     public void LowSampleRateSource_SkipsBandAtNyquistWithoutBreakingPlayback()
     {
         var source = new TestSampleProvider(
@@ -69,6 +127,14 @@ public sealed class EqualizerSampleProviderTests
         Assert.Equal(4, samplesRead);
         Assert.All(output, sample => Assert.True(float.IsFinite(sample)));
         Assert.Equal(4.5, provider.GetBandGain(9), 6);
+    }
+
+    private static float[] CreateTone(double frequency, float amplitude, int sampleRate, int count)
+    {
+        var samples = new float[count];
+        for (int index = 0; index < count; index++)
+            samples[index] = amplitude * (float)Math.Sin(2 * Math.PI * frequency * index / sampleRate);
+        return samples;
     }
 
     private sealed class TestSampleProvider : ISampleProvider

@@ -9,10 +9,14 @@ namespace Lumisense;
 /// Хранит собственный FIFO SoundTouch и очищает его при перемотке источника, чтобы данные до seek
 /// не попали в новый участок трека. Последние миллисекунды трека затухают до нуля, чтобы обрыв на
 /// ненулевом sample не давал щелчка.
+/// При нейтральных параметрах (темп, высота и скорость равны 1) звук идёт мимо SoundTouch: библиотека и на 1.0 прогоняет
+/// фильтры и поиск наложения. Решение принимается в начале трека и после Clear (в этот момент у процессора нет накопленных
+/// данных); если параметры изменили посреди трека, процессор запускается с плавным переходом от прямого звука.
 /// </summary>
 internal sealed class SoundTouchSampleProvider : ISampleProvider
 {
     private const int TailFadeMilliseconds = 20;
+    private const double NeutralTolerance = 1e-9;
 
     private readonly ISampleProvider _source;
     private readonly SoundTouchProcessor _processor;
@@ -21,6 +25,17 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
     private readonly int _standardTailFadeFrames;
     private bool _isFlushed;
     private int _tailFadeFrames = -1;
+
+    // Режим без обработки: _queue держит опережение длиной с затухание (иначе к концу файла нечем затухать), как FIFO SoundTouch.
+    private bool _passthrough;
+    private bool _decisionPending = true;
+    private float[] _queue = Array.Empty<float>();
+    private int _queueCount;
+
+    // Плавный переход от прямого звука к обработанному: сухой кусок из очереди смешивается с началом выхода процессора.
+    private float[]? _crossfadeDry;
+    private int _crossfadeFrames;
+    private int _crossfadePosition;
 
     public SoundTouchSampleProvider(ISampleProvider source)
     {
@@ -73,8 +88,18 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
             _processor.Clear();
             _isFlushed = false;
             _tailFadeFrames = -1;
+            _queueCount = 0;
+            _crossfadeDry = null;
+            _crossfadePosition = 0;
+            _passthrough = false;
+            _decisionPending = true;
         }
     }
+
+    private bool IsNeutral() =>
+        Math.Abs(_processor.Tempo - 1.0) < NeutralTolerance
+        && Math.Abs(_processor.Pitch - 1.0) < NeutralTolerance
+        && Math.Abs(_processor.Rate - 1.0) < NeutralTolerance;
 
     // После flush в FIFO лежит весь оставшийся хвост трека, поэтому его длина известна точно.
     // Затухание по нему убирает щелчок от обрыва на ненулевом sample.
@@ -111,35 +136,19 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
         {
             lock (_sync)
             {
-                // До конца файла держим в FIFO запас в длину затухания: иначе к моменту, когда
-                // конец обнаружен, последние кадры уже отданы и затухать будет нечему.
-                while (_processor.AvailableSamples < requestedFrames + (_isFlushed ? 0 : _standardTailFadeFrames))
+                if (_decisionPending)
                 {
-                    int samplesRead = _source.Read(_inputBuffer);
-                    if (samplesRead <= 0)
-                    {
-                        if (!_isFlushed)
-                        {
-                            _isFlushed = true;
-                            _processor.Flush();
-                        }
-
-                        break;
-                    }
-
-                    int completeSamples = samplesRead - samplesRead % channels;
-                    if (completeSamples > 0)
-                    {
-                        _processor.PutSamples(_inputBuffer.AsSpan(0, completeSamples), completeSamples / channels);
-                    }
+                    _decisionPending = false;
+                    _passthrough = IsNeutral();
+                }
+                else if (_passthrough && !IsNeutral())
+                {
+                    EnterProcessing(channels);
                 }
 
-                buffer.Clear();
-                int framesRead = _processor.ReceiveSamples(buffer, requestedFrames);
-                if (_isFlushed)
-                    ApplyTailFade(buffer, channels, framesRead, _processor.AvailableSamples);
-
-                return framesRead * channels;
+                return _passthrough
+                    ? ReadPassthrough(buffer, channels, requestedFrames)
+                    : ReadProcessed(buffer, channels, requestedFrames);
             }
         }
         catch (Exception ex)
@@ -147,5 +156,133 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
             Logger.Error("Ошибка обработки темпа или pitch через SoundTouch", ex);
             throw;
         }
+    }
+
+    // Звук без обработки с опережением на длину затухания: пока источник не закончился, последние кадры не отдаются.
+    private int ReadPassthrough(Span<float> buffer, int channels, int requestedFrames)
+    {
+        int tailSamples = _standardTailFadeFrames * channels;
+        int wanted = requestedFrames * channels;
+        int needed = tailSamples + wanted + _inputBuffer.Length;
+        if (_queue.Length < needed)
+            Array.Resize(ref _queue, needed);
+
+        while (!_isFlushed && _queueCount < wanted + tailSamples)
+        {
+            int samplesRead = _source.Read(_inputBuffer);
+            if (samplesRead <= 0)
+            {
+                _isFlushed = true;
+                break;
+            }
+
+            int completeSamples = samplesRead - samplesRead % channels;
+            if (completeSamples > 0)
+            {
+                Array.Copy(_inputBuffer, 0, _queue, _queueCount, completeSamples);
+                _queueCount += completeSamples;
+            }
+        }
+
+        int deliver = _isFlushed
+            ? Math.Min(wanted, _queueCount)
+            : Math.Min(wanted, Math.Max(0, _queueCount - tailSamples));
+        deliver -= deliver % channels;
+
+        if (deliver > 0)
+        {
+            _queue.AsSpan(0, deliver).CopyTo(buffer);
+            Array.Copy(_queue, deliver, _queue, 0, _queueCount - deliver);
+            _queueCount -= deliver;
+        }
+
+        buffer.Slice(deliver).Clear();
+        int framesRead = deliver / channels;
+        if (_isFlushed)
+            ApplyTailFade(buffer, channels, framesRead, _queueCount / channels);
+
+        return deliver;
+    }
+
+    // Параметры стали не нейтральными посреди трека: процессор стартует с нуля, поэтому накопленное опережение и обработка
+    // сводятся плавным переходом, а не обрывом.
+    private void EnterProcessing(int channels)
+    {
+        _processor.Clear();
+
+        if (!_isFlushed)
+        {
+            int fadeFrames = Math.Min(_queueCount / channels, _standardTailFadeFrames);
+            if (fadeFrames > 0)
+            {
+                _crossfadeDry = _queue.AsSpan(0, fadeFrames * channels).ToArray();
+                _crossfadeFrames = fadeFrames;
+                _crossfadePosition = 0;
+            }
+        }
+
+        if (_queueCount > 0)
+        {
+            _processor.PutSamples(_queue.AsSpan(0, _queueCount), _queueCount / channels);
+            _queueCount = 0;
+        }
+
+        if (_isFlushed)
+            _processor.Flush();
+
+        _passthrough = false;
+    }
+
+    private void ApplyCrossfade(Span<float> buffer, int channels, int framesRead)
+    {
+        float[] dry = _crossfadeDry!;
+        for (int frame = 0; frame < framesRead && _crossfadePosition < _crossfadeFrames; frame++, _crossfadePosition++)
+        {
+            float wet = (_crossfadePosition + 1) / (float)(_crossfadeFrames + 1);
+            for (int channel = 0; channel < channels; channel++)
+            {
+                int index = frame * channels + channel;
+                buffer[index] = dry[_crossfadePosition * channels + channel] * (1f - wet) + buffer[index] * wet;
+            }
+        }
+
+        if (_crossfadePosition >= _crossfadeFrames)
+            _crossfadeDry = null;
+    }
+
+    private int ReadProcessed(Span<float> buffer, int channels, int requestedFrames)
+    {
+        // До конца файла держим в FIFO запас в длину затухания: иначе к моменту, когда
+        // конец обнаружен, последние кадры уже отданы и затухать будет нечему.
+        while (_processor.AvailableSamples < requestedFrames + (_isFlushed ? 0 : _standardTailFadeFrames))
+        {
+            int samplesRead = _source.Read(_inputBuffer);
+            if (samplesRead <= 0)
+            {
+                if (!_isFlushed)
+                {
+                    _isFlushed = true;
+                    _processor.Flush();
+                }
+
+                break;
+            }
+
+            int completeSamples = samplesRead - samplesRead % channels;
+            if (completeSamples > 0)
+            {
+                _processor.PutSamples(_inputBuffer.AsSpan(0, completeSamples), completeSamples / channels);
+            }
+        }
+
+        buffer.Clear();
+        int framesRead = _processor.ReceiveSamples(buffer, requestedFrames);
+        if (_crossfadeDry is not null)
+            ApplyCrossfade(buffer, channels, framesRead);
+
+        if (_isFlushed)
+            ApplyTailFade(buffer, channels, framesRead, _processor.AvailableSamples);
+
+        return framesRead * channels;
     }
 }

@@ -100,8 +100,45 @@ public sealed class WaveformView : FrameworkElement
         set => SetValue(IsFlatProperty, value);
     }
 
+    public static readonly DependencyProperty IsCapsuleProperty = DependencyProperty.Register(
+        nameof(IsCapsule), typeof(bool), typeof(WaveformView),
+        new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.AffectsRender));
+
+    // true — крупные столбики-капсулы фиксированного шага по усреднённым пикам вместо сотни тонких (ProgressBarAppearance.WaveformShape).
+    public bool IsCapsule
+    {
+        get => (bool)GetValue(IsCapsuleProperty);
+        set => SetValue(IsCapsuleProperty, value);
+    }
+
     // Минимальная высота бара, чтобы тихие участки не исчезали и полоса не выглядела прерванной.
     private const double MinBarHeight = 2.0;
+
+    // Шаг капсул (ширина столбика + зазор): число столбиков зависит от ширины полосы, а не от числа пиков.
+    private const double CapsulePitch = 8.0;
+
+    // Среднее с примесью максимума: чистое среднее занижает громкие участки, чистый максимум делает все столбики одинаково высокими.
+    private static float[] Downsample(float[] peaks, int count)
+    {
+        if (count >= peaks.Length) return peaks;
+
+        var result = new float[count];
+        for (int i = 0; i < count; i++)
+        {
+            int start = (int)((long)i * peaks.Length / count);
+            int end = Math.Max(start + 1, (int)((long)(i + 1) * peaks.Length / count));
+            float sum = 0, max = 0;
+            for (int j = start; j < end; j++)
+            {
+                sum += peaks[j];
+                max = Math.Max(max, peaks[j]);
+            }
+
+            result[i] = 0.6f * (sum / (end - start)) + 0.4f * max;
+        }
+
+        return result;
+    }
 
     protected override void OnRender(DrawingContext dc)
     {
@@ -141,13 +178,18 @@ public sealed class WaveformView : FrameworkElement
         }
 
         double gapRatio = double.IsFinite(GapRatio) ? Math.Clamp(GapRatio, 0.0, 0.9) : 0.35;
+        if (IsCapsule)
+            peaks = Downsample(peaks, Math.Max(1, (int)(width / CapsulePitch)));
+
         double bucketWidth = width / peaks.Length;
         double barWidth = Math.Max(1.0, bucketWidth * (1 - gapRatio));
         double cornerRadius = IsFlat ? 0.0 : barWidth / 2;
+        // Минимум равен ширине, чтобы тихий столбик оставался кружком, а не сплющенной капсулой.
+        double minBarHeight = IsCapsule ? Math.Max(MinBarHeight, barWidth) : MinBarHeight;
 
         for (int i = 0; i < peaks.Length; i++)
         {
-            double barHeight = Math.Max(MinBarHeight, peaks[i] * height);
+            double barHeight = Math.Max(minBarHeight, peaks[i] * height);
             double x = i * bucketWidth + (bucketWidth - barWidth) / 2;
             double y = (height - barHeight) / 2;
 

@@ -36,6 +36,7 @@ public sealed class LumiProfileSettingsCoverageTests
         nameof(AppSettings.LastSuccessfulUpdateCheckUtc),                // состояние проверки обновлений на этой установке
         nameof(AppSettings.UpdateCheckFailingSinceUtc),                  // то же
         nameof(AppSettings.UpdateCheckHintShownUtc),                     // то же
+        nameof(AppSettings.CommunityDialogDismissed),                    // отметка «Не показывать» обращение на этой установке
         nameof(AppSettings.HklmWildcardContextMenuCleanupAttempted),     // служебная отметка этой машины
         nameof(AppSettings.TrackLoadTraceEnabled),                       // локальная диагностика
         nameof(AppSettings.EqualizerPresets)                             // у пресетов свой импорт и экспорт (.json)

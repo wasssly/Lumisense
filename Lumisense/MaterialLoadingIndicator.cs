@@ -5,30 +5,25 @@ using System.Windows.Media;
 namespace Lumisense;
 
 // Индикатор загрузки Material 3 Expressive (Loading indicator, m3.material.io/components/loading-indicator): одна фигура плавно
-// перетекает по кругу из семи фигур (MaterialShapes в Compose: SoftBurst, Cookie9Sided, Pentagon, Pill, Sunny, Cookie4Sided, Oval)
-// и непрерывно вращается. Для ожиданий без известной длительности (до ~5 с). Активная фигура занимает 38 из 48 dp, как в спецификации;
+// перетекает по кругу из семи фигур MaterialShapes (SoftBurst, Cookie9Sided, Pentagon, Pill, Sunny, Cookie4Sided, Oval)
+// и непрерывно вращается. Для ожиданий без известной длительности (до ~5 с). Все фигуры вписаны в круг 38 из 48 dp, как в спецификации;
 // ContainerBrush рисует круглую подложку (вариант Contained). Кадры подписываются, только пока элемент виден.
 public sealed class MaterialLoadingIndicator : FrameworkElement
 {
-    // Одна фигура: HoldSeconds покоя и MorphSeconds перетекания (в Material пружина, здесь сглаженная кривая); цикл 650 мс.
-    // Вращение: медленное постоянное (оборот за 4,666 с) и четверть оборота на каждое перетекание.
-    private const double HoldSeconds = 0.15;
-    private const double MorphSeconds = 0.5;
+    // Как в Compose: перетекание в следующую фигуру запускается каждые 650 мс пружиной (жёсткость 200, затухание 0,6) и
+    // заканчивается на первом пике; дальше фигура держится до следующего цикла. Вращение: оборот за 4,666 с и четверть оборота на фигуру.
+    private const double CycleSeconds = 0.65;
+    private const double SpringStiffness = 200;
+    private const double SpringDamping = 0.6;
     private const double BaseRotationSeconds = 4.666;
     private const double IndicatorRatio = 38.0 / 48.0;
-    private const int SamplePoints = 120;
+    internal const int SamplePoints = 240;
 
-    // Радиус фигуры в зависимости от угла; значения относительные, размер потом нормируется по максимуму.
-    private static readonly Func<double, double>[] Shapes =
-    [
-        theta => Star(theta, 10, 0.78, 0.8),       // SoftBurst: десять округлых лепестков
-        theta => Star(theta, 9, 0.80, 1.0),        // Cookie9Sided: девять плавных «зубцов»
-        theta => RoundedPolygon(theta, 5, 0.30),   // Pentagon: скруглённый пятиугольник
-        theta => Stadium(theta, 1.0, 0.58),        // Pill: пилюля с прямыми сторонами
-        theta => Star(theta, 8, 0.80, 1.2),        // Sunny: восьмиконечная звезда с округлыми кончиками
-        theta => Star(theta, 4, 0.72, 1.0),        // Cookie4Sided: «подушка» с четырьмя углами
-        theta => Ellipse(theta, 1.0, 0.72)         // Oval: овал
-    ];
+    // Радиусы фигур по кругу углов; нормированы так, что большая сторона габарита равна 1.
+    private static readonly double[][] Profiles = MaterialShapeGeometry.IndeterminateProfiles(SamplePoints);
+
+    // Общий масштаб для всех фигур: самая дальняя точка любой фигуры от центра не выходит за круг индикатора при вращении.
+    private static readonly double MaxRadius = Profiles.Max(profile => profile.Max());
 
     public static readonly DependencyProperty ForegroundBrushProperty = DependencyProperty.Register(
         nameof(ForegroundBrush), typeof(Brush), typeof(MaterialLoadingIndicator),
@@ -122,22 +117,40 @@ public sealed class MaterialLoadingIndicator : FrameworkElement
 
         double elapsed = IsAnimationEnabled ? _clock.Elapsed.TotalSeconds : 0.0;
         (int shape, double morph) = ShapeAtTime(elapsed);
-        int step = (int)(Math.Max(elapsed, 0.0) / (HoldSeconds + MorphSeconds));
-        double rotation = elapsed * 2 * Math.PI / BaseRotationSeconds + (step + morph) * Math.PI / 2;
+        int step = (int)(Math.Max(elapsed, 0.0) / CycleSeconds);
+        double rotation = elapsed * 2 * Math.PI / BaseRotationSeconds + (step + 1 + morph) * Math.PI / 2;
+        double cosRotation = Math.Cos(rotation);
+        double sinRotation = Math.Sin(rotation);
 
-        double[] radii = ComputeRadii(shape, morph, SamplePoints);
-        double maxRadius = radii.Max();
-        double scale = outer * IndicatorRatio / maxRadius;
+        double[] radii = ComputeRadii(shape, morph);
+        double scale = outer * IndicatorRatio / MaxRadius;
+
+        var points = new Point[radii.Length];
+        double minX = double.MaxValue, maxX = double.MinValue, minY = double.MaxValue, maxY = double.MinValue;
+        for (int i = 0; i < radii.Length; i++)
+        {
+            double angle = i * 2 * Math.PI / radii.Length;
+            points[i] = new Point(Math.Cos(angle) * radii[i], Math.Sin(angle) * radii[i]);
+            minX = Math.Min(minX, points[i].X);
+            maxX = Math.Max(maxX, points[i].X);
+            minY = Math.Min(minY, points[i].Y);
+            maxY = Math.Max(maxY, points[i].Y);
+        }
+
+        // Как в Compose, габарит фигуры ставится в центр контейнера и вращение идёт вокруг него.
+        double shiftX = (minX + maxX) / 2;
+        double shiftY = (minY + maxY) / 2;
 
         var geometry = new StreamGeometry();
         using (StreamGeometryContext ctx = geometry.Open())
         {
-            for (int i = 0; i < radii.Length; i++)
+            for (int i = 0; i < points.Length; i++)
             {
-                double angle = i * 2 * Math.PI / radii.Length + rotation;
+                double x = (points[i].X - shiftX) * scale;
+                double y = (points[i].Y - shiftY) * scale;
                 var point = new Point(
-                    center.X + Math.Cos(angle) * radii[i] * scale,
-                    center.Y + Math.Sin(angle) * radii[i] * scale);
+                    center.X + x * cosRotation - y * sinRotation,
+                    center.Y + x * sinRotation + y * cosRotation);
                 if (i == 0) ctx.BeginFigure(point, true, true);
                 else ctx.LineTo(point, true, true);
             }
@@ -147,81 +160,42 @@ public sealed class MaterialLoadingIndicator : FrameworkElement
         dc.DrawGeometry(ForegroundBrush, null, geometry);
     }
 
-    // Какая фигура сейчас и насколько она перетекла в следующую (0..1, со сглаживанием).
+    // Какая фигура сейчас и насколько она перетекла в следующую (0..1).
     internal static (int Shape, double Morph) ShapeAtTime(double seconds)
     {
-        double cycle = HoldSeconds + MorphSeconds;
         double safe = Math.Max(seconds, 0.0);
-        int step = (int)(safe / cycle);
-        double within = safe - step * cycle;
-        double morph = within <= HoldSeconds ? 0.0 : SmoothStep((within - HoldSeconds) / MorphSeconds);
-        return (step % Shapes.Length, morph);
+        int step = (int)(safe / CycleSeconds);
+        return (step % Profiles.Length, SpringProgress(safe - step * CycleSeconds));
+    }
+
+    // Ход пружины от 0 до 1 за цикл; перетекание не выходит за 1 и после первого пика пружины остаётся на 1.
+    internal static double SpringProgress(double seconds)
+    {
+        double omega = Math.Sqrt(SpringStiffness);
+        double dampedOmega = omega * Math.Sqrt(1 - SpringDamping * SpringDamping);
+        if (seconds >= Math.PI / dampedOmega) return 1.0;
+
+        double t = Math.Max(seconds, 0.0);
+        double decay = Math.Exp(-SpringDamping * omega * t);
+        double value = 1 - decay * (Math.Cos(dampedOmega * t) + SpringDamping * omega / dampedOmega * Math.Sin(dampedOmega * t));
+        return Math.Clamp(value, 0.0, 1.0);
     }
 
     // Радиусы по кругу: смесь текущей и следующей фигуры (morph 0 — только текущая, 1 — только следующая).
-    internal static double[] ComputeRadii(int shape, double morph, int points)
+    internal static double[] ComputeRadii(int shape, double morph)
     {
-        Func<double, double> current = Shapes[shape % Shapes.Length];
-        Func<double, double> next = Shapes[(shape + 1) % Shapes.Length];
+        double[] current = Profiles[shape % Profiles.Length];
+        double[] next = Profiles[(shape + 1) % Profiles.Length];
         double blend = Math.Clamp(morph, 0.0, 1.0);
 
-        var radii = new double[points];
-        for (int i = 0; i < points; i++)
-        {
-            double theta = i * 2 * Math.PI / points;
-            radii[i] = current(theta) * (1 - blend) + next(theta) * blend;
-        }
+        var radii = new double[SamplePoints];
+        for (int i = 0; i < radii.Length; i++)
+            radii[i] = current[i] * (1 - blend) + next[i] * blend;
 
         return radii;
     }
 
-    internal static int ShapeCount => Shapes.Length;
+    internal static int ShapeCount => Profiles.Length;
 
-    private static double SmoothStep(double x)
-    {
-        double t = Math.Clamp(x, 0.0, 1.0);
-        return t * t * (3 - 2 * t);
-    }
-
-    // Звезда с n выступами: радиус между innerRadius (впадины) и 1 (кончики); sharpness < 1 округляет и расширяет кончики,
-    // > 1 заостряет их.
-    private static double Star(double theta, int points, double innerRadius, double sharpness)
-    {
-        double bump = (1 + Math.Cos(points * theta)) / 2;
-        return innerRadius + (1 - innerRadius) * Math.Pow(bump, sharpness);
-    }
-
-    private static double Ellipse(double theta, double a, double b)
-    {
-        double c = b * Math.Cos(theta);
-        double s = a * Math.Sin(theta);
-        return a * b / Math.Sqrt(c * c + s * s);
-    }
-
-    // Пилюля (капсула): прямые стороны на высоте halfHeight и полукруглые торцы, halfWidth — половина полной ширины.
-    private static double Stadium(double theta, double halfWidth, double halfHeight)
-    {
-        double cos = Math.Abs(Math.Cos(theta));
-        double sin = Math.Abs(Math.Sin(theta));
-        double straight = halfWidth - halfHeight;
-
-        if (sin > 1e-9)
-        {
-            double onSide = halfHeight / sin;
-            if (onSide * cos <= straight) return onSide;
-        }
-
-        // Луч выходит через полукруглый торец с центром (straight, 0).
-        double along = straight * cos;
-        return along + Math.Sqrt(along * along - straight * straight + halfHeight * halfHeight);
-    }
-
-    // Правильный n-угольник, смешанный с кругом: roundness 0 — острые углы, 1 — круг.
-    private static double RoundedPolygon(double theta, int sides, double roundness)
-    {
-        double sector = 2 * Math.PI / sides;
-        double local = (theta % sector) - sector / 2;
-        double polygon = Math.Cos(Math.PI / sides) / Math.Cos(local);
-        return polygon * (1 - roundness) + roundness;
-    }
+    internal static double MaxShapeRadius => MaxRadius;
 }
