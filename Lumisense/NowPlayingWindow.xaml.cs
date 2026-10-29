@@ -21,21 +21,6 @@ public partial class NowPlayingWindow : Window
 {
     private readonly record struct PalettePoint(double Red, double Green, double Blue, double Weight);
 
-    private sealed class FlowCloud
-    {
-        public required Point Entry { get; init; }
-        public required Point Exit { get; init; }
-        public double TravelRate { get; init; }
-        public double HiddenPauseDuration { get; init; }
-        public double WaveAmplitude { get; init; }
-        public double WaveCycles { get; init; }
-        public double VerticalDriftAmplitude { get; init; }
-        public double VerticalDriftCycles { get; init; }
-        public double MotionPhase { get; init; }
-        public double ScalePhase { get; init; }
-        public double OpacityPhase { get; init; }
-    }
-
     private readonly INowPlayingHost _owner;
     private readonly ObservableCollection<LyricLine> _syncedLines = new();
     private readonly ObservableCollection<OnlineLyricsResult> _onlineResults = new();
@@ -54,7 +39,12 @@ public partial class NowPlayingWindow : Window
     private double _ambientMotionTime;
     private double _ambientSpeed = 1.0;
     private double _ambientTargetSpeed = 1.0;
-    private readonly FlowCloud?[] _flowClouds = new FlowCloud?[5];
+
+    // Ниже этой скорости на паузе облака считаются остановившимися: таймер выключается, чтобы окно, открытое часами
+    // на втором мониторе, не нагружало UI-поток. Сцена хотя бы раз рисуется тиком (_ambientScenePlaced).
+    private const double AmbientIdleSpeedThreshold = 0.003;
+    private bool _ambientScenePlaced;
+    private long _ambientLastTimestamp;
     private bool _lyricsPanelVisible = true;
     private LyricsDocument _lyrics = LyricsDocument.Empty;
     // Документ как он загружен; _lyrics — то, что показано с учётом AppSettings.LyricsDisplayMode.
@@ -349,6 +339,7 @@ public partial class NowPlayingWindow : Window
         CancelLyricsLoad();
         CancelOnlineSearch();
         StopDynamicDriver();
+        _owner.SetAudioLevelMeterEnabled(false);
         if (_ambientMotionTimer is not null)
         {
             _ambientMotionTimer.Stop();
@@ -692,42 +683,23 @@ public partial class NowPlayingWindow : Window
 
     private void ApplyArtworkPalette(BitmapSource? artwork)
     {
-        // У каждой видимой сферы — один самостоятельный цвет, вычисленный из RGB-кластеров обложки.
-        // Цвет становится мягче к периферии, чтобы яркие края не выглядели сплошной заливкой.
+        // Цвета шаров и волн — пять RGB-кластеров обложки; облака берут больше цветов (см. CloudFlow).
         System.Windows.Media.Color[] cloudColors = artwork is null ? CreateFallbackPalette() : ExtractArtworkPalette(artwork);
 
-        AmbientBlobOne.Fill = CreateSoftCloudBrush(cloudColors[0]);
-        AmbientBlobTwo.Fill = CreateSoftCloudBrush(cloudColors[1]);
-        AmbientBlobThree.Fill = CreateSoftCloudBrush(cloudColors[2]);
-        AmbientBlobFour.Fill = CreateSoftCloudBrush(cloudColors[3]);
-        AmbientBlobFive.Fill = CreateSoftCloudBrush(cloudColors[4]);
-        AmbientBlobSix.Fill = CreateSoftCloudBrush(cloudColors[0]);
-        AmbientBlobSeven.Fill = CreateSoftCloudBrush(cloudColors[2]);
-        AmbientBlobEight.Fill = CreateSoftCloudBrush(cloudColors[4]);
+        // Облака: до восьми цветов обложки с весами по площади; цвета плавно перетекают при смене трека.
+        PalettePoint[] clusters = artwork is null
+            ? FallbackClusters(CloudPointCount)
+            : ExtractArtworkClusters(artwork, CloudPointCount);
+        SetCloudPalette(clusters, instant: !IsLoaded || AccessibilityPreferences.ShouldReduceMotion(_owner.Settings));
 
         ApplyDynamicPalette(cloudColors, animate: true);
     }
 
-    private static RadialGradientBrush CreateSoftCloudBrush(System.Windows.Media.Color color)
-    {
-        System.Windows.Media.Color muted = System.Windows.Media.Color.FromRgb(
-            (byte)(color.R * 0.48), (byte)(color.G * 0.48), (byte)(color.B * 0.48));
-        var brush = new RadialGradientBrush
-        {
-            Center = new Point(0.42, 0.40),
-            GradientOrigin = new Point(0.42, 0.40),
-            RadiusX = 0.74,
-            RadiusY = 0.74
-        };
-        brush.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(225, color.R, color.G, color.B), 0.0));
-        brush.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(152, color.R, color.G, color.B), 0.40));
-        brush.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(48, muted.R, muted.G, muted.B), 0.74));
-        brush.GradientStops.Add(new GradientStop(System.Windows.Media.Color.FromArgb(0, muted.R, muted.G, muted.B), 1.0));
-        brush.Freeze();
-        return brush;
-    }
+    private static System.Windows.Media.Color[] ExtractArtworkPalette(BitmapSource artwork) =>
+        ExtractArtworkClusters(artwork, 5).Select(ToColor).ToArray();
 
-    private static System.Windows.Media.Color[] ExtractArtworkPalette(BitmapSource artwork)
+    // Кластеры цветов обложки (k-means по RGB) по убыванию веса: вес — доля площади, занятая кластером.
+    private static PalettePoint[] ExtractArtworkClusters(BitmapSource artwork, int count)
     {
         try
         {
@@ -736,7 +708,7 @@ public partial class NowPlayingWindow : Window
             var pixels = new FormatConvertedBitmap(small, PixelFormats.Bgra32, null, 0);
             int width = pixels.PixelWidth;
             int height = pixels.PixelHeight;
-            if (width <= 0 || height <= 0) return CreateFallbackPalette();
+            if (width <= 0 || height <= 0) return FallbackClusters(count);
 
             int stride = width * 4;
             byte[] buffer = new byte[stride * height];
@@ -748,7 +720,7 @@ public partial class NowPlayingWindow : Window
                 if (alpha < 32) continue;
                 samples.Add(new PalettePoint(buffer[index + 2], buffer[index + 1], buffer[index], alpha / 255.0));
             }
-            if (samples.Count == 0) return CreateFallbackPalette();
+            if (samples.Count == 0) return FallbackClusters(count);
 
             const int colorStep = 32;
             var buckets = new Dictionary<int, PalettePoint>();
@@ -769,10 +741,10 @@ public partial class NowPlayingWindow : Window
                     bucket.Blue / bucket.Weight, bucket.Weight))
                 .OrderByDescending(bucket => bucket.Weight)
                 .ToList();
-            if (seeds.Count == 0) return CreateFallbackPalette();
+            if (seeds.Count == 0) return FallbackClusters(count);
 
             var centers = new List<PalettePoint>();
-            while (centers.Count < 5 && centers.Count < seeds.Count)
+            while (centers.Count < count && centers.Count < seeds.Count)
             {
                 PalettePoint choice = seeds
                     .Where(seed => !centers.Contains(seed))
@@ -782,20 +754,31 @@ public partial class NowPlayingWindow : Window
                     .First();
                 centers.Add(new PalettePoint(choice.Red, choice.Green, choice.Blue, 1.0));
             }
-            while (centers.Count < 5)
+            while (centers.Count < count)
                 centers.Add(centers[centers.Count % Math.Max(1, centers.Count)]);
 
             for (int iteration = 0; iteration < 5; iteration++)
             {
-                double[] redTotals = new double[5];
-                double[] greenTotals = new double[5];
-                double[] blueTotals = new double[5];
-                double[] weights = new double[5];
+                double[] redTotals = new double[count];
+                double[] greenTotals = new double[count];
+                double[] blueTotals = new double[count];
+                double[] weights = new double[count];
                 foreach (PalettePoint sample in samples)
                 {
-                    int nearest = Enumerable.Range(0, centers.Count)
-                        .OrderBy(index => ColorDistanceSquared(sample, centers[index]))
-                        .First();
+                    // Простой поиск минимума вместо OrderBy: без аллокаций и сортировки на каждую точку и итерацию.
+                    // При равных расстояниях выбирается первый центр, как и у стабильной сортировки.
+                    int nearest = 0;
+                    double nearestDistance = ColorDistanceSquared(sample, centers[0]);
+                    for (int candidate = 1; candidate < centers.Count; candidate++)
+                    {
+                        double distance = ColorDistanceSquared(sample, centers[candidate]);
+                        if (distance < nearestDistance)
+                        {
+                            nearestDistance = distance;
+                            nearest = candidate;
+                        }
+                    }
+
                     redTotals[nearest] += sample.Red * sample.Weight;
                     greenTotals[nearest] += sample.Green * sample.Weight;
                     blueTotals[nearest] += sample.Blue * sample.Weight;
@@ -811,12 +794,11 @@ public partial class NowPlayingWindow : Window
 
             return centers
                 .OrderByDescending(center => center.Weight)
-                .Select(ToColor)
                 .ToArray();
         }
         catch
         {
-            return CreateFallbackPalette();
+            return FallbackClusters(count);
         }
     }
 
@@ -840,6 +822,15 @@ public partial class NowPlayingWindow : Window
         System.Windows.Media.Color.FromRgb(240, 142, 104),
         System.Windows.Media.Color.FromRgb(92, 212, 166)
     };
+
+    private static PalettePoint[] FallbackClusters(int count)
+    {
+        System.Windows.Media.Color[] palette = CreateFallbackPalette();
+        return Enumerable.Range(0, count)
+            .Select(index => new PalettePoint(palette[index % palette.Length].R, palette[index % palette.Length].G,
+                palette[index % palette.Length].B, 1.0 / (1 + index)))
+            .ToArray();
+    }
 
     private static System.Windows.Media.Color MixColors(System.Windows.Media.Color first,
         System.Windows.Media.Color second, double secondWeight)
@@ -1365,8 +1356,14 @@ public partial class NowPlayingWindow : Window
             Interval = TimeSpan.FromMilliseconds(33)
         };
         _ambientMotionTimer.Tick += AmbientMotionTimer_Tick;
+
+        // Возобновляем и останавливаем фоновые анимации при показе, сворачивании и скрытии окна.
+        IsVisibleChanged += (_, _) => UpdateAmbientAnimation(_owner.IsPlayingNow);
+        StateChanged += (_, _) => UpdateAmbientAnimation(_owner.IsPlayingNow);
         UpdateAmbientAnimation(_owner.IsPlayingNow);
     }
+
+    private bool IsShownOnScreen => IsVisible && WindowState != WindowState.Minimized;
 
     private void AmbientMotionTimer_Tick(object? sender, EventArgs e)
     {
@@ -1378,6 +1375,7 @@ public partial class NowPlayingWindow : Window
             // Сцена остаётся визуально цельной, но прекращает декоративное движение сразу.
             _ambientSpeed = 0;
             _ambientTargetSpeed = 0;
+            _ambientMotionTimer?.Stop();
             return;
         }
 
@@ -1389,120 +1387,46 @@ public partial class NowPlayingWindow : Window
         }
         else
         {
-            _ambientTargetSpeed = 0.15;
+            _ambientTargetSpeed = 0;
         }
 
-        // Каждая сфера медленно проходит сцену по собственной линии и мягко растворяется у края.
-        // Прозрачность зависит от фактически видимой части окружности, поэтому исчезновение не выглядит резким.
-        _ambientSpeed += (_ambientTargetSpeed - _ambientSpeed) * 0.032;
-        _ambientMotionTime += 0.015 * _ambientSpeed;
-        double width = Math.Max(1, ActualWidth);
-        double height = Math.Max(1, ActualHeight);
-        double[] radii = { 270, 270, 270, 270, 270 };
-        double[] baseOpacities = { 0.82, 0.76, 0.68, 0.64, 0.54 };
-        var transforms = new[] { AmbientBlobOneTransform, AmbientBlobTwoTransform, AmbientBlobThreeTransform, AmbientBlobFourTransform, AmbientBlobFiveTransform };
-        var scales = new[] { AmbientBlobOneScale, AmbientBlobTwoScale, AmbientBlobThreeScale, AmbientBlobFourScale, AmbientBlobFiveScale };
-        var blobs = new[] { AmbientBlobOne, AmbientBlobTwo, AmbientBlobThree, AmbientBlobFour, AmbientBlobFive };
+        // Шаг считается по реальному времени между тиками: DispatcherTimer запаздывает, когда UI занят (прокрутка текста,
+        // смена трека), и фиксированный шаг на тик давал рывки. 30 кадров/с остаются эталоном прежней скорости.
+        long now = Stopwatch.GetTimestamp();
+        double elapsedSeconds = _ambientLastTimestamp == 0
+            ? 1.0 / 30.0
+            : Math.Clamp((now - _ambientLastTimestamp) / (double)Stopwatch.Frequency, 0.0, 0.1);
+        _ambientLastTimestamp = now;
+        double frameFactor = elapsedSeconds * 30.0;
 
-        for (int index = 0; index < _flowClouds.Length; index++)
-        {
-            FlowCloud cloud = GetFlowCloud(index, width, height);
-            double travelDuration = 1.0 / cloud.TravelRate;
-            double cycleDuration = travelDuration + cloud.HiddenPauseDuration;
-            double cycleOffset = (_ambientMotionTime + cloud.MotionPhase * cycleDuration) % cycleDuration;
-            if (cycleOffset > travelDuration)
-            {
-                // Интервал отдыха за экраном. Переход на новую стартовую точку происходит при нулевой прозрачности.
-                blobs[index].Opacity = 0;
-                continue;
-            }
+        // Скорость перелива сглаживается, поэтому удары в музыке ускоряют фон плавно, без рывков.
+        _ambientSpeed += (_ambientTargetSpeed - _ambientSpeed) * (1.0 - Math.Pow(1.0 - 0.032, frameFactor));
+        _ambientMotionTime += 0.015 * frameFactor * _ambientSpeed;
+        RenderCloudFlowFrame(elapsedSeconds);
 
-            double travel = cycleOffset / travelDuration;
-            double baseX = (cloud.Entry.X + (cloud.Exit.X - cloud.Entry.X) * travel) * width;
-            double baseY = (cloud.Entry.Y + (cloud.Exit.Y - cloud.Entry.Y) * travel) * height;
-            double lineX = (cloud.Exit.X - cloud.Entry.X) * width;
-            double lineY = (cloud.Exit.Y - cloud.Entry.Y) * height;
-            double lineLength = Math.Max(1.0, Math.Sqrt(lineX * lineX + lineY * lineY));
-            double normalX = -lineY / lineLength;
-            double normalY = lineX / lineLength;
-            double wave = Math.Sin((travel * cloud.WaveCycles + cloud.MotionPhase) * Math.PI * 2.0) * cloud.WaveAmplitude;
-            double verticalDrift = Math.Sin((travel * cloud.VerticalDriftCycles + cloud.MotionPhase * 1.37) * Math.PI * 2.0)
-                * cloud.VerticalDriftAmplitude;
-            double positionX = baseX + normalX * wave;
-            double positionY = baseY + normalY * wave + verticalDrift;
-
-            double scale = 0.93 + (Math.Sin(_ambientMotionTime * (0.070 + index * 0.012) + cloud.ScalePhase) + 1.0) * 0.055;
-            scales[index].ScaleX = scale;
-            scales[index].ScaleY = scale;
-            double edgeFade = Math.Sqrt(EdgeVisibility(positionX, width, radii[index])
-                * EdgeVisibility(positionY, height, radii[index]));
-            double breathing = 0.74 + (Math.Sin(_ambientMotionTime * (0.060 + index * 0.010) + cloud.OpacityPhase) + 1.0) * 0.09;
-            blobs[index].Opacity = baseOpacities[index] * breathing * edgeFade;
-            SetAmbientPosition(transforms[index], positionX - radii[index], positionY - radii[index]);
-        }
-    }
-
-    private FlowCloud GetFlowCloud(int index, double width, double height)
-    {
-        FlowCloud? existing = _flowClouds[index];
-        if (existing is not null) return existing;
-
-        Point[] entries =
-        {
-            new(-0.18, 0.18), new(1.16, 0.30), new(0.14, -0.20), new(0.82, 1.18), new(-0.16, 0.72)
-        };
-        Point[] exits =
-        {
-            new(1.18, 0.72), new(-0.18, 0.76), new(0.78, 1.18), new(0.20, -0.18), new(1.16, 0.42)
-        };
-        var cloud = new FlowCloud
-        {
-            Entry = entries[index],
-            Exit = exits[index],
-            TravelRate = 0.112 + index * 0.010,
-            HiddenPauseDuration = 0.22 + index * 0.05,
-            WaveAmplitude = 28 + index * 5,
-            WaveCycles = 0.34 + index * 0.08,
-            VerticalDriftAmplitude = 54 + index * 9,
-            VerticalDriftCycles = 0.54 + index * 0.11,
-            MotionPhase = 0.11 + index * 0.173,
-            ScalePhase = index * 1.41 + 0.37,
-            OpacityPhase = index * 2.17 + 0.91
-        };
-        _flowClouds[index] = cloud;
-        return cloud;
-    }
-
-    private static double EdgeVisibility(double center, double length, double radius)
-    {
-        // Отсчёт от ближайшей границы видимой окружности, а не от центра сферы.
-        double enter = SmoothStep(0, radius * 1.55, center + radius);
-        double leave = SmoothStep(0, radius * 1.55, length - center + radius);
-        return enter * leave;
-    }
-
-    private static double SmoothStep(double start, double end, double value)
-    {
-        double normalized = Math.Clamp((value - start) / Math.Max(0.001, end - start), 0, 1);
-        return normalized * normalized * (3.0 - 2.0 * normalized);
-    }
-
-    private static void SetAmbientPosition(System.Windows.Media.TranslateTransform transform, double x, double y)
-    {
-        transform.X = x;
-        transform.Y = y;
+        _ambientScenePlaced = true;
+        if (!_owner.IsPlayingNow && _ambientSpeed <= AmbientIdleSpeedThreshold)
+            _ambientMotionTimer?.Stop();
     }
 
     private void UpdateAmbientAnimation(bool isPlaying)
     {
         // При воспроизведении значение уточняется по AudioLevelMeter на каждом тике;
         // здесь задаётся спокойная стартовая скорость до первого аудиосэмпла.
-        _ambientTargetSpeed = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings)
-            ? 0
-            : isPlaying ? 0.72 : 0.15;
-        // Таймер нужен только облакам; шары и волны считаются покадрово.
+        bool reduceMotion = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        _ambientTargetSpeed = reduceMotion ? 0 : isPlaying ? 0.72 : 0;
+        if (reduceMotion) _ambientSpeed = 0;
+        // Таймер нужен только облакам; шары и волны считаются покадрово. На паузе облака плавно тормозят до нуля
+        // и таймер выключается; при «Меньше анимации» он не работает вовсе.
         if (_ambientMotionTimer is not null)
-            _ambientMotionTimer.IsEnabled = BackgroundMode == "Clouds";
+        {
+            // В свёрнутом или скрытом окне анимацию никто не видит: покадровый расчёт не нужен.
+            _ambientMotionTimer.IsEnabled = BackgroundMode == "Clouds" && !reduceMotion && IsShownOnScreen
+                && (isPlaying || _ambientSpeed > AmbientIdleSpeedThreshold || !_ambientScenePlaced);
+        }
+        // Измеритель уровня нужен только реагирующим фонам и только пока окно видно.
+        bool animatedBackground = BackgroundMode == "Clouds" || IsOrbsBackground || IsWavesBackground;
+        _owner.SetAudioLevelMeterEnabled(animatedBackground && !reduceMotion && IsShownOnScreen);
         UpdateDynamicDriver(isPlaying);
     }
 
@@ -1675,15 +1599,22 @@ public partial class NowPlayingWindow : Window
         try
         {
             IReadOnlyList<OnlineLyricsResult> results = await LyricsService.SearchOnlineVariantsAsync(trackName, artistName, token);
-            if (token.IsCancellationRequested || !string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
+            if (token.IsCancellationRequested)
+                return; // отмена: статус принадлежит новому поиску или закрытию окна
+
+            if (!string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
+            {
+                // Трек сменился, пока шёл запрос: результаты относятся к другому треку, а статус «Ищу текст…» не должен залипнуть.
+                HideOnlineLyricsSearch();
                 return;
+            }
 
             foreach (OnlineLyricsResult result in results)
                 _onlineResults.Add(result);
 
             OnlineLyricsSearchStatusText.Text = _onlineResults.Count == 0
                 ? LocalizationService.Translate("Во встроенной базе совпадения не найдены. Измените запрос или откройте Genius ниже.")
-                : LocalizationService.Format("Найдено вариантов: {0}. Дважды кликните нужный вариант, чтобы сохранить его рядом с аудиофайлом.", _onlineResults.Count);
+                : LocalizationService.Format("Найдено вариантов: {0}. Дважды кликните нужный вариант, чтобы сохранить его.", _onlineResults.Count);
         }
         catch (LyricsRateLimitException ex)
         {
@@ -1696,8 +1627,9 @@ public partial class NowPlayingWindow : Window
         {
             // Поиск отменён при смене трека, новом запросе или закрытии окна.
         }
-        catch
+        catch (Exception ex)
         {
+            Logger.Error("Онлайн-поиск текста песни не удался", ex);
             OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Не удалось выполнить поиск. Проверьте подключение к интернету.");
         }
         finally
@@ -1800,7 +1732,7 @@ public partial class NowPlayingWindow : Window
         string? trackPath = _owner.CurrentTrackPath;
         if (string.IsNullOrWhiteSpace(trackPath) || !File.Exists(trackPath)) return;
 
-        OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Сохраняю выбранный текст рядом с аудиофайлом…");
+        OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Сохраняю выбранный текст…");
         OnlineLyricsResultsList.IsEnabled = false;
         try
         {

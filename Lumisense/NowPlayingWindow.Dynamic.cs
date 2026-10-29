@@ -204,13 +204,14 @@ public partial class NowPlayingWindow
         }
 
         if (!_dynamicRendering) RenderDynamicFrame();
+        UpdateCloudBitmap();
     }
 
     // Запускает или останавливает покадровый расчёт. Вызывается из UpdateAmbientAnimation при смене состояния воспроизведения.
     private void UpdateDynamicDriver(bool isPlaying)
     {
         bool animated = IsOrbsBackground || IsWavesBackground;
-        bool run = animated && isPlaying && IsLoaded && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        bool run = animated && isPlaying && IsLoaded && IsShownOnScreen && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
         if (run && !_dynamicRendering)
         {
             _dynamicLastTime = TimeSpan.MinValue;

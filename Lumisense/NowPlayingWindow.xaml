@@ -1,3 +1,5 @@
+<!-- Полноэкранная иммерсивная поверхность под обложку: фон и белые полупрозрачные слои заданы литералами намеренно и не следуют
+     светлой/тёмной теме и акценту (светлая тема сделала бы белый текст нечитаемым). Цвета облаков берутся из палитры обложки. -->
 <Window x:Class="Lumisense.NowPlayingWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -74,42 +76,10 @@
     </Window.Resources>
 
     <Grid>
-        <!-- Декоративный слой: крупные размытые световые сферы быстро проходят через экран.
-             Он не ловит мышь и поэтому не влияет на клавиши, кнопки или выбор текста. -->
-        <Canvas x:Name="CloudsBackdrop" IsHitTestVisible="False" ClipToBounds="True">
-            <Ellipse x:Name="AmbientBlobOne" RenderTransformOrigin="0.5,0.5" Width="540" Height="540" Fill="#D45278FF" Opacity="0.82" Canvas.Left="0" Canvas.Top="0">
-                <Ellipse.Effect><BlurEffect Radius="140" /></Ellipse.Effect>
-                <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobOneScale" /><TranslateTransform x:Name="AmbientBlobOneTransform" /></TransformGroup></Ellipse.RenderTransform>
-            </Ellipse>
-            <Ellipse x:Name="AmbientBlobTwo" RenderTransformOrigin="0.5,0.5" Width="540" Height="540" Fill="#C14CE0FF" Opacity="0.76" Canvas.Left="0" Canvas.Top="0">
-                <Ellipse.Effect><BlurEffect Radius="140" /></Ellipse.Effect>
-                <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobTwoScale" /><TranslateTransform x:Name="AmbientBlobTwoTransform" /></TransformGroup></Ellipse.RenderTransform>
-            </Ellipse>
-            <Ellipse x:Name="AmbientBlobThree" RenderTransformOrigin="0.5,0.5" Width="540" Height="540" Fill="#D8FF9F54" Opacity="0.68" Canvas.Left="0" Canvas.Top="0">
-                <Ellipse.Effect><BlurEffect Radius="140" /></Ellipse.Effect>
-                <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobThreeScale" /><TranslateTransform x:Name="AmbientBlobThreeTransform" /></TransformGroup></Ellipse.RenderTransform>
-            </Ellipse>
-            <Ellipse x:Name="AmbientBlobFour" RenderTransformOrigin="0.5,0.5" Width="540" Height="540" Fill="#C943E7D1" Opacity="0.64" Canvas.Left="0" Canvas.Top="0">
-                <Ellipse.Effect><BlurEffect Radius="140" /></Ellipse.Effect>
-                <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobFourScale" /><TranslateTransform x:Name="AmbientBlobFourTransform" /></TransformGroup></Ellipse.RenderTransform>
-            </Ellipse>
-            <Ellipse x:Name="AmbientBlobFive" RenderTransformOrigin="0.5,0.5" Width="540" Height="540" Fill="#B9FFFFFF" Opacity="0.54" Canvas.Left="0" Canvas.Top="0">
-                <Ellipse.Effect><BlurEffect Radius="140" /></Ellipse.Effect>
-                <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobFiveScale" /><TranslateTransform x:Name="AmbientBlobFiveTransform" /></TransformGroup></Ellipse.RenderTransform>
-            </Ellipse>
-            <Ellipse x:Name="AmbientBlobSix" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5" Width="300" Height="300" Fill="#A9FFFFFF" Opacity="0.50" Canvas.Left="0" Canvas.Top="0">
-                <Ellipse.Effect><BlurEffect Radius="90" /></Ellipse.Effect>
-                <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobSixScale" /><TranslateTransform x:Name="AmbientBlobSixTransform" /></TransformGroup></Ellipse.RenderTransform>
-            </Ellipse>
-            <Ellipse x:Name="AmbientBlobSeven" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5" Width="280" Height="280" Fill="#A9FFFFFF" Opacity="0.46" Canvas.Left="0" Canvas.Top="0">
-                <Ellipse.Effect><BlurEffect Radius="84" /></Ellipse.Effect>
-                <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobSevenScale" /><TranslateTransform x:Name="AmbientBlobSevenTransform" /></TransformGroup></Ellipse.RenderTransform>
-            </Ellipse>
-            <Ellipse x:Name="AmbientBlobEight" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5" Width="260" Height="260" Fill="#A9FFFFFF" Opacity="0.43" Canvas.Left="0" Canvas.Top="0">
-                <Ellipse.Effect><BlurEffect Radius="78" /></Ellipse.Effect>
-                <Ellipse.RenderTransform><TransformGroup><ScaleTransform x:Name="AmbientBlobEightScale" /><TranslateTransform x:Name="AmbientBlobEightTransform" /></TransformGroup></Ellipse.RenderTransform>
-            </Ellipse>
-        </Canvas>
+        <!-- Фон «Облака» (NowPlayingWindow.CloudFlow.cs): всё окно переливается цветами обложки. Поле считается в маленький битмап,
+             который растягивается на окно с линейным сглаживанием: без сфер и без BlurEffect, который в WPF считается на CPU.
+             Слой не ловит мышь и не влияет на клавиши, кнопки и выбор текста. -->
+        <Image x:Name="CloudsBackdrop" IsHitTestVisible="False" Stretch="Fill" RenderOptions.BitmapScalingMode="Linear" />
         <!-- Фон «Цветные шары» (NowPlayingWindow.Dynamic.cs): овалы с мягким радиальным градиентом создаются в коде. -->
         <Canvas x:Name="OrbsBackdrop" IsHitTestVisible="False" ClipToBounds="True" Visibility="Collapsed" />
 

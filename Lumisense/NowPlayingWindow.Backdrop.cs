@@ -2,7 +2,8 @@ using System.Windows;
 
 namespace Lumisense;
 
-// Выбор фона Now Playing (AppSettings.NowPlayingBackground): "Clouds" — прежние облака из палитры обложки (по умолчанию),
+// Выбор фона Now Playing (AppSettings.NowPlayingBackground): "Clouds" — перелив цветов обложки по всей поверхности (по умолчанию,
+// NowPlayingWindow.CloudFlow.cs),
 // "Orbs" — мягкие цветные шары на орбитах, "Waves" — размытые волны. Рисование шаров и волн — в NowPlayingWindow.Dynamic.cs.
 public partial class NowPlayingWindow
 {
