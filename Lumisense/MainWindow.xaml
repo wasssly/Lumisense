@@ -304,6 +304,7 @@
 
                     <CheckBox Grid.Column="0" VerticalAlignment="Center" Margin="0,0,4,0"
                               IsChecked="{Binding IsEnabled, Mode=TwoWay}"
+                              Click="FolderEnabled_Click"
                               ToolTip="Включить/выключить эту папку в проигрывании" />
 
                     <ui:Button Grid.Column="1" Appearance="Secondary"
@@ -874,7 +875,9 @@
 
             <ui:Button x:Name="PrevButton" Appearance="Secondary"
                        Width="44" Height="44" Margin="4,0"
-                       Click="PrevButton_Click" ToolTip="Предыдущий">
+                       Click="PrevButton_Click"
+                       AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
+                       ToolTip="Предыдущий">
                 <ui:Button.Icon>
                     <local:SvgPathIcon Icon="IconPrevious" />
                 </ui:Button.Icon>
@@ -884,7 +887,9 @@
                  фон не обновляется вживую при смене акцента (lepoco/wpfui #965/#981). -->
             <ui:Button x:Name="PlayPauseButton" Appearance="Secondary"
                        Width="54" Height="54" Margin="4,0"
-                       Click="PlayPauseButton_Click" ToolTip="Пуск/Пауза">
+                       Click="PlayPauseButton_Click"
+                       AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
+                       ToolTip="Пуск/Пауза">
                 <ui:Button.Icon>
                     <local:SvgPathIcon x:Name="PlayPauseIcon" Icon="IconPlay" Size="15" />
                 </ui:Button.Icon>
@@ -892,7 +897,9 @@
 
             <ui:Button x:Name="NextButton" Appearance="Secondary"
                        Width="44" Height="44" Margin="4,0"
-                       Click="NextButton_Click" ToolTip="Следующий">
+                       Click="NextButton_Click"
+                       AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
+                       ToolTip="Следующий">
                 <ui:Button.Icon>
                     <local:SvgPathIcon Icon="IconNext" />
                 </ui:Button.Icon>
@@ -927,6 +934,7 @@
                 <ui:Button x:Name="PlaybackControlButton" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="0,0,4,0"
                            Click="PlaybackControlButton_Click" MouseWheel="PlaybackControlButton_MouseWheel"
+                           AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                            ToolTip="Скорость и тон воспроизведения">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconSpeed" Size="15" />
@@ -934,7 +942,9 @@
                 </ui:Button>
                 <ui:Button x:Name="MuteButton" Appearance="Transparent"
                            Width="26" Height="26" Padding="0" Margin="0,0,6,0"
-                           Click="MuteButton_Click" ToolTip="Без звука">
+                           Click="MuteButton_Click"
+                           AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
+                           ToolTip="Без звука">
                     <ui:Button.Icon>
                         <local:SvgPathIcon x:Name="SpeakerIcon" Icon="IconSpeaker" Size="15" />
                     </ui:Button.Icon>

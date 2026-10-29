@@ -64,12 +64,14 @@ public sealed partial class TrayMenuWindow : Window
         int h = (int)Math.Round(ActualHeight * scale);
         var work = screen.WorkingArea;
 
+        // Меню растёт вверх от курсора (нижний край на курсоре или на границе рабочей области, если курсор на панели задач);
+        // по горизонтали левый край у курсора, а у правого края экрана меню разворачивается влево.
         int x = _dirX < 0 ? work.Left
             : _dirX > 0 ? work.Right - w
-            : Math.Clamp(cursor.X - w / 2, work.Left, Math.Max(work.Left, work.Right - w));
+            : Math.Clamp(cursor.X + w <= work.Right ? cursor.X : cursor.X - w, work.Left, Math.Max(work.Left, work.Right - w));
         int y = _dirY < 0 ? work.Top + topInset
-            : _dirY > 0 ? work.Bottom - h
-            : Math.Clamp(cursor.Y - h / 2, work.Top, Math.Max(work.Top, work.Bottom - h));
+            : _dirY > 0 ? Math.Min(cursor.Y, work.Bottom) - h
+            : Math.Clamp(cursor.Y - h >= work.Top ? cursor.Y - h : cursor.Y, work.Top, Math.Max(work.Top, work.Bottom - h));
 
         IntPtr hwnd = new WindowInteropHelper(this).Handle;
         WindowSnapHelper.SetWindowPos(hwnd, IntPtr.Zero, x, y, w, h,

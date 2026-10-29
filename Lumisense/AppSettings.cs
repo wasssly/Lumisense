@@ -78,7 +78,7 @@ public class AppSettings
 
     // Значок приложения (окна, трей) — меняется вживую (AppIcons.SetCurrent), см. AppIcons.cs.
     // Не влияет на иконку самого .exe/ярлыка — та зашита в сборку через ApplicationIcon.
-    public string AppIcon { get; set; } = AppIcons.Aurora;
+    public string AppIcon { get; set; } = AppIcons.Default;
 
     // Язык статического интерфейса: "ru" или "en". На первом запуске установщик может
     // передать свой выбор через одноразовый marker-файл в папке данных приложения.
@@ -556,6 +556,10 @@ public class AppSettings
     public string? UpdateCheckFailingSinceUtc { get; set; }
     public string? UpdateCheckHintShownUtc { get; set; }
 
+    // Обращение к пользователям (CommunityDialog): показывается при каждом запуске, пока не отмечено «Не показывать».
+    // Имя не совпадает со старым CommunityDialogShown: тот флаг ставился при любом закрытии, и его значение намеренно не переносится.
+    public bool CommunityDialogDismissed { get; set; }
+
     // 10 ISO-полос графического EQ (EqualizerSampleProvider); при другой длине сохранённого массива SettingsWindow и
     // MainWindow подстраиваются под BandFrequencies, а не доверяют длине массива.
     public bool EqualizerEnabled { get; set; }
@@ -614,6 +618,86 @@ public static class SettingsManager
     private static long LastWrittenRevision;
     private static string? LastObservedSettingsJson;
     private static int CheckpointInProgress;
+
+    // Checkpoint срабатывает раз в секунду на UI-потоке, а settings.json содержит весь плейлист, избранное и счётчики: полная
+    // сериализация (с отступами) на большой библиотеке давала мегабайты строк в куче больших объектов каждую секунду.
+    // Поэтому проверка изменений идёт по лёгкому снимку (все поля, кроме больших коллекций) и отпечатку самих коллекций;
+    // полный JSON строится, только когда что-то изменилось.
+    private static string? LastProbeJson;
+    private static string? LastProbeObserved;
+    private static ulong LastBulkFingerprint;
+
+    private static readonly HashSet<string> BulkPropertyNames = new(StringComparer.Ordinal)
+    {
+        nameof(AppSettings.SavedPlaylistFolders), nameof(AppSettings.SavedPlaylist), nameof(AppSettings.FavoriteTracks),
+        nameof(AppSettings.PinnedFavoriteTracks), nameof(AppSettings.SavedQueue), nameof(AppSettings.ShuffleHistory),
+        nameof(AppSettings.ShuffleBag), nameof(AppSettings.PlayCounts)
+    };
+
+    private static readonly JsonSerializerOptions ChangeProbeOptions = new()
+    {
+        MaxDepth = 16,
+        TypeInfoResolver = new System.Text.Json.Serialization.Metadata.DefaultJsonTypeInfoResolver
+        {
+            Modifiers = { ExcludeBulkProperties }
+        }
+    };
+
+    private static void ExcludeBulkProperties(System.Text.Json.Serialization.Metadata.JsonTypeInfo typeInfo)
+    {
+        if (typeInfo.Type != typeof(AppSettings)) return;
+
+        foreach (var property in typeInfo.Properties)
+        {
+            if (BulkPropertyNames.Contains(property.Name))
+                property.ShouldSerialize = static (_, _) => false;
+        }
+    }
+
+    private static ulong MixHash(ulong hash, int value) => (hash ^ (uint)value) * 1099511628211UL;
+
+    private static ulong MixStrings(ulong hash, List<string>? items)
+    {
+        if (items is null) return MixHash(hash, -1);
+
+        hash = MixHash(hash, items.Count);
+        foreach (string item in items)
+            hash = MixHash(hash, item?.GetHashCode() ?? 0);
+        return hash;
+    }
+
+    // Отпечаток больших коллекций: порядок списков учитывается, словаря счётчиков — нет (сумма не зависит от порядка).
+    private static ulong ComputeBulkFingerprint(AppSettings settings)
+    {
+        ulong hash = 14695981039346656037UL;
+        hash = MixHash(hash, settings.SavedPlaylistFolders.Count);
+        foreach (SavedPlaylistFolder folder in settings.SavedPlaylistFolders)
+        {
+            hash = MixHash(hash, folder.DisplayName?.GetHashCode() ?? 0);
+            hash = MixHash(hash, folder.SourcePath?.GetHashCode() ?? 0);
+            hash = MixHash(hash, (folder.IsEnabled ? 1 : 0) | (folder.IsExpanded ? 2 : 0) | (folder.IsLooseFilesBucket ? 4 : 0));
+            hash = MixStrings(hash, folder.Tracks);
+            hash = MixStrings(hash, folder.ExcludedTracks);
+        }
+
+        hash = MixStrings(hash, settings.SavedPlaylist);
+        hash = MixStrings(hash, settings.FavoriteTracks);
+        hash = MixStrings(hash, settings.PinnedFavoriteTracks);
+        hash = MixStrings(hash, settings.SavedQueue);
+        hash = MixStrings(hash, settings.ShuffleHistory);
+        hash = MixStrings(hash, settings.ShuffleBag);
+
+        ulong counts = 0;
+        foreach (KeyValuePair<string, int> pair in settings.PlayCounts)
+            counts += (ulong)((pair.Key?.GetHashCode() ?? 0) * 397 ^ pair.Value) * 2654435761UL;
+        return MixHash(MixHash(hash, settings.PlayCounts.Count), (int)counts ^ (int)(counts >> 32));
+    }
+
+    // Резервные копии нужны от порчи файла, а не от каждого изменения: во время работы они обновляются не чаще раза в несколько минут.
+    // Первая копия процесса, выход, обновление и аварийный снимок пишут копию всегда; неизменившийся снимок повторно не пишется.
+    private static readonly long BackupIntervalMilliseconds = (long)TimeSpan.FromMinutes(5).TotalMilliseconds;
+    private static long LastBackupTick = long.MinValue;
+    private static string? LastBackedUpJson;
     private static readonly string DefaultStorageDirectory = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Lumisense");
 
@@ -639,6 +723,11 @@ public static class SettingsManager
         Interlocked.Exchange(ref LastWrittenRevision, 0);
         Interlocked.Exchange(ref CheckpointInProgress, 0);
         Volatile.Write(ref LastObservedSettingsJson, null);
+        LastProbeJson = null;
+        LastProbeObserved = null;
+        LastBulkFingerprint = 0;
+        LastBackupTick = long.MinValue;
+        LastBackedUpJson = null;
     }
 
     // true, если файл настроек уже сохранялся: отличает первый запуск (открываем квадратный вид) от старых настроек,
@@ -670,7 +759,8 @@ public static class SettingsManager
 
     // false только при неудаче записи; большинство вызовов результат игнорирует, а Velopack apply использует его
     // как барьер перед плановым перезапуском.
-    public static bool Save(AppSettings settings)
+    // forceBackup: выход, обновление и другие моменты, когда резервная копия должна содержать самое свежее состояние.
+    public static bool Save(AppSettings settings, bool forceBackup = false)
     {
         try
         {
@@ -678,7 +768,7 @@ public static class SettingsManager
             // Публикуем готовый JSON до I/O: если процесс оборвётся в WriteJsonAtomic,
             // аварийный обработчик сможет сохранить тот же снимок без чтения WPF-состояния.
             Volatile.Write(ref LastObservedSettingsJson, json);
-            WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
+            WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision), forceBackup);
             return true;
         }
         catch (Exception ex)
@@ -697,7 +787,7 @@ public static class SettingsManager
 
         try
         {
-            WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision));
+            WriteJsonAtomic(json, Interlocked.Increment(ref NextSaveRevision), forceBackup: true);
         }
         catch (Exception ex)
         {
@@ -733,8 +823,19 @@ public static class SettingsManager
         try
         {
             string json;
+            string probe;
+            ulong bulk;
+            string? observed = Volatile.Read(ref LastObservedSettingsJson);
             try
             {
+                probe = JsonSerializer.Serialize(settings, ChangeProbeOptions);
+                bulk = ComputeBulkFingerprint(settings);
+
+                // Ничего не менялось с прошлой проверки, и сохранённый снимок тот же (любой Save подменяет строку): полный JSON не нужен.
+                if (observed is not null && ReferenceEquals(observed, LastProbeObserved) &&
+                    bulk == LastBulkFingerprint && string.Equals(probe, LastProbeJson, StringComparison.Ordinal))
+                    return;
+
                 json = JsonSerializer.Serialize(settings, JsonOptions);
             }
             catch (Exception ex)
@@ -743,9 +844,16 @@ public static class SettingsManager
                 return;
             }
 
-            if (string.Equals(json, Volatile.Read(ref LastObservedSettingsJson), StringComparison.Ordinal))
-                return;
+            LastProbeJson = probe;
+            LastBulkFingerprint = bulk;
 
+            if (string.Equals(json, observed, StringComparison.Ordinal))
+            {
+                LastProbeObserved = observed;
+                return;
+            }
+
+            LastProbeObserved = json;
             Volatile.Write(ref LastObservedSettingsJson, json);
             var revision = Interlocked.Increment(ref NextSaveRevision);
             await Task.Run(() => WriteJsonAtomic(json, revision)).ConfigureAwait(false);
@@ -772,7 +880,7 @@ public static class SettingsManager
         }
     }
 
-    private static void WriteJsonAtomic(string json, long revision)
+    private static void WriteJsonAtomic(string json, long revision, bool forceBackup = false)
     {
         var directory = Path.GetDirectoryName(SettingsFilePath);
         if (directory != null)
@@ -786,7 +894,7 @@ public static class SettingsManager
             var tempPath = SettingsFilePath + $".{revision}.{Guid.NewGuid():N}.tmp";
             try
             {
-                TryBackupUserData(json);
+                TryBackupUserData(json, forceBackup);
                 File.WriteAllText(tempPath, json);
                 File.Move(tempPath, SettingsFilePath, overwrite: true);
             }
@@ -803,10 +911,24 @@ public static class SettingsManager
         }
     }
 
-    private static void TryBackupUserData(string candidateJson) =>
+    // Вызывается под SaveGate, поэтому статическое состояние троттлинга не нуждается в отдельной блокировке.
+    private static void TryBackupUserData(string candidateJson, bool force)
+    {
+        if (string.Equals(candidateJson, LastBackedUpJson, StringComparison.Ordinal)) return;
+
+        long now = Environment.TickCount64;
+        bool firstBackup = LastBackupTick == long.MinValue;
+        if (!force && !firstBackup && now - LastBackupTick < BackupIntervalMilliseconds) return;
+
+        // Разбор JSON дороже проверок выше, поэтому идёт последним; без пользовательских данных копия не нужна и интервал не стартует.
+        if (!SettingsIntegrityService.HasUserData(candidateJson)) return;
+
+        LastBackupTick = now;
+        LastBackedUpJson = candidateJson;
         SettingsIntegrityService.CreateRecoveryBackups(
             candidateJson,
             SettingsFilePath,
             UserDataRecoveryBackupPath,
             PlaylistRecoveryBackupPath);
+    }
 }

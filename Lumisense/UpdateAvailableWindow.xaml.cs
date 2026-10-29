@@ -566,7 +566,7 @@ public partial class UpdateAvailableWindow : FluentWindow
 
             // Перед ApplyAndRestart синхронно сохраняем настройки на UI-потоке; без подтверждённой записи приложение не
             // закрываем, чтобы пользователь не выбирал между обновлением и сохранностью плейлиста/настроек.
-            if (_settings is null || !SettingsManager.Save(_settings))
+            if (_settings is null || !SettingsManager.Save(_settings, forceBackup: true))
             {
                 _velopackDiagnostics?.Failed(new InvalidOperationException("Settings save before planned update restart was not confirmed."));
                 SetDownloading(false);

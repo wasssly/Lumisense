@@ -25,7 +25,21 @@ internal static class AudioOutputDeviceService
 
     internal sealed record ResolvedEndpoint(MMDevice Device, string ActiveDeviceKey, bool UsedFallback);
 
-    public static IReadOnlyList<Option> GetAvailableDevices()
+    // Список устройств последнего удачного перечисления. Чтение FriendlyName у каждого endpoint — COM-вызовы, на некоторых
+    // драйверах они занимают десятки миллисекунд, поэтому окно настроек показывает готовый список и обновляет его в фоне.
+    private static IReadOnlyList<Option>? _cachedDevices;
+
+    internal static IReadOnlyList<Option>? CachedDevices => Volatile.Read(ref _cachedDevices);
+
+    // Устройства подключили или отключили: прежний список больше нельзя показывать как актуальный.
+    internal static void InvalidateDeviceCache() => Volatile.Write(ref _cachedDevices, null);
+
+    // Фоновое перечисление; null — не удалось (кэш при этом не меняется).
+    internal static Task<IReadOnlyList<Option>?> TryGetAvailableDevicesAsync() => Task.Run(TryEnumerateDevices);
+
+    public static IReadOnlyList<Option> GetAvailableDevices() => TryEnumerateDevices() ?? Array.Empty<Option>();
+
+    private static IReadOnlyList<Option>? TryEnumerateDevices()
     {
         try
         {
@@ -51,12 +65,13 @@ internal static class AudioOutputDeviceService
                 }
             }
 
+            Volatile.Write(ref _cachedDevices, devices);
             return devices;
         }
         catch (Exception ex)
         {
             Logger.Warn($"Не удалось перечислить WASAPI-устройства вывода: {ex.Message}");
-            return Array.Empty<Option>();
+            return null;
         }
     }
 
@@ -131,12 +146,16 @@ internal static class AudioOutputDeviceService
     /// сохранённому ключу. Нужен SettingsWindow, чтобы старый WaveOut-ключ не был ошибочно
     /// заменён системным устройством ещё до первой попытки воспроизведения.
     /// </summary>
-    public static string? FindAvailablePersistedKey(string? preferredDeviceKey)
+    public static string? FindAvailablePersistedKey(string? preferredDeviceKey) =>
+        FindAvailablePersistedKey(preferredDeviceKey, null);
+
+    // devices — уже перечисленный список (окно настроек его только что получило): повторное перечисление не нужно.
+    internal static string? FindAvailablePersistedKey(string? preferredDeviceKey, IReadOnlyList<Option>? devices)
     {
         if (string.IsNullOrWhiteSpace(preferredDeviceKey))
             return SystemDefaultDeviceName;
 
-        IReadOnlyList<Option> devices = GetAvailableDevices();
+        devices ??= GetAvailableDevices();
         string? endpointId = GetEndpointId(preferredDeviceKey);
         Option? match;
         if (!string.IsNullOrWhiteSpace(endpointId))
@@ -146,8 +165,7 @@ internal static class AudioOutputDeviceService
         else
         {
             (string name, int? occurrenceIndex) = ParsePersistedKey(preferredDeviceKey);
-            match = devices.FirstOrDefault(device => LegacyNameMatches(name, device.DeviceName) &&
-                (occurrenceIndex is null || occurrenceIndex == device.OccurrenceIndex));
+            match = FindLegacyNameMatch(devices, name, occurrenceIndex);
         }
 
         return match is null ? null : ComposePersistedKey(match);
@@ -173,8 +191,21 @@ internal static class AudioOutputDeviceService
     private static Option? FindLegacyDisplayOption(string persistedDeviceKey)
     {
         (string name, int? occurrenceIndex) = ParsePersistedKey(persistedDeviceKey);
-        return GetAvailableDevices().FirstOrDefault(device => LegacyNameMatches(name, device.DeviceName) &&
-            (occurrenceIndex is null || occurrenceIndex == device.OccurrenceIndex));
+        return FindLegacyNameMatch(GetAvailableDevices(), name, occurrenceIndex);
+    }
+
+    // Старый ключ хранит только имя: точное совпадение важнее совпадения по началу строки, иначе «Speakers» мог бы
+    // выбрать «Speakers (USB)», если тот стоит в списке раньше.
+    internal static Option? FindLegacyNameMatch(IReadOnlyList<Option> devices, string legacyName, int? occurrenceIndex)
+    {
+        List<Option> candidates = devices
+            .Where(device => LegacyNameMatches(legacyName, device.DeviceName) &&
+                (occurrenceIndex is null || occurrenceIndex == device.OccurrenceIndex))
+            .ToList();
+
+        string normalizedLegacy = NormalizeForMatch(legacyName);
+        return candidates.FirstOrDefault(device => string.Equals(NormalizeForMatch(device.DeviceName), normalizedLegacy, StringComparison.Ordinal))
+            ?? candidates.FirstOrDefault();
     }
 
     private static MMDevice? TryGetActiveEndpointById(MMDeviceEnumerator enumerator, string endpointId)

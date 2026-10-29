@@ -38,13 +38,33 @@ public partial class MainWindow
         public required string Text { get; init; }
         public SolidColorBrush Foreground { get; } = new(Color.FromRgb(142, 142, 142));
         public ScaleTransform ScaleTransform { get; } = new(1, 1);
-        public System.Windows.Media.Effects.DropShadowEffect GlowEffect { get; } = new()
+        private System.Windows.Media.Effects.DropShadowEffect? _glowEffect;
+
+        // Эффект есть только у активной строки и на время её затухания: WPF рисует элемент с эффектом отдельным проходом
+        // даже при Opacity = 0, поэтому на длинной песне по эффекту на каждую строку тормозили прокрутку и анимации.
+        public System.Windows.Media.Effects.DropShadowEffect? GlowEffect
         {
-            Color = Colors.White,
-            BlurRadius = LyricsHighlightStyle.GlowBlurRadius(LyricsHighlightStyle.DefaultGlowStrength),
-            ShadowDepth = 0,
-            Opacity = 0
-        };
+            get => _glowEffect;
+            private set => Set(ref _glowEffect, value, nameof(GlowEffect));
+        }
+
+        // Номер последнего применённого оформления: затухание снимает эффект, только если строку за это время не активировали снова.
+        public int GlowVersion { get; set; }
+
+        public System.Windows.Media.Effects.DropShadowEffect AcquireGlow(double blurRadius)
+        {
+            var effect = _glowEffect ?? new System.Windows.Media.Effects.DropShadowEffect
+            {
+                Color = Colors.White,
+                ShadowDepth = 0,
+                Opacity = 0
+            };
+            effect.BlurRadius = blurRadius;
+            GlowEffect = effect;
+            return effect;
+        }
+
+        public void ReleaseGlow() => GlowEffect = null;
 
         public bool IsActive
         {
@@ -478,8 +498,9 @@ public partial class MainWindow
         bool useGlow = active && LyricsHighlightStyle.HasGlow(_settings.SyncedLyricsHighlightEffect);
         Color foreground = active ? Colors.White : Color.FromRgb(142, 142, 142);
         double scale = useScale ? 1.055 : 1.0;
-        line.GlowEffect.BlurRadius = LyricsHighlightStyle.GlowBlurRadius(_settings.SyncedLyricsGlowStrength);
+        double glowBlur = LyricsHighlightStyle.GlowBlurRadius(_settings.SyncedLyricsGlowStrength);
         double glowOpacity = useGlow ? LyricsHighlightStyle.GlowOpacity(_settings.SyncedLyricsGlowStrength) : 0.0;
+        int glowVersion = ++line.GlowVersion;
 
         if (!animate)
         {
@@ -489,8 +510,11 @@ public partial class MainWindow
             line.ScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty, null);
             line.ScaleTransform.ScaleX = scale;
             line.ScaleTransform.ScaleY = scale;
-            line.GlowEffect.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, null);
-            line.GlowEffect.Opacity = glowOpacity;
+            line.GlowEffect?.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, null);
+            if (glowOpacity > 0)
+                line.AcquireGlow(glowBlur).Opacity = glowOpacity;
+            else
+                line.ReleaseGlow();
             return;
         }
 
@@ -502,7 +526,19 @@ public partial class MainWindow
             new DoubleAnimation(scale, duration) { EasingFunction = easing });
         line.ScaleTransform.BeginAnimation(ScaleTransform.ScaleYProperty,
             new DoubleAnimation(scale, duration) { EasingFunction = easing });
-        line.GlowEffect.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty,
-            new DoubleAnimation(glowOpacity, duration) { EasingFunction = easing });
+        if (glowOpacity > 0)
+        {
+            line.AcquireGlow(glowBlur).BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty,
+                new DoubleAnimation(glowOpacity, duration) { EasingFunction = easing });
+        }
+        else if (line.GlowEffect is { } fadingGlow)
+        {
+            var fade = new DoubleAnimation(0, duration) { EasingFunction = easing };
+            fade.Completed += (_, _) =>
+            {
+                if (line.GlowVersion == glowVersion) line.ReleaseGlow();
+            };
+            fadingGlow.BeginAnimation(System.Windows.Media.Effects.DropShadowEffect.OpacityProperty, fade);
+        }
     }
 }

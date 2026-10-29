@@ -459,7 +459,7 @@ internal static class SettingsIntegrityService
         }
     }
 
-    private static bool HasUserData(string candidateJson)
+    internal static bool HasUserData(string candidateJson)
     {
         using var document = JsonDocument.Parse(candidateJson);
         JsonElement root = document.RootElement;

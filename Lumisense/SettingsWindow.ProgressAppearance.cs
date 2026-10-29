@@ -97,6 +97,8 @@ public partial class SettingsWindow
         ProgressColorCustomPanel.Visibility = appearance.ColorMode == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         ProgressShapeFlatRadio.IsChecked = appearance.IsFlat;
         ProgressShapeRoundRadio.IsChecked = !appearance.IsFlat;
+        ProgressWaveformCapsulesRadio.IsChecked = appearance.WaveformShape == "Capsules";
+        ProgressWaveformWaveRadio.IsChecked = appearance.WaveformShape != "Capsules";
         ProgressWaveAlwaysCheckBox.IsChecked = appearance.WaveAlways;
         ProgressWaveHandleCheckBox.IsChecked = appearance.WaveHandle;
         ProgressHoverTimeCheckBox.IsChecked = appearance.HoverTime;
@@ -375,6 +377,14 @@ public partial class SettingsWindow
         if (_progressEditorLoading) return;
 
         EditedProgressAppearance.EndShape = ProgressShapeFlatRadio.IsChecked == true ? "Flat" : "Round";
+        CommitProgressAppearance(saveNow: true);
+    }
+
+    private void ProgressWaveformShapeRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_progressEditorLoading) return;
+
+        EditedProgressAppearance.WaveformShape = ProgressWaveformCapsulesRadio.IsChecked == true ? "Capsules" : "Wave";
         CommitProgressAppearance(saveNow: true);
     }
 

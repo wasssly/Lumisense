@@ -104,3 +104,26 @@ Workflow выполняет следующие безопасные действ
 [2]: https://docs.velopack.io/integrating/overview "Velopack integration overview"
 [3]: https://docs.velopack.io/distributing/github-actions "Velopack GitHub Actions"
 [4]: https://docs.velopack.io/packaging/installer "Velopack installer and MSI options"
+
+## Опыт S1: ReadyToRun и single-file
+
+Workflow принимает два необязательных параметра, которые применяются и к базе, и к кандидату (иначе дельта сравнивала бы разные раскладки): `publish_ready_to_run` (по умолчанию `false`, как в csproj) и `publish_single_file` (по умолчанию `true`, как в csproj). Запустите workflow три раза с одной и той же парой версий:
+
+| Прогон | publish_ready_to_run | publish_single_file |
+|---|---|---|
+| A (как сейчас) | false | true |
+| B | true | true |
+| C | true | false |
+
+Артефакт каждого прогона называется `Lumisense-Velopack-delta-prototype-r2r-<…>-single-<…>`. В `delta-measurement.json` сравнивайте `fullPackage.bytes`, `deltaPackage.bytes` и `percentOfFull`, а также `publish.candidateFolderBytes` и `publish.candidateFileCount`. Для обновления важнее размер дельты, для первой установки — размер полного пакета или MSI.
+
+Время холодного старта workflow не измеряет. Измеряйте на Windows-машине, на которой пользуетесь плеером, по каждому варианту после распаковки или установки (первый запуск после перезагрузки и три следующих):
+
+```powershell
+$sw = [Diagnostics.Stopwatch]::StartNew()
+$p = Start-Process "C:\путь\к\Lumisense.exe" -PassThru
+while ($p.MainWindowHandle -eq 0 -and -not $p.HasExited) { Start-Sleep -Milliseconds 20; $p.Refresh() }
+$sw.Stop(); "{0} ms до главного окна" -f $sw.ElapsedMilliseconds
+```
+
+Решение принимать по трём числам: размер дельты, размер полного пакета и время до главного окна. Менять `PublishReadyToRun` или `PublishSingleFile` в `Lumisense.csproj` стоит только после этого и отдельным коммитом.

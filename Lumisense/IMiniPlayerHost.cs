@@ -28,6 +28,9 @@ internal interface IMiniPlayerHost
     double CurrentPlaybackSeconds { get; }
     double CurrentTrackDurationSeconds { get; }
     AudioLevelSampleProvider? AudioLevelMeter { get; }
+
+    // Остров просит считать уровень и спектр, пока у него идут эквалайзер или фон; Now Playing просит отдельно, измеритель считает, пока нужен хоть одному.
+    void SetIslandAudioLevelWanted(bool wanted);
     Color GetResolvedAccentColor();
     Color GetProgressBarColor(ProgressSurface surface);
 

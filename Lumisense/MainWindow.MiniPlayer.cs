@@ -174,7 +174,7 @@ public partial class MainWindow
     {
         _gameOverlayDetectionTimer = new DispatcherTimer(DispatcherPriority.Background)
         {
-            Interval = TimeSpan.FromSeconds(5)
+            Interval = TimeSpan.FromSeconds(10)
         };
         _gameOverlayDetectionTimer.Tick += GameOverlayDetectionTimer_Tick;
         _gameOverlayDetectionTimer.Start();
@@ -204,15 +204,35 @@ public partial class MainWindow
             return;
         }
 
-        bool detected = GameOverlayDetectionService.IsGameOrOverlayLikelyActive();
-        if (detected == _autoDetectedGameOverlayActive) return;
+        // Предыдущая проверка ещё идёт (медленная система): пропускаем тик, а не копим параллельные.
+        if (_gameOverlayDetectionInFlight) return;
+        _gameOverlayDetectionInFlight = true;
+        FireAndForget(DetectGameOverlayAsync(), "DetectGameOverlayAsync");
+    }
 
-        _autoDetectedGameOverlayActive = detected;
-        ApplyMiniPlayerOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
+    private bool _gameOverlayDetectionInFlight;
+
+    private async Task DetectGameOverlayAsync()
+    {
+        try
+        {
+            bool detected = await GameOverlayDetectionService.IsGameOrOverlayLikelyActiveAsync();
+
+            // Пока шла проверка, окно могли закрыть или автоопределение выключить: результат тогда устарел.
+            if (_gameOverlayDetectionTimer is null || !_settings.GameOverlayCompatibilityAutoDetect) return;
+            if (detected == _autoDetectedGameOverlayActive) return;
+
+            _autoDetectedGameOverlayActive = detected;
+            ApplyMiniPlayerOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
+        }
+        finally
+        {
+            _gameOverlayDetectionInFlight = false;
+        }
     }
 
     // Вызывается из SettingsWindow сразу при переключении галочки автоопределения — без этого
-    // пользователь увидел бы эффект только на следующем тике таймера (до 5 секунд).
+    // пользователь увидел бы эффект только на следующем тике таймера (до 10 секунд).
     public void ApplyGameOverlayAutoDetectSettingLive()
     {
         if (!_settings.GameOverlayCompatibilityAutoDetect)

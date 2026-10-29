@@ -743,6 +743,22 @@
                         </StackPanel>
                     </RadioButton>
 
+                    <RadioButton x:Name="NavCover" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Cover" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconMusicNote" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Обложка и Now Playing" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton x:Name="NavLyrics" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Lyrics" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconLyrics" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Тексты песен" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
                     <RadioButton x:Name="NavWindow" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Window" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -761,6 +777,22 @@
                         </StackPanel>
                     </RadioButton>
 
+                    <RadioButton x:Name="NavProgress" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Progress" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconSpeed" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Полоса и ползунки" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton x:Name="NavLibrary" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Library" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconAddFolder" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Библиотека и файлы" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
                     <RadioButton x:Name="NavEqualizer" Style="{StaticResource NavItemStyle}"
                                  GroupName="SettingsNav" Tag="Equalizer" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
@@ -776,6 +808,14 @@
                         <StackPanel Orientation="Horizontal">
                             <local:SvgPathIcon Icon="IconPictureInPicture" Size="18" VerticalAlignment="Center" />
                             <TextBlock Text="Мини-плеер" Margin="10,0,0,0" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </RadioButton>
+
+                    <RadioButton x:Name="NavIsland" Style="{StaticResource NavItemStyle}"
+                                 GroupName="SettingsNav" Tag="Island" Checked="NavItem_Checked">
+                        <StackPanel Orientation="Horizontal">
+                            <local:SvgPathIcon Icon="IconMinimizePlayer" Size="18" VerticalAlignment="Center" />
+                            <TextBlock Text="Остров" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
 
@@ -870,7 +910,7 @@
 
                     <StackPanel x:Name="PageAppearance">
                         <TextBlock Text="Оформление" Style="{StaticResource PageTitleStyle}" />
-                        <TextBlock Text="Внешний вид, акцент и взаимодействие с текстом." Style="{StaticResource PageDescriptionStyle}" />
+                        <TextBlock Text="Язык, тема, иконки, акцент, основа окна и доступность." Style="{StaticResource PageDescriptionStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
@@ -1045,54 +1085,86 @@
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Значок приложения" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Применяется сразу ко всем открытым окнам и значку в трее. Значок файла Lumisense.exe и диспетчера задач задаётся сборкой (Aurora) и здесь не меняется; ярлыки на рабочем столе и в меню «Пуск» обновляются автоматически."
+                                <TextBlock Text="Применяется сразу ко всем открытым окнам и значку в трее. Значок файла Lumisense.exe и диспетчера задач задаётся сборкой (Spotlight) и здесь не меняется; ярлыки на рабочем столе и в меню «Пуск» обновляются автоматически."
                                            FontSize="12" Opacity="0.6" Margin="0,-4,0,16" TextWrapping="Wrap" />
 
                                 <WrapPanel>
-                                    <Border x:Name="AppIconCardClassic" Tag="Classic" Width="140" Margin="0,0,12,12"
+                                    <Border x:Name="AppIconCardGlass" Tag="Glass" Width="140" Margin="0,0,12,12"
                                             Padding="14,16" CornerRadius="10" Cursor="Hand"
                                             Background="{DynamicResource ControlFillColorSecondaryBrush}"
                                             BorderThickness="2" BorderBrush="Transparent"
                                             MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
                                         <StackPanel>
-                                            <Image Source="/Icons/app/lumisense.png" Width="44" Height="44" Stretch="Uniform"
+                                            <Image Source="/Icons/app/lumisense-glass.png" Width="44" Height="44" Stretch="Uniform"
                                                    RenderOptions.BitmapScalingMode="HighQuality"
                                                    SnapsToDevicePixels="True" UseLayoutRounding="True"
                                                    Margin="0,0,0,12" />
-                                            <TextBlock Text="Классический" HorizontalAlignment="Center" FontSize="13" />
-                                            <TextBlock Text="Оригинальный значок Lumisense" HorizontalAlignment="Center"
+                                            <TextBlock Text="Glass" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Стекло на ярком фоне" HorizontalAlignment="Center"
                                                        FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                         </StackPanel>
                                     </Border>
 
-                                    <Border x:Name="AppIconCardAurora" Tag="Aurora" Width="140" Margin="0,0,12,12"
+                                    <Border x:Name="AppIconCardSpotlight" Tag="Spotlight" Width="140" Margin="0,0,12,12"
                                             Padding="14,16" CornerRadius="10" Cursor="Hand"
                                             Background="{DynamicResource ControlFillColorSecondaryBrush}"
                                             BorderThickness="2" BorderBrush="Transparent"
                                             MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
                                         <StackPanel>
-                                            <Image Source="/Icons/app/lumisense-aurora.png" Width="44" Height="44" Stretch="Uniform"
+                                            <Image Source="/Icons/app/lumisense-spotlight.png" Width="44" Height="44" Stretch="Uniform"
                                                    RenderOptions.BitmapScalingMode="HighQuality"
                                                    SnapsToDevicePixels="True" UseLayoutRounding="True"
                                                    Margin="0,0,0,12" />
-                                            <TextBlock Text="Aurora" HorizontalAlignment="Center" FontSize="13" />
-                                            <TextBlock Text="Стеклянный, синий" HorizontalAlignment="Center"
+                                            <TextBlock Text="Spotlight" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Стекло в луче света" HorizontalAlignment="Center"
                                                        FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                         </StackPanel>
                                     </Border>
 
-                                    <Border x:Name="AppIconCardLavender" Tag="Lavender" Width="140" Margin="0,0,12,12"
+                                    <Border x:Name="AppIconCardBacklit" Tag="Backlit" Width="140" Margin="0,0,12,12"
                                             Padding="14,16" CornerRadius="10" Cursor="Hand"
                                             Background="{DynamicResource ControlFillColorSecondaryBrush}"
                                             BorderThickness="2" BorderBrush="Transparent"
                                             MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
                                         <StackPanel>
-                                            <Image Source="/Icons/app/lumisense-lavender.png" Width="44" Height="44" Stretch="Uniform"
+                                            <Image Source="/Icons/app/lumisense-backlit.png" Width="44" Height="44" Stretch="Uniform"
                                                    RenderOptions.BitmapScalingMode="HighQuality"
                                                    SnapsToDevicePixels="True" UseLayoutRounding="True"
                                                    Margin="0,0,0,12" />
-                                            <TextBlock Text="Lavender" HorizontalAlignment="Center" FontSize="13" />
-                                            <TextBlock Text="Плоский, сиреневый" HorizontalAlignment="Center"
+                                            <TextBlock Text="Backlit" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Подсветка за стеклом" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border x:Name="AppIconCardStripes" Tag="Stripes" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
+                                        <StackPanel>
+                                            <Image Source="/Icons/app/lumisense-stripes.png" Width="44" Height="44" Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   SnapsToDevicePixels="True" UseLayoutRounding="True"
+                                                   Margin="0,0,0,12" />
+                                            <TextBlock Text="Stripes" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Play и звуковые полоски" HorizontalAlignment="Center"
+                                                       FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border x:Name="AppIconCardBeam" Tag="Beam" Width="140" Margin="0,0,12,12"
+                                            Padding="14,16" CornerRadius="10" Cursor="Hand"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderThickness="2" BorderBrush="Transparent"
+                                            MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
+                                        <StackPanel>
+                                            <Image Source="/Icons/app/lumisense-beam.png" Width="44" Height="44" Stretch="Uniform"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                                   SnapsToDevicePixels="True" UseLayoutRounding="True"
+                                                   Margin="0,0,0,12" />
+                                            <TextBlock Text="Beam" HorizontalAlignment="Center" FontSize="13" />
+                                            <TextBlock Text="Свет из кончика Play" HorizontalAlignment="Center"
                                                        FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                         </StackPanel>
                                     </Border>
@@ -1185,10 +1257,39 @@
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="ReduceMotionCheckBox" Content="Снизить движение"
                                           Checked="ReduceMotionCheckBox_Changed" Unchecked="ReduceMotionCheckBox_Changed" />
-                                <TextBlock Text="Отключает переход обложки и движение фона Now Playing. Воспроизведение и управление не меняются."
+                                <TextBlock Text="Отключает декоративные анимации: бегущую волну полосы прогресса, смену обложки и её сворачивание при показе текста, бегущую строку исполнителя в мини-плеере, анимации острова и меню трея, движение фона Now Playing. Воспроизведение и управление не меняются."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- См. AppSettings.WindowBackdropType. На Windows 10 карточка скрыта (WindowBackdropOptions.IsSelectionSupportedNow). -->
+                        <Border x:Name="BackdropCard" Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Основа окна" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="BackdropMicaAltRadio" Content="Mica Alt (более плотная и контрастная основа, Windows 11 22H2+)"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="BackdropBlurRadio" Content="Размытие"
+                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" />
+                                <TextBlock Text="Основа применяется к главному окну, окну настроек и статистике."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
+                                <CheckBox x:Name="CoverBaseFromCoverCheckBox" Content="Цвет основы от текущей обложки"
+                                          Checked="CoverBaseFromCoverCheckBox_Changed"
+                                          Unchecked="CoverBaseFromCoverCheckBox_Changed" Margin="0,0,0,12" />
+                                <TextBlock Text="Цвет основы от обложки можно включить независимо от акцентного цвета или совместить с любым акцентом."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+
+                    </StackPanel>
+
+                    <StackPanel x:Name="PageLyrics" Visibility="Collapsed">
+                        <TextBlock Text="Тексты песен" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Отображение, поиск и источники текстов песен." Style="{StaticResource PageDescriptionStyle}" />
 
                         <!-- Одна карточка для всего, что влияет на вид текста песни, и один общий предпросмотр сверху:
                              AppSettings.SyncedLyricsFontSize/SyncedLyricsHighlightEffect, LyricsTextAlignment, LyricsDisplayMode. -->
@@ -1397,21 +1498,6 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.NowPlayingBackground и NowPlayingWindow.Backdrop.cs. -->
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Фон Now Playing" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <RadioButton x:Name="NowPlayingBackgroundCloudsRadio" Content="Облака из цветов обложки"
-                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="NowPlayingBackgroundOrbsRadio" Content="Цветные шары"
-                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="NowPlayingBackgroundWavesRadio" Content="Волны"
-                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,0" />
-                                <TextBlock Text="«Цветные шары» плавно движутся по орбитам, «Волны» размыты и реагируют на громкость. Оба фона останавливаются на паузе и при «Меньше анимации»."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Панель текста песни" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -1419,28 +1505,6 @@
                                           Checked="HideCoverInLyricsCheckBox_Changed" Unchecked="HideCoverInLyricsCheckBox_Changed" />
                                 <TextBlock Text="Название и исполнитель остаются, а освободившееся место отдаётся тексту. Обложка возвращается, когда панель закрыта."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Анимация избранного" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Показывается при добавлении трека в избранное кнопкой-сердечком в плейлисте и в мини-плеере. При включённом «Меньше анимации» не воспроизводится."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" TextWrapping="Wrap" />
-                                <WrapPanel>
-                                    <RadioButton x:Name="FavoriteHeartFillRadio" Content="Заливка"
-                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
-                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
-                                    <RadioButton x:Name="FavoriteHeartSparksRadio" Content="Искры"
-                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
-                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
-                                    <RadioButton x:Name="FavoriteHeartRingRadio" Content="Кольцо"
-                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
-                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
-                                    <RadioButton x:Name="FavoriteHeartNoneRadio" Content="Без анимации"
-                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
-                                                 Margin="0" VerticalAlignment="Center" />
-                                </WrapPanel>
                             </StackPanel>
                         </Border>
 
@@ -1469,25 +1533,68 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.WindowBackdropType. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Основа окна" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <RadioButton x:Name="BackdropMicaRadio" Content="Mica (лёгкое размытие, по умолчанию)"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="BackdropMicaAltRadio" Content="Mica Alt (более плотная и контрастная основа, Windows 11 22H2+)"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="BackdropAcrylicRadio" Content="Acrylic (сильнее размытие и прозрачность)"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="BackdropBlurRadio" Content="Размытие"
-                                             GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" />
-                                <TextBlock Text="Основа применяется к главному окну, окну настроек и статистике."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
-                                <CheckBox x:Name="CoverBaseFromCoverCheckBox" Content="Цвет основы от текущей обложки"
-                                          Checked="CoverBaseFromCoverCheckBox_Changed"
-                                          Unchecked="CoverBaseFromCoverCheckBox_Changed" Margin="0,0,0,12" />
-                                <TextBlock Text="Цвет основы от обложки можно включить независимо от акцентного цвета или совместить с любым акцентом."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
+                                <TextBlock Text="Кэш текстов песен" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Вставленные тексты хранятся только на этом устройстве. Кэш очищается через 180 дней и ограничен 200 текстами или 32 МБ."
+                                           Opacity="0.6" FontSize="12" Margin="0,0,0,12" TextWrapping="Wrap" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock x:Name="LyricsCacheInfoText" VerticalAlignment="Center" Opacity="0.75" />
+                                    <ui:Button x:Name="ClearLyricsCacheButton" Grid.Column="1" Appearance="Secondary"
+                                               Padding="14,8" Click="ClearLyricsCacheButton_Click">
+                                        <StackPanel Orientation="Horizontal">
+                                            <local:SvgPathIcon Icon="IconDelete" Size="14" Margin="0,0,7,0" />
+                                            <TextBlock Text="Очистить кэш" />
+                                        </StackPanel>
+                                    </ui:Button>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                    </StackPanel>
+
+                    <StackPanel x:Name="PageCover" Visibility="Collapsed">
+                        <TextBlock Text="Обложка и Now Playing" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Фон Now Playing, обложка, избранное и подпись под названием трека." Style="{StaticResource PageDescriptionStyle}" />
+
+                        <!-- См. AppSettings.NowPlayingBackground и NowPlayingWindow.Backdrop.cs. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Фон Now Playing" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="NowPlayingBackgroundCloudsRadio" Content="Облака из цветов обложки"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="NowPlayingBackgroundOrbsRadio" Content="Цветные шары"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="NowPlayingBackgroundWavesRadio" Content="Волны"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,0" />
+                                <TextBlock Text="«Цветные шары» плавно движутся по орбитам, «Волны» размыты и реагируют на громкость. Оба фона останавливаются на паузе и при «Меньше анимации»."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Анимация избранного" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Показывается при добавлении трека в избранное кнопкой-сердечком в плейлисте и в мини-плеере. При включённом «Меньше анимации» не воспроизводится."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" TextWrapping="Wrap" />
+                                <WrapPanel>
+                                    <RadioButton x:Name="FavoriteHeartFillRadio" Content="Заливка"
+                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="FavoriteHeartSparksRadio" Content="Искры"
+                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="FavoriteHeartRingRadio" Content="Кольцо"
+                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
+                                                 Margin="0,0,16,0" VerticalAlignment="Center" />
+                                    <RadioButton x:Name="FavoriteHeartNoneRadio" Content="Без анимации"
+                                                 GroupName="FavoriteHeartAnimation" Checked="FavoriteHeartAnimationRadio_Changed"
+                                                 Margin="0" VerticalAlignment="Center" />
+                                </WrapPanel>
                             </StackPanel>
                         </Border>
 
@@ -1553,7 +1660,6 @@
                                 </Border>
                             </StackPanel>
                         </Border>
-
 
                     </StackPanel>
 
@@ -1701,7 +1807,7 @@
 
                     <StackPanel x:Name="PagePlayback" Visibility="Collapsed">
                         <TextBlock Text="Воспроизведение" Style="{StaticResource PageTitleStyle}" />
-                        <TextBlock Text="Громкость, продолжение воспроизведения и поведение плейлиста." Style="{StaticResource PageDescriptionStyle}" />
+                        <TextBlock Text="Устройство вывода, громкость, продолжение воспроизведения и поведение плейлиста." Style="{StaticResource PageDescriptionStyle}" />
 
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
@@ -1789,87 +1895,6 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- Кэш обложек из CoverArtSearchWindow хранится локально в %AppData%\Lumisense\cover-cache. -->
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Кэш интернет-обложек" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Повторно открытые варианты обложек берутся из локальной папки, чтобы не скачивать изображения заново."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,0" />
-                                <ui:Button x:Name="ClearArtworkCacheButton" Appearance="Secondary"
-                                           HorizontalAlignment="Left" Margin="0,12,0,0"
-                                           Click="ClearArtworkCacheButton_Click"
-                                           Content="Очистить кэш обложек" />
-                                <TextBlock x:Name="ArtworkCacheClearResultText" Visibility="Collapsed"
-                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Нормализация меняет только имена уже добавленных файлов после явного
-                             предпросмотра и подтверждения; см. FileNameNormalizer/MainWindow. -->
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Нормализация имён файлов" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Переименовывает файлы в исходных папках по тегам. Перед изменением Lumisense покажет примеры и пропустит занятые имена или текущий трек."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                <TextBlock Text="Шаблон" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ui:TextBox x:Name="FileNameNormalizationTemplateTextBox"
-                                            PlaceholderText="Например: {Artist} - {Title}{Extension}"
-                                            TextChanged="FileNameNormalizationTemplateTextBox_TextChanged">
-                                    <ui:TextBox.Icon>
-                                        <local:SvgPathIcon Icon="IconEdit" />
-                                    </ui:TextBox.Icon>
-                                </ui:TextBox>
-                                <TextBlock Text="Токены: {Artist}, {Title}, {Album}, {Track}, {Extension}. Расширение исходного файла сохраняется автоматически."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
-                                <Button x:Name="NormalizePlaylistFileNamesButton" Content="Показать предпросмотр и нормализовать"
-                                        HorizontalAlignment="Left" Margin="0,12,0,0"
-                                        Click="NormalizePlaylistFileNamesButton_Click" />
-                                <local:MaterialLoadingIndicator x:Name="FileNameNormalizationLoadingIndicator" Width="40" Height="40"
-                                                                HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"
-                                                                ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
-                                <TextBlock x:Name="FileNameNormalizationResultText" Visibility="Collapsed"
-                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Действия контекстного меню трека" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Снимите галочки, чтобы скрыть ненужные действия при нажатии правой кнопкой по треку в плейлисте. «Воспроизвести» остаётся доступным всегда."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                <UniformGrid Columns="1" Margin="0,2,0,0">
-                                    <CheckBox x:Name="TrackContextPlayNextCheckBox" Tag="PlayNext" Content="Играть следующим" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextAddToQueueCheckBox" Tag="AddToQueue" Content="Добавить в очередь" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextFindFileCheckBox" Tag="FindFile" Content="Найти файл" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextFavoriteCheckBox" Tag="Favorite" Content="Избранное" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextShowInExplorerCheckBox" Tag="ShowInExplorer" Content="Показать в проводнике" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextCopyNameCheckBox" Tag="CopyTrackName" Content="Копировать имя трека" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextCopyPathCheckBox" Tag="CopyPath" Content="Копировать путь к файлу" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextCopyFileCheckBox" Tag="CopyFile" Content="Копировать файл" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextExportProcessedCopyCheckBox" Tag="ExportProcessedCopy" Content="Сохранить обработанную копию" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextPropertiesCheckBox" Tag="Properties" Content="Свойства" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextEditTagsCheckBox" Tag="EditTags" Content="Изменить теги" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextNormalizeFileNameCheckBox" Tag="NormalizeFileName" Content="Нормализовать имя файла" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextRemoveFromPlaylistCheckBox" Tag="RemoveFromPlaylist" Content="Убрать из плейлиста" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextDeleteFromDiskCheckBox" Tag="DeleteFromDisk" Content="Удалить с диска"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                </UniformGrid>
-                            </StackPanel>
-                        </Border>
-
                         <!-- См. AppSettings.ShuffleMode и ShuffleModeSelector: как выбирается следующий трек, когда включён шаффл. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
@@ -1897,6 +1922,34 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- См. AppSettings.ReplayGainEnabled / ReplayGainReader. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="ReplayGainCheckBox" Content="ReplayGain"
+                                          Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
+                                <TextBlock Text="Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- См. AppSettings.PlaybackChannelMode / ChannelModeSampleProvider. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Каналы" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <RadioButton x:Name="ChannelModeStereoRadio" Content="Стерео (по умолчанию)"
+                                             GroupName="ChannelMode" Checked="ChannelModeRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="ChannelModeMonoRadio" Content="Моно"
+                                             GroupName="ChannelMode" Checked="ChannelModeRadio_Changed" />
+                                <TextBlock Text="Моно сводит левый и правый каналы в один и играет его в обе колонки: удобно для одного наушника и старых моно-записей. Применяется сразу, трек перезапускать не нужно."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="PageProgress" Visibility="Collapsed">
+                        <TextBlock Text="Полоса и ползунки" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Вид полосы воспроизведения и ползунков." Style="{StaticResource PageDescriptionStyle}" />
 
                         <!-- Полоса воспроизведения: стиль (AppSettings.ProgressBarStyle, NowPlayingProgressStyle, MiniPlayerProgressStyle через
                              ProgressStyleResolver) и вид (ProgressBarAppearance) — одна карточка для всех окон. Предпросмотр рисуют настоящие
@@ -2062,6 +2115,13 @@
 
                                 <!-- Waveform: видна, только когда у выбранного окна форма звука (её рисует только главное окно). -->
                                 <StackPanel x:Name="ProgressWaveformGroup">
+                                <TextBlock Text="Вид столбиков" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,16,0,6" />
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="ProgressWaveformWaveRadio" Content="Тонкие (по умолчанию)" GroupName="ProgressWaveformShape"
+                                                 Checked="ProgressWaveformShapeRadio_Changed" Margin="0,0,16,0" />
+                                    <RadioButton x:Name="ProgressWaveformCapsulesRadio" Content="Скруглённые столбики" GroupName="ProgressWaveformShape"
+                                                 Checked="ProgressWaveformShapeRadio_Changed" Margin="0" />
+                                </StackPanel>
                                 <Grid Margin="0,16,0,6">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
@@ -2114,28 +2174,105 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.ReplayGainEnabled / ReplayGainReader. -->
+                    </StackPanel>
+
+                    <StackPanel x:Name="PageLibrary" Visibility="Collapsed">
+                        <TextBlock Text="Библиотека и файлы" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Кэш обложек, имена файлов и действия контекстного меню трека." Style="{StaticResource PageDescriptionStyle}" />
+
+                        <!-- Кэш обложек из CoverArtSearchWindow хранится локально в %AppData%\Lumisense\cover-cache. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <CheckBox x:Name="ReplayGainCheckBox" Content="ReplayGain"
-                                          Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
-                                <TextBlock Text="Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Кэш интернет-обложек" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Повторно открытые варианты обложек берутся из локальной папки, чтобы не скачивать изображения заново."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,0" />
+                                <ui:Button x:Name="ClearArtworkCacheButton" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Margin="0,12,0,0"
+                                           Click="ClearArtworkCacheButton_Click"
+                                           Content="Очистить кэш обложек" />
+                                <TextBlock x:Name="ArtworkCacheClearResultText" Visibility="Collapsed"
+                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.PlaybackChannelMode / ChannelModeSampleProvider. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
-                                <TextBlock Text="Каналы" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <RadioButton x:Name="ChannelModeStereoRadio" Content="Стерео (по умолчанию)"
-                                             GroupName="ChannelMode" Checked="ChannelModeRadio_Changed" Margin="0,0,0,12" />
-                                <RadioButton x:Name="ChannelModeMonoRadio" Content="Моно"
-                                             GroupName="ChannelMode" Checked="ChannelModeRadio_Changed" />
-                                <TextBlock Text="Моно сводит левый и правый каналы в один и играет его в обе колонки: удобно для одного наушника и старых моно-записей. Применяется сразу, трек перезапускать не нужно."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Диагностика производительности" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Плеер сам проверяет нагрузку процессора, память и утечки ресурсов: быстрая проверка за минуту и долгий прогон с автоматической сменой треков. Ничего не отправляется в сеть."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,0" />
+                                <ui:Button x:Name="DiagnosticsButton" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Margin="0,12,0,0"
+                                           Click="DiagnosticsButton_Click"
+                                           Content="Открыть диагностику…" />
                             </StackPanel>
                         </Border>
+
+                        <!-- Нормализация меняет только имена уже добавленных файлов после явного
+                             предпросмотра и подтверждения; см. FileNameNormalizer/MainWindow. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Нормализация имён файлов" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Переименовывает файлы в исходных папках по тегам. Перед изменением Lumisense покажет примеры и пропустит занятые имена или текущий трек."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                <TextBlock Text="Шаблон" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ui:TextBox x:Name="FileNameNormalizationTemplateTextBox"
+                                            PlaceholderText="Например: {Artist} - {Title}{Extension}"
+                                            TextChanged="FileNameNormalizationTemplateTextBox_TextChanged">
+                                    <ui:TextBox.Icon>
+                                        <local:SvgPathIcon Icon="IconEdit" />
+                                    </ui:TextBox.Icon>
+                                </ui:TextBox>
+                                <TextBlock Text="Токены: {Artist}, {Title}, {Album}, {Track}, {Extension}. Расширение исходного файла сохраняется автоматически."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <Button x:Name="NormalizePlaylistFileNamesButton" Content="Показать предпросмотр и нормализовать"
+                                        HorizontalAlignment="Left" Margin="0,12,0,0"
+                                        Click="NormalizePlaylistFileNamesButton_Click" />
+                                <local:MaterialLoadingIndicator x:Name="FileNameNormalizationLoadingIndicator" Width="40" Height="40"
+                                                                HorizontalAlignment="Left" Margin="0,10,0,0" Visibility="Collapsed"
+                                                                ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
+                                <TextBlock x:Name="FileNameNormalizationResultText" Visibility="Collapsed"
+                                           FontSize="12" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Действия контекстного меню трека" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Снимите галочки, чтобы скрыть ненужные действия при нажатии правой кнопкой по треку в плейлисте. «Воспроизвести» остаётся доступным всегда."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
+                                <UniformGrid Columns="1" Margin="0,2,0,0">
+                                    <CheckBox x:Name="TrackContextPlayNextCheckBox" Tag="PlayNext" Content="Играть следующим" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextAddToQueueCheckBox" Tag="AddToQueue" Content="Добавить в очередь" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextFindFileCheckBox" Tag="FindFile" Content="Найти файл" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextFavoriteCheckBox" Tag="Favorite" Content="Избранное" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextShowInExplorerCheckBox" Tag="ShowInExplorer" Content="Показать в проводнике" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextCopyNameCheckBox" Tag="CopyTrackName" Content="Копировать имя трека" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextCopyPathCheckBox" Tag="CopyPath" Content="Копировать путь к файлу" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextCopyFileCheckBox" Tag="CopyFile" Content="Копировать файл" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextExportProcessedCopyCheckBox" Tag="ExportProcessedCopy" Content="Сохранить обработанную копию" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextPropertiesCheckBox" Tag="Properties" Content="Свойства" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextEditTagsCheckBox" Tag="EditTags" Content="Изменить теги" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextNormalizeFileNameCheckBox" Tag="NormalizeFileName" Content="Нормализовать имя файла" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextRemoveFromPlaylistCheckBox" Tag="RemoveFromPlaylist" Content="Убрать из плейлиста" Margin="0,0,0,10"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                    <CheckBox x:Name="TrackContextDeleteFromDiskCheckBox" Tag="DeleteFromDisk" Content="Удалить с диска"
+                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
+
                     </StackPanel>
 
                     <StackPanel x:Name="PageIntegrations" Visibility="Collapsed">
@@ -2562,164 +2699,6 @@
                                              Checked="MiniStyleRadio_Changed" Margin="0,0,0,12" />
                                 <RadioButton x:Name="MiniStyleIslandRadio" Content="Остров — капсула у верхнего края экрана, раскрывается по клику"
                                              GroupName="MiniPlayerStyle" Checked="MiniStyleRadio_Changed" />
-                                <StackPanel x:Name="IslandMonitorPanel" Margin="0,16,0,0">
-                                    <TextBlock Text="Монитор острова" Style="{StaticResource SettingsFieldLabelStyle}" />
-                                    <ComboBox x:Name="IslandMonitorCombo" SelectionChanged="IslandMonitorCombo_SelectionChanged"
-                                              HorizontalAlignment="Left" MinWidth="220" />
-                                    <TextBlock Text="Остров остаётся по центру верхнего края выбранного монитора; если монитор отключён, он переезжает на основной."
-                                               Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </StackPanel>
-                        </Border>
-
-                        <Border x:Name="IslandCustomCard" Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Настройки острова" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Размер острова" Style="{StaticResource SettingsFieldLabelStyle}" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandScaleSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="120"
-                                            TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
-                                            ValueChanged="IslandScaleSlider_ValueChanged" />
-                                    <TextBlock x:Name="IslandScaleValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <TextBlock Text="Ширина острова" Style="{StaticResource SettingsFieldLabelStyle}" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="130"
-                                            TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
-                                            ValueChanged="IslandWidthSlider_ValueChanged" />
-                                    <TextBlock x:Name="IslandWidthValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <TextBlock Text="Отступ от верхнего края" Style="{StaticResource SettingsFieldLabelStyle}" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandTopGapSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="0" Maximum="40"
-                                            TickFrequency="2" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
-                                            ValueChanged="IslandTopGapSlider_ValueChanged" />
-                                    <TextBlock x:Name="IslandTopGapValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <TextBlock Text="Скрытие по средней кнопке мыши" Style="{StaticResource SettingsFieldLabelStyle}" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandHideSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="3" Maximum="60"
-                                            TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
-                                            ValueChanged="IslandHideSlider_ValueChanged" />
-                                    <TextBlock x:Name="IslandHideValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <TextBlock Text="Сворачивание после ухода курсора" Style="{StaticResource SettingsFieldLabelStyle}" />
-                                <Grid Margin="0,0,0,12">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandCollapseSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="1" Maximum="15"
-                                            TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
-                                            ValueChanged="IslandCollapseSlider_ValueChanged" />
-                                    <TextBlock x:Name="IslandCollapseValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Grid>
-                                <CheckBox x:Name="IslandTrackToastCheckBox" Content="Раскрываться при смене трека" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandHideSystemToastCheckBox" Content="Не показывать уведомление о смене трека в виде «Остров»" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandAutoCollapseCheckBox" Content="Сворачиваться, когда курсор ушёл" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandEqualizerCheckBox" Content="Эквалайзер в свёрнутом виде" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandAccentRimCheckBox" Content="Обводка цветом акцента во время игры" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandBlurTransitionsCheckBox" Content="Размытие при смене вида" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandCoverPreviewCheckBox" Content="Клик по обложке открывает её крупно" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandExternalVolumeCheckBox" Content="Показывать громкость, когда её меняют не на острове" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandQuietInGamesCheckBox" Content="Не раскрываться при смене трека в играх" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandSwipeInvertedCheckBox" Content="Перетягивание острова: влево — назад, вправо — вперёд" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <CheckBox x:Name="IslandRoundCoverCheckBox" Content="Круглая обложка" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <TextBlock Text="Левая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
-                                <ComboBox x:Name="IslandLeftButtonCombo" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
-                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
-                                    <ComboBoxItem Content="Избранное" Tag="Favorite" />
-                                    <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
-                                    <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
-                                </ComboBox>
-                                <TextBlock Text="Правая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandRightButtonCombo" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
-                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
-                                    <ComboBoxItem Content="Избранное" Tag="Favorite" />
-                                    <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
-                                    <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
-                                </ComboBox>
-                                <TextBlock Text="Эквалайзер свёрнутого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandEqualizerStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
-                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
-                                    <ComboBoxItem Content="Полоски" Tag="Bars" />
-                                    <ComboBoxItem Content="Точки" Tag="Dots" />
-                                </ComboBox>
-                                <TextBlock Text="Фон раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandBackdropCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
-                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
-                                    <ComboBoxItem Content="Без фона" Tag="None" />
-                                    <ComboBoxItem Content="Свечение" Tag="Glow" />
-                                    <ComboBoxItem Content="Матрица из точек" Tag="Matrix" />
-                                    <ComboBoxItem Content="Волна" Tag="Wave" />
-                                </ComboBox>
-                                <TextBlock Text="Полоса перемотки раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandSeekStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
-                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
-                                    <ComboBoxItem Content="Сплошная" Tag="Plain" />
-                                    <ComboBoxItem Content="Сегменты" Tag="Segments" />
-                                </ComboBox>
-                                <CheckBox x:Name="IslandLyricsShimmerCheckBox" Content="Мерцание, пока ищется текст песни" Margin="0,0,0,8"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <TextBlock Text="Пункты контекстного меню острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,4,0,8" />
-                                <CheckBox x:Name="IslandMenuPlayPauseCheckBox" Tag="PlayPause" Content="Пауза / продолжить" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuNextCheckBox" Tag="Next" Content="Следующий трек" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuPreviousCheckBox" Tag="Previous" Content="Предыдущий трек" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuHideCheckBox" Tag="Hide" Content="Скрыть остров" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuExpandCheckBox" Tag="Expand" Content="Развернуть плеер" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuSpeedCheckBox" Tag="Speed" Content="Скорость" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuPitchCheckBox" Tag="Pitch" Content="Тон" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuOverlayCheckBox" Tag="Overlay" Content="Совместимость с играми и оверлеем" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuSettingsCheckBox" Tag="Settings" Content="Настройки острова" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <TextBlock Text="Если скрыть все пункты, меню по правой кнопке мыши не откроется."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,2,0,12" TextWrapping="Wrap" />
-                                <CheckBox x:Name="IslandMotionBlurCheckBox" Content="Размытие движения при растяжении"
-                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
-                                <TextBlock Text="Размытия нагружают видеокарту: если остров подтормаживает, отключите их."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 
@@ -2999,6 +2978,177 @@
                                           Margin="0,14,0,0" />
                                 <TextBlock Text="Эта настройка меняет только вторую строку: название трека остаётся видимым всегда."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <StackPanel x:Name="PageIsland" Visibility="Collapsed">
+                        <TextBlock Text="Остров" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Вид, поведение и оформление острова. Сам режим включается на вкладке «Мини-плеер»." Style="{StaticResource PageDescriptionStyle}" />
+
+                        <TextBlock x:Name="IslandInactiveNote" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,0,0,12"
+                                   Text="Остров сейчас не используется: выберите вид «Остров» на вкладке «Мини-плеер», и эти настройки начнут действовать."
+                                   Style="{StaticResource SettingsHelperTextStyle}" />
+
+                        <!-- См. AppSettings.IslandMonitor и IslandPlayerWindow. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel x:Name="IslandMonitorPanel">
+                                <TextBlock Text="Монитор острова" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <ComboBox x:Name="IslandMonitorCombo" SelectionChanged="IslandMonitorCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="220" />
+                                <TextBlock Text="Остров остаётся по центру верхнего края выбранного монитора; если монитор отключён, он переезжает на основной."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border x:Name="IslandCustomCard" Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Настройки острова" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Размер острова" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandScaleSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="120"
+                                            TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandScaleSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandScaleValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="Ширина острова" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="130"
+                                            TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandWidthSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandWidthValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="Отступ от верхнего края" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandTopGapSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="0" Maximum="40"
+                                            TickFrequency="2" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandTopGapSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandTopGapValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="Скрытие по средней кнопке мыши" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandHideSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="3" Maximum="60"
+                                            TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandHideSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandHideValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <TextBlock Text="Сворачивание после ухода курсора" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <Grid Margin="0,0,0,12">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Slider x:Name="IslandCollapseSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="1" Maximum="15"
+                                            TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                            ValueChanged="IslandCollapseSlider_ValueChanged" />
+                                    <TextBlock x:Name="IslandCollapseValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Grid>
+                                <CheckBox x:Name="IslandTrackToastCheckBox" Content="Раскрываться при смене трека" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandHideSystemToastCheckBox" Content="Не показывать уведомление о смене трека в виде «Остров»" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandAutoCollapseCheckBox" Content="Сворачиваться, когда курсор ушёл" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandEqualizerCheckBox" Content="Эквалайзер в свёрнутом виде" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandAccentRimCheckBox" Content="Обводка цветом акцента во время игры" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandBlurTransitionsCheckBox" Content="Размытие при смене вида" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandCoverPreviewCheckBox" Content="Клик по обложке открывает её крупно" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandExternalVolumeCheckBox" Content="Показывать громкость, когда её меняют не на острове" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandQuietInGamesCheckBox" Content="Не раскрываться при смене трека в играх" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandSwipeInvertedCheckBox" Content="Перетягивание острова: влево — назад, вправо — вперёд" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandRoundCoverCheckBox" Content="Круглая обложка" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <TextBlock Text="Левая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
+                                <ComboBox x:Name="IslandLeftButtonCombo" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Избранное" Tag="Favorite" />
+                                    <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
+                                    <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
+                                </ComboBox>
+                                <TextBlock Text="Правая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandRightButtonCombo" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Избранное" Tag="Favorite" />
+                                    <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
+                                    <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
+                                </ComboBox>
+                                <TextBlock Text="Эквалайзер свёрнутого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandEqualizerStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Полоски" Tag="Bars" />
+                                    <ComboBoxItem Content="Точки" Tag="Dots" />
+                                </ComboBox>
+                                <TextBlock Text="Фон раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandBackdropCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Без фона" Tag="None" />
+                                    <ComboBoxItem Content="Свечение" Tag="Glow" />
+                                    <ComboBoxItem Content="Матрица из точек" Tag="Matrix" />
+                                    <ComboBoxItem Content="Волна" Tag="Wave" />
+                                </ComboBox>
+                                <TextBlock Text="Полоса перемотки раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandSeekStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Сплошная" Tag="Plain" />
+                                    <ComboBoxItem Content="Сегменты" Tag="Segments" />
+                                </ComboBox>
+                                <CheckBox x:Name="IslandLyricsShimmerCheckBox" Content="Мерцание, пока ищется текст песни" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <TextBlock Text="Пункты контекстного меню острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,4,0,8" />
+                                <CheckBox x:Name="IslandMenuPlayPauseCheckBox" Tag="PlayPause" Content="Пауза / продолжить" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuNextCheckBox" Tag="Next" Content="Следующий трек" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuPreviousCheckBox" Tag="Previous" Content="Предыдущий трек" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuHideCheckBox" Tag="Hide" Content="Скрыть остров" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuExpandCheckBox" Tag="Expand" Content="Развернуть плеер" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuSpeedCheckBox" Tag="Speed" Content="Скорость" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuPitchCheckBox" Tag="Pitch" Content="Тон" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuOverlayCheckBox" Tag="Overlay" Content="Совместимость с играми и оверлеем" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <CheckBox x:Name="IslandMenuSettingsCheckBox" Tag="Settings" Content="Настройки острова" Margin="12,0,0,6"
+                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <TextBlock Text="Если скрыть все пункты, меню по правой кнопке мыши не откроется."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,2,0,12" TextWrapping="Wrap" />
+                                <CheckBox x:Name="IslandMotionBlurCheckBox" Content="Размытие движения при растяжении"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <TextBlock Text="Размытия нагружают видеокарту: если остров подтормаживает, отключите их."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
                     </StackPanel>
@@ -3324,24 +3474,6 @@
                                 </StackPanel>
                             </Grid>
                         </ui:Button>
-
-                        <TextBlock Text="Кэш текстов песен" Style="{StaticResource SettingsSectionTitleStyle}" Margin="0,26,0,8" />
-                        <TextBlock Text="Вставленные тексты хранятся только на этом устройстве. Кэш очищается через 180 дней и ограничен 200 текстами или 32 МБ."
-                                   Opacity="0.6" FontSize="12" Margin="0,0,0,12" TextWrapping="Wrap" />
-                        <Grid Margin="0,0,0,12">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock x:Name="LyricsCacheInfoText" VerticalAlignment="Center" Opacity="0.75" />
-                            <ui:Button x:Name="ClearLyricsCacheButton" Grid.Column="1" Appearance="Secondary"
-                                       Padding="14,8" Click="ClearLyricsCacheButton_Click">
-                                <StackPanel Orientation="Horizontal">
-                                    <local:SvgPathIcon Icon="IconDelete" Size="14" Margin="0,0,7,0" />
-                                    <TextBlock Text="Очистить кэш" />
-                                </StackPanel>
-                            </ui:Button>
-                        </Grid>
 
                         <!-- См. SettingsWindow.ResetPlayerButton_Click / AppSettings.ResetToDefaults. -->
                         <TextBlock Text="Сброс" Style="{StaticResource SettingsSectionTitleStyle}" Margin="0,26,0,8" />

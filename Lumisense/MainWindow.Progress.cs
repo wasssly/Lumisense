@@ -32,6 +32,10 @@ public partial class MainWindow
 
         _audioFile.CurrentTime = position;
         _tempoProvider?.Clear();
+
+        // На паузе таймер прогресса остановлен: сообщаем новую позицию подписчикам (мини-плеер, остров, Now Playing) сразу.
+        if (!_isPlaying)
+            RaiseProgressChanged(position.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
     }
 
     public void ExternalSeekRatio(double ratio)
@@ -175,7 +179,10 @@ public partial class MainWindow
 
         // SetProgressSliderValue вызывает ProgressSlider_ValueChanged, который уже обновляет
         // синхронный текст для этой позиции — повторный вызов здесь дублировал эту работу.
-        SetProgressSliderValue(_audioFile.CurrentTime.TotalSeconds);
+        // Пока главное окно скрыто (трей, мини-режим) или свёрнуто, слайдер, waveform и текст никто не видит:
+        // пропускаем их, а при показе окна SyncProgressUiAfterWindowShown подтягивает актуальную позицию.
+        if (IsMainWindowShownOnScreen)
+            SetProgressSliderValue(_audioFile.CurrentTime.TotalSeconds);
 
         RaiseProgressChanged(_audioFile.CurrentTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
 
@@ -207,11 +214,23 @@ public partial class MainWindow
                 PlayCountManager.Increment(_currentTrackPath);
         }
 
-        if (++_ticksSinceLastAutoSave >= AutoSaveEveryNTicks)
+        // Привязка к времени, а не к числу тиков: иначе при смене частоты таймера автосохранение «поплыло» бы.
+        if (!_autoSaveStopwatch.IsRunning)
+            _autoSaveStopwatch.Start();
+        else if (_autoSaveStopwatch.Elapsed >= AutoSaveInterval)
         {
-            _ticksSinceLastAutoSave = 0;
+            _autoSaveStopwatch.Restart();
             PersistPlaybackAndPlaylistState(asyncSave: true);
         }
+    }
+
+    private bool IsMainWindowShownOnScreen => IsVisible && WindowState != WindowState.Minimized;
+
+    // Слайдер, waveform и текст не обновлялись, пока окно было скрыто: подтягиваем их к текущей позиции при показе.
+    private void SyncProgressUiAfterWindowShown()
+    {
+        if (_audioFile == null || _isUserInteractingWithProgress || !IsMainWindowShownOnScreen) return;
+        SetProgressSliderValue(_audioFile.CurrentTime.TotalSeconds);
     }
 
     private void ProgressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

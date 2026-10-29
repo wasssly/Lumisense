@@ -112,10 +112,10 @@ public sealed class GlobalMediaHotKeys : IDisposable
 
         // Сбой регистрации (клавишу занято другое приложение) не критичен для остальных хоткеев. Next/Prev без
         // MOD_NOREPEAT: Windows сама повторяет WM_HOTKEY при удержании; для Stop/PlayPause повтор вреден.
-        RegisterHotKey(_handle, IdNext, 0, VK_MEDIA_NEXT_TRACK);
-        RegisterHotKey(_handle, IdPrev, 0, VK_MEDIA_PREV_TRACK);
-        RegisterHotKey(_handle, IdStop, MOD_NOREPEAT, VK_MEDIA_STOP);
-        RegisterHotKey(_handle, IdPlayPause, MOD_NOREPEAT, VK_MEDIA_PLAY_PAUSE);
+        RegisterMediaKey(IdNext, 0, VK_MEDIA_NEXT_TRACK, "Next");
+        RegisterMediaKey(IdPrev, 0, VK_MEDIA_PREV_TRACK, "Previous");
+        RegisterMediaKey(IdStop, MOD_NOREPEAT, VK_MEDIA_STOP, "Stop");
+        RegisterMediaKey(IdPlayPause, MOD_NOREPEAT, VK_MEDIA_PLAY_PAUSE, "Play/Pause");
 
         _polled.Add(new PolledHotkey(IdNext, (int)VK_MEDIA_NEXT_TRACK, false, false, false, false));
         _polled.Add(new PolledHotkey(IdPrev, (int)VK_MEDIA_PREV_TRACK, false, false, false, false));
@@ -125,6 +125,15 @@ public sealed class GlobalMediaHotKeys : IDisposable
         _pollTimer = new DispatcherTimer(DispatcherPriority.Normal) { Interval = TimeSpan.FromMilliseconds(PollIntervalMilliseconds) };
         _pollTimer.Tick += PollTick;
         _pollTimer.Start();
+    }
+
+    // Нажатия клавиши, которую заняло другое приложение, всё равно ловит опрос (_polled), поэтому сбой только пишется в журнал.
+    private void RegisterMediaKey(int id, uint modifiers, uint vk, string name)
+    {
+        if (RegisterHotKey(_handle, id, modifiers, vk)) return;
+
+        Logger.Warn($"Не удалось зарегистрировать мультимедийную клавишу {name}, ошибка Win32 {Marshal.GetLastWin32Error()}: " +
+                    "её, вероятно, заняло другое приложение; нажатия ловятся опросом.");
     }
 
     // Комбинации, которые Windows отказалась регистрировать при последнем ApplyCustomHotkeys (чаще всего их уже заняло

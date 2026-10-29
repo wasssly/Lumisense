@@ -23,6 +23,12 @@ public partial class MiniPlayerWindow : Window
     private const double HeaderBottomMarginWithProgress = 2;
     private const double HeaderBottomMarginWithoutProgress = 10;
 
+    // Раскладка кнопок «Снизу»: полоса прогресса лежит прямо на теле плеера (под обложкой и названием, в самой нижней части шапки),
+    // а не отдельной строкой под ним. Нижний отступ шапки равен высоте этой полосы, чтобы они не пересекались.
+    private const double ProgressOnPlayerHeight = 14;
+    private const double HeaderBottomMarginProgressOnPlayer = 14;
+    private const double ProgressSeparateRowHeight = 20;
+
     // Из настроек (см. ApplyProgressBarVisibility) — показывать полосу прогресса сейчас или нет.
     private bool _showProgress = true;
 
@@ -119,6 +125,9 @@ public partial class MiniPlayerWindow : Window
             UpdateTitleMarquee();
             RefreshArtistMarquee();
         };
+
+        // Смена языка может поменять текст заголовка (например, «Нет трека») и его ширину: длина прокрутки пересчитывается.
+        LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
 
         _topmostTimer.Tick += TopmostTimer_Tick;
         _topmostTimer.Start();
@@ -458,6 +467,16 @@ public partial class MiniPlayerWindow : Window
     private const double MarqueeEdgePauseSeconds = 1.0;
     private const double DefaultTitleClipWidth = 120.0;
     private const double MarqueeEndBufferPx = 3.0;
+
+    private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
+    {
+        // После применения перевода и прохода layout, иначе TitleText.Measure увидит старый текст.
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            UpdateTitleMarquee();
+            RefreshArtistMarquee();
+        }), System.Windows.Threading.DispatcherPriority.Loaded);
+    }
 
     private void UpdateTitleMarquee()
     {
@@ -1276,6 +1295,7 @@ public partial class MiniPlayerWindow : Window
         UpdateControlsPanelOverlayMargin();
         Grid.SetRow(ControlsPanel, _buttonsOverlayMode ? 0 : 2);
         ControlsPanel.Margin = _buttonsOverlayMode ? ControlsPanelMarginOverlay : ControlsPanelMarginBelow;
+        ApplyProgressPlacement();
 
         // Сбрасываем в "курсор снаружи" даже если мышь над окном: следующий RootBorder_MouseEnter/Leave всё поправит, а старт
         // с заведомо согласованного состояния надёжнее, чем угадывать, в каком из двух "развёрнутых" состояний мы были.
@@ -1296,11 +1316,28 @@ public partial class MiniPlayerWindow : Window
         ProgressRow.Visibility = _showProgress ? Visibility.Visible : Visibility.Collapsed;
         ApplyProgressStyle();
 
-        // Без полосы прогресса нижний отступ заголовка равен верхнему (10,8,10,10 вместо 10,8,10,2), чтобы вокруг него было
-        // поровну места (см. HeaderBottomMarginWithProgress/WithoutProgress).
-        HeaderPanel.Margin = new Thickness(HeaderHorizontalMargin, HeaderTopMargin, HeaderHorizontalMargin,
-            _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress);
+        // Место полосы и нижний отступ заголовка зависят от раскладки кнопок и от видимости полосы (см. ApplyProgressPlacement).
+        ApplyProgressPlacement();
         UpdateControlsPanelOverlayMargin();
+    }
+
+    // «Снизу»: полоса прогресса прямо на плеере (в нижней части шапки, видна без наведения), кнопки при наведении раскрываются под
+    // ней. «Поверх обложки»: прежняя отдельная строка под шапкой. Без полосы нижний отступ заголовка равен верхнему
+    // (10,8,10,10 вместо 10,8,10,2), чтобы вокруг него было поровну места (см. HeaderBottomMarginWithProgress/WithoutProgress).
+    private void ApplyProgressPlacement()
+    {
+        bool onPlayer = !_buttonsOverlayMode && _showProgress;
+        Grid.SetRow(ProgressRow, onPlayer ? 0 : 1);
+        ProgressRow.VerticalAlignment = onPlayer ? VerticalAlignment.Bottom : VerticalAlignment.Stretch;
+        ProgressRow.Height = onPlayer ? ProgressOnPlayerHeight : ProgressSeparateRowHeight;
+        ProgressRow.Margin = onPlayer
+            ? new Thickness(HeaderHorizontalMargin, 0, HeaderHorizontalMargin, 0)
+            : new Thickness(HeaderHorizontalMargin, 4, HeaderHorizontalMargin, 0);
+
+        double headerBottom = onPlayer
+            ? HeaderBottomMarginProgressOnPlayer
+            : _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress;
+        HeaderPanel.Margin = new Thickness(HeaderHorizontalMargin, HeaderTopMargin, HeaderHorizontalMargin, headerBottom);
 
         Height = MeasureContentHeight();
     }
@@ -1470,48 +1507,76 @@ public partial class MiniPlayerWindow : Window
         bool circle = string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "Vinyl", StringComparison.Ordinal)
                       || string.Equals(_mainWindow.Settings.MiniPlayerArtworkStyle, "StaticCircle", StringComparison.Ordinal);
 
-        const double artworkSize = 42.0;
-        const double canvasSize = 50.0;
-        const double offset = (canvasSize - artworkSize) / 2.0;
-        const double center = offset + artworkSize / 2.0;
-
+        // Форма зависит только от стиля обложки и не меняется между вызовами: геометрия строится один раз,
+        // дальше обновляется только штрих (dash). Вызов идёт каждые 250 мс, пока трек играет.
         if (circle)
         {
-            double radius = artworkSize / 2.0;
+            _circleOutlineGeometry ??= BuildCircleOutlineGeometry();
+            ArtProgressOutline.Data = _circleOutlineGeometry;
 
-            // EllipseGeometry начинается справа (3 часа), а прогресс должен идти от верхней точки, как у квадратной обложки;
-            // поэтому окружность строится явно двумя дугами от центра верхней стороны.
-            var circleFigure = new PathFigure
-            {
-                StartPoint = new Point(center, offset),
-                IsClosed = true,
-                IsFilled = false
-            };
-            circleFigure.Segments.Add(new ArcSegment(
-                new Point(center, offset + artworkSize), new Size(radius, radius),
-                0, false, SweepDirection.Clockwise, true));
-            circleFigure.Segments.Add(new ArcSegment(
-                new Point(center, offset), new Size(radius, radius),
-                0, false, SweepDirection.Clockwise, true));
-
-            var circleGeometry = new PathGeometry();
-            circleGeometry.Figures.Add(circleFigure);
-            ArtProgressOutline.Data = circleGeometry;
-
-            double circumference = 2.0 * Math.PI * radius;
+            double circumference = 2.0 * Math.PI * (OutlineArtworkSize / 2.0);
             ApplyArtworkProgressDash(ratio, circumference, startOffset: 0.0);
             return;
         }
 
-        const double cornerRadius = 8.0;
+        _squareOutlineGeometry ??= BuildSquareOutlineGeometry();
+        ArtProgressOutline.Data = _squareOutlineGeometry;
+
+        double straight = OutlineArtworkSize - 2.0 * OutlineCornerRadius;
+        double perimeter = 4.0 * straight + 2.0 * Math.PI * OutlineCornerRadius;
+
+        // Путь начинается ровно в центре верхней стороны, поэтому смещение штриха не нужно.
+        ApplyArtworkProgressDash(ratio, perimeter, startOffset: 0.0);
+    }
+
+    // Размеры совпадают с ArtBorder (Width=42), ArtProgressOutline (Width=50) и CornerRadius=8 в MiniPlayerWindow.xaml:
+    // менять только вместе с разметкой.
+    private const double OutlineArtworkSize = 42.0;
+    private const double OutlineCanvasSize = 50.0;
+    private const double OutlineCornerRadius = 8.0;
+
+    private PathGeometry? _circleOutlineGeometry;
+    private PathGeometry? _squareOutlineGeometry;
+
+    private static PathGeometry BuildCircleOutlineGeometry()
+    {
+        const double offset = (OutlineCanvasSize - OutlineArtworkSize) / 2.0;
+        const double center = offset + OutlineArtworkSize / 2.0;
+        double radius = OutlineArtworkSize / 2.0;
+
+        // EllipseGeometry начинается справа (3 часа), а прогресс должен идти от верхней точки, как у квадратной обложки;
+        // поэтому окружность строится явно двумя дугами от центра верхней стороны.
+        var circleFigure = new PathFigure
+        {
+            StartPoint = new Point(center, offset),
+            IsClosed = true,
+            IsFilled = false
+        };
+        circleFigure.Segments.Add(new ArcSegment(
+            new Point(center, offset + OutlineArtworkSize), new Size(radius, radius),
+            0, false, SweepDirection.Clockwise, true));
+        circleFigure.Segments.Add(new ArcSegment(
+            new Point(center, offset), new Size(radius, radius),
+            0, false, SweepDirection.Clockwise, true));
+
+        var geometry = new PathGeometry();
+        geometry.Figures.Add(circleFigure);
+        geometry.Freeze();
+        return geometry;
+    }
+
+    private static PathGeometry BuildSquareOutlineGeometry()
+    {
+        const double offset = (OutlineCanvasSize - OutlineArtworkSize) / 2.0;
+        const double cornerRadius = OutlineCornerRadius;
         double left = offset;
         double top = offset;
-        double right = offset + artworkSize;
-        double bottom = offset + artworkSize;
-        double topCenter = center;
+        double right = offset + OutlineArtworkSize;
+        double bottom = offset + OutlineArtworkSize;
+        double topCenter = offset + OutlineArtworkSize / 2.0;
 
-        // Build the rounded-square path explicitly so its first point is the center of the top edge,
-        // instead of relying on the internal start point of RectangleGeometry.
+        // Скруглённый квадрат строится явно, чтобы первая точка была в центре верхней стороны,
+        // а не зависела от внутренней стартовой точки RectangleGeometry.
         var figure = new PathFigure
         {
             StartPoint = new Point(topCenter, top),
@@ -1519,43 +1584,24 @@ public partial class MiniPlayerWindow : Window
             IsFilled = false
         };
 
-        figure.Segments.Add(new LineSegment(
-            new Point(right - cornerRadius, top), true));
-        figure.Segments.Add(new ArcSegment(
-            new Point(right, top + cornerRadius),
-            new Size(cornerRadius, cornerRadius),
-            0, false, SweepDirection.Clockwise, true));
-        figure.Segments.Add(new LineSegment(
-            new Point(right, bottom - cornerRadius), true));
-        figure.Segments.Add(new ArcSegment(
-            new Point(right - cornerRadius, bottom),
-            new Size(cornerRadius, cornerRadius),
-            0, false, SweepDirection.Clockwise, true));
-        figure.Segments.Add(new LineSegment(
-            new Point(left + cornerRadius, bottom), true));
-        figure.Segments.Add(new ArcSegment(
-            new Point(left, bottom - cornerRadius),
-            new Size(cornerRadius, cornerRadius),
-            0, false, SweepDirection.Clockwise, true));
-        figure.Segments.Add(new LineSegment(
-            new Point(left, top + cornerRadius), true));
-        figure.Segments.Add(new ArcSegment(
-            new Point(left + cornerRadius, top),
-            new Size(cornerRadius, cornerRadius),
-            0, false, SweepDirection.Clockwise, true));
-        figure.Segments.Add(new LineSegment(
-            new Point(topCenter, top), true));
+        figure.Segments.Add(new LineSegment(new Point(right - cornerRadius, top), true));
+        figure.Segments.Add(new ArcSegment(new Point(right, top + cornerRadius),
+            new Size(cornerRadius, cornerRadius), 0, false, SweepDirection.Clockwise, true));
+        figure.Segments.Add(new LineSegment(new Point(right, bottom - cornerRadius), true));
+        figure.Segments.Add(new ArcSegment(new Point(right - cornerRadius, bottom),
+            new Size(cornerRadius, cornerRadius), 0, false, SweepDirection.Clockwise, true));
+        figure.Segments.Add(new LineSegment(new Point(left + cornerRadius, bottom), true));
+        figure.Segments.Add(new ArcSegment(new Point(left, bottom - cornerRadius),
+            new Size(cornerRadius, cornerRadius), 0, false, SweepDirection.Clockwise, true));
+        figure.Segments.Add(new LineSegment(new Point(left, top + cornerRadius), true));
+        figure.Segments.Add(new ArcSegment(new Point(left + cornerRadius, top),
+            new Size(cornerRadius, cornerRadius), 0, false, SweepDirection.Clockwise, true));
+        figure.Segments.Add(new LineSegment(new Point(topCenter, top), true));
 
         var geometry = new PathGeometry();
         geometry.Figures.Add(figure);
-        ArtProgressOutline.Data = geometry;
-
-        double straight = artworkSize - 2.0 * cornerRadius;
-        double perimeter = 4.0 * straight + 2.0 * Math.PI * cornerRadius;
-
-        // The path itself starts at the exact center of the top edge, so no
-        // dash offset is needed.
-        ApplyArtworkProgressDash(ratio, perimeter, startOffset: 0.0);
+        geometry.Freeze();
+        return geometry;
     }
 
     private void ApplyArtworkProgressDash(double ratio, double perimeter, double startOffset)
@@ -1660,6 +1706,7 @@ public partial class MiniPlayerWindow : Window
 
     protected override void OnClosed(EventArgs e)
     {
+        LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         _topmostTimer.Stop();
         _topmostTimer.Tick -= TopmostTimer_Tick;
         StopVinylRotation();

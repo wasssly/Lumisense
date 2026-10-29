@@ -172,14 +172,19 @@ public partial class MainWindow
         RaiseTrackInfoChanged(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush);
     }
 
-    // Полный пересбор при каждом изменении _folders дёшев благодаря виртуализации (ItemsSource — плоский список
-    // PlaylistFolder/PlaylistTrackRow, PlaylistDisplaySelectors.cs); свёрнутые папки не кладут строки в список.
-    private void RefreshPlaylistView()
+    private void InvalidateTrackCaches()
     {
         _allTracksCache = null;
         _activeTracksCache = null;
         _availableTracksNavigationCache = null;
         _availableTracksNavigationCacheCreatedUtc = DateTime.MinValue;
+    }
+
+    // Полный пересбор при каждом изменении _folders дёшев благодаря виртуализации (ItemsSource — плоский список
+    // PlaylistFolder/PlaylistTrackRow, PlaylistDisplaySelectors.cs); свёрнутые папки не кладут строки в список.
+    private void RefreshPlaylistView()
+    {
+        InvalidateTrackCaches();
 
         var items = new List<object>();
 
@@ -215,12 +220,22 @@ public partial class MainWindow
         {
             Interlocked.Increment(ref _playlistSearchGeneration);
             _playlistSearchCts?.Cancel();
+
+            // Прокрутка нужна только при очистке реального поиска; обычная пересборка плейлиста при пустом поле не должна
+            // дёргать список к проигрываемому треку.
+            bool wasFiltered = _playlistSearchFiltered;
+            _playlistSearchFiltered = false;
             ApplyPlaylistSearchResult(_isFavoritesView ? _favoriteDisplayItems : _playlistDisplayItems, _isFavoritesView);
+            if (wasFiltered)
+                SyncPlaylistToCurrentTrackAfterShow();
             return;
         }
 
         _playlistSearchDebounceTimer.Start();
     }
+
+    // true, пока в списке показан результат поиска (а не полный плейлист): по нему при очистке поля решаем, возвращаться ли к треку.
+    private bool _playlistSearchFiltered;
 
     private void PlaylistSearchDebounceTimer_Tick(object? sender, EventArgs e)
     {
@@ -249,6 +264,7 @@ public partial class MainWindow
                 favoritesView != _isFavoritesView)
                 return;
 
+            _playlistSearchFiltered = true;
             ApplyPlaylistSearchResult(filtered, favoritesView);
         }
         catch (OperationCanceledException)
@@ -444,6 +460,14 @@ public partial class MainWindow
 
         if (_isFavoritesView)
             RefreshFavoritesTrackList();
+    }
+
+    // Чекбокс меняет только IsEnabled (RefreshPlaylistView не вызывается), поэтому без сброса кэшей навигация и шафл
+    // продолжили бы брать треки из набора включённых папок, который был до переключения.
+    private void FolderEnabled_Click(object sender, RoutedEventArgs e)
+    {
+        InvalidateTrackCaches();
+        _shuffleSession.ResetDeck();
     }
 
     private void ToggleFolderExpand_Click(object sender, RoutedEventArgs e)

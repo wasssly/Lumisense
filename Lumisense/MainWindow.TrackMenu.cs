@@ -309,7 +309,7 @@ public partial class MainWindow
             "Удаление трека с диска",
             System.Windows.MessageBoxButton.YesNo,
             System.Windows.MessageBoxImage.Warning,
-            System.Windows.MessageBoxResult.Yes);
+            System.Windows.MessageBoxResult.No);
 
         if (confirm != System.Windows.MessageBoxResult.Yes) return;
 

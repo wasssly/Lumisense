@@ -23,6 +23,10 @@ public static class Logger
     private static bool _initFailed;
     private static int _currentLogPart;
 
+    // Размер текущего файла в памяти: иначе каждая строка журнала стоила бы лишних File.Exists и FileInfo.
+    // -1 — ещё не измерен (первая запись сеанса).
+    private static long _currentLogBytes = -1;
+
     private const int MaxLogFiles = 50;
     private const long MaxSingleLogBytes = 1L * 1024 * 1024;
     private const long MaxTotalLogBytes = 16L * 1024 * 1024;
@@ -113,6 +117,7 @@ public static class Logger
                 int byteCount = Encoding.UTF8.GetByteCount(line + System.Environment.NewLine);
                 RotateIfRequired(byteCount);
                 File.AppendAllText(_logFilePath, line + System.Environment.NewLine, Encoding.UTF8);
+                _currentLogBytes += byteCount;
             }
             catch
             {
@@ -138,10 +143,14 @@ public static class Logger
     {
         try
         {
-            if (File.Exists(_logFilePath) && new FileInfo(_logFilePath).Length + pendingBytes > MaxSingleLogBytes)
+            if (_currentLogBytes < 0)
+                _currentLogBytes = File.Exists(_logFilePath) ? new FileInfo(_logFilePath).Length : 0;
+
+            if (_currentLogBytes > 0 && _currentLogBytes + pendingBytes > MaxSingleLogBytes)
             {
                 _currentLogPart++;
                 _logFilePath = BuildLogFilePath(_currentLogPart);
+                _currentLogBytes = 0;
                 PruneOldLogs();
             }
         }

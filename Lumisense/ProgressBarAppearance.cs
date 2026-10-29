@@ -27,6 +27,9 @@ public sealed class ProgressBarAppearance
 
     // Waveform: доля деления под зазор между столбиками и прозрачность ещё не проигранной части.
     public double WaveformGap { get; set; } = 0.35;
+
+    // "Wave" — форма звука из тонких столбиков (как раньше), "Capsules" — крупные скруглённые столбики по усреднённым пикам.
+    public string WaveformShape { get; set; } = "Wave";
     public double WaveformUnplayedOpacity { get; set; } = 1.0;
 
     // Подсказка при наведении на Waveform: время в точке и подсветка участка до курсора.
@@ -43,6 +46,7 @@ public sealed class ProgressBarAppearance
         ColorMode = ColorMode is "Accent" or "Cover" or "Custom" ? ColorMode : "Accent";
         ColorHex = ToastColorCalculator.TryParse(ColorHex) is null ? "#0078D4" : ColorHex;
         EndShape = EndShape is "Round" or "Flat" ? EndShape : "Round";
+        WaveformShape = WaveformShape is "Wave" or "Capsules" ? WaveformShape : "Wave";
 
         TrackThickness = Clamp(TrackThickness, 0.5, 2.0, 1.0);
         ThumbSize = Clamp(ThumbSize, 0.6, 1.5, 1.0);

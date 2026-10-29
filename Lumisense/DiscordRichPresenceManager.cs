@@ -33,8 +33,17 @@ public sealed class DiscordRichPresenceManager : IDisposable
     private bool _coverLookupStartedForCurrentTrack;
     private string? _currentCoverUrl;
 
+    // Состояние (последний трек, обложка, настройки) читает и пишет ещё и фоновый поиск обложки под _sync,
+    // поэтому обновление идёт под той же блокировкой.
     public void Update(AppSettings settings, string? title, string? artist, bool isPlaying,
         double currentSeconds, double totalSeconds, bool hasTrack, bool force = false)
+    {
+        lock (_sync)
+            UpdateLocked(settings, title, artist, isPlaying, currentSeconds, totalSeconds, hasTrack, force);
+    }
+
+    private void UpdateLocked(AppSettings settings, string? title, string? artist, bool isPlaying,
+        double currentSeconds, double totalSeconds, bool hasTrack, bool force)
     {
         if (_disposed) return;
 
@@ -224,7 +233,7 @@ public sealed class DiscordRichPresenceManager : IDisposable
                 ? title
                 : "Lumisense",
             State = settings.DiscordRichPresenceShowTrackInfo && !string.IsNullOrWhiteSpace(artist)
-                ? artist
+                ? FormatArtistState(artist, isPlaying)
                 : activityState,
             Type = ActivityType.Listening,
             // Две пользовательские кнопки (репозиторий и актуальный релиз) уходят вместе с Presence и видны зрителям.
@@ -259,6 +268,17 @@ public sealed class DiscordRichPresenceManager : IDisposable
         return presence;
     }
 
+    // Без таймлайна на паузе Discord выглядит так же, как при воспроизведении, поэтому пауза помечается в тексте.
+    private static string FormatArtistState(string artist, bool isPlaying)
+    {
+        if (isPlaying) return artist;
+
+        const string pauseSuffix = " · На паузе";
+        int maxArtistLength = Math.Max(0, DiscordTextMaxLength - pauseSuffix.Length);
+        string shortArtist = artist.Length <= maxArtistLength ? artist : artist[..maxArtistLength];
+        return shortArtist + pauseSuffix;
+    }
+
     // Поиск обложки может занять до нескольких секунд; не блокирует Update. Переотправляет
     // presence с картинкой, только если трек к этому моменту не сменился (version совпадает).
     private async Task RefreshCoverArtAsync(string artist, string title, long version)
@@ -268,8 +288,9 @@ public sealed class DiscordRichPresenceManager : IDisposable
         {
             url = await DiscordCoverArtLookupService.TryGetCoverUrlAsync(artist, title, CancellationToken.None);
         }
-        catch
+        catch (Exception ex)
         {
+            DiscordRichPresenceLogger.Error("Не удалось найти обложку для Rich Presence", ex);
             url = null;
         }
 

@@ -80,18 +80,13 @@ public partial class StatisticsWindow : FluentWindow
             string title = Path.GetFileNameWithoutExtension(kv.Key);
             string artist = LocalizationService.Translate("Неизвестный исполнитель");
 
-            try
+            // Теги берутся из кэша (см. TrackMetadataCache); файл, который удалён, перемещён или повреждён после прошлого
+            // прослушивания, даёт null, и остаются запасные значения, чтобы один проблемный файл не ронял окно статистики.
+            var metadata = TrackMetadataCache.GetOrRead(kv.Key);
+            if (metadata is not null)
             {
-                var atlTrack = new ATL.Track(kv.Key);
-                if (!string.IsNullOrWhiteSpace(atlTrack.Title)) title = atlTrack.Title;
-
-                var performer = atlTrack.Artist;
-                if (!string.IsNullOrWhiteSpace(performer)) artist = performer;
-            }
-            catch
-            {
-                // Файл мог быть удалён, перемещён или повреждён после прошлого прослушивания: показываем то, что осталось,
-                // чтобы один проблемный файл не ронял окно статистики.
+                if (!string.IsNullOrWhiteSpace(metadata.Title)) title = metadata.Title;
+                if (!string.IsNullOrWhiteSpace(metadata.Artist)) artist = metadata.Artist;
             }
 
             return (Path: kv.Key, Count: kv.Value, Title: title, Artist: artist);

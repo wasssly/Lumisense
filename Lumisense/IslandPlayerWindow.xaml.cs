@@ -242,6 +242,7 @@ internal partial class IslandPlayerWindow : Window
         FavoritesChangeNotifier.Instance.PropertyChanged -= OnFavoritesChanged;
         SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
         CancelLyricsLoad();
+        _host.SetIslandAudioLevelWanted(false);
         _collapseTimer.Stop();
         _toastTimer.Stop();
         _volumeTimer.Stop();
@@ -1445,7 +1446,7 @@ internal partial class IslandPlayerWindow : Window
         timer.Tick += (_, _) =>
         {
             timer.Stop();
-            if (IsLoaded) _host.ShowSettingsWindow("MiniPlayer");
+            if (IsLoaded) _host.ShowSettingsWindow("Island");
         };
         timer.Start();
     }
@@ -1947,6 +1948,8 @@ internal partial class IslandPlayerWindow : Window
         }
 
         IslandBackdropLayer.Active = _state == State.Open && !ReduceMotion;
+
+        _host.SetIslandAudioLevelWanted(IslandBars.Active || OpenBars.Active || IslandBackdropLayer.Active);
     }
 
     // ----- Win32 -----

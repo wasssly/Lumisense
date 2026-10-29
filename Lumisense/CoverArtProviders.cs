@@ -15,7 +15,7 @@ public static class CoverArtProviders
 
     // MusicBrainz требует описательный User-Agent с контактом — без него сервис вправе замедлять
     // или блокировать запросы. См. https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting.
-    private const string MusicBrainzUserAgent = "Lumisense/1.0 (+https://github.com/wasssly/Lumisense)";
+    private static string MusicBrainzUserAgent => LyricsNetworkIdentity.UserAgentValue;
 
     public static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
 

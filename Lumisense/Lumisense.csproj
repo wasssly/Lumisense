@@ -12,7 +12,7 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <ApplicationManifest>app.manifest</ApplicationManifest>
-    <ApplicationIcon>Icons\app\lumisense-aurora.ico</ApplicationIcon>
+    <ApplicationIcon>Icons\app\lumisense-spotlight.ico</ApplicationIcon>
     <RootNamespace>Lumisense</RootNamespace>
     <AssemblyName>Lumisense</AssemblyName>
     <!-- Velopack должен обработать hooks до WPF App; generated App.Main не используется. -->
@@ -41,10 +41,10 @@
     <PackageReference Include="WPF-UI.Tray" Version="4.3.0" />
     <!-- NAudio 3 требует net9. Локальный SoundTouchSampleProvider использует public API
          SoundTouch.Net напрямую, потому что SoundTouch.Net.NAudioSupport.Core собран для ABI NAudio 2.x. -->
-    <PackageReference Include="NAudio" Version="3.2.0" />
+    <PackageReference Include="NAudio" Version="3.3.0" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
     <PackageReference Include="z440.atl.core" Version="7.18.0" />
-    <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.2.0" />
+    <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.2.1" />
     <PackageReference Include="SharpVectors.Wpf" Version="1.8.6" />
     <!-- Локальный Discord IPC / Rich Presence; фиксированная версия делает восстановление сборки воспроизводимым. -->
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
@@ -59,12 +59,16 @@
 
   <ItemGroup>
     <Resource Include="Icons\svg\**\*.svg" />
-    <Resource Include="Icons\app\lumisense.ico" />
-    <Resource Include="Icons\app\lumisense.png" />
-    <Resource Include="Icons\app\lumisense-aurora.ico" />
-    <Resource Include="Icons\app\lumisense-aurora.png" />
-    <Resource Include="Icons\app\lumisense-lavender.ico" />
-    <Resource Include="Icons\app\lumisense-lavender.png" />
+    <Resource Include="Icons\app\lumisense-glass.ico" />
+    <Resource Include="Icons\app\lumisense-glass.png" />
+    <Resource Include="Icons\app\lumisense-spotlight.ico" />
+    <Resource Include="Icons\app\lumisense-spotlight.png" />
+    <Resource Include="Icons\app\lumisense-backlit.ico" />
+    <Resource Include="Icons\app\lumisense-backlit.png" />
+    <Resource Include="Icons\app\lumisense-stripes.ico" />
+    <Resource Include="Icons\app\lumisense-stripes.png" />
+    <Resource Include="Icons\app\lumisense-beam.ico" />
+    <Resource Include="Icons\app\lumisense-beam.png" />
     <Resource Include="Icons\app\lumisense-settings.ico" />
     <Resource Include="Icons\app\lumisense-settings.png" />
     <Resource Include="Icons\app\developer-avatar-placeholder.png" />

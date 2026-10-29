@@ -189,7 +189,7 @@ public partial class MainWindow
         if (asyncSave)
             FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
         else
-            SettingsManager.Save(_settings);
+            SettingsManager.Save(_settings, forceBackup: true);
     }
 
     protected override void OnClosed(EventArgs e)
@@ -198,6 +198,7 @@ public partial class MainWindow
         // не открыл настройки посреди выключения; таймер останавливаем до финального Save, чтобы не начал запись параллельно.
         _playbackRatePersistenceTimer.Stop();
         _settingsCheckpointTimer.Stop();
+        ResourceWatchdog.Current?.Dispose();
         _systemDefaultEndpointDebounceTimer.Stop();
         _playlistSearchDebounceTimer.Stop();
         StopGameOverlayDetectionTimer();

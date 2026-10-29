@@ -18,6 +18,9 @@ internal interface INowPlayingHost
     double CurrentPlaybackSeconds { get; }
     double CurrentTrackDurationSeconds { get; }
     AudioLevelSampleProvider? AudioLevelMeter { get; }
+
+    // Включает расчёт уровня звука для реагирующего фона; запоминается и для следующих треков (новый измеритель создаётся на каждый трек).
+    void SetAudioLevelMeterEnabled(bool enabled);
     Color GetResolvedAccentColor();
     Color GetProgressBarColor(ProgressSurface surface);
 

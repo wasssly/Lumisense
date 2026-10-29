@@ -63,10 +63,15 @@ public partial class SettingsWindow : FluentWindow
             "Updates" => NavUpdates,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
+            "Progress" => NavProgress,
+            "Library" => NavLibrary,
+            "Cover" => NavCover,
+            "Lyrics" => NavLyrics,
             "Integrations" => NavIntegrations,
             "Notifications" => NavNotifications,
             "Equalizer" => NavEqualizer,
             "MiniPlayer" => NavMiniPlayer,
+            "Island" => NavIsland,
             "Hotkeys" => NavHotkeys,
             "Profile" => NavProfile,
             _ => NavAppearance
@@ -142,6 +147,7 @@ public partial class SettingsWindow : FluentWindow
         AccentSwatchesPanel.Visibility = AccentManualRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
         RefreshAccentSwatchSelection();
 
+        BackdropCard.Visibility = WindowBackdropOptions.IsSelectionSupportedNow ? Visibility.Visible : Visibility.Collapsed;
         string backdrop = WindowBackdropOptions.Normalize(_settings.WindowBackdropType);
         BackdropAcrylicRadio.IsChecked = backdrop == WindowBackdropOptions.Acrylic;
         BackdropBlurRadio.IsChecked = backdrop == WindowBackdropOptions.Blur;
@@ -216,7 +222,7 @@ public partial class SettingsWindow : FluentWindow
         InitializeToastMonitorCombo();
         MiniStyleIslandRadio.IsChecked = _settings.MiniPlayerStyle == "Island";
         MiniStyleClassicRadio.IsChecked = !MiniStyleIslandRadio.IsChecked.GetValueOrDefault();
-        IslandMonitorPanel.Visibility = IslandCustomCard.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        IslandInactiveNote.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
         InitializeIslandMonitorCombo();
         IslandScaleSlider.Value = _settings.IslandScalePercent;
         IslandScaleValueText.Text = $"{_settings.IslandScalePercent}%";
@@ -399,6 +405,7 @@ public partial class SettingsWindow : FluentWindow
         };
         Closed += (_, _) =>
         {
+            _isWindowClosed = true;
             StopAutoScrolling();
             _autoScrollTimer.Tick -= AutoScrollTimer_Tick;
             _sourceProbeCts?.Cancel();
@@ -541,16 +548,23 @@ public partial class SettingsWindow : FluentWindow
     public void RefreshMiniPlayerToggles()
     {
         _isInitializing = true;
-        MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
-        MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
-        MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
-        MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
-        MiniSecondaryFavoriteRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Favorite";
-        MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault()
-                                              && !MiniSecondaryFavoriteRadio.IsChecked.GetValueOrDefault();
-        MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
-        MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
-        _isInitializing = false;
+        try
+        {
+            MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
+            MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
+            MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
+            MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
+            MiniSecondaryFavoriteRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Favorite";
+            MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault()
+                                                  && !MiniSecondaryFavoriteRadio.IsChecked.GetValueOrDefault();
+            MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
+            MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
+        }
+        finally
+        {
+            // Без finally исключение выше оставило бы флаг включённым, и окно перестало бы сохранять любые изменения.
+            _isInitializing = false;
+        }
     }
 
     // Отмечает миниатюру текущего вида плеера — при открытии окна и извне (MainWindow), когда вид сменили меню заголовка
@@ -558,13 +572,19 @@ public partial class SettingsWindow : FluentWindow
     public void RefreshViewModeRadios()
     {
         _isInitializing = true;
-        switch (_owner.CurrentViewModeName)
+        try
         {
-            case "Square": ViewModeSquareRadio.IsChecked = true; break;
-            case "Rectangular": ViewModeRectangularRadio.IsChecked = true; break;
-            case "Mini": ViewModeMiniRadio.IsChecked = true; break;
+            switch (_owner.CurrentViewModeName)
+            {
+                case "Square": ViewModeSquareRadio.IsChecked = true; break;
+                case "Rectangular": ViewModeRectangularRadio.IsChecked = true; break;
+                case "Mini": ViewModeMiniRadio.IsChecked = true; break;
+            }
         }
-        _isInitializing = false;
+        finally
+        {
+            _isInitializing = false;
+        }
     }
 
     private void PlayerViewModeRadio_Checked(object sender, RoutedEventArgs e)
@@ -590,8 +610,13 @@ public partial class SettingsWindow : FluentWindow
 
         try
         {
-            var service = new VelopackUpdateService();
-            _isVelopackManagedInstall = service.IsManagedInstall;
+            // Создание UpdateManager и чтение локальных пакетов — файловый ввод-вывод: на UI-потоке он давал паузу сразу после открытия окна.
+            (VelopackUpdateService service, bool isManaged) = await Task.Run(() =>
+            {
+                var created = new VelopackUpdateService();
+                return (created, created.IsManagedInstall);
+            }, cts.Token);
+            _isVelopackManagedInstall = isManaged;
             if (!_isVelopackManagedInstall)
             {
                 _basePackagePlan = VelopackBasePackagePlan.Unavailable(VelopackBasePackageStatus.NotManagedInstall);
@@ -599,7 +624,7 @@ public partial class SettingsWindow : FluentWindow
                 return;
             }
 
-            _basePackagePlan = await service.GetBasePackagePlanAsync(cts.Token);
+            _basePackagePlan = await Task.Run(() => service.GetBasePackagePlanAsync(cts.Token), cts.Token);
             RefreshVelopackBasePackagePresentation();
         }
         catch (OperationCanceledException) when (cts.IsCancellationRequested)
@@ -1278,9 +1303,9 @@ public partial class SettingsWindow : FluentWindow
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica alt acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация accessibility scale motion");
-        Add("Анимация смены обложки", "Оформление", "Appearance", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
-        Add("Подпись под названием трека", "Оформление", "Appearance", BadgeModeStateRadio, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size");
-        Add("Жесты на обложке", "Оформление", "Appearance", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
+        Add("Анимация смены обложки", "Обложка и Now Playing", "Cover", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
+        Add("Подпись под названием трека", "Обложка и Now Playing", "Cover", BadgeModeStateRadio, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size");
+        Add("Жесты на обложке", "Обложка и Now Playing", "Cover", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
         Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно и запуск", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно и запуск", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
@@ -1289,10 +1314,10 @@ public partial class SettingsWindow : FluentWindow
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
         Add("Не запускать трек при старте", "Воспроизведение", "Playback", NeverAutoPlayLastTrackOnStartupCheckBox, "старт запуск продолжить воспроизведение последний трек пауза resume autoplay");
-        Add("Очистить кэш интернет-обложек", "Воспроизведение", "Playback", ClearArtworkCacheButton, "кэш обложка интернет очистить удалить cover cache artwork image");
-        Add("Нормализация имён файлов", "Воспроизведение", "Playback", NormalizePlaylistFileNamesButton, "нормализация имя файл шаблон переименование artist title album track extension rename");
-        Add("Действия контекстного меню трека", "Воспроизведение", "Playback", TrackContextFavoriteCheckBox, "контекстное меню правый клик пкм трек плейлист скрыть отключить действия проводник копировать теги свойства удалить найти файл замена недоступный locate relink missing");
-        Add("Найти файл", "Воспроизведение", "Playback", TrackContextFindFileCheckBox, "контекстное меню заменить недоступный файл путь locate relink missing file");
+        Add("Очистить кэш интернет-обложек", "Библиотека и файлы", "Library", ClearArtworkCacheButton, "кэш обложка интернет очистить удалить cover cache artwork image");
+        Add("Нормализация имён файлов", "Библиотека и файлы", "Library", NormalizePlaylistFileNamesButton, "нормализация имя файл шаблон переименование artist title album track extension rename");
+        Add("Действия контекстного меню трека", "Библиотека и файлы", "Library", TrackContextFavoriteCheckBox, "контекстное меню правый клик пкм трек плейлист скрыть отключить действия проводник копировать теги свойства удалить найти файл замена недоступный locate relink missing");
+        Add("Найти файл", "Библиотека и файлы", "Library", TrackContextFindFileCheckBox, "контекстное меню заменить недоступный файл путь locate relink missing file");
         Add("Discord Rich Presence", "Интеграции", "Integrations", DiscordRichPresenceEnabledCheckBox, "discord статус rich presence rpc активность" );
         Add("Подключить Discord", "Интеграции", "Integrations", ConnectDiscordButton, "discord подключить connection rich presence статус" );
         Add("Открыть журнал Discord", "Интеграции", "Integrations", OpenDiscordDiagnosticsLogButton, "discord журнал лог диагностика ошибка rich presence" );
@@ -1301,7 +1326,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Приватность Discord: обложка трека", "Интеграции", "Integrations", DiscordRichPresenceShowCoverArtCheckBox, "discord обложка cover art musicbrainz itunes deezer" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("EQ Bypass", "Эквалайзер", "Equalizer", EqualizerBypassCheckBox, "bypass обход эквалайзер eq временно сравнение фильтры");
-        Add("Настройки острова", "Мини-плеер", "MiniPlayer", IslandCustomCard, "остров размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
+        Add("Монитор острова", "Остров", "Island", IslandMonitorCombo, "остров монитор экран дисплей island monitor display");
+        Add("Настройки острова", "Остров", "Island", IslandCustomCard, "остров размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
         Add("Вид мини-плеера: карточка или остров", "Мини-плеер", "MiniPlayer", MiniStyleCard, "остров капсула dynamic island монитор экран вид мини плеер island monitor style");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
@@ -1332,25 +1358,25 @@ public partial class SettingsWindow : FluentWindow
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
-        Add("Полоса воспроизведения", "Воспроизведение", "Playback", ProgressStyleWaveformRadio, "полоса воспроизведения прогресс seek слайдер waveform форма звука soundcloud material волна цвет толщина ручка форма концов предпросмотр для каждого окна progress bar color thickness wave thumb per window");
-        Add("Режим текста песни", "Оформление", "Appearance", LyricsDisplayPlainRadio, "текст песни синхронный обычный lrc txt переключить режим synced plain lyrics");
+        Add("Полоса воспроизведения", "Полоса и ползунки", "Progress", ProgressStyleWaveformRadio, "полоса воспроизведения прогресс seek слайдер waveform форма звука soundcloud material волна цвет толщина ручка форма концов предпросмотр для каждого окна progress bar color thickness wave thumb per window");
+        Add("Режим текста песни", "Тексты песен", "Lyrics", LyricsDisplayPlainRadio, "текст песни синхронный обычный lrc txt переключить режим synced plain lyrics");
         Add("Показать пример уведомления", "Уведомления", "Notifications", ToastPreviewButton, "уведомление пример предпросмотр показать toast preview");
         Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
         Add("Своё положение уведомления", "Уведомления", "Notifications", ToastPickPositionButton, "уведомление перенести перетащить положение позиция свой custom drag move position toast notification");
         Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
-        Add("Выравнивание текста песни", "Оформление", "Appearance", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
-        Add("Дополнительный источник текстов", "Оформление", "Appearance", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease qq kugou paxsenix lyricify русские исполнители extra source");
-        Add("Фон Now Playing", "Оформление", "Appearance", NowPlayingBackgroundCloudsRadio, "фон now playing облака цветные шары волны background orbs clouds waves");
-        Add("Скрывать обложку при тексте песни", "Оформление", "Appearance", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
-        Add("Анимация избранного", "Оформление", "Appearance", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
+        Add("Выравнивание текста песни", "Тексты песен", "Lyrics", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
+        Add("Дополнительный источник текстов", "Тексты песен", "Lyrics", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease qq kugou paxsenix lyricify русские исполнители extra source");
+        Add("Фон Now Playing", "Обложка и Now Playing", "Cover", NowPlayingBackgroundCloudsRadio, "фон now playing облака цветные шары волны background orbs clouds waves");
+        Add("Скрывать обложку при тексте песни", "Тексты песен", "Lyrics", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
+        Add("Анимация избранного", "Обложка и Now Playing", "Cover", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
         Add("Размер мини-плеера", "Мини-плеер", "MiniPlayer", MiniSizeClassicRadio, "размер мини плеер компактный классический текущий 1.21 size preset");
         Add("Цвет уведомления", "Уведомления", "Notifications", ToastColorCoverRadio, "цвет уведомления обложка акцент свой окрашивание фон toast color cover accent tint");
         Add("Прозрачность уведомления", "Уведомления", "Notifications", ToastOpacitySlider, "прозрачность фона уведомление тост opacity transparency toast");
         Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
         Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
-        Add("Кэш текстов песен", "Профиль", "Profile", ClearLyricsCacheButton, "текст lyrics кэш очистить память локальный cache lyrics clear");
+        Add("Кэш текстов песен", "Тексты песен", "Lyrics", ClearLyricsCacheButton, "текст lyrics кэш очистить память локальный cache lyrics clear");
         Add("Сбросить плеер к исходному состоянию", "Профиль", "Profile", ResetPlayerButton, "сброс сбросить умолчание reset default настройки factory");
         Add("Вернуть состояние до последнего сброса", "Профиль", "Profile", RestoreResetSnapshotButton, "восстановить вернуть точка сброса backup restore reset recovery");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
@@ -1401,10 +1427,15 @@ public partial class SettingsWindow : FluentWindow
             "Appearance" => NavAppearance,
             "Window" => NavWindow,
             "Playback" => NavPlayback,
+            "Progress" => NavProgress,
+            "Library" => NavLibrary,
+            "Cover" => NavCover,
+            "Lyrics" => NavLyrics,
             "Integrations" => NavIntegrations,
             "Notifications" => NavNotifications,
             "Equalizer" => NavEqualizer,
             "MiniPlayer" => NavMiniPlayer,
+            "Island" => NavIsland,
             "Hotkeys" => NavHotkeys,
             "Profile" => NavProfile,
             "Updates" => NavUpdates,
@@ -1555,9 +1586,11 @@ public partial class SettingsWindow : FluentWindow
     {
         (System.Windows.Controls.Border card, string icon)[] cards =
         {
-            (AppIconCardClassic, AppIcons.Classic),
-            (AppIconCardAurora, AppIcons.Aurora),
-            (AppIconCardLavender, AppIcons.Lavender),
+            (AppIconCardGlass, AppIcons.Glass),
+            (AppIconCardSpotlight, AppIcons.Spotlight),
+            (AppIconCardBacklit, AppIcons.Backlit),
+            (AppIconCardStripes, AppIcons.Stripes),
+            (AppIconCardBeam, AppIcons.Beam),
         };
 
         foreach (var (card, icon) in cards)
@@ -2049,6 +2082,25 @@ public partial class SettingsWindow : FluentWindow
             : LocalizationService.Translate("Trace подготовки трека выключен");
     }
 
+    private DiagnosticsWindow? _diagnosticsWindow;
+
+    private void DiagnosticsButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (_diagnosticsWindow is { IsLoaded: true })
+        {
+            _diagnosticsWindow.Activate();
+            return;
+        }
+
+        // Без владельца: долгая проверка не должна прерываться, если закрыть окно настроек.
+        _diagnosticsWindow = new DiagnosticsWindow(_settings, _owner.GetDiagnosticsHost())
+        {
+            WindowStartupLocation = WindowStartupLocation.CenterScreen
+        };
+        _diagnosticsWindow.Closed += (_, _) => _diagnosticsWindow = null;
+        _diagnosticsWindow.Show();
+    }
+
     private void ClearArtworkCacheButton_Click(object sender, RoutedEventArgs e)
         => BackgroundTask.FireAndForget(ClearArtworkCacheButton_ClickAsync(sender, e), nameof(ClearArtworkCacheButton_Click));
 
@@ -2088,9 +2140,17 @@ public partial class SettingsWindow : FluentWindow
         return $"{bytes / (1024.0 * 1024.0):0.#} МБ";
     }
 
-    private void RefreshLyricsCacheInfo()
+    // Подсчёт обходит все файлы кэша и заодно чистит устаревшие: делаем в фоне, чтобы не задерживать открытие окна.
+    private int _lyricsCacheInfoVersion;
+
+    private void RefreshLyricsCacheInfo() =>
+        FireAndForget(RefreshLyricsCacheInfoAsync(++_lyricsCacheInfoVersion), "RefreshLyricsCacheInfoAsync");
+
+    private async Task RefreshLyricsCacheInfoAsync(int version)
     {
-        LyricsCacheInfo info = LyricsService.GetPastedLyricsCacheInfo();
+        LyricsCacheInfo info = await Task.Run(LyricsService.GetPastedLyricsCacheInfo);
+        if (_isWindowClosed || version != _lyricsCacheInfoVersion) return;
+
         LyricsCacheInfoText.Text = LocalizationService.FormatKey(LocalizationKey.ProfileLyricsCacheInfo,
             info.EntryCount, FormatLyricsCacheSize(info.TotalBytes));
         ClearLyricsCacheButton.IsEnabled = !info.IsEmpty;
@@ -2210,7 +2270,37 @@ public partial class SettingsWindow : FluentWindow
         _owner.ApplyDiscordRichPresenceSettingsLive();
     }
 
+    private int _outputDeviceLoadVersion;
+    private bool _isWindowClosed;
+
+    // Готовый список показывается сразу, а актуальный перечисляется в фоне: чтение имён endpoint (COM) на UI-потоке при открытии
+    // окна давало заметную паузу. Без кэша (первое открытие до прогрева, смена устройств) список строится на месте, как раньше.
     private void InitializeOutputDeviceCombo()
+    {
+        IReadOnlyList<AudioOutputDeviceService.Option>? cached = AudioOutputDeviceService.CachedDevices;
+        if (cached is null)
+        {
+            PopulateOutputDeviceCombo(AudioOutputDeviceService.GetAvailableDevices());
+            return;
+        }
+
+        PopulateOutputDeviceCombo(cached);
+        FireAndForget(RefreshOutputDevicesInBackgroundAsync(cached, ++_outputDeviceLoadVersion), "RefreshOutputDevicesAsync");
+    }
+
+    private async Task RefreshOutputDevicesInBackgroundAsync(
+        IReadOnlyList<AudioOutputDeviceService.Option> shown, int version)
+    {
+        IReadOnlyList<AudioOutputDeviceService.Option>? fresh = await AudioOutputDeviceService.TryGetAvailableDevicesAsync();
+
+        // Окно закрыто или список уже перестроили более новым запросом; сбой перечисления оставляет показанный список.
+        if (fresh is null || _isWindowClosed || version != _outputDeviceLoadVersion) return;
+        if (fresh.Count == shown.Count && fresh.Zip(shown).All(pair => pair.First == pair.Second)) return;
+
+        PopulateOutputDeviceCombo(fresh);
+    }
+
+    private void PopulateOutputDeviceCombo(IReadOnlyList<AudioOutputDeviceService.Option> devices)
     {
         _isRefreshingOutputDevices = true;
         try
@@ -2223,7 +2313,7 @@ public partial class SettingsWindow : FluentWindow
             };
             OutputDeviceCombo.Items.Add(systemDefault);
 
-            foreach (AudioOutputDeviceService.Option device in AudioOutputDeviceService.GetAvailableDevices())
+            foreach (AudioOutputDeviceService.Option device in devices)
             {
                 OutputDeviceCombo.Items.Add(new System.Windows.Controls.ComboBoxItem
                 {
@@ -2237,7 +2327,7 @@ public partial class SettingsWindow : FluentWindow
             if (!string.IsNullOrWhiteSpace(_settings.OutputDeviceName) &&
                 !AudioOutputDeviceService.IsEndpointPersistedKey(_settings.OutputDeviceName))
             {
-                string? migratedKey = AudioOutputDeviceService.FindAvailablePersistedKey(_settings.OutputDeviceName);
+                string? migratedKey = AudioOutputDeviceService.FindAvailablePersistedKey(_settings.OutputDeviceName, devices);
                 if (!string.IsNullOrWhiteSpace(migratedKey))
                 {
                     _settings.OutputDeviceName = migratedKey;
@@ -2974,7 +3064,7 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.MiniPlayerStyle = MiniStyleIslandRadio.IsChecked == true ? "Island" : "Classic";
-        IslandMonitorPanel.Visibility = IslandCustomCard.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
+        IslandInactiveNote.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
         _owner.ApplyMiniPlayerStyleLive();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
@@ -3191,12 +3281,18 @@ public partial class SettingsWindow : FluentWindow
         // _isInitializing глушит ValueChanged при сбросе слайдеров в 0: ResetEqualizer уже применил всё разом,
         // а десять отдельных SetEqualizerBandGain были бы лишними.
         _isInitializing = true;
-        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+        try
         {
-            GetEqBandSlider(band).Value = 0;
-            GetEqBandValueText(band).Text = FormatEqGain(0);
+            for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            {
+                GetEqBandSlider(band).Value = 0;
+                GetEqBandValueText(band).Text = FormatEqGain(0);
+            }
         }
-        _isInitializing = false;
+        finally
+        {
+            _isInitializing = false;
+        }
     }
 
     private static string FormatEqGain(double gainDb)
@@ -3251,13 +3347,19 @@ public partial class SettingsWindow : FluentWindow
         // Пресет применился в MainWindow — подтягиваем актуальные значения обратно в слайдеры,
         // так же как при обычном открытии окна (см. _isInitializing выше).
         _isInitializing = true;
-        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+        try
         {
-            double gain = _owner.GetEqualizerBandGain(band);
-            GetEqBandSlider(band).Value = gain;
-            GetEqBandValueText(band).Text = FormatEqGain(gain);
+            for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            {
+                double gain = _owner.GetEqualizerBandGain(band);
+                GetEqBandSlider(band).Value = gain;
+                GetEqBandValueText(band).Text = FormatEqGain(gain);
+            }
         }
-        _isInitializing = false;
+        finally
+        {
+            _isInitializing = false;
+        }
 
         if (EqualizerEnabledCheckBox.IsChecked != true)
         {
@@ -3701,10 +3803,15 @@ public partial class SettingsWindow : FluentWindow
         PageAppearance.Visibility = key == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
         PageWindow.Visibility = key == "Window" ? Visibility.Visible : Visibility.Collapsed;
         PagePlayback.Visibility = key == "Playback" ? Visibility.Visible : Visibility.Collapsed;
+        PageProgress.Visibility = key == "Progress" ? Visibility.Visible : Visibility.Collapsed;
+        PageLibrary.Visibility = key == "Library" ? Visibility.Visible : Visibility.Collapsed;
+        PageCover.Visibility = key == "Cover" ? Visibility.Visible : Visibility.Collapsed;
+        PageLyrics.Visibility = key == "Lyrics" ? Visibility.Visible : Visibility.Collapsed;
         PageIntegrations.Visibility = key == "Integrations" ? Visibility.Visible : Visibility.Collapsed;
         PageNotifications.Visibility = key == "Notifications" ? Visibility.Visible : Visibility.Collapsed;
         PageEqualizer.Visibility = key == "Equalizer" ? Visibility.Visible : Visibility.Collapsed;
         PageMiniPlayer.Visibility = key == "MiniPlayer" ? Visibility.Visible : Visibility.Collapsed;
+        PageIsland.Visibility = key == "Island" ? Visibility.Visible : Visibility.Collapsed;
         PageHotkeys.Visibility = key == "Hotkeys" ? Visibility.Visible : Visibility.Collapsed;
         PageProfile.Visibility = key == "Profile" ? Visibility.Visible : Visibility.Collapsed;
         PageUpdates.Visibility = key == "Updates" ? Visibility.Visible : Visibility.Collapsed;
@@ -3723,10 +3830,15 @@ public partial class SettingsWindow : FluentWindow
             "Appearance" => PageAppearance,
             "Window" => PageWindow,
             "Playback" => PagePlayback,
+            "Progress" => PageProgress,
+            "Library" => PageLibrary,
+            "Cover" => PageCover,
+            "Lyrics" => PageLyrics,
             "Integrations" => PageIntegrations,
             "Notifications" => PageNotifications,
             "Equalizer" => PageEqualizer,
             "MiniPlayer" => PageMiniPlayer,
+            "Island" => PageIsland,
             "Hotkeys" => PageHotkeys,
             "Profile" => PageProfile,
             "Updates" => PageUpdates,
@@ -4346,15 +4458,23 @@ public partial class SettingsWindow : FluentWindow
     {
         _pagesToWarm = new Queue<FrameworkElement>(new FrameworkElement[]
         {
-            PageWindow, PagePlayback, PageIntegrations, PageNotifications, PageEqualizer,
-            PageMiniPlayer, PageHotkeys, PageProfile, PageUpdates, PageAbout
+            PageWindow, PagePlayback, PageProgress, PageLibrary, PageCover, PageLyrics, PageIntegrations, PageNotifications,
+            PageEqualizer, PageMiniPlayer, PageIsland, PageHotkeys, PageProfile, PageUpdates, PageAbout
         });
-        Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(WarmUpNextPage));
+        // Раскладка страниц блокирует UI-поток на десятки миллисекунд каждая; во время появления окна и первых движений мыши
+        // это давало рывки, поэтому прогрев начинается, когда окно уже показано и успокоилось.
+        var startTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(900) };
+        startTimer.Tick += (_, _) =>
+        {
+            startTimer.Stop();
+            Dispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(WarmUpNextPage));
+        };
+        startTimer.Start();
     }
 
     private void WarmUpNextPage()
     {
-        if (_pagesToWarm is null || _pagesToWarm.Count == 0)
+        if (_isWindowClosed || _pagesToWarm is null || _pagesToWarm.Count == 0)
         {
             _pagesToWarm = null;
             return;

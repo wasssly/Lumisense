@@ -79,6 +79,10 @@ public static class LyricsService
     // Синхронные тексты, полученные Lumisense, не смешиваются с музыкальной библиотекой.
     // Имя — SHA-256 от канонического пути аудиофайла, поэтому путь пользователя в кэше не хранится.
     private static readonly string ManagedLrcDirectory = Path.Combine(ManagedLyricsDirectory, "lrc");
+
+    // Откуда взят сохранённый текст (NetEase, QQ Music, LRCLIB…): короткий файл с названием источника на каждый трек.
+    // Отдельная папка, чтобы не смешиваться с кэшем обычных текстов (*.txt) и его очисткой.
+    private static readonly string ManagedSourceDirectory = Path.Combine(ManagedLyricsDirectory, "source");
     private static readonly HttpClient Http = CreateHttpClient();
     private static readonly SemaphoreSlim SearchGate = new(1, 1);
     private const int MaxLrcLibRateLimitAttempts = 3;
@@ -102,7 +106,10 @@ public static class LyricsService
 
         // Сначала LRC из собственной папки Lumisense (онлайн-поиск не создаёт .lrc рядом с аудио), затем
         // LRC, положенный пользователем рядом с треком вручную.
-        LyricsDocument managedLrc = await LoadSyncedLrcAsync(GetManagedLrcPath(confirmedAudioPath), cancellationToken)
+        string? managedSource = ReadManagedSource(confirmedAudioPath);
+        LyricsDocument managedLrc = await LoadSyncedLrcAsync(
+                GetManagedLrcPath(confirmedAudioPath), cancellationToken,
+                managedSource is null ? null : $"{managedSource} · синхронный текст")
             .ConfigureAwait(false);
         if (managedLrc.Kind == LyricsKind.Synced) return managedLrc;
 
@@ -112,7 +119,7 @@ public static class LyricsService
 
         // Все обычные тексты, добавленные или найденные Lumisense, хранятся в txt-папке
         // приложения. TXT рядом с треком остаётся только пользовательским fallback.
-        LyricsDocument managedText = await LoadPastedLyricsCacheAsync(confirmedAudioPath, cancellationToken).ConfigureAwait(false);
+        LyricsDocument managedText = await LoadPastedLyricsCacheAsync(confirmedAudioPath, cancellationToken, managedSource).ConfigureAwait(false);
         if (managedText.Kind != LyricsKind.None) return managedText;
 
         LyricsDocument sidecarText = await LoadPlainTextAsync(
@@ -131,6 +138,10 @@ public static class LyricsService
         if (string.IsNullOrWhiteSpace(normalized)) return;
         if (Encoding.UTF8.GetByteCount(normalized) > MaxCachedLyricsBytes)
             throw new InvalidDataException("Скопированный текст больше 2 МБ.");
+
+        // Вставленный или найденный текст заменяет прежний: название старого источника к нему уже не относится.
+        // Онлайн-сохранение записывает свой источник заново после этого вызова (SaveOnlineResultAsync).
+        TryDeleteManagedSource(audioPath);
 
         Directory.CreateDirectory(PastedLyricsCacheDirectory);
         string cachePath = GetPastedLyricsCachePath(audioPath);
@@ -230,7 +241,7 @@ public static class LyricsService
         }
     }
 
-    private static async Task<LyricsDocument> LoadSyncedLrcAsync(string lrcPath, CancellationToken cancellationToken)
+    private static async Task<LyricsDocument> LoadSyncedLrcAsync(string lrcPath, CancellationToken cancellationToken, string? sourceLabel = null)
     {
         try
         {
@@ -239,7 +250,7 @@ public static class LyricsService
             string lrc = await File.ReadAllTextAsync(lrcPath, cancellationToken).ConfigureAwait(false);
             List<LyricLine> lines = ParseLrc(lrc);
             return lines.Count > 0
-                ? new LyricsDocument(LyricsKind.Synced, lines, string.Empty, "Синхронный LRC")
+                ? new LyricsDocument(LyricsKind.Synced, lines, string.Empty, sourceLabel ?? "Синхронный LRC")
                 : LyricsDocument.Empty;
         }
         catch (OperationCanceledException)
@@ -274,14 +285,16 @@ public static class LyricsService
         }
     }
 
-    private static async Task<LyricsDocument> LoadPastedLyricsCacheAsync(string audioPath, CancellationToken cancellationToken)
+    private static async Task<LyricsDocument> LoadPastedLyricsCacheAsync(string audioPath, CancellationToken cancellationToken, string? source = null)
     {
         string cachePath = GetPastedLyricsCachePath(audioPath);
+        bool isManagedFile = true;
         if (!File.Exists(cachePath))
         {
             string legacyPath = GetLegacyPastedLyricsCachePath(audioPath);
             if (!File.Exists(legacyPath)) return LyricsDocument.Empty;
             cachePath = legacyPath;
+            isManagedFile = false; // старая папка: источник для неё никогда не записывался
         }
 
         try
@@ -304,7 +317,8 @@ public static class LyricsService
             try { File.SetLastWriteTimeUtc(cachePath, DateTime.UtcNow); }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { Logger.Warn($"Не удалось обновить время кэша текста: {ex.Message}"); }
 
-            return new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), text.Trim(), "Кэш вставленного текста");
+            return new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), text.Trim(),
+                isManagedFile && source is not null ? $"{source} · текст" : "Кэш вставленного текста");
         }
         catch (OperationCanceledException)
         {
@@ -430,12 +444,12 @@ public static class LyricsService
     {
         string title = trackName.Trim();
         string artist = artistName.Trim();
-        if (string.IsNullOrWhiteSpace(title) || title == "Файл не выбран")
+        if (string.IsNullOrWhiteSpace(title) || IsNoFilePlaceholder(title))
             return Array.Empty<OnlineLyricsResult>();
 
         // Общий запрос (q) ищет по названию и исполнителю сразу: помогает, когда теги записаны не так, как в каталоге LRCLIB.
         var query = new List<string> { generalQuery ? $"q={Uri.EscapeDataString(title)}" : $"track_name={Uri.EscapeDataString(title)}" };
-        if (!generalQuery && !string.IsNullOrWhiteSpace(artist) && artist != "—")
+        if (!generalQuery && !string.IsNullOrWhiteSpace(artist) && artist != NoArtistPlaceholder)
             query.Add($"artist_name={Uri.EscapeDataString(artist)}");
 
         string url = LrcLibSearchEndpoint + "?" + string.Join("&", query);
@@ -519,6 +533,13 @@ public static class LyricsService
 
     // Теги исполнителя и названия часто записаны по-разному: пробуем до трёх вариантов и останавливаемся
     // на первом непустом результате, чтобы не нагружать публичный сервис.
+    private const string NoFileTitlePlaceholder = "Файл не выбран";
+    private const string NoArtistPlaceholder = "—";
+
+    // Плеер показывает этот текст вместо названия, когда трека нет; на английском интерфейсе он уже переведён.
+    private static bool IsNoFilePlaceholder(string title) =>
+        title == NoFileTitlePlaceholder || title == LocalizationService.Translate(NoFileTitlePlaceholder);
+
     public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineVariantsAsync(
         string trackName,
         string artistName,
@@ -718,6 +739,7 @@ public static class LyricsService
             string destination = GetManagedLrcPath(audioPath);
             await WriteTextAtomicallyAsync(destination, result.SyncedLyrics!.Trim() + Environment.NewLine, cancellationToken)
                 .ConfigureAwait(false);
+            await WriteManagedSourceAsync(audioPath, result.Source, cancellationToken).ConfigureAwait(false);
             return;
         }
 
@@ -737,6 +759,61 @@ public static class LyricsService
 
         // Обычный текст сохраняем в управляемой txt-папке, а не рядом с аудиофайлом.
         await SavePastedLyricsAsync(audioPath, document.PlainText, cancellationToken).ConfigureAwait(false);
+        await WriteManagedSourceAsync(audioPath, result.Source, cancellationToken).ConfigureAwait(false);
+    }
+
+    internal static string GetManagedSourcePath(string audioPath) =>
+        Path.Combine(ManagedSourceDirectory, GetAudioPathCacheKey(audioPath) + ".source");
+
+    // Название источника хранится как есть, но читается только короткой однострочной строкой без управляющих символов.
+    internal static string? NormalizeStoredSource(string? raw)
+    {
+        string value = (raw ?? string.Empty).Trim();
+        if (value.Length == 0 || value.Length > 40) return null;
+        return value.Any(char.IsControl) ? null : value;
+    }
+
+    private static string? ReadManagedSource(string audioPath)
+    {
+        try
+        {
+            string path = GetManagedSourcePath(audioPath);
+            return File.Exists(path) ? NormalizeStoredSource(File.ReadAllText(path, Encoding.UTF8)) : null;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return null; // без источника подпись просто остаётся общей («Синхронный LRC»)
+        }
+    }
+
+    private static async Task WriteManagedSourceAsync(string audioPath, string source, CancellationToken cancellationToken)
+    {
+        string? normalized = NormalizeStoredSource(source);
+        if (normalized is null) return;
+
+        try
+        {
+            Directory.CreateDirectory(ManagedSourceDirectory);
+            await WriteTextAtomicallyAsync(GetManagedSourcePath(audioPath), normalized, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Сам текст уже сохранён: потеря названия источника не должна превращать успех в ошибку.
+            Logger.Warn($"Не удалось сохранить источник текста: {ex.Message}");
+        }
+    }
+
+    private static void TryDeleteManagedSource(string audioPath)
+    {
+        try
+        {
+            string path = GetManagedSourcePath(audioPath);
+            if (File.Exists(path)) File.Delete(path);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Устаревший источник останется: максимум подпись назовёт прежний источник, текст не пострадает.
+        }
     }
 
     public static int FindActiveLineIndex(IReadOnlyList<LyricLine> lines, TimeSpan position)

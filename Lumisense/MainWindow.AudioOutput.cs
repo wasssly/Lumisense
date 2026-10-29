@@ -239,6 +239,9 @@ public partial class MainWindow
         if (_isExiting)
             return;
 
+        if (e.Kind != AudioOutputEndpointChangeKind.DevicePropertiesChanged)
+            AudioOutputDeviceService.InvalidateDeviceCache();
+
         // Список и карточка Settings должны сразу отражать подключение/отключение, но callback переносим с Core Audio worker
         // thread на Dispatcher; PropertyValueChanged приходит часто (например, громкость) и не требует пересборки ComboBox или recovery.
         if (e.Kind != AudioOutputEndpointChangeKind.DevicePropertiesChanged && _settingsWindow?.IsLoaded == true)

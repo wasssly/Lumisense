@@ -15,6 +15,16 @@ on:
         description: "SemVer тестового Velopack-пакета"
         required: true
         default: "1.15.1-prototype.1"
+      publish_ready_to_run:
+        description: "Опыт S1: опубликовать с ReadyToRun (быстрее старт, больше пакет). Применяется и к базе, и к кандидату"
+        type: boolean
+        required: false
+        default: false
+      publish_single_file:
+        description: "Опыт S1: single-file (как в csproj сейчас). false — обычная папка с файлами, дельта точнее"
+        type: boolean
+        required: false
+        default: true
 
 permissions:
   contents: read
@@ -62,7 +72,7 @@ jobs:
         shell: pwsh
         run: |
           git worktree add --detach ..\baseline "${{ inputs.base_ref }}"
-          dotnet publish ..\baseline\Lumisense\Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version="${{ inputs.base_version }}" -o baseline-publish
+          dotnet publish ..\baseline\Lumisense\Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version="${{ inputs.base_version }}" -p:PublishReadyToRun=${{ inputs.publish_ready_to_run }} -p:PublishSingleFile=${{ inputs.publish_single_file }} -o baseline-publish
 
       - name: Pack baseline full package
         shell: pwsh
@@ -81,7 +91,7 @@ jobs:
       - name: Publish candidate source
         shell: pwsh
         run: |
-          dotnet publish Lumisense/Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version="${{ inputs.candidate_version }}" -o candidate-publish
+          dotnet publish Lumisense/Lumisense.csproj -c Release -r win-x64 --self-contained true -p:Version="${{ inputs.candidate_version }}" -p:PublishReadyToRun=${{ inputs.publish_ready_to_run }} -p:PublishSingleFile=${{ inputs.publish_single_file }} -o candidate-publish
 
       # Здесь собираются: full .nupkg, delta .nupkg и MSI PerMachine. Ни один файл не
       # публикуется в GitHub Release: результат остаётся workflow artifact.
@@ -98,7 +108,7 @@ jobs:
             --channel prototype `
             --packTitle Lumisense `
             --packAuthors wasssly `
-            --icon Lumisense\Icons\app\lumisense-aurora.ico `
+            --icon Lumisense\Icons\app\lumisense-spotlight.ico `
             --noPortable true `
             --msi true `
             --instLocation PerMachine
@@ -126,7 +136,14 @@ jobs:
           if ($expectedHash -ne $actualHash) { throw "Reconstructed full package SHA-256 does not match candidate full package." }
 
           $ratio = [math]::Round(($delta.Length / $full.Length) * 100, 2)
+          $candidateFiles = Get-ChildItem candidate-publish -Recurse -File
           $measurement = [ordered]@{
+            publish = [ordered]@{
+              readyToRun = "${{ inputs.publish_ready_to_run }}"
+              singleFile = "${{ inputs.publish_single_file }}"
+              candidateFolderBytes = ($candidateFiles | Measure-Object Length -Sum).Sum
+              candidateFileCount = $candidateFiles.Count
+            }
             baseVersion = "${{ inputs.base_version }}"
             candidateVersion = "${{ inputs.candidate_version }}"
             fullPackage = [ordered]@{ name = $full.Name; bytes = $full.Length; sha256 = $expectedHash }
@@ -140,7 +157,7 @@ jobs:
       - name: Upload private prototype artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: Lumisense-Velopack-delta-prototype
+          name: Lumisense-Velopack-delta-prototype-r2r-${{ inputs.publish_ready_to_run }}-single-${{ inputs.publish_single_file }}
           path: Releases
           if-no-files-found: error
           retention-days: 7

@@ -185,7 +185,7 @@ public partial class MainWindow
     private void StartOutputChain(int generation, TrackLoadPerformanceMeasurement performance)
     {
         _channelMode = new ChannelModeSampleProvider(_equalizer!) { MonoEnabled = _settings.PlaybackChannelMode == "Mono" };
-        _audioLevelMeter = new AudioLevelSampleProvider(_channelMode);
+        _audioLevelMeter = new AudioLevelSampleProvider(_channelMode) { Enabled = AudioLevelMeterWanted };
         var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
         fadeIn.BeginFadeIn(70);
         _activeFade = fadeIn;
@@ -668,9 +668,12 @@ public partial class MainWindow
 
         _isPlaying = false;
         PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
-        // UI-таймер оставляем активным во время паузы: он продолжает подтверждать
-        // текущую позицию и не оставляет устаревшее время до следующего Play.
         FlushPlaybackClock();
+
+        // Последняя синхронизация позиции — и таймер на паузе не нужен: перемотка на паузе публикует позицию сама
+        // (SeekCurrentAudioFile), а ResumePlayback запускает таймер снова. Раньше он будил UI-поток 4 раза в секунду зря.
+        ProgressTimer_Tick(null, EventArgs.Empty);
+        _progressTimer.Stop();
         _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
         RaisePlaybackStateChanged(false);
         SetTrackUserState(TrackUserState.Paused);

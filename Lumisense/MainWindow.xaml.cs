@@ -341,6 +341,28 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private int _lastTrackChangeDirection = 1;
     public int LastTrackChangeDirection => _lastTrackChangeDirection;
 
+    // Измеритель считает, пока он нужен хотя бы одному потребителю: окну Now Playing или острову.
+    private bool _nowPlayingWantsAudioLevel, _islandWantsAudioLevel;
+
+    public void SetAudioLevelMeterEnabled(bool enabled)
+    {
+        _nowPlayingWantsAudioLevel = enabled;
+        ApplyAudioLevelMeterEnabled();
+    }
+
+    public void SetIslandAudioLevelWanted(bool wanted)
+    {
+        _islandWantsAudioLevel = wanted;
+        ApplyAudioLevelMeterEnabled();
+    }
+
+    private bool AudioLevelMeterWanted => _nowPlayingWantsAudioLevel || _islandWantsAudioLevel;
+
+    private void ApplyAudioLevelMeterEnabled()
+    {
+        if (_audioLevelMeter is not null) _audioLevelMeter.Enabled = AudioLevelMeterWanted;
+    }
+
     // Для мини-плеера: узнать режим повтора сразу при открытии, до первого RepeatModeChanged (как трек и состояние
     // воспроизведения в конструкторе MiniPlayerWindow).
     public string CurrentRepeatModeName => _repeatMode.ToString();
@@ -379,8 +401,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         AppIcons.Initialize(_settings);
         LyricsService.ExtraSourceEnabled = _settings.UseExtraLyricsSource;
 
-        // Установщик и обновление пересоздают ярлыки со значком Aurora — возвращаем выбранный пользователем.
-        if (AppIcons.Current != AppIcons.Aurora)
+        // Установщик и обновление пересоздают ярлыки со значком по умолчанию (Spotlight) — возвращаем выбранный пользователем.
+        if (AppIcons.Current != AppIcons.Default)
             BackgroundTask.FireAndForget(ShortcutIconSync.SyncAsync(AppIcons.Current), "ShortcutIconSync");
 
         _audioOutputRecoveryService = new(
@@ -422,6 +444,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         };
 
         _progressTimer.Tick += ProgressTimer_Tick;
+        IsVisibleChanged += (_, _) => SyncProgressUiAfterWindowShown();
+        StateChanged += (_, _) => SyncProgressUiAfterWindowShown();
         _playlistSearchDebounceTimer.Tick += PlaylistSearchDebounceTimer_Tick;
         _folderRefreshDebounceTimer.Tick += FolderRefreshDebounceTimer_Tick;
         _discordTrackChangeTimer.Tick += DiscordTrackChangeTimer_Tick;
@@ -450,6 +474,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         ApplySettingsOnStartup();
         _playbackRatePersistenceTimer.Start();
         _settingsCheckpointTimer.Start();
+        ResourceWatchdog.Start();
 
         // Намеренно без await: проверка файлов и загрузка последнего трека идут в фоне, окно показывается сразу
         // (см. комментарий над RestoreSavedPlaylistAsync).
@@ -590,6 +615,28 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         }
 
         FireAndForget(CheckForUpdatesOnStartupAsync(), "CheckForUpdatesOnStartupAsync");
+        FireAndForget(PrefetchOutputDevicesAsync(), "PrefetchOutputDevicesAsync");
+
+        // Обращение к пользователям: сразу после показа окна, не блокируя построение (как уведомление migration выше).
+        // При скрытом старте (трей, мини-режим) ждём первого показа главного окна.
+        if (!_settings.CommunityDialogDismissed)
+        {
+            if (IsVisible)
+            {
+                ScheduleCommunityDialog();
+            }
+            else
+            {
+                DependencyPropertyChangedEventHandler? onVisibleChanged = null;
+                onVisibleChanged = (_, e) =>
+                {
+                    if (e.NewValue is not true) return;
+                    IsVisibleChanged -= onVisibleChanged;
+                    ScheduleCommunityDialog();
+                };
+                IsVisibleChanged += onVisibleChanged;
+            }
+        }
     }
 
     // Windows может не отдать фокус свежему процессу (защита от кражи фокуса, заметно при запуске с закреплённого ярлыка):
@@ -604,6 +651,22 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
     // Прогрев layout окна заранее (был WarmUpMainWindowLayout) убран: он переносил блокирующую работу с клика на старт;
     // первый разворот из мини-режима на большой библиотеке может занять время.
+
+    // Окно настроек показывает список устройств вывода из кэша; чтение имён endpoint (COM) делаем заранее, когда старт уже закончен.
+    private async System.Threading.Tasks.Task PrefetchOutputDevicesAsync()
+    {
+        try
+        {
+            await System.Threading.Tasks.Task.Delay(System.TimeSpan.FromSeconds(6), _lifetimeCts.Token);
+            if (_isExiting) return;
+
+            await AudioOutputDeviceService.TryGetAvailableDevicesAsync();
+        }
+        catch (System.OperationCanceledException)
+        {
+            // Выход из приложения: прогревать больше нечего.
+        }
+    }
 
     // Тихая проверка на старте: в фоне и с задержкой, чтобы не отвлекать ресурсы от загрузки плейлиста/обложки; не показывает
     // диалог для версии, отклонённой кнопкой "Позже" (SkippedUpdateVersion). Сбой повторяется через 30 с и 5 мин
@@ -643,6 +706,29 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         catch
         {
             // Фоновая необязательная проверка — молча игнорируем любые сбои
+        }
+    }
+
+    private void ScheduleCommunityDialog() =>
+        Dispatcher.BeginInvoke(new Action(ShowCommunityDialogIfNeeded), System.Windows.Threading.DispatcherPriority.ContextIdle);
+
+    // Показывается при каждом запуске, пока пользователь не отметит «Не показывать».
+    private void ShowCommunityDialogIfNeeded()
+    {
+        if (_settings.CommunityDialogDismissed || _isExiting || !IsVisible) return;
+
+        try
+        {
+            var dialog = new CommunityDialog(this);
+            dialog.ShowDialog();
+            if (!dialog.ShouldStopShowing) return;
+
+            _settings.CommunityDialogDismissed = true;
+            FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        }
+        catch (Exception ex)
+        {
+            Logger.Error("Не удалось показать окно-обращение", ex);
         }
     }
 
@@ -1190,18 +1276,46 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         _settingsWindow?.Close();
     }
 
+    // Now Playing разворачивается на весь экран и заменяет главное окно: пока он открыт, главное окно скрыто (иначе оно оставалось
+    // бы за ним и появлялось при переключении окон или на соседнем мониторе), а после закрытия возвращается на прежнее место.
+    private bool _mainHiddenForNowPlaying;
+
     public void ShowNowPlayingWindow()
     {
         if (_nowPlayingWindow is null)
         {
+            if (IsVisible && !_isMiniMode && WindowState != WindowState.Minimized)
+            {
+                Hide();
+                _mainHiddenForNowPlaying = true;
+            }
+
             _nowPlayingWindow = new NowPlayingWindow(this);
-            _nowPlayingWindow.Closed += (_, _) => _nowPlayingWindow = null;
+            _nowPlayingWindow.Closed += (_, _) =>
+            {
+                _nowPlayingWindow = null;
+                RestoreMainWindowAfterNowPlaying();
+            };
             _nowPlayingWindow.Show();
         }
         else
         {
             _nowPlayingWindow.Activate();
         }
+    }
+
+    private void RestoreMainWindowAfterNowPlaying()
+    {
+        if (!_mainHiddenForNowPlaying) return;
+
+        _mainHiddenForNowPlaying = false;
+
+        // При выходе из приложения окно не возвращается; в мини-режиме главное окно и должно оставаться скрытым.
+        if (_isExiting || _isMiniMode || IsVisible) return;
+
+        Show();
+        SyncPlaylistToCurrentTrackAfterShow();
+        Activate();
     }
 
     private void ShowNowPlayingMenuItem_Click(object sender, RoutedEventArgs e) => ShowNowPlayingWindow();
@@ -1488,10 +1602,10 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private bool _isDraggingProgressOverlay;
     private bool _isDraggingVolumeOverlay;
 
-    // Раз в ~30 секунд игры (120 тиков по 250 мс) сохраняем трек/позицию: при аварийном завершении позиция потеряется
+    // Раз в ~30 секунд игры сохраняем трек/позицию: при аварийном завершении позиция потеряется
     // не более чем на ~30 секунд (пауза, смена трека и выход сохраняют сразу, см. PersistPlaybackAndPlaylistState).
-    private const int AutoSaveEveryNTicks = 120;
-    private int _ticksSinceLastAutoSave;
+    private static readonly TimeSpan AutoSaveInterval = TimeSpan.FromSeconds(30);
+    private readonly Stopwatch _autoSaveStopwatch = new();
 
     // Обновляет Rich Presence единым снимком аудиосостояния; длительность и позиция берутся только из AudioFileReader,
     // поэтому Discord не зависит от текстовых полей UI.

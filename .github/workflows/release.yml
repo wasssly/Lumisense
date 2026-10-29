@@ -135,7 +135,7 @@ jobs:
             --packTitle Lumisense `
             --packAuthors wasssly `
             --shortcuts StartMenuRoot `
-            --icon "Lumisense\Icons\app\lumisense-aurora.ico" `
+            --icon "Lumisense\Icons\app\lumisense-spotlight.ico" `
             --releaseNotes release_notes.md `
             --noPortable true `
             --msi true `

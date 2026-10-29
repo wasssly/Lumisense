@@ -1,0 +1,61 @@
+<Window x:Class="Lumisense.CommunityDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Lumisense"
+        Width="460"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        UseLayoutRounding="True"
+        SnapsToDevicePixels="True"
+        PreviewKeyDown="Window_PreviewKeyDown">
+    <Border Margin="8"
+            Padding="26,22,26,20"
+            CornerRadius="16"
+            Background="{DynamicResource SolidBackgroundFillColorBaseBrush}"
+            BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+            BorderThickness="1">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.32" />
+        </Border.Effect>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0"
+                       Text="Спасибо, что выбрали Lumisense"
+                       TextWrapping="Wrap"
+                       FontSize="18" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+
+            <TextBlock Grid.Row="1" Margin="0,18,0,16"
+                       Text="Если у вас есть идея, пожелание или вы нашли ошибку, напишите об этом в Telegram-канале или на GitHub: каждое сообщение помогает сделать плеер лучше.&#x0A;&#x0A;Ссылки на Telegram-канал и репозиторий GitHub всегда можно найти в настройках, на вкладке «О плеере»."
+                       TextWrapping="Wrap" FontSize="14" LineHeight="21"
+                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+            <CheckBox Grid.Row="2" x:Name="DontShowCheckBox" Content="Не показывать" Margin="0,0,0,20" />
+
+            <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="CloseButton" Content="Закрыть" MinWidth="100" Height="36"
+                        Margin="0,0,10,0" Padding="18,0"
+                        Click="CloseButton_Click" />
+                <Button x:Name="GitHubButton" Content="GitHub" MinWidth="100" Height="36"
+                        Margin="0,0,10,0" Padding="18,0"
+                        Click="GitHubButton_Click" />
+                <Button x:Name="TelegramButton" Content="Telegram" MinWidth="110" Height="36"
+                        Padding="18,0"
+                        Background="{DynamicResource AccentFillColorDefaultBrush}"
+                        Foreground="{DynamicResource TextOnAccentFillColorPrimaryBrush}"
+                        Click="TelegramButton_Click" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

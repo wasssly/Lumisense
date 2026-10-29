@@ -66,6 +66,7 @@ internal static class ProgressAppearanceApplier
     public static void Apply(WaveformView view, ProgressBarAppearance appearance)
     {
         view.GapRatio = appearance.WaveformGap;
+        view.IsCapsule = appearance.WaveformShape == "Capsules";
         view.UnplayedOpacity = appearance.WaveformUnplayedOpacity;
         view.IsFlat = appearance.IsFlat;
     }
