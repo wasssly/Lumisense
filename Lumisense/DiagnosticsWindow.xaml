@@ -1,0 +1,78 @@
+<ui:FluentWindow x:Class="Lumisense.DiagnosticsWindow"
+        x:ClassModifier="internal"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+        xmlns:local="clr-namespace:Lumisense"
+        Title="Диагностика производительности"
+        Icon="{Binding Current, Source={x:Static local:AppIconContext.Instance}}"
+        Height="720" Width="640"
+        MinHeight="520" MinWidth="460"
+        WindowBackdropType="Mica"
+        ExtendsContentIntoTitleBar="True"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResize">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <ui:TitleBar Grid.Row="0" Title="Диагностика производительности" ShowMaximize="False" />
+
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+            <StackPanel Margin="24,4,24,24">
+                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7" Margin="0,0,0,16"
+                           Text="Плеер проверяет сам себя: нагрузку процессора, память, дескрипторы и графические объекты. Ничего не отправляется в сеть, отчёт сохраняется только по кнопке." />
+
+                <TextBlock Text="Наблюдение за ресурсами (всегда включено)" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBlock x:Name="WatchText" TextWrapping="Wrap" FontSize="12" Opacity="0.85" Margin="0,0,0,20" />
+
+                <TextBlock Text="Быстрая проверка нагрузки" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7" Margin="0,0,0,10"
+                           Text="Минуту измеряет, сколько процессора и памяти занимает плеер. Включите музыку и оставьте плеер в том виде, в каком вы им обычно пользуетесь (главное окно, мини-плеер или трей)." />
+                <ui:Button x:Name="QuickButton" Content="Запустить проверку" Appearance="Secondary" HorizontalAlignment="Left"
+                           Click="QuickButton_Click" Margin="0,0,0,20" />
+
+                <TextBlock Text="Замер по сценарию" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7" Margin="0,0,0,10"
+                           Text="Плеер сам переключит воспроизведение и режим окна, подождёт 8 секунд, замерит минуту и вернёт всё как было. Окно диагностики на это время свернётся и вернётся с результатом. Не двигайте мышь, не нажимайте клавиши и не запускайте другие программы до конца замера (около 70 секунд), иначе результат исказится. Нужен загруженный трек." />
+                <ComboBox x:Name="ScenarioCombo" MinWidth="340" HorizontalAlignment="Left" Margin="0,0,0,10" />
+                <ui:Button x:Name="ScenarioButton" Content="Запустить замер" Appearance="Secondary" HorizontalAlignment="Left"
+                           Click="ScenarioButton_Click" Margin="0,0,0,20" />
+
+                <TextBlock Text="Проверка утечек памяти" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,6" />
+                <TextBlock TextWrapping="Wrap" FontSize="12" Opacity="0.7" Margin="0,0,0,10"
+                           Text="Долгий замер с автоматической сменой треков. Нужен плейлист хотя бы на 100 треков с включённым перемешиванием. Окно диагностики можно свернуть, но не закрывать до конца проверки." />
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                    <TextBlock Text="Длительность" VerticalAlignment="Center" Margin="0,0,12,0" />
+                    <ComboBox x:Name="LeakDurationCombo" MinWidth="140" SelectedIndex="1">
+                        <ComboBoxItem Tag="30" Content="30 минут" />
+                        <ComboBoxItem Tag="60" Content="1 час" />
+                        <ComboBoxItem Tag="120" Content="2 часа" />
+                        <ComboBoxItem Tag="240" Content="4 часа" />
+                    </ComboBox>
+                </StackPanel>
+                <CheckBox x:Name="AutoNextCheckBox" IsChecked="True" Content="Сам переключать треки раз в 20 секунд" Margin="0,0,0,10" />
+                <ui:Button x:Name="LeakButton" Content="Запустить проверку" Appearance="Secondary" HorizontalAlignment="Left"
+                           Click="LeakButton_Click" Margin="0,0,0,12" />
+
+                <ProgressBar x:Name="RunProgress" Height="6" Minimum="0" Maximum="100" Visibility="Collapsed" Margin="0,0,0,6" />
+                <TextBlock x:Name="StatusText" TextWrapping="Wrap" FontSize="12" Opacity="0.8" Margin="0,0,0,12" />
+
+                <TextBlock Text="Результат" FontSize="15" FontWeight="SemiBold" Margin="0,4,0,6" />
+                <TextBox x:Name="ResultBox" IsReadOnly="True" TextWrapping="Wrap" AcceptsReturn="True" MinHeight="170"
+                         FontFamily="Consolas" FontSize="12" VerticalScrollBarVisibility="Auto" />
+                <StackPanel Orientation="Horizontal" Margin="0,10,0,0">
+                    <ui:Button x:Name="CopyButton" Content="Копировать" Appearance="Secondary" IsEnabled="False"
+                               Click="CopyButton_Click" Margin="0,0,8,0" />
+                    <ui:Button x:Name="SaveButton" Content="Сохранить отчёт" Appearance="Secondary" IsEnabled="False"
+                               Click="SaveButton_Click" Margin="0,0,8,0" />
+                    <ui:Button x:Name="OpenFolderButton" Content="Открыть папку отчётов" Appearance="Secondary"
+                               Click="OpenFolderButton_Click" />
+                </StackPanel>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
+</ui:FluentWindow>

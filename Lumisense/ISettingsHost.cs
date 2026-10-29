@@ -6,8 +6,15 @@ namespace Lumisense;
 // Всё, что SettingsWindow берёт у MainWindow, по темам. ISettingsHost объединяет их: окно настроек зависит от него,
 // а не от всего MainWindow.
 internal interface ISettingsHost : ISettingsAppearanceHost, ISettingsAudioHost, ISettingsEqualizerHost,
-    ISettingsMiniPlayerHost, ISettingsPlaylistHost, ISettingsIntegrationsHost, ISettingsProfileHost
+    ISettingsMiniPlayerHost, ISettingsPlaylistHost, ISettingsIntegrationsHost, ISettingsProfileHost,
+    ISettingsDiagnosticsHost
 {
+}
+
+// Встроенная диагностика производительности (окно DiagnosticsWindow) берёт у главного окна состояние плеера и переключение режимов.
+internal interface ISettingsDiagnosticsHost
+{
+    IDiagnosticsHost GetDiagnosticsHost();
 }
 
 // Окно, тема и оформление: то, что страницы настроек применяют к MainWindow и мини-плееру на лету.
