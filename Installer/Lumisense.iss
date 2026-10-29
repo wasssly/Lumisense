@@ -14,8 +14,6 @@ AppVersion={#MyAppVersion}
 AppPublisher=Lumisense
 
 DefaultDirName={autopf}\Lumisense
-DefaultGroupName=Lumisense
-AllowNoIcons=yes
 
 ; Автообновление завершает плеер само (UpdateChecker.LaunchInstallerAndExit); CloseApplications — страховка на
 ; случай зависшего Lumisense.exe, RestartApplications возвращает его после установки.
@@ -32,12 +30,13 @@ InternalCompressLevel=ultra64
 MinVersion=0,6.1.7600
 PrivilegesRequired=admin
 
-SetupIconFile=..\Lumisense\Icons\app\lumisense-aurora.ico
+SetupIconFile=..\Lumisense\Icons\app\lumisense-spotlight.ico
 UninstallDisplayIcon={app}\Lumisense.exe
 
 WizardStyle=modern
 DisableWelcomePage=no
-DisableProgramGroupPage=no
+; Единственный ярлык кладётся прямо в «Программы», а подпапка с одним значком в «Пуске» не нужна.
+DisableProgramGroupPage=yes
 
 LanguageDetectionMethod=uilanguage
 ; Пользователь всегда видит русский и английский варианты, а не только автоматический выбор по Windows.
@@ -53,7 +52,7 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Source: "..\Lumisense\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 ; Иконка отдельно (если не попала в publish)
-Source: "..\Lumisense\Icons\app\lumisense-aurora.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\Lumisense\Icons\app\lumisense-spotlight.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Tasks]
 ; Флажок отмечен по умолчанию, но пользователь может его снять; ярлык в [Icons]
@@ -62,9 +61,12 @@ Name: "startmenuicon"; Description: "{cm:CreateStartMenuIcon}"; GroupDescription
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"
 
 [Icons]
-Name: "{group}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense-aurora.ico"; Tasks: startmenuicon
-Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense-aurora.ico"; Tasks: desktopicon
-Name: "{group}\{cm:UninstallLumisense}"; Filename: "{uninstallexe}"
+Name: "{autoprograms}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense-spotlight.ico"; Tasks: startmenuicon
+Name: "{commondesktop}\Lumisense"; Filename: "{app}\Lumisense.exe"; WorkingDir: "{app}"; IconFilename: "{app}\lumisense-spotlight.ico"; Tasks: desktopicon
+
+[InstallDelete]
+; Прежние версии ставили ярлыки в подпапку «Lumisense» меню «Пуск»: при обновлении она удаляется.
+Type: filesandordirs; Name: "{autoprograms}\Lumisense"
 
 [Registry]
 Root: HKCR; Subkey: ".mp3\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue

@@ -13,8 +13,8 @@ internal static class ShortcutIconSync
     private const string ShortcutExeName = "Lumisense.exe";
     private const int MaxPath = 1024;
 
-    // Синхронизация нужна при смене иконки и на старте, если выбрана не иконка сборки (Aurora):
-    // установщик и обновление Velopack пересоздают ярлыки со значком Aurora.
+    // Синхронизация нужна при смене иконки и на старте, если выбрана не иконка сборки (Spotlight):
+    // установщик и обновление Velopack пересоздают ярлыки со значком Spotlight.
     public static Task SyncAsync(string icon)
     {
         if (!AppIcons.IsKnown(icon)) return Task.CompletedTask;

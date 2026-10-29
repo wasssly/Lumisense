@@ -48,26 +48,36 @@ public sealed class AppIconContext : INotifyPropertyChanged
 // вживую через SetCurrent; окна биндятся на AppIconContext.Instance.Current, трей слушает PropertyChanged.
 public static class AppIcons
 {
-    public const string Classic = "Classic";
-    public const string Aurora = "Aurora";
-    public const string Lavender = "Lavender";
+    public const string Glass = "Glass";
+    public const string Spotlight = "Spotlight";
+    public const string Backlit = "Backlit";
+    public const string Stripes = "Stripes";
+    public const string Beam = "Beam";
 
-    public static readonly string[] All = { Classic, Aurora, Lavender };
+    // Значок по умолчанию и значок сборки: тот же файл зашит в .exe (ApplicationIcon), установщик и пакеты Velopack.
+    public const string Default = Spotlight;
+
+    public static readonly string[] All = { Glass, Spotlight, Backlit, Stripes, Beam };
 
     private static readonly Dictionary<string, string> FileNames = new()
     {
-        [Classic] = "lumisense",
-        [Aurora] = "lumisense-aurora",
-        [Lavender] = "lumisense-lavender",
+        [Glass] = "lumisense-glass",
+        [Spotlight] = "lumisense-spotlight",
+        [Backlit] = "lumisense-backlit",
+        [Stripes] = "lumisense-stripes",
+        [Beam] = "lumisense-beam",
     };
 
-    public static string Current { get; private set; } = Aurora;
+    public static string Current { get; private set; } = Default;
 
     // Вызывается один раз при старте (до построения первого окна) — задаёт начальное значение
     // без необходимости в PropertyChanged, слушателей ещё нет.
     public static void Initialize(AppSettings settings)
     {
-        Current = IsKnown(settings.AppIcon) ? settings.AppIcon : Aurora;
+        // Прежние значки (Classic, Aurora, Lavender) убраны: сохранённое старое имя заменяется значком по умолчанию и в настройках,
+        // иначе в окне настроек ни одна карточка не была бы выбрана.
+        if (!IsKnown(settings.AppIcon)) settings.AppIcon = Default;
+        Current = settings.AppIcon;
         AppIconContext.Instance.Current = Load(Current);
         AppIconContext.Instance.CurrentArt = LoadArt(Current);
     }
