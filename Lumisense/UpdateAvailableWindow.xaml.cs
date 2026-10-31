@@ -8,6 +8,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Wpf.Ui.Controls;
+using WpfBorder = System.Windows.Controls.Border;
+using WpfColumnDefinition = System.Windows.Controls.ColumnDefinition;
+using WpfGrid = System.Windows.Controls.Grid;
+using WpfStackPanel = System.Windows.Controls.StackPanel;
+using WpfTextBlock = System.Windows.Controls.TextBlock;
 
 namespace Lumisense;
 
@@ -35,6 +40,10 @@ public partial class UpdateAvailableWindow : FluentWindow
     {
         InitializeComponent();
 
+        // Фиксированные 700 px не помещаются на низких экранах (768 px и меньше): окно не выше рабочей области, список изменений
+        // в нём просто прокручивается.
+        WindowSizing.FitToWorkArea(this);
+
         _result = result;
         _settings = settings;
         _isMsiMigrationOnly = result.Status == UpdateCheckStatus.MsiMigrationAvailable;
@@ -61,15 +70,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             _velopackDiagnostics?.Dispose();
         };
 
-        string releaseNotes = FormatReleaseNotes(result.ReleaseNotes);
-        if (!string.IsNullOrWhiteSpace(releaseNotes))
-        {
-            NotesText.Text = releaseNotes;
-        }
-        else
-        {
-            NotesText.Visibility = Visibility.Collapsed;
-        }
+        ShowNotes([(null, null, result.ReleaseNotes)]);
 
         MoreButton.Visibility = string.IsNullOrEmpty(result.ReleaseNotesUrl) ? Visibility.Collapsed : Visibility.Visible;
 
@@ -88,18 +89,96 @@ public partial class UpdateAvailableWindow : FluentWindow
             await UpdateChecker.GetSkippedReleasesAsync(_result.CurrentVersion, latestVersion, token);
         if (token.IsCancellationRequested || skipped.Count < 2) return;
 
-        string versionLabel = LocalizationService.Translate("Версия ");
-        var sections = new List<string>();
+        var releases = new List<(string? Version, DateTimeOffset? PublishedAt, string? Markdown)>();
         foreach (ReleaseListItem release in skipped)
         {
-            string notes = FormatReleaseNotes(release.ReleaseNotes);
-            if (notes.Length > 0) sections.Add(versionLabel + release.Version + Environment.NewLine + notes);
+            if (FormatReleaseNotes(release.ReleaseNotes).Length > 0)
+                releases.Add((release.Version, release.PublishedAt, release.ReleaseNotes));
         }
 
-        if (sections.Count < 2) return;
+        if (releases.Count < 2) return;
 
-        NotesText.Text = string.Join(Environment.NewLine + Environment.NewLine, sections);
-        NotesText.Visibility = Visibility.Visible;
+        ShowNotes(releases);
+    }
+
+    // Список изменений рисуется карточками: у каждой версии свой блок, заголовки выделены, пункты идут с отступом, а не сплошным
+    // текстом. Один релиз показывается без подписи версии (она уже в шапке окна).
+    private void ShowNotes(IReadOnlyList<(string? Version, DateTimeOffset? PublishedAt, string? Markdown)> releases)
+    {
+        NotesPanel.Children.Clear();
+        foreach (var (version, publishedAt, markdown) in releases)
+        {
+            List<NoteBlock> blocks = ParseReleaseNotes(markdown);
+            if (blocks.Count == 0) continue;
+
+            var content = new WpfStackPanel();
+            if (version is not null)
+            {
+                var header = new WpfTextBlock { FontSize = 14, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 0, 0, 8) };
+                header.Inlines.Add(LocalizationService.Translate("Версия ") + version);
+                if (publishedAt is { } date)
+                {
+                    var dateRun = new System.Windows.Documents.Run("   " + date.LocalDateTime.ToString("d")) { FontSize = 12, FontWeight = FontWeights.Normal };
+                    dateRun.Foreground = System.Windows.Media.Brushes.Gray;
+                    header.Inlines.Add(dateRun);
+                }
+
+                content.Children.Add(header);
+            }
+
+            foreach (NoteBlock block in blocks) content.Children.Add(CreateNoteElement(block));
+
+            var card = new WpfBorder { CornerRadius = new CornerRadius(8), Padding = new Thickness(14, 12, 14, 8), Margin = new Thickness(0, 0, 0, 10), Child = content };
+            card.SetResourceReference(WpfBorder.BackgroundProperty, "CardBackgroundFillColorSecondaryBrush");
+            NotesPanel.Children.Add(card);
+        }
+
+        NotesPanel.Visibility = NotesPanel.Children.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private static UIElement CreateNoteElement(NoteBlock block)
+    {
+        switch (block.Kind)
+        {
+            case NoteBlockKind.Bullet:
+            {
+                var row = new WpfGrid { Margin = new Thickness(0, 0, 0, 5) };
+                row.ColumnDefinitions.Add(new WpfColumnDefinition { Width = new GridLength(16) });
+                row.ColumnDefinitions.Add(new WpfColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+                var dot = new WpfTextBlock { Text = "•", FontSize = 13, Opacity = 0.7 };
+                var text = new WpfTextBlock { Text = block.Text, FontSize = 13, LineHeight = 18, TextWrapping = TextWrapping.Wrap, Opacity = 0.9 };
+                WpfGrid.SetColumn(text, 1);
+                row.Children.Add(dot);
+                row.Children.Add(text);
+                return row;
+            }
+            case NoteBlockKind.Heading:
+            {
+                var heading = new WpfTextBlock
+                {
+                    Text = block.Text, FontSize = 13, FontWeight = FontWeights.SemiBold,
+                    TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 6),
+                };
+                heading.SetResourceReference(WpfTextBlock.ForegroundProperty, "AccentTextFillColorPrimaryBrush");
+                return heading;
+            }
+            case NoteBlockKind.Important:
+            {
+                var important = new WpfTextBlock
+                {
+                    Text = block.Text, FontSize = 13, FontWeight = FontWeights.SemiBold,
+                    TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 6),
+                };
+                important.SetResourceReference(WpfTextBlock.ForegroundProperty, "SystemFillColorCautionBrush");
+                return important;
+            }
+            default:
+                return new WpfTextBlock
+                {
+                    Text = block.Text, FontSize = 13, LineHeight = 18, TextWrapping = TextWrapping.Wrap,
+                    Opacity = 0.85, Margin = new Thickness(0, 0, 0, 6),
+                };
+        }
     }
 
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
@@ -119,15 +198,20 @@ public partial class UpdateAvailableWindow : FluentWindow
             DialogTitleText.Text = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationAvailableTitle);
             VersionsText.Text = LocalizationService.FormatKey(
                 LocalizationKey.UpdateMsiMigrationCurrentVersion, _result.CurrentVersion);
-            NotesText.Visibility = Visibility.Collapsed;
+            NotesPanel.Visibility = Visibility.Collapsed;
             NotesScrollViewer.Visibility = Visibility.Collapsed;
+            VersionsText.Visibility = Visibility.Visible;
+            VersionChipsPanel.Visibility = Visibility.Collapsed;
             InstallButton.Visibility = Visibility.Collapsed;
             LaterButton.Content = LocalizationService.Get(LocalizationKey.UpdateMsiMigrationClose);
         }
         else
         {
-            VersionsText.Text = LocalizationService.Translate(
-                $"Версия {_result.LatestVersion} (у вас {_result.CurrentVersion})");
+            // Две «таблетки» с версиями читаются быстрее строки «Версия X (у вас Y)»; она остаётся только в режиме перехода на MSI.
+            CurrentVersionChipText.Text = _result.CurrentVersion;
+            NewVersionChipText.Text = _result.LatestVersion ?? string.Empty;
+            VersionsText.Visibility = Visibility.Collapsed;
+            VersionChipsPanel.Visibility = Visibility.Visible;
         }
 
         bool canOfferMsiMigration = _result.DeliveryKind == UpdateDeliveryKind.LegacyInnoSetup &&
@@ -250,58 +334,58 @@ public partial class UpdateAvailableWindow : FluentWindow
     private void OpenVelopackLogsButton_Click(object sender, RoutedEventArgs e) =>
         VelopackUpdateDiagnostics.OpenVelopackLogsFolder();
 
+    private enum NoteBlockKind { Heading, Bullet, Paragraph, Important }
+
+    private readonly record struct NoteBlock(NoteBlockKind Kind, string Text);
+
     // Markdown из GitHub Release TextBlock не рендерит и показал бы служебные символы (#, **, [ссылка](url));
     // нужно безопасное плоское представление, а не HTML/Markdown-движок: ссылки — подписью.
-    private static string FormatReleaseNotes(string? markdown)
+    private static List<NoteBlock> ParseReleaseNotes(string? markdown)
     {
-        if (string.IsNullOrWhiteSpace(markdown)) return string.Empty;
+        var blocks = new List<NoteBlock>();
+        if (string.IsNullOrWhiteSpace(markdown)) return blocks;
 
-        var lines = new List<string>();
         bool inCodeBlock = false;
-
         foreach (string rawLine in markdown.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
         {
-            string line = rawLine.TrimEnd();
-            string trimmed = line.TrimStart();
-
+            string trimmed = rawLine.Trim();
             if (trimmed.StartsWith("```", StringComparison.Ordinal))
             {
                 inCodeBlock = !inCodeBlock;
                 continue;
             }
 
-            if (!inCodeBlock && trimmed.StartsWith('>'))
-            {
-                trimmed = trimmed[1..].TrimStart();
-            }
+            if (trimmed.Length == 0) continue;
 
-            if (!inCodeBlock && trimmed.StartsWith("[!IMPORTANT]", StringComparison.OrdinalIgnoreCase))
-            {
-                AddBlankLineBeforeSection(lines);
-                lines.Add(LocalizationService.Get(LocalizationKey.UpdateImportant));
-                continue;
-            }
-
+            var kind = NoteBlockKind.Paragraph;
             if (!inCodeBlock)
             {
+                if (trimmed.StartsWith('>')) trimmed = trimmed[1..].TrimStart();
+
+                if (trimmed.StartsWith("[!IMPORTANT]", StringComparison.OrdinalIgnoreCase))
+                {
+                    blocks.Add(new NoteBlock(NoteBlockKind.Important, LocalizationService.Get(LocalizationKey.UpdateImportant)));
+                    continue;
+                }
+
                 int headingLength = 0;
                 while (headingLength < trimmed.Length && trimmed[headingLength] == '#') headingLength++;
 
                 if (headingLength > 0 && headingLength < trimmed.Length && char.IsWhiteSpace(trimmed[headingLength]))
                 {
-                    AddBlankLineBeforeSection(lines);
+                    kind = NoteBlockKind.Heading;
                     trimmed = trimmed[headingLength..].TrimStart();
                 }
                 else if (trimmed is "---" or "***" or "___")
                 {
-                    AddBlankLineBeforeSection(lines);
                     continue;
                 }
                 else if (trimmed.StartsWith("- ", StringComparison.Ordinal) ||
                          trimmed.StartsWith("* ", StringComparison.Ordinal) ||
                          trimmed.StartsWith("+ ", StringComparison.Ordinal))
                 {
-                    trimmed = "• " + trimmed[2..];
+                    kind = NoteBlockKind.Bullet;
+                    trimmed = trimmed[2..].TrimStart();
                 }
             }
 
@@ -309,13 +393,24 @@ public partial class UpdateAvailableWindow : FluentWindow
             trimmed = trimmed.Replace("**", string.Empty)
                              .Replace("__", string.Empty)
                              .Replace("~~", string.Empty)
-                             .Replace("`", string.Empty);
-
-            lines.Add(trimmed);
+                             .Replace("`", string.Empty)
+                             .Trim();
+            if (trimmed.Length > 0) blocks.Add(new NoteBlock(kind, trimmed));
         }
 
-        while (lines.Count > 0 && string.IsNullOrWhiteSpace(lines[0])) lines.RemoveAt(0);
-        while (lines.Count > 0 && string.IsNullOrWhiteSpace(lines[^1])) lines.RemoveAt(lines.Count - 1);
+        return blocks;
+    }
+
+    // Плоский текст нужен, чтобы понять, есть ли в релизе что показывать.
+    private static string FormatReleaseNotes(string? markdown)
+    {
+        var lines = new List<string>();
+        foreach (NoteBlock block in ParseReleaseNotes(markdown))
+        {
+            if (block.Kind is NoteBlockKind.Heading or NoteBlockKind.Important) AddBlankLineBeforeSection(lines);
+            lines.Add(block.Kind == NoteBlockKind.Bullet ? "• " + block.Text : block.Text);
+        }
+
         return string.Join(Environment.NewLine, lines);
     }
 
