@@ -219,7 +219,7 @@ public sealed class MaterialSliderVisual : FrameworkElement
         bool reversed = slider?.IsDirectionReversed == true;
         double minimum = slider?.Minimum ?? 0.0;
         double maximum = slider?.Maximum ?? 1.0;
-        double value = slider?.Value ?? (double.IsFinite(Progress) ? Progress : 0.0);
+        double value = slider is not null ? SliderSmoothing.ShownValue(slider) : (double.IsFinite(Progress) ? Progress : 0.0);
         double range = maximum - minimum;
         double ratio = Math.Clamp((value - minimum) / range, 0.0, 1.0);
         double centerRatio = Math.Clamp((0.0 - minimum) / range, 0.0, 1.0);
