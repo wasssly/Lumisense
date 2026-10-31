@@ -28,6 +28,7 @@ public partial class TrackTagsWindow : FluentWindow
     public TrackTagsWindow(string filePath, MainWindow? owner = null)
     {
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
 
         _filePath = filePath;
         _owner = owner;

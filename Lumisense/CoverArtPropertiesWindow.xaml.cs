@@ -20,6 +20,7 @@ public partial class CoverArtPropertiesWindow : FluentWindow
         AppSettings settings)
     {
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
         AccessibilityPreferences.ApplyToWindow(this, settings);
 
         ArtBorder.Background = new ImageBrush(art) { Stretch = Stretch.UniformToFill };

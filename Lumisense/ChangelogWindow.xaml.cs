@@ -37,6 +37,7 @@ public partial class ChangelogWindow : FluentWindow
         _isInitializing = true;
         _settings = settings;
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
         AccessibilityPreferences.ApplyToWindow(this, settings);
         _isInitializing = false;
 

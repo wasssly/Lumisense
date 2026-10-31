@@ -33,6 +33,7 @@ public partial class CoverArtWindow : FluentWindow
     public CoverArtWindow(BitmapSource art, string trackTitle, AppSettings settings)
     {
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
         AccessibilityPreferences.ApplyToWindow(this, settings);
 
         ArtImage.Source = art;

@@ -13,6 +13,7 @@ public partial class TrackPropertiesWindow : FluentWindow
     public TrackPropertiesWindow(string filePath, AppSettings settings)
     {
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
         AccessibilityPreferences.ApplyToWindow(this, settings);
         Load(filePath);
     }

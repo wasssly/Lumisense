@@ -25,6 +25,7 @@ internal partial class DiagnosticsWindow : FluentWindow
     {
         _host = host;
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
         AccessibilityPreferences.ApplyToWindow(this, settings);
         LocalizationService.Apply(this);
 

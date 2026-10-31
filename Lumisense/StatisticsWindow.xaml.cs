@@ -17,6 +17,7 @@ public partial class StatisticsWindow : FluentWindow
     public StatisticsWindow(AppSettings settings)
     {
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
         _settings = settings;
         AccessibilityPreferences.ApplyToWindow(this, _settings);
 

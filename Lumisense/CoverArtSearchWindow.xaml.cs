@@ -44,6 +44,7 @@ public partial class CoverArtSearchWindow : FluentWindow
     public CoverArtSearchWindow(string? artist, string? title, AppSettings? settings = null)
     {
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
         if (settings != null)
             AccessibilityPreferences.ApplyToWindow(this, settings);
 
