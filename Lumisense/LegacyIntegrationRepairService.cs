@@ -16,7 +16,7 @@ internal static class LegacyIntegrationRepairService
     private const string FileTypeProgId = "Lumisense.AudioFile";
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "Lumisense";
-    private static readonly string[] SupportedAudioExtensions = [".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".wma"];
+    private static readonly string[] SupportedAudioExtensions = [".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aiff", ".aif", ".wma"];
 
     /// <summary>Выполняется только после подтверждённого удаления legacy-копии; порядок важен: старый uninstaller
     /// может удалить ярлыки и registry values, поэтому восстановление до его завершения недостаточно.</summary>

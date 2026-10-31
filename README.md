@@ -42,7 +42,7 @@
 
 ### Воспроизведение и звук
 
-- Поддержка MP3, WAV, WMA, FLAC, M4A, AAC и OGG.
+- Поддержка MP3, WAV, WMA, FLAC, M4A, AAC, OGG и OPUS.
 - Управление воспроизведением: запуск, пауза, остановка, предыдущий и следующий трек.
 - Перемотка по прогресс-бару и переход к следующей композиции.
 - Три режима повтора: без повтора, повтор всего плейлиста и повтор одного трека.
@@ -280,7 +280,7 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 
 #### Playback and audio
 
-- MP3, WAV, WMA, FLAC, M4A, AAC, OGG, and other formats supported by NAudio.
+- MP3, WAV, WMA, FLAC, M4A, AAC, OGG, OPUS, and other formats supported by NAudio.
 - Play, pause, stop, track navigation, seeking, repeat modes, and history-aware shuffle across all active playlist folders.
 - Persisted shuffle history and queue state between launches.
 - Ten-band equalizer, presets, EQ Bypass, ReplayGain, playback speed, and pitch controls.

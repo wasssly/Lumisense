@@ -75,6 +75,9 @@ Root: HKCR; Subkey: ".flac\OpenWithProgids"; ValueType: string; ValueName: "Lumi
 Root: HKCR; Subkey: ".m4a\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".aac\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".ogg\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".opus\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".aiff\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: ".aif\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".wma\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
 
 Root: HKCR; Subkey: "Lumisense.AudioFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Lumisense.exe,0"; Flags: uninsdeletevalue
@@ -92,7 +95,13 @@ Root: HKCR; Subkey: "SystemFileAssociations\.m4a\shell\LumisenseOpen\command"; V
 Root: HKCR; Subkey: "SystemFileAssociations\.aac\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "SystemFileAssociations\.aac\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "SystemFileAssociations\.ogg\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.opus\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.aiff\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.aif\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "SystemFileAssociations\.ogg\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.opus\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.aiff\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
+Root: HKCR; Subkey: "SystemFileAssociations\.aif\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "SystemFileAssociations\.wma\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "SystemFileAssociations\.wma\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
 
@@ -147,6 +156,9 @@ begin
   RemoveLegacyDefaultAssociation('.m4a');
   RemoveLegacyDefaultAssociation('.aac');
   RemoveLegacyDefaultAssociation('.ogg');
+  RemoveLegacyDefaultAssociation('.opus');
+  RemoveLegacyDefaultAssociation('.aiff');
+  RemoveLegacyDefaultAssociation('.aif');
   RemoveLegacyDefaultAssociation('.wma');
 end;
 

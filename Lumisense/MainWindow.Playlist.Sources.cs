@@ -99,7 +99,7 @@ public partial class MainWindow
     {
         var dialog = new OpenFileDialog
         {
-            Filter = LocalizationService.Translate("Аудиофайлы (*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg)|*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg|Все файлы (*.*)|*.*"),
+            Filter = LocalizationService.Translate("Аудиофайлы (*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg;*.opus;*.aiff;*.aif)|*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg;*.opus;*.aiff;*.aif|Все файлы (*.*)|*.*"),
             Multiselect = true,
             Title = LocalizationService.Translate("Выберите аудиофайлы")
         };
@@ -135,7 +135,7 @@ public partial class MainWindow
 
         var dialog = new OpenFileDialog
         {
-            Filter = LocalizationService.Translate("Аудиофайлы (*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg)|*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg|Все файлы (*.*)|*.*"),
+            Filter = LocalizationService.Translate("Аудиофайлы (*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg;*.opus;*.aiff;*.aif)|*.mp3;*.wav;*.wma;*.flac;*.m4a;*.aac;*.ogg;*.opus;*.aiff;*.aif|Все файлы (*.*)|*.*"),
             Multiselect = true,
             Title = LocalizationService.Translate($"Добавить файлы в «{folder.DisplayName}»")
         };
