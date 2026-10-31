@@ -46,31 +46,31 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <Grid.ContextMenu>
-                    <ContextMenu>
+                    <ContextMenu Opened="TrackContextMenu_Opened">
                         <MenuItem Header="Воспроизвести" Click="PlayTrackMenuItem_Click">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconPlay" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Играть следующим" Click="PlayNextMenuItem_Click"
+                        <MenuItem Tag="PlayNext" Header="Играть следующим" Click="PlayNextMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=PlayNext}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconNext" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Добавить в очередь" Click="AddToQueueMenuItem_Click"
+                        <MenuItem Tag="AddToQueue" Header="Добавить в очередь" Click="AddToQueueMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=AddToQueue}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconAdd" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Найти файл…" Click="RelinkTrackMenuItem_Click"
+                        <MenuItem Tag="FindFile" Header="Найти файл…" Click="RelinkTrackMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=FindFile}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconAddFile" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click"
+                        <MenuItem Tag="Favorite" Header="Добавить/убрать из избранного" Click="FavoriteMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=Favorite}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconHeart" Size="13" />
@@ -85,40 +85,40 @@
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuGroupVisibilityConverter}, ConverterParameter='ShowInExplorer|CopyTrackName|CopyPath|CopyFile|ExportProcessedCopy'}" />
-                        <MenuItem Header="Показать в проводнике" Click="ShowInExplorerMenuItem_Click"
+                        <MenuItem Tag="ShowInExplorer" Header="Показать в проводнике" Click="ShowInExplorerMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=ShowInExplorer}" />
-                        <MenuItem Header="Копировать имя трека" Click="CopyTrackNameMenuItem_Click"
+                        <MenuItem Tag="CopyTrackName" Header="Копировать имя трека" Click="CopyTrackNameMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=CopyTrackName}" />
-                        <MenuItem Header="Копировать путь к файлу" Click="CopyPathMenuItem_Click"
+                        <MenuItem Tag="CopyPath" Header="Копировать путь к файлу" Click="CopyPathMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=CopyPath}" />
-                        <MenuItem Header="Копировать файл" Click="CopyFileMenuItem_Click"
+                        <MenuItem Tag="CopyFile" Header="Копировать файл" Click="CopyFileMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=CopyFile}" />
-                        <MenuItem Header="Сохранить обработанную копию…" Click="ExportProcessedCopyMenuItem_Click"
+                        <MenuItem Tag="ExportProcessedCopy" Header="Сохранить обработанную копию…" Click="ExportProcessedCopyMenuItem_Click"
                                   ToolTip="MP3-копия с текущими скоростью и тоном"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=ExportProcessedCopy}" />
                         <Separator Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuGroupVisibilityConverter}, ConverterParameter='Properties|EditTags|NormalizeFileName'}" />
-                        <MenuItem Header="Свойства" Click="TrackPropertiesMenuItem_Click"
+                        <MenuItem Tag="Properties" Header="Свойства" Click="TrackPropertiesMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=Properties}" />
-                        <MenuItem Header="Изменить теги" Click="EditTagsMenuItem_Click"
+                        <MenuItem Tag="EditTags" Header="Изменить теги" Click="EditTagsMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=EditTags}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconEdit" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Нормализовать имя файла…" Click="NormalizeTrackFileNameMenuItem_Click"
+                        <MenuItem Tag="NormalizeFileName" Header="Нормализовать имя файла…" Click="NormalizeTrackFileNameMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=NormalizeFileName}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconEdit" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
                         <Separator Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuGroupVisibilityConverter}, ConverterParameter='RemoveFromPlaylist|DeleteFromDisk'}" />
-                        <MenuItem Header="Убрать из плейлиста" Click="RemoveTrackMenuItem_Click"
+                        <MenuItem Tag="RemoveFromPlaylist" Header="Убрать из плейлиста" Click="RemoveTrackMenuItem_Click"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=RemoveFromPlaylist}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconDelete" Size="13" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem Header="Удалить трек с диска…" Click="DeleteTrackFromDiskMenuItem_Click"
+                        <MenuItem Tag="DeleteFromDisk" Header="Удалить трек с диска…" Click="DeleteTrackFromDiskMenuItem_Click"
                                   Foreground="#E53935"
                                   Visibility="{Binding Source={x:Static local:TrackContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource TrackContextMenuActionVisibilityConverter}, ConverterParameter=DeleteFromDisk}">
                             <MenuItem.Icon>

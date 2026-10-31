@@ -231,8 +231,35 @@
             </Setter>
         </Style>
 
+        <!-- Строка списка, который можно переставлять перетаскиванием (пункты контекстных меню). -->
+        <Style x:Key="ReorderRowStyle" TargetType="Border">
+            <Setter Property="Margin" Value="0,0,0,4" />
+            <Setter Property="Padding" Value="2,4,10,4" />
+            <Setter Property="CornerRadius" Value="8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
+            <Setter Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+        <Style x:Key="ReorderGripStyle" TargetType="TextBlock">
+            <Setter Property="Text" Value="⋮⋮" />
+            <Setter Property="FontFamily" Value="Segoe UI Symbol" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="Cursor" Value="SizeAll" />
+            <Setter Property="HorizontalAlignment" Value="Center" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Setter Property="ToolTip" Value="Перетащите, чтобы изменить порядок" />
+        </Style>
+
         <Style x:Key="SettingsAccentSliderStyle" TargetType="Slider">
             <Setter Property="Height" Value="28" />
+            <Setter Property="local:SliderSmoothing.IsEnabled" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
@@ -298,6 +325,7 @@
              и спокойная палитра, но с заполнением от нижней (минимальной) точки к Thumb. -->
         <Style x:Key="SettingsEqualizerSliderStyle" TargetType="Slider">
             <Setter Property="Width" Value="28" />
+            <Setter Property="local:SliderSmoothing.IsEnabled" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
@@ -662,6 +690,8 @@
             <Setter Property="HorizontalContentAlignment" Value="Left" />
             <Setter Property="Margin" Value="0,0,0,4" />
             <Setter Property="Padding" Value="0" />
+            <!-- Стиль без BasedOn не получает цвет текста от WPF-UI, и текст внутри кнопки становился чёрным. -->
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
@@ -1255,10 +1285,41 @@
                                 </Grid>
                                 <TextBlock Text="Увеличивает базовый текст и стандартные элементы во всех основных окнах."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
-                                <CheckBox x:Name="ReduceMotionCheckBox" Content="Снизить движение"
-                                          Checked="ReduceMotionCheckBox_Changed" Unchecked="ReduceMotionCheckBox_Changed" />
-                                <TextBlock Text="Отключает декоративные анимации: бегущую волну полосы прогресса, смену обложки и её сворачивание при показе текста, бегущую строку исполнителя в мини-плеере, анимации острова и меню трея, движение фона Now Playing. Воспроизведение и управление не меняются."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
+                                <TextBlock Text="Анимации" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,4" />
+                                <TextBlock Text="Галочки показывают, где анимации работают. Верхняя включает или выключает все сразу; когда выключено всё, это «Снизить движение». Воспроизведение и управление не меняются."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" />
+                                <Border CornerRadius="10" Padding="14,12" Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                    <StackPanel>
+                                        <CheckBox x:Name="AnimationsMasterCheckBox" Content="Все анимации" IsThreeState="True" Margin="0"
+                                                  FontWeight="SemiBold" Click="AnimationsMasterCheckBox_Click" />
+                                        <Border Height="1" Margin="0,10,0,10" Opacity="0.35"
+                                                Background="{DynamicResource TextFillColorTertiaryBrush}" />
+                                        <StackPanel x:Name="AnimationAreasPanel" Margin="22,0,0,0">
+                                            <CheckBox Tag="Sliders" Content="Слайдеры в настройках" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="SettingsWindow" Content="Окно настроек: переходы и навигация" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="Cover" Content="Смена и сворачивание обложки" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="Lyrics" Content="Текст песни: прокрутка и подсветка строк" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="Progress" Content="Полоса воспроизведения" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="NowPlaying" Content="Now Playing: фон и переходы" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="MiniPlayer" Content="Мини-плеер: бегущая строка" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="Island" Content="Остров" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="Tray" Content="Меню трея" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="Heart" Content="Анимация сердечка" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                            <CheckBox Tag="Loading" Content="Индикаторы загрузки" Margin="0,0,0,8"
+                                                      Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
+                                                                        </StackPanel>
+                                    </StackPanel>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -2195,18 +2256,6 @@
                             </StackPanel>
                         </Border>
 
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Диагностика производительности" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Плеер сам проверяет нагрузку процессора, память и утечки ресурсов: быстрая проверка за минуту и долгий прогон с автоматической сменой треков. Ничего не отправляется в сеть."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,0" />
-                                <ui:Button x:Name="DiagnosticsButton" Appearance="Secondary"
-                                           HorizontalAlignment="Left" Margin="0,12,0,0"
-                                           Click="DiagnosticsButton_Click"
-                                           Content="Открыть диагностику…" />
-                            </StackPanel>
-                        </Border>
-
                         <!-- Нормализация меняет только имена уже добавленных файлов после явного
                              предпросмотра и подтверждения; см. FileNameNormalizer/MainWindow. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
@@ -2240,35 +2289,152 @@
                                 <TextBlock Text="Действия контекстного меню трека" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <TextBlock Text="Снимите галочки, чтобы скрыть ненужные действия при нажатии правой кнопкой по треку в плейлисте. «Воспроизвести» остаётся доступным всегда."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,0,0,12" />
-                                <UniformGrid Columns="1" Margin="0,2,0,0">
-                                    <CheckBox x:Name="TrackContextPlayNextCheckBox" Tag="PlayNext" Content="Играть следующим" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextAddToQueueCheckBox" Tag="AddToQueue" Content="Добавить в очередь" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextFindFileCheckBox" Tag="FindFile" Content="Найти файл" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextFavoriteCheckBox" Tag="Favorite" Content="Избранное" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextShowInExplorerCheckBox" Tag="ShowInExplorer" Content="Показать в проводнике" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextCopyNameCheckBox" Tag="CopyTrackName" Content="Копировать имя трека" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextCopyPathCheckBox" Tag="CopyPath" Content="Копировать путь к файлу" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextCopyFileCheckBox" Tag="CopyFile" Content="Копировать файл" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextExportProcessedCopyCheckBox" Tag="ExportProcessedCopy" Content="Сохранить обработанную копию" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextPropertiesCheckBox" Tag="Properties" Content="Свойства" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextEditTagsCheckBox" Tag="EditTags" Content="Изменить теги" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextNormalizeFileNameCheckBox" Tag="NormalizeFileName" Content="Нормализовать имя файла" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextRemoveFromPlaylistCheckBox" Tag="RemoveFromPlaylist" Content="Убрать из плейлиста" Margin="0,0,0,10"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="TrackContextDeleteFromDiskCheckBox" Tag="DeleteFromDisk" Content="Удалить с диска"
-                                              Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                <TextBlock Text="Чтобы изменить порядок, перетаскивайте пункты за значок ⋮⋮ слева."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,8" />
+                                <ui:Button Tag="Track" Content="Порядок по умолчанию" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Margin="0,0,0,12"
+                                           Click="ContextMenuOrderReset_Click" />
+                                <UniformGrid x:Name="TrackContextMenuActionsPanel" Columns="1" Margin="0,2,0,0">
+                                    <Border Tag="PlayNext" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextPlayNextCheckBox" Tag="PlayNext" Content="Играть следующим" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="AddToQueue" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextAddToQueueCheckBox" Tag="AddToQueue" Content="Добавить в очередь" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="FindFile" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextFindFileCheckBox" Tag="FindFile" Content="Найти файл" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="Favorite" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextFavoriteCheckBox" Tag="Favorite" Content="Избранное" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="ShowInExplorer" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextShowInExplorerCheckBox" Tag="ShowInExplorer" Content="Показать в проводнике" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="CopyTrackName" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextCopyNameCheckBox" Tag="CopyTrackName" Content="Копировать имя трека" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="CopyPath" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextCopyPathCheckBox" Tag="CopyPath" Content="Копировать путь к файлу" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="CopyFile" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextCopyFileCheckBox" Tag="CopyFile" Content="Копировать файл" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="ExportProcessedCopy" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextExportProcessedCopyCheckBox" Tag="ExportProcessedCopy" Content="Сохранить обработанную копию" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="Properties" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextPropertiesCheckBox" Tag="Properties" Content="Свойства" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="EditTags" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextEditTagsCheckBox" Tag="EditTags" Content="Изменить теги" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="NormalizeFileName" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextNormalizeFileNameCheckBox" Tag="NormalizeFileName" Content="Нормализовать имя файла" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="RemoveFromPlaylist" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextRemoveFromPlaylistCheckBox" Tag="RemoveFromPlaylist" Content="Убрать из плейлиста" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="DeleteFromDisk" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="TrackContextDeleteFromDiskCheckBox" Tag="DeleteFromDisk" Content="Удалить с диска" Checked="TrackContextMenuActionCheckBox_Changed" Unchecked="TrackContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
                                 </UniformGrid>
                             </StackPanel>
                         </Border>
@@ -2764,35 +2930,152 @@
                                 <TextBlock Text="Контекстное меню мини-плеера" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <TextBlock Text="Отключенные пункты не показываются по ПКМ на мини-плеере."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,-4,0,16" />
-                                <UniformGrid Columns="1" Margin="0,2,0,0">
-                                    <CheckBox x:Name="MiniContextSettingsCheckBox" Tag="Settings" Content="Настройки" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextPinCheckBox" Tag="Pin" Content="Закрепить" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextTopmostCheckBox" Tag="Topmost" Content="Поверх окон" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextOverlayCompatibilityCheckBox" Tag="OverlayCompatibility" Content="Совместимость с играми и оверлеем" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextSecondaryButtonCheckBox" Tag="SecondaryButton" Content="Выбор второй кнопки" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextPlaybackRateCheckBox" Tag="PlaybackRate" Content="Скорость" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextPitchCheckBox" Tag="Pitch" Content="Тон" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextOpacityCheckBox" Tag="Opacity" Content="Прозрачность" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextSnapToEdgesCheckBox" Tag="SnapToEdges" Content="Прилипание к краям экрана" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextShowProgressCheckBox" Tag="ShowProgress" Content="Показывать полосу прогресса" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextShowArtworkProgressCheckBox" Tag="ShowArtworkProgress" Content="Прогресс вокруг обложки" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextArtworkStyleCheckBox" Tag="ArtworkStyle" Content="Отображение обложки" Margin="0,0,0,10"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
-                                    <CheckBox x:Name="MiniContextButtonsLayoutCheckBox" Tag="ButtonsLayout" Content="Расположение кнопок"
-                                              Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                <TextBlock Text="Чтобы изменить порядок, перетаскивайте пункты за значок ⋮⋮ слева."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,8" />
+                                <ui:Button Tag="Mini" Content="Порядок по умолчанию" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Margin="0,0,0,12"
+                                           Click="ContextMenuOrderReset_Click" />
+                                <UniformGrid x:Name="MiniContextMenuActionsPanel" Columns="1" Margin="0,2,0,0">
+                                    <Border Tag="Settings" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextSettingsCheckBox" Tag="Settings" Content="Настройки" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="NowPlaying" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="Pin" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextPinCheckBox" Tag="Pin" Content="Закрепить" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="Topmost" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextTopmostCheckBox" Tag="Topmost" Content="Поверх окон" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="OverlayCompatibility" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextOverlayCompatibilityCheckBox" Tag="OverlayCompatibility" Content="Совместимость с играми и оверлеем" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="SecondaryButton" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextSecondaryButtonCheckBox" Tag="SecondaryButton" Content="Выбор второй кнопки" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="PlaybackRate" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextPlaybackRateCheckBox" Tag="PlaybackRate" Content="Скорость" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="Pitch" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextPitchCheckBox" Tag="Pitch" Content="Тон" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="Opacity" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextOpacityCheckBox" Tag="Opacity" Content="Прозрачность" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="SnapToEdges" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextSnapToEdgesCheckBox" Tag="SnapToEdges" Content="Прилипание к краям экрана" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="ShowProgress" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextShowProgressCheckBox" Tag="ShowProgress" Content="Показывать полосу прогресса" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="ShowArtworkProgress" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextShowArtworkProgressCheckBox" Tag="ShowArtworkProgress" Content="Прогресс вокруг обложки" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="ArtworkStyle" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextArtworkStyleCheckBox" Tag="ArtworkStyle" Content="Отображение обложки" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
+                                    <Border Tag="ButtonsLayout" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="MiniContextButtonsLayoutCheckBox" Tag="ButtonsLayout" Content="Расположение кнопок" Checked="MiniPlayerContextMenuActionCheckBox_Changed" Unchecked="MiniPlayerContextMenuActionCheckBox_Changed" />
+                                        </Grid>
+                                    </Border>
                                 </UniformGrid>
                             </StackPanel>
                         </Border>
@@ -3100,6 +3383,12 @@
                                     <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
                                     <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
                                 </ComboBox>
+                                <TextBlock Text="Вид свёрнутого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
+                                <ComboBox x:Name="IslandShapeCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
+                                    <ComboBoxItem Content="Капсула" Tag="Capsule" />
+                                    <ComboBoxItem Content="Круг (только обложка)" Tag="Circle" />
+                                </ComboBox>
                                 <TextBlock Text="Эквалайзер свёрнутого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
                                 <ComboBox x:Name="IslandEqualizerStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
@@ -3123,26 +3412,113 @@
                                 <CheckBox x:Name="IslandLyricsShimmerCheckBox" Content="Мерцание, пока ищется текст песни" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <TextBlock Text="Пункты контекстного меню острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,4,0,8" />
-                                <CheckBox x:Name="IslandMenuPlayPauseCheckBox" Tag="PlayPause" Content="Пауза / продолжить" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuNextCheckBox" Tag="Next" Content="Следующий трек" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuPreviousCheckBox" Tag="Previous" Content="Предыдущий трек" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuHideCheckBox" Tag="Hide" Content="Скрыть остров" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuExpandCheckBox" Tag="Expand" Content="Развернуть плеер" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuSpeedCheckBox" Tag="Speed" Content="Скорость" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuPitchCheckBox" Tag="Pitch" Content="Тон" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuOverlayCheckBox" Tag="Overlay" Content="Совместимость с играми и оверлеем" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
-                                <CheckBox x:Name="IslandMenuSettingsCheckBox" Tag="Settings" Content="Настройки острова" Margin="12,0,0,6"
-                                          Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                <TextBlock Text="Чтобы изменить порядок, перетаскивайте пункты за значок ⋮⋮ слева."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,8" />
+                                <ui:Button Tag="Island" Content="Порядок по умолчанию" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Margin="0,0,0,12"
+                                           Click="ContextMenuOrderReset_Click" />
+                                <StackPanel x:Name="IslandMenuActionsPanel">
+                                <Border Tag="PlayPause" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuPlayPauseCheckBox" Tag="PlayPause" Content="Пауза / продолжить" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="Next" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuNextCheckBox" Tag="Next" Content="Следующий трек" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="Previous" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuPreviousCheckBox" Tag="Previous" Content="Предыдущий трек" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="Hide" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuHideCheckBox" Tag="Hide" Content="Скрыть остров" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="Expand" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuExpandCheckBox" Tag="Expand" Content="Развернуть плеер" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="NowPlaying" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="Speed" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuSpeedCheckBox" Tag="Speed" Content="Скорость" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="Pitch" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuPitchCheckBox" Tag="Pitch" Content="Тон" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="Overlay" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuOverlayCheckBox" Tag="Overlay" Content="Совместимость с играми и оверлеем" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                <Border Tag="Settings" Style="{StaticResource ReorderRowStyle}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="24" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuSettingsCheckBox" Tag="Settings" Content="Настройки острова" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                        </Grid>
+                                    </Border>
+                                </StackPanel>
                                 <TextBlock Text="Если скрыть все пункты, меню по правой кнопке мыши не откроется."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,2,0,12" TextWrapping="Wrap" />
                                 <CheckBox x:Name="IslandMotionBlurCheckBox" Content="Размытие движения при растяжении"
@@ -3927,6 +4303,18 @@
                                 </StackPanel>
                             </Grid>
                         </ui:Button>
+
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Диагностика производительности" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Плеер сам проверяет нагрузку процессора, память и утечки ресурсов: быстрая проверка за минуту и долгий прогон с автоматической сменой треков. Ничего не отправляется в сеть."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,0" />
+                                <ui:Button x:Name="DiagnosticsButton" Appearance="Secondary"
+                                           HorizontalAlignment="Left" Margin="0,12,0,0"
+                                           Click="DiagnosticsButton_Click"
+                                           Content="Открыть диагностику…" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     </Grid>

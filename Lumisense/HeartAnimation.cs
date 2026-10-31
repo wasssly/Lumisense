@@ -36,7 +36,7 @@ internal static class HeartAnimation
     {
         if (anchor is null) return;
         string mode = settings.FavoriteHeartAnimation;
-        if (mode == None || !IsKnown(mode) || AccessibilityPreferences.ShouldReduceMotion(settings)) return;
+        if (mode == None || !IsKnown(mode) || AccessibilityPreferences.ShouldReduceMotion(settings, AnimationAreas.Heart)) return;
 
         AdornerLayer? layer = AdornerLayer.GetAdornerLayer(anchor.Root);
         if (layer is null) return;

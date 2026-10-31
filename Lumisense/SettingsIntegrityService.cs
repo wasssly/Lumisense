@@ -303,6 +303,8 @@ internal static class SettingsIntegrityService
             "Sidebar", "Pills", "FloatingBar");
         settings.SettingsNavigationLabelMode = Allowed(settings.SettingsNavigationLabelMode, defaults.SettingsNavigationLabelMode,
             "Below", "Selected");
+        settings.DisabledAnimationAreas = AnimationAreas.Normalize(settings.DisabledAnimationAreas);
+        settings.ContextMenuOrder = ContextMenuOrdering.Normalize(settings.ContextMenuOrder);
         settings.IslandScalePercent = Math.Clamp(settings.IslandScalePercent, 80, 120);
         settings.IslandWidthPercent = Math.Clamp(settings.IslandWidthPercent, 80, 130);
         settings.DisabledIslandMenuActions = [.. (settings.DisabledIslandMenuActions ?? []).Where(action => action is { Length: > 0 and <= 64 }).Distinct().Take(20)];
@@ -317,6 +319,7 @@ internal static class SettingsIntegrityService
             "Favorite", "Repeat", "Lyrics");
         settings.IslandEqualizerStyle = Allowed(settings.IslandEqualizerStyle, defaults.IslandEqualizerStyle, "Bars", "Dots");
         settings.IslandBackdrop = Allowed(settings.IslandBackdrop, defaults.IslandBackdrop, "None", "Glow", "Matrix", "Wave");
+        settings.IslandShape = Allowed(settings.IslandShape, defaults.IslandShape, "Capsule", "Circle");
         settings.IslandSeekStyle = Allowed(settings.IslandSeekStyle, defaults.IslandSeekStyle, "Plain", "Segments");
         if (settings.IslandLeftButton == settings.IslandRightButton)
             settings.IslandRightButton = settings.IslandLeftButton == defaults.IslandRightButton ? defaults.IslandLeftButton : defaults.IslandRightButton;

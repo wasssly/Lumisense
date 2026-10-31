@@ -175,6 +175,8 @@ public static class LumiProfileIO
         target.AccentColorHex = source.AccentColorHex;
         target.InterfaceScale = source.InterfaceScale;
         target.ReduceMotion = source.ReduceMotion;
+        target.DisabledAnimationAreas = AnimationAreas.Normalize(source.DisabledAnimationAreas);
+        target.ContextMenuOrder = ContextMenuOrdering.Normalize(source.ContextMenuOrder);
         target.SyncedLyricsFontSize = source.SyncedLyricsFontSize;
         target.SyncedLyricsHighlightEffect = source.SyncedLyricsHighlightEffect;
         target.SyncedLyricsScaleActiveLine = source.SyncedLyricsScaleActiveLine;
@@ -335,6 +337,7 @@ public static class LumiProfileIO
             target.IslandRightButton = target.IslandLeftButton == "Lyrics" ? "Favorite" : "Lyrics";
         target.IslandRoundCover = source.IslandRoundCover;
         if (source.IslandEqualizerStyle is "Bars" or "Dots") target.IslandEqualizerStyle = source.IslandEqualizerStyle;
+        if (source.IslandShape is "Capsule" or "Circle") target.IslandShape = source.IslandShape;
         if (source.IslandBackdrop is "None" or "Glow" or "Matrix" or "Wave") target.IslandBackdrop = source.IslandBackdrop;
         if (source.IslandSeekStyle is "Plain" or "Segments") target.IslandSeekStyle = source.IslandSeekStyle;
         target.IslandLyricsShimmer = source.IslandLyricsShimmer;

@@ -89,7 +89,7 @@ public partial class NowPlayingWindow
         if (palette.Length < 5) return;
         _dynamicPalette = palette;
         animate = animate && (IsOrbsBackground || IsWavesBackground)
-            && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+            && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.NowPlaying);
 
         EnsureWaveBrushes();
         Color[] waveColors = { palette[1], palette[3], palette[4] };
@@ -211,7 +211,7 @@ public partial class NowPlayingWindow
     private void UpdateDynamicDriver(bool isPlaying)
     {
         bool animated = IsOrbsBackground || IsWavesBackground;
-        bool run = animated && isPlaying && IsLoaded && IsShownOnScreen && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        bool run = animated && isPlaying && IsLoaded && IsShownOnScreen && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.NowPlaying);
         if (run && !_dynamicRendering)
         {
             _dynamicLastTime = TimeSpan.MinValue;

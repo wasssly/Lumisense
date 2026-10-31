@@ -406,7 +406,7 @@ public partial class MainWindow
     {
         bool canAnimate = direction != AlbumArtTransitionDirection.None &&
             _settings.AlbumArtTransitionEnabled &&
-            !AccessibilityPreferences.ShouldReduceMotion(_settings) && IsLoaded;
+            !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Cover) && IsLoaded;
 
         string? oldPath = _lastArtPath;
         string? newPath = _currentTrackPath;

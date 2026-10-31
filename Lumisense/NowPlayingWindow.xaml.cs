@@ -95,7 +95,7 @@ public partial class NowPlayingWindow : Window
         ArtworkProgressMaterialSlider.Visibility = slider ? Visibility.Visible : Visibility.Collapsed;
 
         ApplyAccentColor();
-        ArtworkProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        ArtworkProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.Progress);
         ArtworkProgressMaterial.IsWaving = _owner.IsPlayingNow;
     }
 
@@ -167,7 +167,7 @@ public partial class NowPlayingWindow : Window
             double target = Math.Clamp(Math.Round(
                 viewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) / 2), 0, Math.Floor(maxOffset));
 
-            if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
+            if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.Lyrics))
             {
                 viewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
                 viewer.ScrollToVerticalOffset(target);
@@ -250,7 +250,7 @@ public partial class NowPlayingWindow : Window
             Opacity = 0,
         };
         wanted.Effect = effect;
-        bool reduceMotion = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        bool reduceMotion = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.Lyrics);
         if (reduceMotion)
             effect.Opacity = glowOpacity;
         else
@@ -319,7 +319,7 @@ public partial class NowPlayingWindow : Window
         AccessibilityPreferences.ApplyToWindow(this, _owner.Settings);
         ApplyProgressBarStyle();
 
-        if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
+        if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.NowPlaying))
         {
             _ambientSpeed = 0;
             _ambientTargetSpeed = 0;
@@ -366,8 +366,31 @@ public partial class NowPlayingWindow : Window
         Owner_PlaybackSnapshotChanged(_owner.PlaybackState.Current);
     }
 
+    // Размеры обложки, колонок и панели текста заданы в «логических» пикселях под экран не меньше DesignWidth × DesignHeight.
+    // Если окно меньше (1366×768, 1280×720, большой масштаб Windows), контент уменьшается целиком, а все расчёты размеров
+    // ведутся по LogicalWidth/LogicalHeight — размеру, который контент видит внутри уменьшения.
+    private const double DesignWidth = 1450;
+    private const double DesignHeight = 940;
+    private const double MinContentScale = 0.5;
+    private double _contentScale = 1.0;
+
+    private double LogicalWidth => ActualWidth / _contentScale;
+    private double LogicalHeight => ActualHeight / _contentScale;
+
+    private void UpdateContentScale()
+    {
+        if (ActualWidth <= 0 || ActualHeight <= 0) return;
+
+        double scale = Math.Round(Math.Clamp(Math.Min(ActualWidth / DesignWidth, ActualHeight / DesignHeight), MinContentScale, 1.0), 3);
+        if (Math.Abs(scale - _contentScale) < 0.001) return;
+
+        _contentScale = scale;
+        NowPlayingContentRoot.LayoutTransform = scale >= 0.999 ? Transform.Identity : new ScaleTransform(scale, scale);
+    }
+
     private void NowPlayingWindow_SizeChanged(object sender, SizeChangedEventArgs e)
     {
+        UpdateContentScale();
         if (!_lyricsPanelVisible)
             UpdateLyricsLayout();
         if (_focusMode && !_focusModeAnimating)
@@ -381,15 +404,22 @@ public partial class NowPlayingWindow : Window
     private bool _focusModeAnimating;
 
     private double GetLyricsPanelHeight() =>
-        _focusMode ? Math.Clamp(ActualHeight - 260, NormalLyricsPanelHeight, 900) : NormalLyricsPanelHeight;
+        _focusMode ? Math.Clamp(LogicalHeight - 260, NormalLyricsPanelHeight, 900) : NormalLyricsPanelHeight;
 
     // В режиме без лишнего кнопки над обложкой не показываются; если панель текста скрыта, они единственный способ её вернуть.
     private bool ArtworkOverlayAllowed => !(_focusMode && _lyricsPanelVisible);
 
+    // Прозрачный (Opacity=0) элемент в WPF остаётся кликабельным, поэтому скрытые кнопки нужно ещё и отключать для мыши.
+    private void UpdateArtworkOverlayInteractivity()
+    {
+        // UpdateLyricsLayout может сработать, пока разметка ещё создаётся.
+        if (ArtworkControlsOverlay is not null) ArtworkControlsOverlay.IsHitTestVisible = ArtworkOverlayAllowed;
+    }
+
     private void FocusModeButton_Click(object sender, RoutedEventArgs e)
     {
         _focusMode = !_focusMode;
-        ApplyFocusMode(animate: IsLoaded && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings));
+        ApplyFocusMode(animate: IsLoaded && !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.NowPlaying));
     }
 
     private void ApplyFocusMode(bool animate)
@@ -400,6 +430,7 @@ public partial class NowPlayingWindow : Window
 
         LyricsControlsPanel.Visibility = hide ? Visibility.Collapsed : Visibility.Visible;
         if (hide) AnimateArtworkControls(visible: false);
+        UpdateArtworkOverlayInteractivity();
         SetProgressHidden(hide, animate);
 
         double target = GetLyricsPanelHeight();
@@ -501,7 +532,7 @@ public partial class NowPlayingWindow : Window
         if (_lyricsLayoutAnimating) return;
 
         bool show = !_lyricsPanelVisible;
-        if (!IsLoaded || AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
+        if (!IsLoaded || AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.NowPlaying))
         {
             _lyricsPanelVisible = show;
             UpdateLyricsLayout();
@@ -620,6 +651,7 @@ public partial class NowPlayingWindow : Window
     {
         LyricsPanel.Visibility = _lyricsPanelVisible ? Visibility.Visible : Visibility.Collapsed;
         ShowLyricsOnArtworkButton.Visibility = _lyricsPanelVisible ? Visibility.Collapsed : Visibility.Visible;
+        UpdateArtworkOverlayInteractivity();
 
         if (_lyricsPanelVisible)
         {
@@ -642,9 +674,9 @@ public partial class NowPlayingWindow : Window
         NowPlayingArtistText.HorizontalAlignment = HorizontalAlignment.Center;
         NowPlayingArtistText.TextAlignment = TextAlignment.Center;
 
-        double availableWidth = Math.Max(540, Math.Min(ActualWidth - 140, 780));
+        double availableWidth = Math.Max(540, Math.Min(LogicalWidth - 140, 780));
         // Над обложкой висят название и исполнитель (около 170 px), под ней полоса прогресса: на них оставляем место.
-        double availableHeight = Math.Max(540, ActualHeight - 400);
+        double availableHeight = Math.Max(540, LogicalHeight - 400);
         SetArtworkSize(Math.Min(availableWidth, availableHeight));
     }
 
@@ -690,7 +722,7 @@ public partial class NowPlayingWindow : Window
         PalettePoint[] clusters = artwork is null
             ? FallbackClusters(CloudPointCount)
             : ExtractArtworkClusters(artwork, CloudPointCount);
-        SetCloudPalette(clusters, instant: !IsLoaded || AccessibilityPreferences.ShouldReduceMotion(_owner.Settings));
+        SetCloudPalette(clusters, instant: !IsLoaded || AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.NowPlaying));
 
         ApplyDynamicPalette(cloudColors, animate: true);
     }
@@ -1134,7 +1166,7 @@ public partial class NowPlayingWindow : Window
         double fadeStep = LyricsHighlightStyle.FadeStep(settings.SyncedLyricsFadeStrength);
         double activeScale = LyricsHighlightStyle.ScaleFactor(settings.SyncedLyricsScalePercent);
         int visibleRadius = LyricsHighlightStyle.VisibleRadius(LyricsHighlightStyle.NormalizeVisibleLines(settings.SyncedLyricsVisibleLines));
-        bool animateNow = animate && !AccessibilityPreferences.ShouldReduceMotion(settings);
+        bool animateNow = animate && !AccessibilityPreferences.ShouldReduceMotion(settings, AnimationAreas.Lyrics);
         double originX = LyricsTextAlignmentMode.ToTextAlignment(settings.LyricsTextAlignment) switch
         {
             TextAlignment.Center => 0.5,
@@ -1370,7 +1402,7 @@ public partial class NowPlayingWindow : Window
         // Скорость облаков берётся из реальной энергии уже обработанного аудиосигнала. Корень
         // делает реакцию заметной и в тихих фрагментах, а сглаживание _ambientSpeed ниже
         // сохраняет расслабляющее движение без резких рывков на каждом ударе.
-        if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings))
+        if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.NowPlaying))
         {
             // Сцена остаётся визуально цельной, но прекращает декоративное движение сразу.
             _ambientSpeed = 0;
@@ -1413,7 +1445,7 @@ public partial class NowPlayingWindow : Window
     {
         // При воспроизведении значение уточняется по AudioLevelMeter на каждом тике;
         // здесь задаётся спокойная стартовая скорость до первого аудиосэмпла.
-        bool reduceMotion = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings);
+        bool reduceMotion = AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.NowPlaying);
         _ambientTargetSpeed = reduceMotion ? 0 : isPlaying ? 0.72 : 0;
         if (reduceMotion) _ambientSpeed = 0;
         // Таймер нужен только облакам; шары и волны считаются покадрово. На паузе облака плавно тормозят до нуля

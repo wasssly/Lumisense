@@ -43,12 +43,15 @@ internal partial class IslandPlayerWindow : Window
     private static readonly TimeSpan KeepOnTopInterval = TimeSpan.FromSeconds(1);
 
     private static readonly Shape CompactShape = new(210, 34, 17);
+    // Круглый вид свёрнутого острова: той же высоты, что капсула, но без текста, только обложка.
+    private static readonly Shape CircleShape = new(34, 34, 17);
     private static readonly Shape ToastShape = new(340, 68, 30);
     private static readonly Shape OpenShape = new(400, 176, 40);
     private static readonly Shape OpenLyricsShape = new(440, 412, 40);
     private const double MenuRowHeight = 38, MenuPadding = 24;
     private static readonly Shape VolumeShape = new(250, 34, 17);
     private static readonly CoverSpot CompactCover = new(7, 6, 22);
+    private static readonly CoverSpot CircleCover = new(2, 2, 30);
     private static readonly CoverSpot ToastCover = new(12, 12, 44);
     private static readonly CoverSpot OpenCover = new(20, 20, 64);
     private static readonly TimeSpan SettingsOpenDelay = TimeSpan.FromMilliseconds(280);
@@ -254,7 +257,7 @@ internal partial class IslandPlayerWindow : Window
 
     private AppSettings Settings => _host.Settings;
 
-    private bool ReduceMotion => AccessibilityPreferences.ShouldReduceMotion(Settings) || _host.EffectiveGameOverlayCompatibilityEnabled;
+    private bool ReduceMotion => AccessibilityPreferences.ShouldReduceMotion(Settings, AnimationAreas.Island) || _host.EffectiveGameOverlayCompatibilityEnabled;
 
     private double UserScale => Math.Clamp(Settings.IslandScalePercent, 80, 120) / 100.0;
 
@@ -314,7 +317,10 @@ internal partial class IslandPlayerWindow : Window
         CompactView.Width = ShapeOf(State.Compact).Width;
         ToastView.Width = ShapeOf(State.Toast).Width;
         OpenView.Width = ShapeOf(State.Open).Width;
-        IslandBars.Visibility = OpenBars.Visibility = Settings.IslandShowEqualizer ? Visibility.Visible : Visibility.Collapsed;
+        OpenBars.Visibility = Settings.IslandShowEqualizer ? Visibility.Visible : Visibility.Collapsed;
+        // В круге нет места ни для названия, ни для эквалайзера.
+        IslandBars.Visibility = Settings.IslandShowEqualizer && !IsCircle ? Visibility.Visible : Visibility.Collapsed;
+        CompactTitle.Visibility = IsCircle ? Visibility.Collapsed : Visibility.Visible;
         IslandBars.Dots = OpenBars.Dots = Settings.IslandEqualizerStyle == "Dots";
         IslandBackdropLayer.Mode = Settings.IslandBackdrop switch
         {
@@ -356,8 +362,13 @@ internal partial class IslandPlayerWindow : Window
     // Ширина свёрнутого, раскрытого острова и карточки трека меняется настройкой; меню и громкость остаются прежними.
     private double WidthFactor => Math.Clamp(Settings.IslandWidthPercent, 80, 130) / 100.0;
 
+    private bool IsCircle => Settings.IslandShape == "Circle";
+
     private Shape ShapeOf(State state)
     {
+        // Ширина и подгонка под строку текста песни относятся к капсуле; круг всегда остаётся кругом.
+        if (state == State.Compact && IsCircle) return CircleShape;
+
         var shape = BaseShapeOf(state);
         double width = shape.Width * WidthFactor;
         // Со строкой текста песни свёрнутый остров растёт ровно под неё.
@@ -374,11 +385,11 @@ internal partial class IslandPlayerWindow : Window
         _ => CompactShape
     };
 
-    private static CoverSpot SpotOf(State state) => state switch
+    private CoverSpot SpotOf(State state) => state switch
     {
         State.Toast => ToastCover,
         State.Open => OpenCover,
-        _ => CompactCover
+        _ => IsCircle ? CircleCover : CompactCover
     };
 
     private FrameworkElement ViewOf(State state) => state switch
@@ -594,7 +605,10 @@ internal partial class IslandPlayerWindow : Window
         IslandOffset.Y = Math.Clamp(Settings.IslandTopGap, 0, 40) + _away.Value;
 
         double size = Math.Max(_coverSize.Value, 1);
-        double radius = size * (Settings.IslandRoundCover ? RoundCoverRadiusRatio : CoverRadiusRatio);
+        double radiusRatio = Settings.IslandRoundCover ? RoundCoverRadiusRatio : CoverRadiusRatio;
+        // Обложка в круге круглая, а при раскрытии острова плавно возвращается к обычной форме: пока она растёт от 30 до 44 px.
+        if (IsCircle) radiusRatio = RoundCoverRadiusRatio + (radiusRatio - RoundCoverRadiusRatio) * Math.Clamp((size - CircleCover.Size) / 14, 0, 1);
+        double radius = size * radiusRatio;
         if (Math.Abs(size - _clipSize) > 0.05 || Math.Abs(radius - _clipRadius) > 0.05)
         {
             _clipSize = size;
@@ -1328,6 +1342,7 @@ internal partial class IslandPlayerWindow : Window
     // Пункты, скрытые в настройках, убираются из меню, а его высота подгоняется под оставшиеся.
     private void ApplyMenuRows()
     {
+        ContextMenuOrdering.Apply(MenuStack, ContextMenuOrdering.Effective(Settings, ContextMenuOrdering.Island));
         var hidden = Settings.DisabledIslandMenuActions ?? [];
         int visible = 0;
         foreach (var row in MenuRows)

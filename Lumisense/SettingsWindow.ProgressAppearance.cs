@@ -50,7 +50,7 @@ public partial class SettingsWindow
             ProgressSurfaceNowPlayingRadio.IsChecked = _progressEditSurface == ProgressSurface.NowPlaying;
             ProgressSurfaceMiniRadio.IsChecked = _progressEditSurface == ProgressSurface.Mini;
             ProgressSurfacePanel.Visibility = perWindow ? Visibility.Visible : Visibility.Collapsed;
-            ProgressPreviewMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+            ProgressPreviewMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Progress);
             LoadProgressAppearanceControls();
         }
         finally

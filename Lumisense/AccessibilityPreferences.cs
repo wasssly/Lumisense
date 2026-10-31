@@ -58,7 +58,9 @@ internal static class AccessibilityPreferences
         }
     }
 
-    public static bool ShouldReduceMotion(AppSettings settings) => settings?.ReduceMotion == true;
+    // Общий выключатель гасит анимации везде, а DisabledAnimationAreas — только в выбранных разделах (см. AnimationAreas).
+    public static bool ShouldReduceMotion(AppSettings settings, string area) =>
+        settings?.ReduceMotion == true || settings?.DisabledAnimationAreas?.Contains(area) == true;
 
     private static WindowScaleState CreateScaleState(Window window)
     {

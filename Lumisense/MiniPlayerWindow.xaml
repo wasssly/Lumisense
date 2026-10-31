@@ -206,20 +206,20 @@
                         </Setter>
                     </Style>
                 </ContextMenu.Resources>
-                <MenuItem Header="Настройки" Click="SettingsMenuItem_Click"
+                <MenuItem Tag="Settings" Header="Настройки" Click="SettingsMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Settings}" />
-                <MenuItem Header="Now Playing (полный экран)" Click="NowPlayingMenuItem_Click"
+                <MenuItem Tag="NowPlaying" Header="Now Playing (полный экран)" Click="NowPlayingMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=NowPlaying}" />
                 <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter='Pin|Topmost|OverlayCompatibility'}" />
-                <MenuItem x:Name="PinnedMenuItem" Header="Закрепить" IsCheckable="True"
+                <MenuItem Tag="Pin" x:Name="PinnedMenuItem" Header="Закрепить" IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           Click="PinnedMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Pin}" />
-                <MenuItem x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
+                <MenuItem Tag="Topmost" x:Name="TopmostMenuItem" Header="Поверх окон" IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           Click="TopmostMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Topmost}" />
-                <MenuItem x:Name="OverlayCompatibilityMenuItem"
+                <MenuItem Tag="OverlayCompatibility" x:Name="OverlayCompatibilityMenuItem"
                           Header="Совместимость с играми и оверлеем"
                           IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
@@ -229,7 +229,7 @@
                 <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter=SecondaryButton}" />
                 <!-- Выбор единственной второй кнопки управления. Три компактные иконки сохраняют
                      главное меню коротким, а Tooltip раскрывает назначение без постоянного текста. -->
-                <MenuItem StaysOpenOnClick="True" Focusable="False"
+                <MenuItem Tag="SecondaryButton" StaysOpenOnClick="True" Focusable="False"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=SecondaryButton}">
                     <MenuItem.Header>
                         <Grid Width="220">
@@ -261,7 +261,7 @@
                 <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter='PlaybackRate|Pitch'}" />
                 <!-- Скорость и тон — такие же прозрачные overlay-области, как прозрачность ниже (Slider в Popup ContextMenu: явный захват мыши
                      надёжнее нативного Thumb); двойной клик возвращает 1.00× и 0 st. -->
-                <MenuItem StaysOpenOnClick="True" Focusable="False"
+                <MenuItem Tag="PlaybackRate" StaysOpenOnClick="True" Focusable="False"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=PlaybackRate}">
                     <MenuItem.Header>
                         <Grid Width="240">
@@ -285,7 +285,7 @@
                         </Grid>
                     </MenuItem.Header>
                 </MenuItem>
-                <MenuItem StaysOpenOnClick="True" Focusable="False"
+                <MenuItem Tag="Pitch" StaysOpenOnClick="True" Focusable="False"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Pitch}">
                     <MenuItem.Header>
                         <Grid Width="240">
@@ -312,7 +312,7 @@
                 <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter=Opacity}" />
                 <!-- Та же настройка, что в окне настроек (MainWindow.SetMiniPlayerOpacity), синхронизируется в обе стороны; перетаскивание — overlay-Border
                      с CaptureMouse (Thumb в Popup нестабилен). StaysOpenOnClick — иначе меню закроется от первого клика; Focusable="False" — у пункта нет своего клика. -->
-                <MenuItem StaysOpenOnClick="True" Focusable="False"
+                <MenuItem Tag="Opacity" StaysOpenOnClick="True" Focusable="False"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Opacity}">
                     <MenuItem.Header>
                         <Grid Width="220">
@@ -349,23 +349,23 @@
                     </MenuItem.Header>
                 </MenuItem>
                 <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter='SnapToEdges|ShowProgress|ShowArtworkProgress|ArtworkStyle|ButtonsLayout'}" />
-                <MenuItem x:Name="MiniContextSnapToEdgesMenuItem" Header="Прилипание к краям экрана" IsCheckable="True"
+                <MenuItem Tag="SnapToEdges" x:Name="MiniContextSnapToEdgesMenuItem" Header="Прилипание к краям экрана" IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           Click="SnapToEdgesMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=SnapToEdges}" />
-                <MenuItem x:Name="MiniContextShowProgressMenuItem" Header="Показывать полосу прогресса" IsCheckable="True"
+                <MenuItem Tag="ShowProgress" x:Name="MiniContextShowProgressMenuItem" Header="Показывать полосу прогресса" IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           Click="ShowProgressMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=ShowProgress}" />
-                <MenuItem x:Name="MiniContextShowArtworkProgressMenuItem" Header="Прогресс вокруг обложки" IsCheckable="True"
+                <MenuItem Tag="ShowArtworkProgress" x:Name="MiniContextShowArtworkProgressMenuItem" Header="Прогресс вокруг обложки" IsCheckable="True"
                           Style="{StaticResource MiniPlayerToggleMenuItemStyle}"
                           Click="ShowArtworkProgressMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=ShowArtworkProgress}" />
                 <!-- 3 и 2 варианта соответственно — компактнее вложенного подменю: клик переключает
                      на следующее значение по кругу, текущее видно прямо в Header. -->
-                <MenuItem x:Name="MiniContextArtworkStyleMenuItem" Click="ArtworkStyleMenuItem_Click"
+                <MenuItem Tag="ArtworkStyle" x:Name="MiniContextArtworkStyleMenuItem" Click="ArtworkStyleMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=ArtworkStyle}" />
-                <MenuItem x:Name="MiniContextButtonsLayoutMenuItem" Click="ButtonsLayoutMenuItem_Click"
+                <MenuItem Tag="ButtonsLayout" x:Name="MiniContextButtonsLayoutMenuItem" Click="ButtonsLayoutMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=ButtonsLayout}" />
             </ContextMenu>
         </Border.ContextMenu>

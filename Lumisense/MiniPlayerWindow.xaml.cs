@@ -496,7 +496,7 @@ public partial class MiniPlayerWindow : Window
         && _mainWindow.Settings.MiniPlayerInfoMode == "TitleArtist"
         && ArtistText.Visibility == Visibility.Visible
         && !_overlayCompatibilityMode
-        && !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
+        && !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings, AnimationAreas.MiniPlayer);
 
     private void UpdateArtistMarquee()
     {
@@ -815,6 +815,9 @@ public partial class MiniPlayerWindow : Window
         // На случай, если меню открывается заново, пока предыдущее редактирование почему-то не
         // закрылось штатно (см. MiniPlayerContextMenu_Closed) — начинаем с чистого состояния.
         CancelOpacityValueEdit();
+
+        if (sender is System.Windows.Controls.ContextMenu menu)
+            ContextMenuOrdering.Apply(menu, ContextMenuOrdering.Effective(_mainWindow.Settings, ContextMenuOrdering.Mini));
 
         ApplyContextMenuAccent();
         SyncContextMenuToggleStates();
@@ -1360,7 +1363,7 @@ public partial class MiniPlayerWindow : Window
         accent.Freeze();
         ProgressMaterial.PlayedBrush = accent;
         ProgressMaterialSlider.ActiveBrush = accent;
-        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
+        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings, AnimationAreas.Progress);
         ProgressMaterial.IsWaving = _mainWindow.IsPlayingNow;
         ApplyProgressAppearance();
 
@@ -1419,7 +1422,7 @@ public partial class MiniPlayerWindow : Window
         ArtProgressTrack.Visibility = visibility;
         ArtProgressOutline.Visibility = _showArtworkProgress && !materialRing ? Visibility.Visible : Visibility.Collapsed;
         ArtProgressMaterial.Visibility = _showArtworkProgress && materialRing ? Visibility.Visible : Visibility.Collapsed;
-        ArtProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings);
+        ArtProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings, AnimationAreas.Progress);
         ArtProgressMaterial.IsWaving = _mainWindow.IsPlayingNow && !ArtProgressMaterial.IsSliderLook;
         ApplyProgressAppearance();
         UpdateArtworkProgressOutline(_lastCurrentSeconds, _lastTotalSeconds);

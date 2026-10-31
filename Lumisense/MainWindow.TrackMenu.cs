@@ -28,6 +28,13 @@ public partial class MainWindow
     // DataContext пунктов меню унаследован от ContextMenu.PlacementTarget (WPF пробрасывает его и через Popup) — это сам
     // PlaylistTrackRow (row.FilePath и row.Folder), без Tag/CommandParameter.
 
+    // Меню создаётся на каждую строку из шаблона, поэтому сохранённый порядок пунктов применяется при каждом открытии.
+    private void TrackContextMenu_Opened(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.ContextMenu menu)
+            ContextMenuOrdering.Apply(menu, ContextMenuOrdering.Effective(_settings, ContextMenuOrdering.Track));
+    }
+
     private void PlayTrackMenuItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not System.Windows.Controls.MenuItem { DataContext: PlaylistTrackRow row }) return;
@@ -62,7 +69,7 @@ public partial class MainWindow
         var dialog = new Microsoft.Win32.OpenFileDialog
         {
             Title = LocalizationService.Translate("Выберите замену для недоступного трека"),
-            Filter = $"{LocalizationService.Translate("Файлы аудио")}|*.mp3;*.wav;*.flac;*.m4a;*.aac;*.ogg;*.wma|{LocalizationService.Translate("Все файлы")}|*.*",
+            Filter = $"{LocalizationService.Translate("Файлы аудио")}|*.mp3;*.wav;*.flac;*.m4a;*.aac;*.ogg;*.opus;*.aiff;*.aif;*.wma|{LocalizationService.Translate("Все файлы")}|*.*",
             CheckFileExists = true,
             Multiselect = false
         };

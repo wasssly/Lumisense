@@ -108,6 +108,7 @@ public partial class SettingsWindow : FluentWindow
     internal SettingsWindow(AppSettings settings, ISettingsHost owner, string? initialPage = null)
     {
         InitializeComponent();
+        WindowSizing.FitToWorkArea(this);
         _autoScrollTimer.Tick += AutoScrollTimer_Tick;
         // Class handlers получают событие даже если дочерний контрол пометил MouseDown
         // обработанным. Это важно для клика по тексту, Slider и другим элементам страницы.
@@ -157,7 +158,13 @@ public partial class SettingsWindow : FluentWindow
 
         InterfaceScaleSlider.Value = AccessibilityPreferences.NormalizeScale(_settings.InterfaceScale) * 100;
         InterfaceScaleValueText.Text = $"{InterfaceScaleSlider.Value:0}%";
-        ReduceMotionCheckBox.IsChecked = _settings.ReduceMotion;
+        // «Снизить движение» — это все разделы выключенными, поэтому отдельного флажка у него нет.
+        foreach (var box in AnimationAreaBoxes())
+            box.IsChecked = !_settings.ReduceMotion && !_settings.DisabledAnimationAreas.Contains((string)box.Tag);
+        RefreshAnimationsMasterCheckBox();
+
+        foreach (var (menu, panel) in ContextMenuOrderPanels())
+            PanelReorder.Sort(panel, ContextMenuOrdering.Effective(_settings, menu));
 
         SyncedLyricsFontSizeSlider.Value = Math.Clamp(_settings.SyncedLyricsFontSize, 12, 20);
         SyncedLyricsFontSizeValueText.Text = $"{SyncedLyricsFontSizeSlider.Value:0} px";
@@ -202,7 +209,7 @@ public partial class SettingsWindow : FluentWindow
         UpdateLyricsPreview();
         UpdateBadgePreview();
         InitializeProgressAppearanceEditor();
-        AllVersionsLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+        AllVersionsLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
         LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
         LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
         LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
@@ -248,6 +255,7 @@ public partial class SettingsWindow : FluentWindow
         SelectComboByTag(IslandLeftButtonCombo, _settings.IslandLeftButton);
         SelectComboByTag(IslandRightButtonCombo, _settings.IslandRightButton);
         SelectComboByTag(IslandEqualizerStyleCombo, _settings.IslandEqualizerStyle);
+        SelectComboByTag(IslandShapeCombo, _settings.IslandShape);
         SelectComboByTag(IslandBackdropCombo, _settings.IslandBackdrop);
         SelectComboByTag(IslandSeekStyleCombo, _settings.IslandSeekStyle);
         IslandLyricsShimmerCheckBox.IsChecked = _settings.IslandLyricsShimmer;
@@ -375,6 +383,12 @@ public partial class SettingsWindow : FluentWindow
         RefreshHotkeyButtonText(HotkeyTarget.SeekBackward);
 
         SearchResultsList.ItemsSource = _searchResults;
+        foreach (var (menu, panel) in ContextMenuOrderPanels())
+        {
+            string menuKey = menu;
+            PanelReorder.Enable(panel, ids => ContextMenuOrderChanged(menuKey, ids));
+        }
+
         BuildSearchIndex();
 
         RefreshAppVersionText();
@@ -928,7 +942,7 @@ public partial class SettingsWindow : FluentWindow
     // Пока идёт проверка, вместо галочки в карточке крутится индикатор Material.
     private void SetUpdateCheckBusy(bool busy)
     {
-        CheckUpdatesLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+        CheckUpdatesLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
         CheckUpdatesLoadingIndicator.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         CheckUpdatesIcon.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
     }
@@ -1302,7 +1316,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
         Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica alt acrylic blur акрил размытие блюр подложка фон backdrop");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
-        Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация accessibility scale motion");
+        Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация анимации по разделам слайдеры accessibility scale motion animations sliders");
         Add("Анимация смены обложки", "Обложка и Now Playing", "Cover", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
         Add("Подпись под названием трека", "Обложка и Now Playing", "Cover", BadgeModeStateRadio, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size");
         Add("Жесты на обложке", "Обложка и Now Playing", "Cover", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
@@ -1327,7 +1341,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("EQ Bypass", "Эквалайзер", "Equalizer", EqualizerBypassCheckBox, "bypass обход эквалайзер eq временно сравнение фильтры");
         Add("Монитор острова", "Остров", "Island", IslandMonitorCombo, "остров монитор экран дисплей island monitor display");
-        Add("Настройки острова", "Остров", "Island", IslandCustomCard, "остров размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
+        Add("Настройки острова", "Остров", "Island", IslandCustomCard, "остров круг капсула вид свёрнутого только обложка размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
         Add("Вид мини-плеера: карточка или остров", "Мини-плеер", "MiniPlayer", MiniStyleCard, "остров капсула dynamic island монитор экран вид мини плеер island monitor style");
         Add("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", MiniOpacitySlider, "прозрачность opacity мини плеер");
         Add("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniAlwaysOnTopCheckBox, "topmost мини плеер");
@@ -1387,6 +1401,7 @@ public partial class SettingsWindow : FluentWindow
         Add("История изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
         Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты аватар");
         Add("Открыть папку с логами", "О плеере", "About", OpenLogsButton, "логи log ошибка краш crash диагностика");
+        Add("Диагностика производительности", "О плеере", "About", DiagnosticsButton, "проверка нагрузка процессор память утечки тест diagnostics performance cpu memory leak");
     }
 
     private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
@@ -1852,12 +1867,82 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    private void ReduceMotionCheckBox_Changed(object sender, RoutedEventArgs e)
+    private IEnumerable<(string Menu, System.Windows.Controls.Panel Panel)> ContextMenuOrderPanels() =>
+    [
+        (ContextMenuOrdering.Track, TrackContextMenuActionsPanel),
+        (ContextMenuOrdering.Mini, MiniContextMenuActionsPanel),
+        (ContextMenuOrdering.Island, IslandMenuActionsPanel),
+    ];
+
+    private void ContextMenuOrderChanged(string menu, IReadOnlyList<string> ids)
     {
         if (_isInitializing) return;
 
-        _settings.ReduceMotion = ReduceMotionCheckBox.IsChecked == true;
+        // Порядок по умолчанию не хранится: так новые пункты будущих версий попадут на свои места сами.
+        if (ids.SequenceEqual(ContextMenuOrdering.Defaults[menu]))
+            _settings.ContextMenuOrder.Remove(menu);
+        else
+            _settings.ContextMenuOrder[menu] = [.. ids];
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void ContextMenuOrderReset_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is not FrameworkElement { Tag: string menu }) return;
+
+        foreach (var (key, panel) in ContextMenuOrderPanels())
+        {
+            if (key != menu) continue;
+            PanelReorder.Sort(panel, ContextMenuOrdering.Defaults[menu]);
+            ContextMenuOrderChanged(menu, PanelReorder.Ids(panel));
+        }
+    }
+
+    private IEnumerable<System.Windows.Controls.CheckBox> AnimationAreaBoxes() =>
+        AnimationAreasPanel.Children.OfType<System.Windows.Controls.CheckBox>();
+
+    private void AnimationAreaCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        SaveAnimationAreaSelection();
+    }
+
+    // Общая галочка: если включено всё — выключает всё, иначе включает всё. Само переключение WPF (три состояния) не нужно.
+    private void AnimationsMasterCheckBox_Click(object sender, RoutedEventArgs e)
+    {
+        bool enable = !AnimationAreaBoxes().All(box => box.IsChecked == true);
+        bool wasInitializing = _isInitializing;
+        _isInitializing = true;
+        try
+        {
+            foreach (var box in AnimationAreaBoxes()) box.IsChecked = enable;
+        }
+        finally
+        {
+            _isInitializing = wasInitializing;
+        }
+
+        SaveAnimationAreaSelection();
+    }
+
+    // «Снизить движение» хранится как раньше: он включён, когда выключены все разделы.
+    private void SaveAnimationAreaSelection()
+    {
+        bool allOff = AnimationAreaBoxes().All(box => box.IsChecked != true);
+        _settings.ReduceMotion = allOff;
+        _settings.DisabledAnimationAreas = allOff
+            ? []
+            : AnimationAreas.Normalize(AnimationAreaBoxes().Where(box => box.IsChecked != true).Select(box => (string)box.Tag));
+        RefreshAnimationsMasterCheckBox();
         _owner.ApplyAccessibilityPreferences();
+    }
+
+    private void RefreshAnimationsMasterCheckBox()
+    {
+        bool allOn = AnimationAreaBoxes().All(box => box.IsChecked == true);
+        bool allOff = AnimationAreaBoxes().All(box => box.IsChecked != true);
+        AnimationsMasterCheckBox.IsChecked = allOn ? true : allOff ? false : null;
     }
 
     private void SyncedLyricsFontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -3158,6 +3243,7 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.IslandEqualizerStyle = SelectedTag(IslandEqualizerStyleCombo, "Bars");
+        _settings.IslandShape = SelectedTag(IslandShapeCombo, "Capsule");
         _settings.IslandBackdrop = SelectedTag(IslandBackdropCombo, "Glow");
         _settings.IslandSeekStyle = SelectedTag(IslandSeekStyleCombo, "Plain");
         SaveIslandSettings();
@@ -3853,7 +3939,7 @@ public partial class SettingsWindow : FluentWindow
         // В горизонтальных видах страница въезжает со стороны, куда сдвинулся выбор (вправо по списку — справа, влево — слева).
         int direction = 0;
         if (_navigationStyle != "Sidebar" && IsLoaded && index >= 0 && _lastNavIndex >= 0 && index != _lastNavIndex
-            && !AccessibilityPreferences.ShouldReduceMotion(_settings))
+            && !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow))
         {
             direction = index > _lastNavIndex ? 1 : -1;
         }
@@ -3870,7 +3956,7 @@ public partial class SettingsWindow : FluentWindow
 
         if (_navigationStyle != "Sidebar")
         {
-            bool animate = IsLoaded && !AccessibilityPreferences.ShouldReduceMotion(_settings);
+            bool animate = IsLoaded && !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow);
             RefreshNavLabels();
             UpdatePillHighlight(animate);
             if (_navigationStyle == "FloatingBar") SelectFloatingIndex(index, animate);
@@ -3935,7 +4021,7 @@ public partial class SettingsWindow : FluentWindow
         bool wasHidden = element.Visibility != Visibility.Visible;
         element.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
 
-        if (show && wasHidden && animate && !AccessibilityPreferences.ShouldReduceMotion(_settings))
+        if (show && wasHidden && animate && !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow))
         {
             element.BeginAnimation(UIElement.OpacityProperty,
                 new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = NavEasing });
@@ -4301,7 +4387,7 @@ public partial class SettingsWindow : FluentWindow
         bool firstPlacement = highlight.Visibility != Visibility.Visible || highlight.Width <= 0;
         highlight.Visibility = Visibility.Visible;
 
-        if (!animate || firstPlacement || AccessibilityPreferences.ShouldReduceMotion(_settings))
+        if (!animate || firstPlacement || AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow))
         {
             translate.BeginAnimation(System.Windows.Media.TranslateTransform.XProperty, null);
             highlight.BeginAnimation(FrameworkElement.WidthProperty, null);
@@ -4346,7 +4432,7 @@ public partial class SettingsWindow : FluentWindow
         double target = Math.Clamp(start + direction * 160, 0, TopNavScroll.ScrollableWidth);
         _navScrollTarget = target;
 
-        if (AccessibilityPreferences.ShouldReduceMotion(_settings))
+        if (AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow))
         {
             TopNavScroll.ScrollToHorizontalOffset(target);
             return;
@@ -4400,7 +4486,7 @@ public partial class SettingsWindow : FluentWindow
     {
         FinishPageSpring();
 
-        if (page is not System.Windows.Controls.Panel panel || AccessibilityPreferences.ShouldReduceMotion(_settings) || !IsLoaded) return;
+        if (page is not System.Windows.Controls.Panel panel || AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow) || !IsLoaded) return;
 
         var easing = new System.Windows.Media.Animation.CubicEase
         {

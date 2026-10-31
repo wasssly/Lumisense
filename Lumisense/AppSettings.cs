@@ -119,6 +119,13 @@ public class AppSettings
     public double InterfaceScale { get; set; } = 1.0;
     public bool ReduceMotion { get; set; }
 
+    // Разделы (AnimationAreas), где анимации выключены отдельно от общего «Снизить движение».
+    public List<string> DisabledAnimationAreas { get; set; } = new();
+
+    // Порядок пунктов контекстных меню: ключ — меню (ContextMenuOrdering), значение — идентификаторы пунктов сверху вниз.
+    // Пусто — порядок по умолчанию.
+    public Dictionary<string, List<string>> ContextMenuOrder { get; set; } = new();
+
     // Оформление синхронного LRC-текста в панели главного окна. Старые settings.json не
     // содержат эти поля, поэтому значения по умолчанию сохраняют нейтральный читаемый вид.
     public double SyncedLyricsFontSize { get; set; } = 14.0;
@@ -204,6 +211,9 @@ public class AppSettings
     public List<string> DisabledIslandMenuActions { get; set; } = new() { "Speed", "Pitch", "Overlay" };
     // Вид эквалайзера свёрнутого острова: "Bars" (полоски) | "Dots" (точки).
     public string IslandEqualizerStyle { get; set; } = "Bars";
+
+    // Вид свёрнутого острова: "Capsule" — капсула с названием трека, "Circle" — круг, в котором видна только обложка.
+    public string IslandShape { get; set; } = "Capsule";
     // Фон раскрытого острова: "None" | "Glow" | "Matrix" | "Wave".
     public string IslandBackdrop { get; set; } = "Glow";
     // Полоса перемотки раскрытого острова: "Plain" (сплошная) | "Segments" (сегменты).

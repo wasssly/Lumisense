@@ -30,7 +30,8 @@ public partial class MainWindow
     public void ApplyAccessibilityPreferences()
     {
         AccessibilityPreferences.ApplyToWindow(this, _settings);
-        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Progress);
+        SliderSmoothing.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Sliders);
         _settingsWindow?.ApplyAccessibilityPreferences();
         _miniPlayerWindow?.ApplyAccessibilityPreferences();
         _nowPlayingWindow?.ApplyAccessibilityPreferences();

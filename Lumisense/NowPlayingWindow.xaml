@@ -89,7 +89,9 @@
                RenderOptions.BitmapScalingMode="Linear" />
         <Border Background="#70080A0F" />
 
-        <Grid>
+        <!-- Раскладка рассчитана на экран не меньше 1450×940: на меньших разрешениях весь контент пропорционально уменьшается
+             (NowPlayingWindow.UpdateContentScale), а не вылезает за границы. -->
+        <Grid x:Name="NowPlayingContentRoot">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />

@@ -36,7 +36,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private enum PlayerViewMode { Square, Rectangular, Mini }
 
     // Поддерживаемые расширения — используются при сканировании папок
-    private static readonly string[] SupportedExtensions = { ".mp3", ".wav", ".wma", ".flac", ".m4a", ".aac", ".ogg" };
+    private static readonly string[] SupportedExtensions = { ".mp3", ".wav", ".wma", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aiff", ".aif" };
 
     // AudioFileReader умеет читать mp3/wav/wma и сразу даёт регулировку громкости
     private AudioFileReader? _audioFile;
@@ -1109,7 +1109,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         ProgressSlider.Visibility = isWaveform || isMaterial ? Visibility.Collapsed : Visibility.Visible;
         ProgressWaveform.Visibility = isWaveform ? Visibility.Visible : Visibility.Collapsed;
         ProgressMaterial.Visibility = isMaterial ? Visibility.Visible : Visibility.Collapsed;
-        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+        ProgressMaterial.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Progress);
         ProgressMaterial.IsWaving = _isPlaying;
 
         _nowPlayingWindow?.ApplyProgressBarStyle();
@@ -1197,7 +1197,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private void UpdateWaveformLoadingIndicator()
     {
         bool loading = _waveformCts is { IsCancellationRequested: false } && ProgressWaveform.Visibility == Visibility.Visible;
-        WaveformLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings);
+        WaveformLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
         WaveformLoadingIndicator.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
     }
 

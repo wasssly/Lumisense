@@ -458,7 +458,7 @@ public partial class MainWindow
                 AlbumArtContainer.Visibility = Visibility.Collapsed;
         }
 
-        if (AccessibilityPreferences.ShouldReduceMotion(_settings) || !IsLoaded)
+        if (AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Cover) || !IsLoaded)
         {
             Finish();
             return;

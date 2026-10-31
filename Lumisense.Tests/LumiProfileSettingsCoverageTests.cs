@@ -76,6 +76,10 @@ public sealed class LumiProfileSettingsCoverageTests
             case nameof(AppSettings.IslandEqualizerStyle): return current as string == "Bars" ? "Dots" : "Bars";
             case nameof(AppSettings.IslandBackdrop): return current as string == "None" ? "Wave" : "None";
             case nameof(AppSettings.IslandSeekStyle): return current as string == "Plain" ? "Segments" : "Plain";
+            case nameof(AppSettings.IslandShape): return current as string == "Capsule" ? "Circle" : "Capsule";
+            case nameof(AppSettings.DisabledAnimationAreas): return new List<string> { "Cover" };
+            case nameof(AppSettings.ContextMenuOrder):
+                return new Dictionary<string, List<string>> { ["Track"] = new List<string> { "CopyPath", "PlayNext" } };
             case nameof(AppSettings.NowPlayingBackground): return current as string == "Clouds" ? "Orbs" : "Clouds";
             case nameof(AppSettings.SettingsNavigationStyle): return current as string == "Sidebar" ? "Pills" : "Sidebar";
             case nameof(AppSettings.SettingsNavigationLabelMode): return current as string == "Below" ? "Selected" : "Below";
