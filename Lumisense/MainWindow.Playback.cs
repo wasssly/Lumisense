@@ -283,6 +283,7 @@ public partial class MainWindow
         {
             _outputDevice!.Play();
             _isPlaying = true;
+            UpdateCoverSpin();
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
             _progressTimer.Start();
             _playbackClock.Start();
@@ -292,6 +293,7 @@ public partial class MainWindow
         else
         {
             _isPlaying = false;
+            UpdateCoverSpin();
             PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
             _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
             RaisePlaybackStateChanged(false);
@@ -667,6 +669,7 @@ public partial class MainWindow
         }
 
         _isPlaying = false;
+        UpdateCoverSpin();
         PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
         FlushPlaybackClock();
 
@@ -701,6 +704,7 @@ public partial class MainWindow
         }
 
         _isPlaying = true;
+        UpdateCoverSpin();
         PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
         _progressTimer.Start();
         _playbackClock.Start();
@@ -838,6 +842,7 @@ public partial class MainWindow
         _channelMode = null;
         _activeFade = null;
         _isPlaying = false;
+        UpdateCoverSpin();
 
         if (!disposeOnly)
         {

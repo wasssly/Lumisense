@@ -373,6 +373,16 @@ public partial class SettingsWindow : FluentWindow
         }).IsChecked = true;
 
         RefreshViewModeRadios();
+        MainWindowLayoutModernRadio.IsChecked = _settings.MainWindowLayout == "Modern";
+        MainWindowLayoutGlassRadio.IsChecked = _settings.MainWindowLayout == "Glass";
+        MainWindowLayoutVinylRadio.IsChecked = _settings.MainWindowLayout == "Vinyl";
+        MainWindowLayoutCompactRadio.IsChecked = _settings.MainWindowLayout == "Compact";
+        MainWindowLayoutPosterRadio.IsChecked = _settings.MainWindowLayout == "Poster";
+        ModernShowSideButtonsCheckBox.IsChecked = _settings.ModernShowSideButtons;
+        GlassControlsBackgroundCheckBox.IsChecked = _settings.GlassControlsBackground;
+        SelectComboByTag(CompactCoverAlignmentCombo, _settings.CompactCoverAlignment);
+        ModernSlotsGrid.IsEnabled = _settings.ModernShowSideButtons;
+        SelectModernSlotCombos(MainWindow.NormalizeModernSlots(_settings.ModernControlSlots));
 
         RefreshHotkeyButtonText(HotkeyTarget.PlayPause);
         RefreshHotkeyButtonText(HotkeyTarget.Next);
@@ -609,6 +619,71 @@ public partial class SettingsWindow : FluentWindow
         {
             _isInitializing = wasInitializing2;
         }
+    }
+
+    private System.Windows.Controls.ComboBox[] ModernSlotCombos() =>
+        [ModernSlot0Combo, ModernSlot1Combo, ModernSlot2Combo, ModernSlot3Combo];
+
+    private void SelectModernSlotCombos(IReadOnlyList<string> slots)
+    {
+        var combos = ModernSlotCombos();
+        for (int i = 0; i < combos.Length; i++) SelectComboByTag(combos[i], slots[i]);
+    }
+
+    // Кнопки по бокам от «Назад / Пуск / Вперёд» в новом виде: включение и выбор четырёх мест.
+    private void ModernLayoutOptions_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        // Список без выбранного пункта значит «ещё не заполнен» (окно в процессе загрузки), а не «Нет»: иначе слоты затираются пустыми.
+        if (ModernSlotCombos().Any(combo => combo.SelectedItem is null)) return;
+
+        _settings.ModernShowSideButtons = ModernShowSideButtonsCheckBox.IsChecked == true;
+        ModernSlotsGrid.IsEnabled = _settings.ModernShowSideButtons;
+        List<string> slots = MainWindow.NormalizeModernSlots(ModernSlotCombos().Select(combo => SelectedTag(combo, string.Empty)));
+        _settings.ModernControlSlots = slots;
+
+        // Повторно выбранная кнопка сбрасывается в «Нет»: показываем это в списках сразу.
+        bool wasInitializing = _isInitializing;
+        _isInitializing = true;
+        try
+        {
+            SelectModernSlotCombos(slots);
+        }
+        finally
+        {
+            _isInitializing = wasInitializing;
+        }
+
+        _owner.ApplyMainWindowLayoutLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void GlassControlsBackground_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.GlassControlsBackground = GlassControlsBackgroundCheckBox.IsChecked == true;
+        _owner.ApplyMainWindowLayoutLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void CompactCoverAlignment_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.CompactCoverAlignment = SelectedTag(CompactCoverAlignmentCombo, "Left");
+        _owner.ApplyMainWindowLayoutLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void MainWindowLayoutRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing || sender is not System.Windows.Controls.RadioButton { Tag: string layout }) return;
+
+        _settings.MainWindowLayout = layout;
+        _owner.ApplyMainWindowLayoutLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void PlayerViewModeRadio_Checked(object sender, RoutedEventArgs e)
@@ -1342,6 +1417,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Анимация смены обложки", "Обложка и Now Playing", "Cover", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
         Add("Подпись под названием трека", "Обложка и Now Playing", "Cover", BadgeModeStateRadio, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size");
         Add("Жесты на обложке", "Обложка и Now Playing", "Cover", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
+        Add("Вид главного окна", "Окно и запуск", "Window", MainWindowLayoutCard, "оформление новый классический крупная обложка кнопки управление layout modern classic");
         Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         Add("Поверх всех окон", "Окно и запуск", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
         Add("Сворачивать в трей при закрытии", "Окно и запуск", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");

@@ -480,6 +480,10 @@
             <RowDefinition Height="*" />      <!-- Тело: центрируется и масштабируется в полноэкранном режиме -->
         </Grid.RowDefinitions>
 
+        <!-- Вид «Стекло»: размытая обложка за всем интерфейсом (MainWindow.Layouts.cs). В остальных видах скрыта. -->
+        <Image x:Name="GlassBackdrop" Grid.RowSpan="2" Stretch="UniformToFill" Opacity="0.5" IsHitTestVisible="False"
+               Visibility="Collapsed" RenderOptions.BitmapScalingMode="HighQuality" />
+
         <!-- Заголовок окна (Fluent TitleBar). ВАЖНО: ui:TitleBar перехватывает клики в своих границах на уровне Win32 (WM_NCHITTEST → HTCAPTION),
              поэтому кликабельная область "Lumisense" вынесена в отдельную колонку слева от него, а не наложена поверх. -->
         <Grid Grid.Row="0">
@@ -741,6 +745,8 @@
                         <TransformGroup>
                             <ScaleTransform x:Name="AlbumArtBorderScale" ScaleX="1" ScaleY="1" />
                             <TranslateTransform x:Name="AlbumArtBorderTransform" X="0" />
+                            <!-- Вращение обложки-пластинки в виде «Винил» (MainWindow.Layouts.cs). -->
+                            <RotateTransform x:Name="AlbumArtSpin" Angle="0" />
                         </TransformGroup>
                     </Border.RenderTransform>
                     <Border.ContextMenu>
@@ -791,7 +797,26 @@
                 <!-- Лента из предыдущей, текущей и следующей обложек на время смены (стиль "Carousel", MainWindow.AlbumArtCarousel.cs). -->
                 <Grid x:Name="AlbumArtCarouselHost" Width="150" Height="150" ClipToBounds="False" Panel.ZIndex="-1"
                       IsHitTestVisible="False" Visibility="Collapsed" />
+
+                <!-- Вид «Постер»: затемнение внизу обложки и название с исполнителем поверх него (MainWindow.Layouts.cs). -->
+                <Border x:Name="PosterOverlay" VerticalAlignment="Bottom" IsHitTestVisible="False" Visibility="Collapsed">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#00000000" Offset="0" />
+                            <GradientStop Color="#E6000000" Offset="1" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <StackPanel x:Name="PosterOverlayText" Margin="22,48,22,16" />
+                </Border>
+
+                <!-- Центральное отверстие и ободок пластинки (вид «Винил»); в остальных видах скрыты. -->
+                <Ellipse x:Name="VinylRim" Stroke="#40FFFFFF" StrokeThickness="2" IsHitTestVisible="False" Visibility="Collapsed" />
+                <Ellipse x:Name="VinylHole" Width="24" Height="24" Fill="#FF101113" Stroke="#66FFFFFF" StrokeThickness="2"
+                         HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" Visibility="Collapsed" />
             </Grid>
+
+            <!-- Вид «Компакт»: название, исполнитель и состояние переезжают сюда, справа от обложки (MainWindow.Layouts.cs). -->
+            <StackPanel x:Name="CompactInfoHost" Visibility="Collapsed" VerticalAlignment="Center" Margin="16,0,0,0" MaxWidth="250" />
 
             <TextBlock x:Name="TrackTitleText" Text="Файл не выбран"
                        FontSize="17" FontWeight="SemiBold"
@@ -854,8 +879,11 @@
             </Grid>
         </Grid>
 
-        <StackPanel x:Name="ControlsPanel" Grid.Row="3" Orientation="Horizontal"
-                    HorizontalAlignment="Center" Margin="0,14,0,6">
+        <!-- Рамка-«капсула» вокруг ряда кнопок: в видах «Классический» и «Новый» прозрачная и без отступов, в «Стекле» — заметная
+             подложка (MainWindow.Layouts.cs). -->
+        <Border x:Name="ControlsCapsule" Grid.Row="3" HorizontalAlignment="Center" Margin="0,14,0,6"
+                CornerRadius="0" Padding="0" Background="Transparent">
+        <StackPanel x:Name="ControlsPanel" Orientation="Horizontal" HorizontalAlignment="Center">
 
             <ui:Button x:Name="ShuffleButton" Appearance="Secondary"
                        Width="40" Height="40" Margin="4,0"
@@ -921,6 +949,7 @@
                 </ui:Button.Icon>
             </ui:Button>
         </StackPanel>
+        </Border>
 
         <!-- Громкость и компактное управление скоростью -->
         <Grid x:Name="VolumeRow" Grid.Row="4" Margin="24,0,24,10" MouseWheel="VolumeRow_MouseWheel">
@@ -1301,7 +1330,7 @@
                Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
                VerticalOffset="6" PopupAnimation="Fade">
             <Border Background="#FF242424" BorderBrush="#FF707070" BorderThickness="1" CornerRadius="8" Padding="8">
-                <StackPanel Width="136">
+                <StackPanel x:Name="MoreActionsItemsPanel" Width="136">
                     <ui:Button x:Name="QueueButton" Appearance="Secondary" Width="136" Height="32" Margin="0,0,0,4"
                                Content="Очередь" ToolTip="Очередь «Играть следующим»" Click="QueueButton_Click">
                         <ui:Button.Icon>

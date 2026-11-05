@@ -541,7 +541,13 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // другой монитор контент остался бы узким, с пустыми полями.
     private void MainWindow_SizeChanged(object sender, SizeChangedEventArgs e)
     {
-        if (_isFullscreenLayout || _viewMode == PlayerViewMode.Square) UpdateContentMaxWidth();
+        if (_isFullscreenLayout || _viewMode == PlayerViewMode.Square)
+        {
+            UpdateContentMaxWidth();
+            // Обложка-баннер вида «Постер» занимает всю ширину контента: при её изменении баннер пересчитывается.
+            if (LayoutName == "Poster") ApplyContentScale(true);
+        }
+
         if (QueuePopup?.IsOpen == true) UpdateQueuePopupWidth();
     }
 
@@ -1323,11 +1329,12 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private bool _isPlaylistVisible = true;
     private double _heightBeforeHidingPlaylist;
 
-    private const double MinHeightWithPlaylist = 680; // как задан MinHeight окна в XAML
+    // 680 — как задан MinHeight окна в XAML; новому виду (крупнее обложка) нужен запас, иначе плейлист сжимается.
+    private double MinHeightWithPlaylist => IsModernLayout ? 720 : 680;
 
     // Квадратный вид использует крупный стиль (ApplyContentScale): без запаса сверх MinHeightWithPlaylist всё, что не влезло
     // в 680px, отнимало бы место у плейлиста вплоть до его исчезновения; запас оставляет видимыми несколько треков.
-    private const double SquareMinHeightWithPlaylist = 860;
+    private double SquareMinHeightWithPlaylist => IsModernLayout ? 900 : 860;
 
     public bool IsTrackContextMenuActionDisabled(string actionId) =>
         TrackContextMenuActions.Instance.IsDisabled(actionId);

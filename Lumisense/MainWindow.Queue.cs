@@ -32,7 +32,10 @@ public partial class MainWindow
             if (_isExiting || Dispatcher.HasShutdownStarted || Dispatcher.HasShutdownFinished)
                 return;
 
-            QueuePopup.PlacementTarget = MoreActionsButton;
+            // Если «Очередь» вынесена в ряд управления, панель открывается у неё; иначе — у кнопки «Ещё», как из меню.
+            QueuePopup.PlacementTarget = QueueButton.Parent is System.Windows.Controls.Panel { } parent && ReferenceEquals(parent, ControlsPanel)
+                ? QueueButton
+                : MoreActionsButton;
             UpdateQueuePopupWidth();
             QueuePopup.IsOpen = true;
         }), DispatcherPriority.Input);

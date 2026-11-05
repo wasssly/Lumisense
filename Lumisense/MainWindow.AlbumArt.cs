@@ -372,6 +372,7 @@ public partial class MainWindow
         AnimateAlbumArtTransition(direction, () =>
         {
             AlbumArtImage.Source = imageSource;
+            OnMainArtworkChanged(imageSource as BitmapSource);
             AlbumArtImage.Visibility = Visibility.Visible;
             AlbumArtBorder.Background = Brushes.Transparent;
             AlbumArtIcon.Visibility = Visibility.Collapsed;
@@ -387,6 +388,7 @@ public partial class MainWindow
         AnimateAlbumArtTransition(direction, () =>
         {
             AlbumArtImage.Source = null;
+            OnMainArtworkChanged(null);
             AlbumArtImage.Visibility = Visibility.Collapsed;
             _currentArtBrush = null;
             AlbumArtBorder.Background = (Brush)FindResource("ControlFillColorSecondaryBrush");
@@ -425,7 +427,10 @@ public partial class MainWindow
         bool isBurst = _albumArtTransitionBurstPolicy.ShouldSkipAnimation(DateTime.UtcNow);
         int transitionGeneration = ResetAlbumArtTransitionLayers();
 
-        if (IsCarouselTransition)
+        // В виде «Компакт» обложка стоит у левого края, рядом с текстом: карусель и пролёт на всю ширину обложки там заезжали бы на текст
+        // и за край окна, поэтому смена обложки — короткий сдвиг с затуханием на месте.
+        bool compact = LayoutName == "Compact";
+        if (IsCarouselTransition && !compact)
         {
             ImageSource? oldArt = AlbumArtImage.Visibility == Visibility.Visible ? AlbumArtImage.Source : null;
             applyNewArt();
@@ -436,7 +441,7 @@ public partial class MainWindow
         }
 
         double size = AlbumArtBorder.ActualWidth > 0 ? AlbumArtBorder.ActualWidth : AlbumArtBorder.Width;
-        double distance = size + 24;
+        double distance = compact ? 24 : size + 24;
         double exitX = direction == AlbumArtTransitionDirection.Next ? -distance : distance;
         double enterFromX = direction == AlbumArtTransitionDirection.Next ? distance : -distance;
 

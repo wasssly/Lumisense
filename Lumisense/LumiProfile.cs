@@ -227,6 +227,11 @@ public static class LumiProfileIO
         target.NeverAutoPlayLastTrackOnStartup = source.NeverAutoPlayLastTrackOnStartup;
         target.IsPlaylistVisible = source.IsPlaylistVisible;
         target.PlayerViewMode = source.PlayerViewMode;
+        if (source.MainWindowLayout is "Modern" or "Glass" or "Vinyl" or "Compact" or "Poster") target.MainWindowLayout = source.MainWindowLayout;
+        if (source.CompactCoverAlignment is "Left" or "Center") target.CompactCoverAlignment = source.CompactCoverAlignment;
+        target.GlassControlsBackground = source.GlassControlsBackground;
+        target.ModernShowSideButtons = source.ModernShowSideButtons;
+        target.ModernControlSlots = MainWindow.NormalizeModernSlots(source.ModernControlSlots);
         target.IsShuffleEnabled = source.IsShuffleEnabled;
         target.RepeatMode = source.RepeatMode;
         target.AlbumArtTransitionEnabled = source.AlbumArtTransitionEnabled;

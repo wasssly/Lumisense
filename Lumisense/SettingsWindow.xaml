@@ -1771,6 +1771,132 @@
                         <TextBlock Text="Окно и запуск" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Режим окна и поведение приложения при запуске." Style="{StaticResource PageDescriptionStyle}" />
 
+                        <Border x:Name="MainWindowLayoutCard" Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Вид главного окна" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Оформление главного окна. Режим окна (квадратный, прямоугольный, мини) выбирается ниже и работает с любым видом."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,14" TextWrapping="Wrap" />
+                                <RadioButton x:Name="MainWindowLayoutModernRadio" Content="Новый: крупная обложка, управление снизу"
+                                             GroupName="MainWindowLayout" Tag="Modern" Checked="MainWindowLayoutRadio_Checked" Margin="0,0,0,12" />
+                                <RadioButton x:Name="MainWindowLayoutGlassRadio" Content="Стекло: размытая обложка на фоне, кнопки в капсуле"
+                                             GroupName="MainWindowLayout" Tag="Glass" Checked="MainWindowLayoutRadio_Checked" Margin="0,0,0,12" />
+                                <RadioButton x:Name="MainWindowLayoutVinylRadio" Content="Винил: круглая обложка, которая вращается при воспроизведении"
+                                             GroupName="MainWindowLayout" Tag="Vinyl" Checked="MainWindowLayoutRadio_Checked" Margin="0,0,0,12" />
+                                <RadioButton x:Name="MainWindowLayoutCompactRadio" Content="Компакт: обложка слева, название справа"
+                                             GroupName="MainWindowLayout" Tag="Compact" Checked="MainWindowLayoutRadio_Checked" Margin="0,0,0,12" />
+                                <RadioButton x:Name="MainWindowLayoutPosterRadio" Content="Постер: обложка-баннер во всю ширину, название поверх"
+                                             GroupName="MainWindowLayout" Tag="Poster" Checked="MainWindowLayoutRadio_Checked" Margin="0,0,0,0" />
+                                <TextBlock Text="Кнопки управления идут симметричным рядом. Дополнительные кнопки по бокам от них можно включить, выключить и выбрать самому."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,10,0,0" TextWrapping="Wrap" />
+                                <StackPanel x:Name="ModernLayoutOptionsPanel" Margin="0,14,0,0">
+                                    <CheckBox x:Name="ModernShowSideButtonsCheckBox"
+                                              Content="Показывать дополнительные кнопки по бокам от кнопок управления"
+                                              Checked="ModernLayoutOptions_Changed" Unchecked="ModernLayoutOptions_Changed" Margin="0,0,0,10" />
+                                    <Grid x:Name="ModernSlotsGrid">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Grid.Row="0" Grid.Column="0" Text="Слева, дальняя" Style="{StaticResource SettingsHelperTextStyle}"
+                                                   VerticalAlignment="Center" Margin="0,0,16,8" />
+                                        <ComboBox x:Name="ModernSlot0Combo" Grid.Row="0" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
+                                                  HorizontalAlignment="Left" SelectionChanged="ModernLayoutOptions_Changed">
+                                            <ComboBoxItem Tag="" Content="Нет" />
+                                            <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
+                                            <ComboBoxItem Tag="Repeat" Content="Повтор" />
+                                            <ComboBoxItem Tag="Stop" Content="Стоп" />
+                                            <ComboBoxItem Tag="Mini" Content="Мини-плеер" />
+                                            <ComboBoxItem Tag="Favorite" Content="Избранное" />
+                                            <ComboBoxItem Tag="Mute" Content="Без звука" />
+                                            <ComboBoxItem Tag="Speed" Content="Скорость и тон" />
+                                            <ComboBoxItem Tag="Settings" Content="Настройки" />
+                                            <ComboBoxItem Tag="More" Content="Ещё" />
+                                            <ComboBoxItem Tag="Statistics" Content="Статистика" />
+                                            <ComboBoxItem Tag="Queue" Content="Очередь" />
+                                            <ComboBoxItem Tag="Lyrics" Content="Текст песни" />
+                                            <ComboBoxItem Tag="Playlist" Content="Показать или скрыть плейлист" />
+                                        </ComboBox>
+                                        <TextBlock Grid.Row="1" Grid.Column="0" Text="Слева, ближняя" Style="{StaticResource SettingsHelperTextStyle}"
+                                                   VerticalAlignment="Center" Margin="0,0,16,8" />
+                                        <ComboBox x:Name="ModernSlot1Combo" Grid.Row="1" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
+                                                  HorizontalAlignment="Left" SelectionChanged="ModernLayoutOptions_Changed">
+                                            <ComboBoxItem Tag="" Content="Нет" />
+                                            <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
+                                            <ComboBoxItem Tag="Repeat" Content="Повтор" />
+                                            <ComboBoxItem Tag="Stop" Content="Стоп" />
+                                            <ComboBoxItem Tag="Mini" Content="Мини-плеер" />
+                                            <ComboBoxItem Tag="Favorite" Content="Избранное" />
+                                            <ComboBoxItem Tag="Mute" Content="Без звука" />
+                                            <ComboBoxItem Tag="Speed" Content="Скорость и тон" />
+                                            <ComboBoxItem Tag="Settings" Content="Настройки" />
+                                            <ComboBoxItem Tag="More" Content="Ещё" />
+                                            <ComboBoxItem Tag="Statistics" Content="Статистика" />
+                                            <ComboBoxItem Tag="Queue" Content="Очередь" />
+                                            <ComboBoxItem Tag="Lyrics" Content="Текст песни" />
+                                            <ComboBoxItem Tag="Playlist" Content="Показать или скрыть плейлист" />
+                                        </ComboBox>
+                                        <TextBlock Grid.Row="2" Grid.Column="0" Text="Справа, ближняя" Style="{StaticResource SettingsHelperTextStyle}"
+                                                   VerticalAlignment="Center" Margin="0,0,16,8" />
+                                        <ComboBox x:Name="ModernSlot2Combo" Grid.Row="2" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
+                                                  HorizontalAlignment="Left" SelectionChanged="ModernLayoutOptions_Changed">
+                                            <ComboBoxItem Tag="" Content="Нет" />
+                                            <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
+                                            <ComboBoxItem Tag="Repeat" Content="Повтор" />
+                                            <ComboBoxItem Tag="Stop" Content="Стоп" />
+                                            <ComboBoxItem Tag="Mini" Content="Мини-плеер" />
+                                            <ComboBoxItem Tag="Favorite" Content="Избранное" />
+                                            <ComboBoxItem Tag="Mute" Content="Без звука" />
+                                            <ComboBoxItem Tag="Speed" Content="Скорость и тон" />
+                                            <ComboBoxItem Tag="Settings" Content="Настройки" />
+                                            <ComboBoxItem Tag="More" Content="Ещё" />
+                                            <ComboBoxItem Tag="Statistics" Content="Статистика" />
+                                            <ComboBoxItem Tag="Queue" Content="Очередь" />
+                                            <ComboBoxItem Tag="Lyrics" Content="Текст песни" />
+                                            <ComboBoxItem Tag="Playlist" Content="Показать или скрыть плейлист" />
+                                        </ComboBox>
+                                        <TextBlock Grid.Row="3" Grid.Column="0" Text="Справа, дальняя" Style="{StaticResource SettingsHelperTextStyle}"
+                                                   VerticalAlignment="Center" Margin="0,0,16,8" />
+                                        <ComboBox x:Name="ModernSlot3Combo" Grid.Row="3" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
+                                                  HorizontalAlignment="Left" SelectionChanged="ModernLayoutOptions_Changed">
+                                            <ComboBoxItem Tag="" Content="Нет" />
+                                            <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
+                                            <ComboBoxItem Tag="Repeat" Content="Повтор" />
+                                            <ComboBoxItem Tag="Stop" Content="Стоп" />
+                                            <ComboBoxItem Tag="Mini" Content="Мини-плеер" />
+                                            <ComboBoxItem Tag="Favorite" Content="Избранное" />
+                                            <ComboBoxItem Tag="Mute" Content="Без звука" />
+                                            <ComboBoxItem Tag="Speed" Content="Скорость и тон" />
+                                            <ComboBoxItem Tag="Settings" Content="Настройки" />
+                                            <ComboBoxItem Tag="More" Content="Ещё" />
+                                            <ComboBoxItem Tag="Statistics" Content="Статистика" />
+                                            <ComboBoxItem Tag="Queue" Content="Очередь" />
+                                            <ComboBoxItem Tag="Lyrics" Content="Текст песни" />
+                                            <ComboBoxItem Tag="Playlist" Content="Показать или скрыть плейлист" />
+                                        </ComboBox>
+                                    </Grid>
+                                    <TextBlock Text="Слева и справа от «Назад / Пуск / Вперёд» есть по два места. Каждую кнопку можно поставить только в одно из них."
+                                               Style="{StaticResource SettingsHelperTextStyle}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                    <CheckBox x:Name="GlassControlsBackgroundCheckBox" Margin="0,14,0,10"
+                                              Content="Подложка у кнопок управления (вид «Стекло»)"
+                                              Checked="GlassControlsBackground_Changed" Unchecked="GlassControlsBackground_Changed" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="Обложка в виде «Компакт»" Style="{StaticResource SettingsHelperTextStyle}"
+                                                   VerticalAlignment="Center" Margin="0,0,16,0" />
+                                        <ComboBox x:Name="CompactCoverAlignmentCombo" MinWidth="170" SelectionChanged="CompactCoverAlignment_Changed">
+                                            <ComboBoxItem Tag="Left" Content="Слева" />
+                                            <ComboBoxItem Tag="Center" Content="По центру" />
+                                        </ComboBox>
+                                    </StackPanel>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
                         <Border x:Name="PlayerViewModeCard" Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Вид плеера" Style="{StaticResource SettingsSectionTitleStyle}" />

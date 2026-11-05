@@ -30,6 +30,7 @@ internal interface ISettingsAppearanceHost
     bool IsMiniMode { get; }
     string CurrentViewModeName { get; }
     void SetPlayerViewModeByName(string modeName);
+    void ApplyMainWindowLayoutLive();
     bool IsAlbumArtTransitionEnabled { get; }
     void SetAlbumArtTransitionEnabled(bool enabled);
     void ApplyAccentColor();

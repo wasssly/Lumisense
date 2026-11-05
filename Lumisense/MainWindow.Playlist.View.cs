@@ -51,22 +51,38 @@ public partial class MainWindow
             _heightBeforeHidingPlaylist = Height;
             PlaylistBorder.Visibility = Visibility.Collapsed;
             BodyGrid.RowDefinitions[6].Height = new GridLength(0);
-
-            // Захардкоженная высота оказывалась меньше нужной для контента (обложка, прогресс, кнопки, громкость) и обрезала
-            // нижний край, поэтому WPF сам измеряет место, нужное оставшимся строкам грида.
-            MinHeight = 0;
-            SizeToContent = SizeToContent.Height;
-            UpdateLayout();
-            double collapsedHeight = ActualHeight;
-            SizeToContent = SizeToContent.Manual;
-
-            MinHeight = collapsedHeight;
-            Height = collapsedHeight;
         }
 
+        // Содержимое (обложка для текста песни, кнопки заголовка) обновляется ДО замера высоты: раньше замер шёл по прежнему
+        // содержимому, и окно получало высоту, не подходящую свёрнутому виду.
         UpdatePlaylistSurface();
         TogglePlaylistButton.Icon = IconResources.Make(_isPlaylistVisible ? "IconChevronDown" : "IconChevronRight");
         TogglePlaylistButton.ToolTip = LocalizationService.Translate(_isPlaylistVisible ? "Скрыть плейлист" : "Показать плейлист");
+
+        if (!_isPlaylistVisible)
+        {
+            FitWindowToCollapsedPlaylist();
+            // Кнопка может стоять в ряду управления (слот в настройках): её нажатие приходит посреди раскладки, и первый замер
+            // иногда видит прежнюю высоту. Повторный замер, когда раскладка улеглась, окно всё равно подгоняет.
+            Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() =>
+            {
+                if (!_isPlaylistVisible && !_isMiniMode) FitWindowToCollapsedPlaylist();
+            }));
+        }
+    }
+
+    // Высоту окна со свёрнутым плейлистом задаёт только содержимое: WPF сам измеряет место, нужное оставшимся строкам грида
+    // (захардкоженная высота обрезала нижний край).
+    private void FitWindowToCollapsedPlaylist()
+    {
+        MinHeight = 0;
+        SizeToContent = SizeToContent.Height;
+        UpdateLayout();
+        double collapsedHeight = ActualHeight;
+        SizeToContent = SizeToContent.Manual;
+
+        MinHeight = collapsedHeight;
+        Height = collapsedHeight;
     }
 
     // Панель показывает одно из трёх представлений (плейлист, избранное, текст песни): выбор содержимого отделён от

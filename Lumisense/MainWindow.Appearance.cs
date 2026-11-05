@@ -46,36 +46,163 @@ public partial class MainWindow
     // Крупный стиль общий для полноэкранного режима (весь монитор) и квадратного вида (увеличенное окно), см. SetPlayerViewMode.
     private void ApplyContentScale(bool big)
     {
-        double artSize = big ? 260.0 : 150.0;
-        AlbumArtContainer.Width = artSize;
-        AlbumArtContainer.Height = artSize;
-        AlbumArtBorder.Width = artSize;
-        AlbumArtBorder.Height = artSize;
+        bool modern = IsModernLayout;
+        string layout = LayoutName;
+        double artSize = !modern ? (big ? 260.0 : 150.0)
+            : layout == "Compact" ? (big ? 190.0 : 132.0)
+            : layout == "Glass" ? (big ? 300.0 : 196.0)
+            : (big ? 300.0 : 184.0);
+        // «Постер»: обложка-баннер во всю ширину окна, но не выше ~290 px (400 в крупном виде), иначе плейлисту не хватит места;
+        // у остальных видов обложка квадратная.
+        double artWidth = artSize;
+        double artHeight = artSize;
+        if (layout == "Poster")
+        {
+            double available = ContentHost.MaxWidth;
+            artWidth = double.IsInfinity(available) || available < 280 ? 440 : Math.Min(available, 900);
+            artHeight = big ? Math.Min(artWidth * 0.62, 400) : Math.Min(artWidth * 0.66, 290);
+            artSize = artHeight;
+        }
+
+        double artRadius = layout switch
+        {
+            "Vinyl" => artSize / 2,
+            "Glass" => 28,
+            "Compact" => 18,
+            "Modern" => 24,
+            "Poster" => 0,
+            _ => 16,
+        };
+        AlbumArtContainer.Width = artWidth;
+        AlbumArtContainer.Height = artHeight;
+        AlbumArtBorder.Width = artWidth;
+        AlbumArtBorder.Height = artHeight;
         // Image.Clip в XAML — под 150×150 по умолчанию; без пересчёта здесь в крупном виде
         // (260×260) было бы видно только 150×150 в углу растянутой картинки, а не всю обложку.
-        var artClip = new RectangleGeometry(new Rect(0, 0, artSize, artSize), 16, 16);
-        var artGhostClip = new RectangleGeometry(new Rect(0, 0, artSize, artSize), 16, 16);
+        var artClip = new RectangleGeometry(new Rect(0, 0, artWidth, artHeight), artRadius, artRadius);
+        var artGhostClip = new RectangleGeometry(new Rect(0, 0, artWidth, artHeight), artRadius, artRadius);
         if (artClip.CanFreeze) artClip.Freeze();
         if (artGhostClip.CanFreeze) artGhostClip.Freeze();
         AlbumArtImage.Clip = artClip;
         AlbumArtGhostImage.Clip = artGhostClip;
-        AlbumArtIcon.Size = big ? 64 : 36;
-        AlbumArtPanel.Margin = big ? new Thickness(0, 32, 0, 20) : new Thickness(0, 8, 0, 8);
+        AlbumArtBorder.CornerRadius = AlbumArtGhostBorder.CornerRadius = new CornerRadius(artRadius);
+        AlbumArtCarouselHost.Width = modern ? artWidth : 150;
+        AlbumArtCarouselHost.Height = modern ? artHeight : 150;
+        AlbumArtIcon.Size = modern ? (big ? 72 : 48) : (big ? 64 : 36);
+        AlbumArtPanel.Margin = layout == "Poster" ? new Thickness(0, 0, 0, 6)
+            : modern
+                ? (big ? new Thickness(0, 28, 0, 14) : new Thickness(0, 12, 0, 4))
+                : (big ? new Thickness(0, 32, 0, 20) : new Thickness(0, 8, 0, 8));
 
-        TrackTitleText.FontSize = big ? 24 : 17;
-        TrackTitleText.MaxWidth = big ? 560 : 360;
-        TrackArtistText.FontSize = big ? 15 : 12;
+        TrackTitleText.FontSize = layout == "Poster" ? (big ? 32 : 26) : modern ? (big ? 26 : 20) : (big ? 24 : 17);
+        TrackTitleText.MaxWidth = layout == "Poster" ? Math.Max(200, artWidth - 44) : big ? 560 : 360;
+        TrackArtistText.FontSize = layout == "Poster" ? (big ? 17 : 15) : modern ? (big ? 16 : 13) : (big ? 15 : 12);
 
         var controlsScale = big ? 1.25 : 1.0;
-        ShuffleButton.Width = ShuffleButton.Height = 40 * controlsScale;
-        RepeatButton.Width = RepeatButton.Height = 40 * controlsScale;
-        PrevButton.Width = PrevButton.Height = 44 * controlsScale;
-        NextButton.Width = NextButton.Height = 44 * controlsScale;
+        double sideButton = modern ? 38 : 40;
+        double stepButton = modern ? 46 : 44;
+        double playButton = modern ? 62 : 54;
+        ShuffleButton.Width = ShuffleButton.Height = sideButton * controlsScale;
+        RepeatButton.Width = RepeatButton.Height = sideButton * controlsScale;
+        PrevButton.Width = PrevButton.Height = stepButton * controlsScale;
+        NextButton.Width = NextButton.Height = stepButton * controlsScale;
         StopButton.Width = StopButton.Height = 40 * controlsScale;
         MiniModeButton.Width = MiniModeButton.Height = 40 * controlsScale;
-        PlayPauseButton.Width = PlayPauseButton.Height = 54 * controlsScale;
+        PlayPauseButton.Width = PlayPauseButton.Height = playButton * controlsScale;
 
-        ControlsPanel.Margin = big ? new Thickness(0, 22, 0, 10) : new Thickness(0, 14, 0, 6);
+        ControlsCapsule.Margin = modern
+            ? (big ? new Thickness(0, 20, 0, 12) : new Thickness(0, 12, 0, 8))
+            : (big ? new Thickness(0, 22, 0, 10) : new Thickness(0, 14, 0, 6));
+        // Кнопки управления без внутренних отступов: у Wpf.Ui.Button они (11 px по бокам) оставляют значку внутри кнопки меньше места,
+        // чем он занимает, и значок обрезался по краям.
+        foreach (Wpf.Ui.Controls.Button button in new[] { ShuffleButton, RepeatButton, PrevButton, PlayPauseButton, NextButton, StopButton, MiniModeButton })
+            button.Padding = new Thickness(0);
+        ApplyControlsLayout(modern, sideButton * controlsScale);
+        ApplyLayoutVariant(artSize);
+    }
+
+    // Ряд кнопок управления: «Назад / Пуск / Вперёд» в центре и до двух кнопок по сторонам (слоты в настройках).
+    // Результат зависит только от настроек, поэтому метод можно вызывать повторно.
+    private void ApplyControlsLayout(bool modern, double sideSize)
+    {
+        CaptureSlotButtonHomes();
+
+        // Слоты слева направо: дальний левый, ближний левый | Назад, Пуск, Вперёд | ближний правый, дальний правый.
+        List<string> slots = NormalizeModernSlots(_settings.ModernControlSlots);
+        bool sides = _settings.ModernShowSideButtons;
+        var chosen = new List<Wpf.Ui.Controls.Button?>();
+        for (int i = 0; i < ModernSlotCount; i++) chosen.Add(sides ? ModernSlotButton(slots[i]) : null);
+
+        var order = new List<UIElement>();
+        if (chosen[0] is { } farLeft) order.Add(farLeft);
+        if (chosen[1] is { } nearLeft) order.Add(nearLeft);
+        order.AddRange([PrevButton, PlayPauseButton, NextButton]);
+        if (chosen[2] is { } nearRight) order.Add(nearRight);
+        if (chosen[3] is { } farRight) order.Add(farRight);
+
+        // Выбранные кнопки из других мест окна сначала отцепляются от прежних родителей: у элемента не может быть двух.
+        foreach (UIElement element in order)
+        {
+            if (element is FrameworkElement { Parent: System.Windows.Controls.Panel parent } && !ReferenceEquals(parent, ControlsPanel))
+                parent.Children.Remove(element);
+        }
+
+        ControlsPanel.Children.Clear();
+
+        // Не выбранные кнопки из других мест возвращаются на прежние места в прежнем порядке.
+        foreach (var home in _slotButtonHomes.OrderBy(pair => pair.Value.Index))
+        {
+            if (ModernSlotButton(home.Key) is not { } button || button.Parent is not null || order.Contains(button)) continue;
+
+            RestoreSlotButtonStyle(button, home.Value);
+            home.Value.Parent.Children.Insert(Math.Min(home.Value.Index, home.Value.Parent.Children.Count), button);
+        }
+
+        foreach (UIElement element in order)
+        {
+            if (element is Wpf.Ui.Controls.Button { } button && _slotButtonHomes.ContainsKey(SlotActionOf(button)))
+            {
+                // Чужие кнопки в ряду оформляются как соседние: те же размер и вторичный вид.
+                button.Width = button.Height = sideSize;
+                button.Margin = new Thickness(4, 0, 4, 0);
+                button.Padding = new Thickness(0);
+                button.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
+                // Кнопки из меню «Ещё» там с подписью; в ряду управления, как и остальные боковые, они только со значком.
+                button.Content = null;
+            }
+            else
+            {
+                element.Visibility = Visibility.Visible;
+            }
+
+            ControlsPanel.Children.Add(element);
+        }
+
+        // Если обе кнопки ушли из меню «Ещё» в ряд управления, открывать там нечего: кнопка «Ещё» скрывается.
+        MoreActionsButton.Visibility = MoreActionsItemsPanel.Children.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+
+        // Запись в журнал только при изменении набора кнопок: метод вызывается и при каждом изменении размеров окна.
+        string summary = $"слоты [{string.Join(", ", slots.Select(slot => slot.Length == 0 ? "-" : slot))}], по бокам {(sides ? "включены" : "выключены")}";
+        if (summary != _lastControlsLayoutSummary)
+        {
+            _lastControlsLayoutSummary = summary;
+            Logger.Info($"Ряд кнопок управления: {summary}.");
+        }
+    }
+
+    private string? _lastControlsLayoutSummary;
+
+    private string SlotActionOf(Wpf.Ui.Controls.Button button) =>
+        ModernSlotActions.FirstOrDefault(action => ReferenceEquals(ModernSlotButton(action), button)) ?? string.Empty;
+
+    private static void RestoreSlotButtonStyle(Wpf.Ui.Controls.Button button, SlotButtonHome home)
+    {
+        button.Width = home.Width;
+        button.Height = home.Height;
+        button.Margin = home.Margin;
+        button.Padding = home.Padding;
+        button.Appearance = home.Appearance;
+        button.Content = home.Content;
     }
 
     // ContentHost.MaxWidth считается от реальной ширины окна: шире на широком мониторе, без раздувания на ноутбучном;

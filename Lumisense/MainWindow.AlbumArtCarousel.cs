@@ -14,8 +14,10 @@ namespace Lumisense;
 // Стиль смены обложки "Carousel": на время перехода видны предыдущая, текущая и следующая обложки, лента едет на один шаг.
 public partial class MainWindow
 {
-    private const double CarouselSpacing = 112;
-    private const double CarouselCoverSize = 150;
+    // В новом виде главного окна обложка крупнее, и боковые карточки карусели растут вместе с ней; в классическом — прежние 150/112.
+    private double CarouselSpacing => IsModernLayout ? AlbumArtBorder.Width * 112 / 150 : 112;
+    private double CarouselCoverSize => IsModernLayout ? AlbumArtBorder.Width : 150;
+    private double CarouselCoverHeight => IsModernLayout ? AlbumArtBorder.Height : 150; // в виде «Постер» обложка не квадратная
     private const int NeighborArtReach = 2;
     private const int NeighborArtDecodeWidth = 256;
     private const int NeighborArtCacheLimit = 16;
@@ -239,16 +241,16 @@ public partial class MainWindow
     private static double SlotShade(int slot) => slot == 0 ? 0.0 : 1.0;
 
     // side < 0 — левая карточка (темнеет правая часть), side > 0 — правая (темнеет левая).
-    private static Grid CreateCarouselCard(ImageSource? art, int side, out WpfBorder dim, out WpfBorder shade)
+    private Grid CreateCarouselCard(ImageSource? art, int side, out WpfBorder dim, out WpfBorder shade)
     {
         var card = new Grid
         {
             Width = CarouselCoverSize,
-            Height = CarouselCoverSize,
+            Height = CarouselCoverHeight,
             RenderTransformOrigin = new Point(0.5, 0.5),
             IsHitTestVisible = false,
             // Скругление задаётся один раз на всю карточку: раздельные скругления картинки и затемнения давали светлую кайму по контуру.
-            Clip = new RectangleGeometry(new Rect(0, 0, CarouselCoverSize, CarouselCoverSize), 16, 16),
+            Clip = new RectangleGeometry(new Rect(0, 0, CarouselCoverSize, CarouselCoverHeight), 16, 16),
             // Карточка растрируется один раз и едет как текстура: края не пересчитываются заново при остановке анимации.
             CacheMode = new BitmapCache(2),
         };

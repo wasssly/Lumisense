@@ -278,6 +278,9 @@ internal static class SettingsIntegrityService
         settings.PlayerViewMode = AllowedOrNull(settings.PlayerViewMode, "Square", "Rectangular", "Mini");
         settings.LyricsManualSearchSource = Allowed(settings.LyricsManualSearchSource, defaults.LyricsManualSearchSource,
             "All", "LRCLIB", "NetEase", "QQ Music", "Kugou", "Paxsenix");
+        settings.ModernControlSlots = MainWindow.NormalizeModernSlots(settings.ModernControlSlots);
+        settings.MainWindowLayout = Allowed(settings.MainWindowLayout, defaults.MainWindowLayout, "Modern", "Glass", "Vinyl", "Compact", "Poster");
+        settings.CompactCoverAlignment = Allowed(settings.CompactCoverAlignment, defaults.CompactCoverAlignment, "Left", "Center");
         settings.RepeatMode = Allowed(settings.RepeatMode, defaults.RepeatMode, "Off", "All", "One");
         settings.MiniPlayerProgressStyle = Allowed(settings.MiniPlayerProgressStyle, defaults.MiniPlayerProgressStyle, "Default", "Material", "MaterialSlider");
         settings.MiniPlayerArtworkProgressStyle = Allowed(settings.MiniPlayerArtworkProgressStyle, defaults.MiniPlayerArtworkProgressStyle, "Default", "Material", "MaterialSlider");

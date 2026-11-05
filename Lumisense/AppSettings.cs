@@ -330,6 +330,21 @@ public class AppSettings
     // (открываем квадратный вид, см. SettingsManager.HasSavedSettingsFile).
     public string? PlayerViewMode { get; set; }
 
+    // Вид главного окна: "Modern", "Glass", "Vinyl", "Compact" или "Poster" (старое "Classic" переходит в "Modern").
+    public string MainWindowLayout { get; set; } = "Modern";
+
+    // Вид «Компакт»: обложка с текстом слева ("Left") или по центру ("Center").
+    public string CompactCoverAlignment { get; set; } = "Left";
+
+    // Вид «Стекло»: показывать ли подложку-капсулу под кнопками управления.
+    public bool GlassControlsBackground { get; set; } = true;
+
+    // Новый вид: показывать ли дополнительные кнопки по бокам от «Назад / Пуск / Вперёд» и какие именно. Слоты слева направо:
+    // дальний левый, ближний левый, ближний правый, дальний правый; значения "", "Shuffle", "Repeat", "Stop", "Mini".
+    public bool ModernShowSideButtons { get; set; } = true;
+
+    public List<string> ModernControlSlots { get; set; } = new() { "", "Shuffle", "Repeat", "" };
+
     // Плейлист, сохраняемый между запусками, теперь разбит на группы (папки/отдельные файлы)
     public List<SavedPlaylistFolder> SavedPlaylistFolders { get; set; } = new();
 
