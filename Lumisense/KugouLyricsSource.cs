@@ -15,7 +15,7 @@ internal static class KugouLyricsSource
 
     private const int MaxSongs = 4;
     private static readonly TimeSpan SourceTimeout = TimeSpan.FromSeconds(7);
-    private static readonly Regex TimestampRegex = new(@"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]", RegexOptions.Compiled);
+    private static readonly Regex TimestampRegex = LyricsTextHygiene.Timestamp;
     // Служебные теги Kugou ([id:$00000000], [ar:], [ti:], [by:] и т. п.) в текст попадать не должны; [offset:] парсер LRC учитывает.
     private static readonly Regex HeaderTagRegex = new(@"^\[(?:id|ar|ti|al|by|hash|sign|qq|total|re|ve|length):[^\]]*\]\s*$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase);
@@ -96,6 +96,8 @@ internal static class KugouLyricsSource
             if (string.IsNullOrWhiteSpace(text)) return null;
 
             bool synced = TimestampRegex.IsMatch(text);
+            if (!LyricsTextHygiene.HasRealLyrics(synced ? text : null, synced ? null : text)) return null;
+
             long id = -(2_000_000_000_000L + LyricifyLyricsSource.StableHash(song.Hash));
             return new OnlineLyricsResult(id, song.Title, song.Artist, song.Album, song.DurationSeconds,
                 synced ? null : text, synced ? text : null, SourceName);

@@ -20,7 +20,7 @@ internal static class PaxsenixLyricsSource
     private const int MaxYoutubeVideos = 2;
     // Apple Music у Paxsenix отвечает медленно: ему отведено больше времени, чем остальным источникам.
     private static readonly TimeSpan SourceTimeout = TimeSpan.FromSeconds(10);
-    private static readonly Regex TimestampRegex = new(@"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]", RegexOptions.Compiled);
+    private static readonly Regex TimestampRegex = LyricsTextHygiene.Timestamp;
     private static readonly HttpClient Http = CreateHttpClient();
 
     internal sealed record ItunesSong(long TrackId, string Title, string Artist, string Album, double DurationSeconds);
@@ -281,6 +281,7 @@ internal static class PaxsenixLyricsSource
     internal static bool HasUsableTiming(string? lrc)
     {
         if (string.IsNullOrWhiteSpace(lrc)) return false;
+        if (!LyricsTextHygiene.HasRealLyrics(lrc, null)) return false;
         return TimestampRegex.Matches(lrc).Select(match => match.Value).Distinct().Count() >= 2;
     }
 

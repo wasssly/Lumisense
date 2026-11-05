@@ -46,8 +46,9 @@ public sealed record OnlineLyricsResult(
     string? SyncedLyrics,
     string Source = "LRCLIB")
 {
-    public bool HasSyncedLyrics => !string.IsNullOrWhiteSpace(SyncedLyrics);
-    public bool HasLyrics => HasSyncedLyrics || !string.IsNullOrWhiteSpace(PlainLyrics);
+    // Служебные строки (авторы, композитор) и метки без слов текстом не считаются: такой результат не показывается.
+    public bool HasSyncedLyrics => LyricsTextHygiene.HasRealLyrics(SyncedLyrics, null);
+    public bool HasLyrics => HasSyncedLyrics || LyricsTextHygiene.HasRealLyrics(null, PlainLyrics);
     private string BaseName => string.IsNullOrWhiteSpace(ArtistName)
         ? TrackName
         : $"{ArtistName} — {TrackName}";
@@ -88,9 +89,9 @@ public static class LyricsService
     private const int MaxLrcLibRateLimitAttempts = 3;
     private const int MaxLrcLibTransientAttempts = 2;
 
-    private static readonly Regex TimestampRegex = new(
-        @"\[(?<minutes>\d{1,3}):(?<seconds>\d{2})(?:[\.:](?<fraction>\d{1,3}))?\]",
-        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+    // Некоторые источники (NetEase и др.) дописывают к метке служебное число: [00:12.34-1] или [00:12.34,500]. Без этого такая строка
+    // не считалась меткой времени, и найденный синхронный текст показывался как обычный, вместе со скобками.
+    private static readonly Regex TimestampRegex = LyricsTextHygiene.Timestamp;
     private static readonly Regex OffsetRegex = new(
         @"^\[offset:(?<milliseconds>-?\d+)\]$",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
@@ -723,9 +724,11 @@ public static class LyricsService
                 return new LyricsDocument(LyricsKind.Synced, lines, string.Empty, $"{LabelSource(result)} · синхронный текст");
         }
 
-        return string.IsNullOrWhiteSpace(result.PlainLyrics)
+        // Источник иногда кладёт в обычный текст сырой LRC: метки времени и служебные строки убираем.
+        string plain = LyricsTextHygiene.CleanPlain(result.PlainLyrics);
+        return plain.Length == 0
             ? LyricsDocument.Empty
-            : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), result.PlainLyrics.Trim(), $"{LabelSource(result)} · текст");
+            : new LyricsDocument(LyricsKind.Plain, Array.Empty<LyricLine>(), plain, $"{LabelSource(result)} · текст");
     }
 
     public static async Task SaveOnlineResultAsync(string audioPath, OnlineLyricsResult result, CancellationToken cancellationToken)
@@ -860,6 +863,8 @@ public static class LyricsService
             if (timestamps.Count == 0) continue;
 
             string text = TimestampRegex.Replace(line, string.Empty).Trim();
+            // Строки авторов в начале текста («作曲 : …», «Composer: …») не входят в песню.
+            if (LyricsTextHygiene.IsCreditLine(text)) continue;
             foreach (Match timestamp in timestamps)
             {
                 if (!int.TryParse(timestamp.Groups["minutes"].Value, out int minutes) ||

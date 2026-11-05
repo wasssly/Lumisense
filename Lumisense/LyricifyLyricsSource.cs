@@ -19,7 +19,7 @@ internal static class LyricifyLyricsSource
 
     // Китайские серверы иногда отвечают очень медленно; без предела один зависший источник тормозил бы весь поиск.
     private static readonly TimeSpan SourceTimeout = TimeSpan.FromSeconds(5);
-    private static readonly Regex TimestampRegex = new(@"\[\d{1,3}:\d{2}(?:[.:]\d{1,3})?\]", RegexOptions.Compiled);
+    private static readonly Regex TimestampRegex = LyricsTextHygiene.Timestamp;
     private static readonly char[] ArtistSeparators = { ';', ',' };
 
     // NetEase и QQ Music опрашиваются параллельно: у них разные каталоги, и зарубежные треки чаще находятся хотя бы в одном.
@@ -148,10 +148,13 @@ internal static class LyricifyLyricsSource
         return hash;
     }
 
-    private static OnlineLyricsResult CreateResult(long id, ISearchResult result, string lyricText, string source)
+    // null, если в тексте одни служебные строки (авторы, композитор): такой «результат» не нужен ни в списке, ни на экране.
+    private static OnlineLyricsResult? CreateResult(long id, ISearchResult result, string lyricText, string source)
     {
         string text = lyricText.Trim();
         bool synced = TimestampRegex.IsMatch(text);
+        if (!LyricsTextHygiene.HasRealLyrics(synced ? text : null, synced ? null : text)) return null;
+
         return new OnlineLyricsResult(
             id,
             result.Title,
