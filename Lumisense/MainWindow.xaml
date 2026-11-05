@@ -285,7 +285,14 @@
                 <!-- Меню открывается, только если у папки есть убранные пользователем треки (см. PlaylistFolderHeader_ContextMenuOpening). -->
                 <Border.ContextMenu>
                     <ContextMenu>
-                        <MenuItem Header="Вернуть убранные треки" Click="RestoreExcludedTracksMenuItem_Click">
+                        <MenuItem Header="Переименовать…" Click="RenameFolderButton_Click"
+                                  Visibility="{Binding CanRename, Converter={StaticResource BoolToVisibilityConverter}}">
+                            <MenuItem.Icon>
+                                <local:SvgPathIcon Icon="IconEdit" Size="13" />
+                            </MenuItem.Icon>
+                        </MenuItem>
+                        <MenuItem Header="Вернуть убранные треки" Click="RestoreExcludedTracksMenuItem_Click"
+                                  Visibility="{Binding HasExcludedTracks, Converter={StaticResource BoolToVisibilityConverter}}">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconRefresh" Size="13" />
                             </MenuItem.Icon>
@@ -316,8 +323,9 @@
                         </ui:Button.Icon>
                     </ui:Button>
 
-                    <StackPanel Grid.Column="2" VerticalAlignment="Center"
-                                Opacity="{Binding IsEnabled, Converter={StaticResource BoolToOpacityConverter}}">
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Background="Transparent"
+                                Opacity="{Binding IsEnabled, Converter={StaticResource BoolToOpacityConverter}}"
+                                MouseLeftButtonDown="PlaylistFolderTitle_MouseLeftButtonDown">
                         <TextBlock Text="{Binding DisplayName}" FontSize="13" FontWeight="SemiBold"
                                    TextTrimming="CharacterEllipsis" />
                         <TextBlock Text="{Binding SubtitleText}" FontSize="10" Opacity="0.6"
@@ -326,15 +334,27 @@
 
                     <!-- Только у "Отдельные файлы" и у папок, созданных вручную (не привязанных
                          к реальной папке на диске) — добавить файлы прямо в эту группу -->
-                    <ui:Button Grid.Column="3" Appearance="Secondary"
-                               Width="28" Height="28" Padding="0" Margin="0,0,4,0"
-                               Click="AddFilesToFolderButton_Click"
-                               Visibility="{Binding CanAddFilesDirectly, Converter={StaticResource BoolToVisibilityConverter}}"
-                               ToolTip="Добавить файлы в эту папку">
-                        <ui:Button.Icon>
-                            <local:SvgPathIcon Icon="IconAddFile" Size="13" />
-                        </ui:Button.Icon>
-                    </ui:Button>
+                    <StackPanel Grid.Column="3" Orientation="Horizontal">
+                        <!-- Только у папок, созданных вручную: «Отдельные файлы» и папки с диска переименовывать нечем. -->
+                        <ui:Button Appearance="Secondary"
+                                   Width="28" Height="28" Padding="0" Margin="0,0,4,0"
+                                   Click="RenameFolderButton_Click"
+                                   Visibility="{Binding CanRename, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   ToolTip="Переименовать папку">
+                            <ui:Button.Icon>
+                                <local:SvgPathIcon Icon="IconEdit" Size="13" />
+                            </ui:Button.Icon>
+                        </ui:Button>
+                        <ui:Button Appearance="Secondary"
+                                   Width="28" Height="28" Padding="0" Margin="0,0,4,0"
+                                   Click="AddFilesToFolderButton_Click"
+                                   Visibility="{Binding CanAddFilesDirectly, Converter={StaticResource BoolToVisibilityConverter}}"
+                                   ToolTip="Добавить файлы в эту папку">
+                            <ui:Button.Icon>
+                                <local:SvgPathIcon Icon="IconAddFile" Size="13" />
+                            </ui:Button.Icon>
+                        </ui:Button>
+                    </StackPanel>
 
                     <!-- Только для групп, привязанных к папке на диске: проверить, не появились ли новые файлы (RescanFolderButton_Click). -->
                     <ui:Button Grid.Column="4" Appearance="Secondary"

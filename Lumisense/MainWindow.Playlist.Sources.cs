@@ -113,13 +113,16 @@ public partial class MainWindow
     // разового плейлиста из файлов из разных мест.
     private void CreateFolderMenuItem_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new TextInputDialog("Новая папка", "Название папки:", settings: _settings) { Owner = this };
+        // Название уже стоит в поле и выделено (TextInputDialog выделяет текст при открытии): можно сразу печатать своё.
+        string defaultName = LocalizationService.Translate("Новая папка");
+        var dialog = new TextInputDialog("Новая папка", "Название папки:", defaultName, _settings) { Owner = this };
         if (dialog.ShowDialog() != true) return;
 
         var folder = new PlaylistFolder
         {
             SourcePath = null,
-            DisplayName = dialog.ResultText,
+            // Пустое название не оставляем: папка без имени в списке выглядела бы сломанной.
+            DisplayName = string.IsNullOrWhiteSpace(dialog.ResultText) ? defaultName : dialog.ResultText.Trim(),
             IsLooseFilesBucket = false
         };
 
@@ -422,11 +425,37 @@ public partial class MainWindow
         }
     }
 
-    // Контекстное меню заголовка папки есть только для возврата убранных треков: без них показывать его незачем.
+    // Контекстное меню заголовка папки: «Переименовать» (ручные папки) и возврат убранных треков (папки с диска).
+    // Если для папки нет ни того ни другого, меню не показывается.
     private void PlaylistFolderHeader_ContextMenuOpening(object sender, System.Windows.Controls.ContextMenuEventArgs e)
     {
-        if (sender is not FrameworkElement { DataContext: PlaylistFolder folder } || !folder.HasExcludedTracks)
+        if (sender is not FrameworkElement { DataContext: PlaylistFolder folder } || !(folder.CanRename || folder.HasExcludedTracks))
             e.Handled = true;
+    }
+
+    private void RenameFolderButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { DataContext: PlaylistFolder folder })
+            RenameFolder(folder);
+    }
+
+    // Двойной щелчок по названию — то же, что кнопка с карандашом.
+    private void PlaylistFolderTitle_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (e.ClickCount != 2 || sender is not FrameworkElement { DataContext: PlaylistFolder { CanRename: true } folder }) return;
+
+        RenameFolder(folder);
+        e.Handled = true;
+    }
+
+    private void RenameFolder(PlaylistFolder folder)
+    {
+        if (!folder.CanRename) return;
+
+        var dialog = new TextInputDialog("Переименовать папку", "Название папки:", folder.DisplayName, _settings) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+
+        folder.Rename(dialog.ResultText);
     }
 
     private void RestoreExcludedTracksMenuItem_Click(object sender, RoutedEventArgs e)

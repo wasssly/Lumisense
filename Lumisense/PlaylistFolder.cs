@@ -29,6 +29,19 @@ public class PlaylistFolder : INotifyPropertyChanged
 
     public string PersistedDisplayName => _persistedDisplayName;
 
+    // Переименовать можно только созданные вручную папки: у папок с диска имя — имя каталога, а системные группы переводятся.
+    public bool CanRename => SourcePath == null && !IsLooseFilesBucket && !IsFavoritesGroup;
+
+    public void Rename(string newName)
+    {
+        string trimmed = newName.Trim();
+        if (!CanRename || trimmed.Length == 0 || trimmed == _persistedDisplayName) return;
+
+        _persistedDisplayName = trimmed;
+        OnPropertyChanged(nameof(DisplayName));
+        OnPropertyChanged(nameof(PersistedDisplayName));
+    }
+
     // true только у автосоздаваемой группы "Отдельные файлы" (см. AddLooseFiles): у ручных папок SourcePath
     // тоже null, но это отдельные именованные группы.
     public bool IsLooseFilesBucket { get; init; }
