@@ -40,6 +40,21 @@ public sealed class LyricsMatcherTests
     }
 
     [Fact]
+    public void BuildQueryVariants_AddsHyphenAndArtistPrefixVariantsForLongDash()
+    {
+        var variants = LyricsMatcher.BuildQueryVariants("Artist — Song", "Artist");
+        Assert.Contains(("Artist - Song", "Artist"), variants);
+        Assert.Contains(("Song", "Artist"), variants);
+        Assert.Equal("A - B", LyricsMatcher.NormalizeDashes("A—B"));
+    }
+
+    [Fact]
+    public void NormalizeKey_IgnoresDashKinds()
+    {
+        Assert.Equal(LyricsMatcher.NormalizeKey("A — B"), LyricsMatcher.NormalizeKey("A - B"));
+    }
+
+    [Fact]
     public void FindBest_MatchesDespiteFeaturingAndRemasterSuffix()
     {
         var results = new List<OnlineLyricsResult> { Result("Song", "Artist") };

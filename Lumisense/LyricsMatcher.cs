@@ -30,6 +30,17 @@ public static class LyricsMatcher
         @"\s*(?:;|,|/|\s+feat\.?\s+|\s+ft\.?\s+|\s+featuring\s+)\s*",
         RegexOptions.Compiled | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
+    private static readonly Regex ArtistPrefixedTitle = new(
+        @"^(.+?)\s+-\s+(.+)$",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant);
+
+    // Все виды тире (— – ‒ ― −) приводятся к обычному дефису с пробелами вокруг, как в большинстве баз текстов.
+    public static string NormalizeDashes(string? value)
+    {
+        if (string.IsNullOrEmpty(value)) return string.Empty;
+        return Regex.Replace(value, @"\s*[\u2012\u2013\u2014\u2015\u2212]\s*", " - ").Trim();
+    }
+
     // Сравнительный ключ: только буквы и цифры в нижнем регистре; работает и для кириллицы, и для иероглифов.
     public static string NormalizeKey(string? value)
     {
@@ -77,8 +88,21 @@ public static class LyricsMatcher
             (rawTitle, rawArtist),
             (cleanTitle, rawArtist),
             (cleanTitle, firstArtist),
-            (cleanTitle, string.Empty),
         };
+
+        // Источники плохо ищут по длинному и среднему тире, поэтому следующий вариант — то же название с обычным дефисом
+        // (на сравнение результатов тире не влияет: NormalizeKey оставляет буквы и цифры).
+        string hyphenTitle = NormalizeDashes(cleanTitle);
+        variants.Add((hyphenTitle, firstArtist));
+
+        // Название вида «Исполнитель — Песня» (так часто выглядят теги, взятые из имени файла): ищем по части после тире.
+        Match prefixed = ArtistPrefixedTitle.Match(hyphenTitle);
+        if (prefixed.Success && firstArtist.Length > 0
+            && ArtistsOverlap(ArtistKeys(prefixed.Groups[1].Value), ArtistKeys(firstArtist)))
+            variants.Add((prefixed.Groups[2].Value.Trim(), firstArtist));
+
+        variants.Add((hyphenTitle, string.Empty));
+        variants.Add((cleanTitle, string.Empty));
 
         var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<(string Title, string Artist)>();
