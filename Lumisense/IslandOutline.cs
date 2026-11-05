@@ -12,7 +12,8 @@ internal static class IslandOutline
     // Доля от длины захода, на которую контрольная точка отстоит от угла.
     private const double Handle = 0.42;
 
-    public static Geometry Create(Rect rect, double radius)
+    // fromTopCenter: контур начинается с середины верхней стороны и идёт по часовой стрелке — от него считается полоса прогресса.
+    public static Geometry Create(Rect rect, double radius, bool fromTopCenter = false)
     {
         double room = Math.Min(rect.Width, rect.Height) / 2;
         double r = Math.Min(radius, room);
@@ -24,7 +25,7 @@ internal static class IslandOutline
         var geometry = new StreamGeometry();
         using (var g = geometry.Open())
         {
-            g.BeginFigure(new Point(rect.Left + k, rect.Top), true, true);
+            g.BeginFigure(new Point(fromTopCenter ? rect.Left + rect.Width / 2 : rect.Left + k, rect.Top), true, true);
             g.LineTo(new Point(rect.Right - k, rect.Top), true, false);
             g.BezierTo(new Point(rect.Right - h, rect.Top), new Point(rect.Right, rect.Top + h), new Point(rect.Right, rect.Top + k), true, false);
             g.LineTo(new Point(rect.Right, rect.Bottom - k), true, false);

@@ -198,6 +198,8 @@ public class AppSettings
     public bool IslandAutoCollapse { get; set; } = true;
     public bool IslandShowEqualizer { get; set; } = true;
     public bool IslandAccentRim { get; set; } = true;
+    // Полоса прогресса трека по контуру свёрнутого острова.
+    public bool IslandProgressRim { get; set; } = true;
     public bool IslandBlurTransitions { get; set; }
     public int IslandHideSeconds { get; set; } = 10;
     // Через сколько секунд после ухода курсора раскрытый остров сворачивается (1–15).

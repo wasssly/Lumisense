@@ -1092,6 +1092,7 @@ public static class LocalizationService
         ["обычный"] = "plain",
         ["Пресет оформления"] = "Appearance preset",
         ["Свои настройки"] = "Custom settings",
+        ["Полоса прогресса трека вокруг свёрнутого острова"] = "Track progress line around the collapsed island",
         ["Классика"] = "Classic",
         ["Караоке"] = "Karaoke",
         ["Минимализм"] = "Minimal",

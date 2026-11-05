@@ -359,5 +359,10 @@
                 </Grid>
             </Canvas>
         </Grid>
+
+        <!-- Полоса прогресса трека по контуру свёрнутого острова (IslandPlayerWindow.UpdateProgressRimShape). Вне Host: его обрезка
+             по контуру съела бы внешнюю половину линии. -->
+        <Path x:Name="ProgressRim" StrokeThickness="2.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeDashCap="Round"
+              StrokeLineJoin="Round" Fill="Transparent" IsHitTestVisible="False" Visibility="Collapsed" />
     </Grid>
 </Window>

@@ -247,6 +247,7 @@ public partial class SettingsWindow : FluentWindow
         IslandAutoCollapseCheckBox.IsChecked = _settings.IslandAutoCollapse;
         IslandEqualizerCheckBox.IsChecked = _settings.IslandShowEqualizer;
         IslandAccentRimCheckBox.IsChecked = _settings.IslandAccentRim;
+        IslandProgressRimCheckBox.IsChecked = _settings.IslandProgressRim;
         IslandBlurTransitionsCheckBox.IsChecked = _settings.IslandBlurTransitions;
         IslandMotionBlurCheckBox.IsChecked = _settings.IslandMotionBlur;
         IslandCoverPreviewCheckBox.IsChecked = _settings.IslandCoverPreview;
@@ -3396,6 +3397,7 @@ public partial class SettingsWindow : FluentWindow
         _settings.IslandAutoCollapse = IslandAutoCollapseCheckBox.IsChecked == true;
         _settings.IslandShowEqualizer = IslandEqualizerCheckBox.IsChecked == true;
         _settings.IslandAccentRim = IslandAccentRimCheckBox.IsChecked == true;
+        _settings.IslandProgressRim = IslandProgressRimCheckBox.IsChecked == true;
         _settings.IslandBlurTransitions = IslandBlurTransitionsCheckBox.IsChecked == true;
         _settings.IslandMotionBlur = IslandMotionBlurCheckBox.IsChecked == true;
         _settings.IslandCoverPreview = IslandCoverPreviewCheckBox.IsChecked == true;

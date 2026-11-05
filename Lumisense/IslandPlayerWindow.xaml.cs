@@ -89,6 +89,12 @@ internal partial class IslandPlayerWindow : Window
     private readonly DispatcherTimer _keepTimer = new(DispatcherPriority.Background) { Interval = KeepOnTopInterval };
     private readonly FrameworkElement[] _views;
     private readonly SolidColorBrush _rimBrush = new(DefaultRim);
+
+    // Полоса прогресса трека по контуру свёрнутого острова: доля трека, текущий прямоугольник острова и длина его контура.
+    private double _progressRatio;
+    private Rect _pillRect;
+    private double _pillRadius;
+    private double _rimLength;
     private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
 
     private State _state = State.Compact, _volumeReturn = State.Compact;
@@ -342,11 +348,72 @@ internal partial class IslandPlayerWindow : Window
         if (!_loopRunning) ApplyShape();
     }
 
+    // ----- Полоса прогресса -----
+
+    // Полоса показывается только у свёрнутого острова в покое: во время роста формы контур меняется каждый кадр,
+    // а у раскрытого острова прогресс уже виден на полосе перемотки.
+    private bool ProgressRimActive => Settings.IslandProgressRim && _state == State.Compact && !_morphing;
+
+    private void UpdateProgressRimShape()
+    {
+        if (!ProgressRimActive)
+        {
+            if (ProgressRim.Visibility != Visibility.Collapsed) ProgressRim.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var outline = IslandOutline.Create(_pillRect, _pillRadius, fromTopCenter: true);
+        ProgressRim.Data = outline;
+        _rimLength = OutlineLength(outline);
+        ProgressRim.Visibility = Visibility.Visible;
+        ApplyProgressRimDash();
+    }
+
+    // Пунктир с одним штрихом длиной в пройденную долю контура: длины в WPF считаются в толщинах линии.
+    private void ApplyProgressRimDash()
+    {
+        if (ProgressRim.Visibility != Visibility.Visible || _rimLength <= 0) return;
+
+        double ratio = Math.Clamp(_progressRatio, 0, 1);
+        double thickness = ProgressRim.StrokeThickness;
+        // При нулевой доле круглый колпачок рисовал бы точку.
+        ProgressRim.Opacity = ratio < 0.002 ? 0 : 1;
+        ProgressRim.StrokeDashArray = new DoubleCollection { _rimLength * ratio / thickness, _rimLength / thickness };
+    }
+
+    private static double OutlineLength(Geometry geometry)
+    {
+        double total = 0;
+        foreach (PathFigure figure in geometry.GetFlattenedPathGeometry().Figures)
+        {
+            Point previous = figure.StartPoint;
+            foreach (PathSegment segment in figure.Segments)
+            {
+                IEnumerable<Point> points = segment switch
+                {
+                    PolyLineSegment poly => poly.Points,
+                    LineSegment line => [line.Point],
+                    _ => [],
+                };
+                foreach (Point point in points)
+                {
+                    total += (point - previous).Length;
+                    previous = point;
+                }
+            }
+
+            if (figure.IsClosed) total += (figure.StartPoint - previous).Length;
+        }
+
+        return total;
+    }
+
     // Обводка берёт цвет акцента, пока что-то играет; иначе — нейтральная.
     private void UpdateRim()
     {
         var accent = _host.GetResolvedAccentColor();
         var target = Settings.IslandAccentRim && _isPlaying ? Color.FromArgb(0xC0, accent.R, accent.G, accent.B) : DefaultRim;
+        ProgressRim.Stroke = new SolidColorBrush(Color.FromArgb(0xE6, accent.R, accent.G, accent.B));
         if (ReduceMotion)
         {
             _rimBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
@@ -589,6 +656,9 @@ internal partial class IslandPlayerWindow : Window
         var outline = IslandOutline.Create(pill, r);
         Body.Data = outline;
         Host.Clip = outline;
+        _pillRect = pill;
+        _pillRadius = r;
+        UpdateProgressRimShape();
 
         double shadow = Math.Clamp((h - CompactMaxHeight) / ShadowFadeHeight, 0, 1);
         ShadowFar.Data = ShadowNear.Data = outline;
@@ -651,6 +721,7 @@ internal partial class IslandPlayerWindow : Window
             OffsetOf(view).Y = 0;
         }
         Host.Effect = null;
+        UpdateProgressRimShape();
     }
 
     // Размытие по скорости растяжения даёт ощущение движения, но это пиксельный эффект на каждом кадре,
@@ -1080,6 +1151,9 @@ internal partial class IslandPlayerWindow : Window
         }
 
         if (_compactLyricsOn && _state == State.Compact) UpdateCompactLyric(snapshot.PositionSeconds);
+
+        _progressRatio = snapshot.ProgressRatio;
+        ApplyProgressRimDash();
 
         // Пока остров не раскрыт, элементы плеера не видны: обновлять их на каждый снимок значит зря гонять раскладку.
         if (_state != State.Open || _isSeeking) return;

@@ -331,6 +331,7 @@ public static class LumiProfileIO
         target.IslandAutoCollapse = source.IslandAutoCollapse;
         target.IslandShowEqualizer = source.IslandShowEqualizer;
         target.IslandAccentRim = source.IslandAccentRim;
+        target.IslandProgressRim = source.IslandProgressRim;
         target.IslandBlurTransitions = source.IslandBlurTransitions;
         target.IslandMotionBlur = source.IslandMotionBlur;
         target.IslandCoverPreview = source.IslandCoverPreview;

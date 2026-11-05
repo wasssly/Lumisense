@@ -3386,6 +3386,8 @@
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <CheckBox x:Name="IslandAccentRimCheckBox" Content="Обводка цветом акцента во время игры" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandProgressRimCheckBox" Content="Полоса прогресса трека вокруг свёрнутого острова" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <CheckBox x:Name="IslandBlurTransitionsCheckBox" Content="Размытие при смене вида" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <CheckBox x:Name="IslandCoverPreviewCheckBox" Content="Клик по обложке открывает её крупно" Margin="0,0,0,8"
