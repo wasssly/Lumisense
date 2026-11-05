@@ -193,7 +193,12 @@ public partial class SettingsWindow : FluentWindow
         RefreshLyricsPresetList();
         NowPlayingBackgroundOrbsRadio.IsChecked = _settings.NowPlayingBackground == "Orbs";
         NowPlayingBackgroundWavesRadio.IsChecked = _settings.NowPlayingBackground == "Waves";
-        NowPlayingBackgroundCloudsRadio.IsChecked = _settings.NowPlayingBackground is not ("Orbs" or "Waves");
+        NowPlayingBackgroundCoverRadio.IsChecked = _settings.NowPlayingBackground == "Cover";
+        NowPlayingBackgroundSolidRadio.IsChecked = _settings.NowPlayingBackground == "Solid";
+        NowPlayingBackgroundNoneRadio.IsChecked = _settings.NowPlayingBackground == "None";
+        NowPlayingBackgroundCloudsRadio.IsChecked = _settings.NowPlayingBackground is not ("Orbs" or "Waves" or "Cover" or "Solid" or "None");
+        NowPlayingBackgroundColorPanel.IsEnabled = _settings.NowPlayingBackground == "Solid";
+        RefreshNowPlayingBackgroundColorSwatch();
         UseExtraLyricsSourceCheckBox.IsChecked = _settings.UseExtraLyricsSource;
         HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
         FavoriteHeartSparksRadio.IsChecked = _settings.FavoriteHeartAnimation == "Sparks";
@@ -1398,7 +1403,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
         Add("Выравнивание текста песни", "Тексты песен", "Lyrics", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
         Add("Дополнительный источник текстов", "Тексты песен", "Lyrics", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease qq kugou paxsenix lyricify русские исполнители extra source");
-        Add("Фон Now Playing", "Обложка и Now Playing", "Cover", NowPlayingBackgroundCloudsRadio, "фон now playing облака цветные шары волны background orbs clouds waves");
+        Add("Фон Now Playing", "Обложка и Now Playing", "Cover", NowPlayingBackgroundCloudsRadio, "фон now playing размытая обложка один цвет без фона облака цветные шары волны background orbs clouds waves");
         Add("Пресет оформления текста песни", "Тексты песен", "Lyrics", LyricsPresetCombo, "пресет оформление текст песни караоке apple music классика минимализм сохранить свой preset lyrics style");
         Add("Переход между строками текста", "Тексты песен", "Lyrics", LyricsTransitionCombo, "переход анимация строк текст песни apple music плавный быстрый волна прокрутка lyrics transition animation");
         Add("Скрывать обложку при тексте песни", "Тексты песен", "Lyrics", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
@@ -2198,9 +2203,50 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.NowPlayingBackground = NowPlayingBackgroundOrbsRadio.IsChecked == true ? "Orbs"
             : NowPlayingBackgroundWavesRadio.IsChecked == true ? "Waves"
+            : NowPlayingBackgroundCoverRadio.IsChecked == true ? "Cover"
+            : NowPlayingBackgroundSolidRadio.IsChecked == true ? "Solid"
+            : NowPlayingBackgroundNoneRadio.IsChecked == true ? "None"
             : "Clouds";
+        NowPlayingBackgroundColorPanel.IsEnabled = _settings.NowPlayingBackground == "Solid";
         _owner.ApplyNowPlayingBackgroundLive();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void NowPlayingBackgroundColorButton_Click(object sender, RoutedEventArgs e)
+    {
+        System.Drawing.Color initialColor;
+        try
+        {
+            initialColor = System.Drawing.ColorTranslator.FromHtml(_settings.NowPlayingBackgroundColor);
+        }
+        catch
+        {
+            // Сохранённый цвет повреждён: диалог открывается с цветом по умолчанию.
+            initialColor = System.Drawing.Color.FromArgb(0x10, 0x12, 0x18);
+        }
+
+        using var dialog = new System.Windows.Forms.ColorDialog { Color = initialColor, FullOpen = true };
+        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (dialog.ShowDialog(new Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
+
+        var color = dialog.Color;
+        _settings.NowPlayingBackgroundColor = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+        RefreshNowPlayingBackgroundColorSwatch();
+        _owner.ApplyNowPlayingBackgroundLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void RefreshNowPlayingBackgroundColorSwatch()
+    {
+        try
+        {
+            var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(_settings.NowPlayingBackgroundColor);
+            NowPlayingBackgroundColorSwatch.Background = new System.Windows.Media.SolidColorBrush(color);
+        }
+        catch
+        {
+            NowPlayingBackgroundColorSwatch.Background = System.Windows.Media.Brushes.Transparent;
+        }
     }
 
     private void UseExtraLyricsSourceCheckBox_Changed(object sender, RoutedEventArgs e)

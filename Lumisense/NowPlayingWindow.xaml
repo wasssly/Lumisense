@@ -115,6 +115,12 @@
              линейное сглаживание при увеличении даёт размытие и ничего не пересчитывает на каждом кадре (HighQuality дороже). -->
         <Image x:Name="WavesBackdrop" IsHitTestVisible="False" Stretch="Fill" Visibility="Collapsed"
                RenderOptions.BitmapScalingMode="Linear" />
+        <!-- Фон «Размытая обложка»: обложка, уменьшенная в коде и размытая усреднением, растянута на всё окно с бикубической
+             фильтрацией (HighQuality; рисуется один раз, фон неподвижный), без BlurEffect, который в WPF считается на CPU. -->
+        <Image x:Name="CoverBackdrop" IsHitTestVisible="False" Stretch="UniformToFill" Visibility="Collapsed"
+               RenderOptions.BitmapScalingMode="HighQuality" />
+        <!-- Фоны «Один цвет» и «Без фона» (а также запасной вариант без обложки). -->
+        <Border x:Name="SolidBackdrop" IsHitTestVisible="False" Visibility="Collapsed" />
         <Border Background="#70080A0F" />
 
         <!-- Раскладка рассчитана на экран не меньше 1450×940: на меньших разрешениях весь контент пропорционально уменьшается

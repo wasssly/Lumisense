@@ -83,6 +83,7 @@ public sealed class LumiProfileSettingsCoverageTests
             case nameof(AppSettings.ContextMenuOrder):
                 return new Dictionary<string, List<string>> { ["Track"] = new List<string> { "CopyPath", "PlayNext" } };
             case nameof(AppSettings.NowPlayingBackground): return current as string == "Clouds" ? "Orbs" : "Clouds";
+            case nameof(AppSettings.NowPlayingBackgroundColor): return current as string == "#112233" ? "#332211" : "#112233";
             case nameof(AppSettings.SettingsNavigationStyle): return current as string == "Sidebar" ? "Pills" : "Sidebar";
             case nameof(AppSettings.SettingsNavigationLabelMode): return current as string == "Below" ? "Selected" : "Below";
             case nameof(AppSettings.AlbumArtTransitionStyle): return current as string == "Slide" ? "Carousel" : "Slide";

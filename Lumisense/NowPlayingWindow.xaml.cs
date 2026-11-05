@@ -744,6 +744,7 @@ public partial class NowPlayingWindow : Window
     private void ApplyArtwork(BitmapImage? artwork)
     {
         ArtworkImage.Source = artwork;
+        SetBackdropArtwork(artwork);
         ArtworkImage.Visibility = artwork is null ? Visibility.Collapsed : Visibility.Visible;
         ArtworkPlaceholder.Visibility = artwork is null ? Visibility.Visible : Visibility.Collapsed;
         ApplyArtworkPalette(artwork);

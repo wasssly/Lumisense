@@ -1660,9 +1660,23 @@
                                 <RadioButton x:Name="NowPlayingBackgroundOrbsRadio" Content="Цветные шары"
                                              GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
                                 <RadioButton x:Name="NowPlayingBackgroundWavesRadio" Content="Волны"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="NowPlayingBackgroundCoverRadio" Content="Размытая обложка"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
+                                <RadioButton x:Name="NowPlayingBackgroundSolidRadio" Content="Один цвет"
+                                             GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,12" />
+                                <StackPanel x:Name="NowPlayingBackgroundColorPanel" Orientation="Horizontal" Margin="26,0,0,12">
+                                    <Border x:Name="NowPlayingBackgroundColorSwatch" Width="26" Height="26" CornerRadius="6"
+                                            BorderThickness="1" BorderBrush="#40FFFFFF" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                    <ui:Button Appearance="Secondary" Content="Выбрать цвет…"
+                                               Click="NowPlayingBackgroundColorButton_Click" />
+                                </StackPanel>
+                                <RadioButton x:Name="NowPlayingBackgroundNoneRadio" Content="Без фона (простой тёмный)"
                                              GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" Margin="0,0,0,0" />
                                 <TextBlock Text="«Цветные шары» плавно движутся по орбитам, «Волны» размыты и реагируют на громкость. Оба фона останавливаются на паузе и при «Меньше анимации»."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                <TextBlock Text="«Размытая обложка», «Один цвет» и «Без фона» неподвижны и почти не нагружают систему."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
 

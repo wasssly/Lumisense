@@ -164,6 +164,9 @@ public class AppSettings
     // Фон Now Playing: "Clouds" (облака из палитры обложки) | "Orbs" (мягкие цветные шары на орбитах) | "Waves" (размытые волны).
     public string NowPlayingBackground { get; set; } = "Clouds";
 
+    // Цвет фона Now Playing в режиме "Solid" (#RRGGBB).
+    public string NowPlayingBackgroundColor { get; set; } = "#101218";
+
     // Вид навигации в окне настроек: "Sidebar" (боковая панель) | "Pills" (таблетки сверху) |
     // "FloatingBar" (плавающая нижняя панель).
     public string SettingsNavigationStyle { get; set; } = "Sidebar";

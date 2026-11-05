@@ -116,6 +116,7 @@ public static class LumiProfileIO
             (settings.MiniPlayerSizePreset?.Length ?? 0) > 32 ||
             (settings.MiniPlayerStyle?.Length ?? 0) > 32 ||
             (settings.NowPlayingBackground?.Length ?? 0) > 32 ||
+            (settings.NowPlayingBackgroundColor?.Length ?? 0) > 16 ||
             (settings.AlbumArtTransitionStyle?.Length ?? 0) > 32 ||
             (settings.SettingsNavigationStyle?.Length ?? 0) > 32 ||
             (settings.SettingsNavigationLabelMode?.Length ?? 0) > 32)
@@ -310,8 +311,12 @@ public static class LumiProfileIO
         target.UseExtraLyricsSource = source.UseExtraLyricsSource;
         if (source.LyricsManualSearchSource is "All" or "LRCLIB" or "NetEase" or "QQ Music" or "Kugou" or "Paxsenix")
             target.LyricsManualSearchSource = source.LyricsManualSearchSource;
-        if (source.NowPlayingBackground is "Clouds" or "Orbs" or "Waves")
+        if (source.NowPlayingBackground is "Clouds" or "Orbs" or "Waves" or "Cover" or "Solid" or "None")
             target.NowPlayingBackground = source.NowPlayingBackground;
+        // Профиль мог прийти из файла без этого поля: null здесь возможен, хотя в AppSettings свойство не помечено как nullable.
+        string? backgroundColor = source.NowPlayingBackgroundColor;
+        if (backgroundColor is not null && System.Text.RegularExpressions.Regex.IsMatch(backgroundColor, "^#[0-9A-Fa-f]{6}$"))
+            target.NowPlayingBackgroundColor = backgroundColor;
         if (source.SettingsNavigationStyle is "Sidebar" or "Pills" or "FloatingBar")
             target.SettingsNavigationStyle = source.SettingsNavigationStyle;
         target.SettingsNavigationShowLabels = source.SettingsNavigationShowLabels;

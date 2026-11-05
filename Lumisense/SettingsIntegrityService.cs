@@ -300,7 +300,9 @@ internal static class SettingsIntegrityService
         settings.AlbumArtTransitionStyle = Allowed(settings.AlbumArtTransitionStyle, defaults.AlbumArtTransitionStyle,
             "Slide", "Carousel");
         settings.NowPlayingBackground = Allowed(settings.NowPlayingBackground, defaults.NowPlayingBackground,
-            "Clouds", "Orbs", "Waves");
+            "Clouds", "Orbs", "Waves", "Cover", "Solid", "None");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(settings.NowPlayingBackgroundColor ?? string.Empty, "^#[0-9A-Fa-f]{6}$"))
+            settings.NowPlayingBackgroundColor = defaults.NowPlayingBackgroundColor;
         settings.SettingsNavigationStyle = Allowed(settings.SettingsNavigationStyle, defaults.SettingsNavigationStyle,
             "Sidebar", "Pills", "FloatingBar");
         settings.SettingsNavigationLabelMode = Allowed(settings.SettingsNavigationLabelMode, defaults.SettingsNavigationLabelMode,
