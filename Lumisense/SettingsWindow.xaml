@@ -4402,6 +4402,31 @@
                             </Grid>
                         </ui:Button>
 
+                        <!-- Диагностика нагрузки: рядом с логами, потому что нужна в тех же случаях — когда плеер ведёт себя странно. -->
+                        <ui:Button x:Name="DiagnosticsButton" Appearance="Secondary"
+                                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                                   Padding="16,14" Margin="0,14,0,0" Click="DiagnosticsButton_Click">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+
+                                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                        Margin="0,0,12,0">
+                                    <local:SvgPathIcon Icon="IconSpeed" Size="16"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Text="Диагностика производительности" FontWeight="SemiBold" />
+                                    <TextBlock Text="Нагрузка процессора, память и утечки ресурсов; ничего не отправляется в сеть"
+                                               FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                        </ui:Button>
+
                         <ui:Button x:Name="OpenRepositoryButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
                                    Padding="16,14" Margin="0,14,0,0" Click="OpenRepositoryButton_Click">
@@ -4454,7 +4479,7 @@
 
                         <ui:Button x:Name="ChangelogButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
-                                   Padding="16,14" Click="ChangelogButton_Click">
+                                   Padding="16,14" Margin="0,0,0,20" Click="ChangelogButton_Click">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -4475,17 +4500,6 @@
                             </Grid>
                         </ui:Button>
 
-                        <Border Style="{StaticResource SettingsCardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="Диагностика производительности" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <TextBlock Text="Плеер сам проверяет нагрузку процессора, память и утечки ресурсов: быстрая проверка за минуту и долгий прогон с автоматической сменой треков. Ничего не отправляется в сеть."
-                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,0" />
-                                <ui:Button x:Name="DiagnosticsButton" Appearance="Secondary"
-                                           HorizontalAlignment="Left" Margin="0,12,0,0"
-                                           Click="DiagnosticsButton_Click"
-                                           Content="Открыть диагностику…" />
-                            </StackPanel>
-                        </Border>
                     </StackPanel>
 
                     </Grid>

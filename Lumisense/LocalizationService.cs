@@ -1291,6 +1291,7 @@ public static class LocalizationService
         ["Открыть папку отчётов"] = "Open reports folder",
         ["Плеер сам проверяет нагрузку процессора, память и утечки ресурсов: быстрая проверка за минуту и долгий прогон с автоматической сменой треков. Ничего не отправляется в сеть."] = "The player checks processor load, memory and resource leaks by itself: a quick one-minute check and a long run with automatic track changes. Nothing is sent over the network.",
         ["Открыть диагностику…"] = "Open diagnostics…",
+        ["Нагрузка процессора, память и утечки ресурсов; ничего не отправляется в сеть"] = "CPU load, memory and resource leaks; nothing is sent over the network",
         ["Проверка нагрузки"] = "Load check",
         ["Остановить"] = "Stop",
         ["Идёт проверка…"] = "Check in progress…",
