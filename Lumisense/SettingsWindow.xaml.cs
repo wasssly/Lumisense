@@ -1150,8 +1150,19 @@ public partial class SettingsWindow : FluentWindow
 
     private async Task AllVersionsExpander_ExpandedAsync(object sender, RoutedEventArgs e)
     {
+        // Expanded срабатывает ещё при разборе XAML, когда элементы ниже не созданы: тогда ничего не грузим,
+        // загрузка стартует при показе вкладки (раньше NullReferenceException оставлял _allVersionsLoading взведённым).
+        if (AllVersionsLoadingText is null) return;
+
         if (_allVersionsLoaded || _allVersionsLoading) return;
         await LoadAllVersionsAsync();
+    }
+
+    // Загружает список при показе вкладки «Обновления», если аккордеон уже раскрыт (раскрыт по умолчанию), а список ещё не получен.
+    private void StartAllVersionsLoadIfNeeded()
+    {
+        if (!AllVersionsExpanderControl.IsExpanded || _allVersionsLoaded || _allVersionsLoading) return;
+        BackgroundTask.FireAndForget(LoadAllVersionsAsync(), nameof(StartAllVersionsLoadIfNeeded));
     }
 
     private void AllVersionsRetryButton_Click(object sender, RoutedEventArgs e)
@@ -1165,14 +1176,14 @@ public partial class SettingsWindow : FluentWindow
     private async Task LoadAllVersionsAsync()
     {
         _allVersionsLoading = true;
-        AllVersionsLoadingText.Visibility = Visibility.Visible;
-        AllVersionsErrorText.Visibility = Visibility.Collapsed;
-        AllVersionsStaleText.Visibility = Visibility.Collapsed;
-        AllVersionsRetryButton.Visibility = Visibility.Collapsed;
-        AllVersionsRetryButton.IsEnabled = false;
-
         try
         {
+            AllVersionsLoadingText.Visibility = Visibility.Visible;
+            AllVersionsErrorText.Visibility = Visibility.Collapsed;
+            AllVersionsStaleText.Visibility = Visibility.Collapsed;
+            AllVersionsRetryButton.Visibility = Visibility.Collapsed;
+            AllVersionsRetryButton.IsEnabled = false;
+
             // Сначала сразу показываем сохранённый список (если есть), а свежий подгружаем следом: раньше при медленном GitHub
             // или VPN окно до конца запроса показывало только неменяющуюся надпись о загрузке.
             if (_loadedReleases is null && UpdateChecker.GetCachedReleases() is { Releases.Count: > 0 } cached)
@@ -3910,6 +3921,7 @@ public partial class SettingsWindow : FluentWindow
         PageAbout.Visibility = key == "About" ? Visibility.Visible : Visibility.Collapsed;
         if (key == "Updates" && IsLoaded && _basePackagePlan is null)
             _ = RefreshVelopackBasePackagePlanAsync();
+        if (key == "Updates") StartAllVersionsLoadIfNeeded();
         if (key == "About")
             LoadDeveloperAvatar();
 
