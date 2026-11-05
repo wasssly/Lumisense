@@ -57,6 +57,9 @@ public partial class StatisticsWindow : FluentWindow
     private async Task LoadAsync()
     {
         // При повторном вызове (ResetStatsButton_Click) возвращаем единый стартовый вид, как при первом открытии окна.
+        SkeletonBlock.SetIsAnimationEnabled(LoadingState, !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading));
+        SkeletonArtistRows.ItemsSource ??= new int[5];
+        SkeletonTrackRows.ItemsSource ??= new int[5];
         LoadingState.Visibility = Visibility.Visible;
         EmptyState.Visibility = Visibility.Collapsed;
         ContentScroll.Visibility = Visibility.Collapsed;

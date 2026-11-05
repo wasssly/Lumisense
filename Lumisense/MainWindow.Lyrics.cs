@@ -197,7 +197,8 @@ public partial class MainWindow
 
     private void ApplyMainWindowLyricsLoading()
     {
-        LyricsPanelLoadingIndicator.Visibility = Visibility.Visible;
+        LyricsPanelSkeleton.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
+        LyricsPanelSkeleton.Visibility = Visibility.Visible;
         _mainWindowSyncedLyrics.Clear();
         _activeMainWindowLyricIndex = -2;
         ResetMainWindowSyncedLyricsScroll();
@@ -250,7 +251,7 @@ public partial class MainWindow
 
     private void ApplyMainWindowLyricsDocument(LyricsDocument document)
     {
-        LyricsPanelLoadingIndicator.Visibility = Visibility.Collapsed;
+        LyricsPanelSkeleton.Visibility = Visibility.Collapsed;
         _mainWindowSyncedLyrics.Clear();
         _activeMainWindowLyricIndex = -2;
         ResetMainWindowSyncedLyricsScroll();
@@ -297,7 +298,7 @@ public partial class MainWindow
 
     private void ApplyMainWindowLyricsEmpty(string status)
     {
-        LyricsPanelLoadingIndicator.Visibility = Visibility.Collapsed;
+        LyricsPanelSkeleton.Visibility = Visibility.Collapsed;
         _mainWindowSyncedLyrics.Clear();
         _activeMainWindowLyricIndex = -2;
         ResetMainWindowSyncedLyricsScroll();

@@ -1552,10 +1552,10 @@
                                    FontSize="14" LineHeight="23" Opacity="0.9" />
                     </ScrollViewer>
 
-                    <!-- Индикатор ожидания, пока ищется текст (MainWindow.Lyrics: ApplyMainWindowLyricsLoading). -->
-                    <local:MaterialLoadingIndicator x:Name="LyricsPanelLoadingIndicator" Grid.Row="1" Width="48" Height="48"
-                                                    HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"
-                                                    ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
+                    <!-- Скелетон строк, пока ищется текст (MainWindow.Lyrics: ApplyMainWindowLyricsLoading): форма результата известна,
+                         поэтому полосы текста, а не вращающийся индикатор. -->
+                    <local:SkeletonLines x:Name="LyricsPanelSkeleton" Grid.Row="1" Margin="8,14,8,0"
+                                         VerticalAlignment="Top" Visibility="Collapsed" />
                     <StackPanel x:Name="LyricsPanelEmptyState" Grid.Row="1"
                                 HorizontalAlignment="Center" VerticalAlignment="Center"
                                 Width="260" Visibility="Collapsed">

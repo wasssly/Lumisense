@@ -97,6 +97,36 @@
                            VerticalAlignment="Top" Margin="10,1,0,0" />
             </Grid>
         </DataTemplate>
+
+        <!-- Строки скелетона топов: та же сетка, что у TopArtistRowTemplate и TopTrackRowTemplate. -->
+        <DataTemplate x:Key="SkeletonArtistRowTemplate">
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <local:SkeletonBlock Grid.Column="0" Width="22" Height="22" CornerRadius="11" Margin="0,0,10,0" />
+                <local:SkeletonBlock Grid.Column="1" Height="13" HorizontalAlignment="Left" Width="150" VerticalAlignment="Center" />
+                <local:SkeletonBlock Grid.Column="2" Width="64" Height="11" VerticalAlignment="Center" Margin="10,0,0,0" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="SkeletonTrackRowTemplate">
+            <Grid Margin="0,0,0,10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <local:SkeletonBlock Grid.Column="0" Width="22" Height="22" CornerRadius="11" Margin="0,1,10,0" VerticalAlignment="Top" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <local:SkeletonBlock Height="13" Width="190" HorizontalAlignment="Left" />
+                    <local:SkeletonBlock Height="10" Width="110" HorizontalAlignment="Left" Margin="0,5,0,0" />
+                </StackPanel>
+                <local:SkeletonBlock Grid.Column="2" Width="64" Height="11" VerticalAlignment="Top" Margin="10,3,0,0" />
+            </Grid>
+        </DataTemplate>
     </ui:FluentWindow.Resources>
 
     <Grid>
@@ -174,11 +204,45 @@
             </ScrollViewer>
 
             <!-- Пока в фоне читаются теги (StatisticsWindow.LoadAsync): счётчики уже готовы, но топ-5 строится по названиям из тегов,
-                 и на большой истории делать это на UI-потоке было бы заметно долго. -->
-            <StackPanel x:Name="LoadingState" HorizontalAlignment="Center" VerticalAlignment="Center">
-                <ProgressBar IsIndeterminate="True" Width="140" Height="3" />
-                <TextBlock Text="Считаем статистику…" Opacity="0.6" FontSize="13" Margin="0,12,0,0"
-                           HorizontalAlignment="Center" />
+                 и на большой истории делать это на UI-потоке было бы заметно долго. Результат — карточки и два списка, форма которых
+                 известна заранее, поэтому вместо индикатора показывается их скелетон. -->
+            <StackPanel x:Name="LoadingState" Margin="20,8,20,18" VerticalAlignment="Top"
+                        AutomationProperties.Name="Считаем статистику…">
+                <Grid Margin="0,0,0,20">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Grid.Column="0" Style="{StaticResource StatCardStyle}" Margin="0,0,6,0">
+                        <StackPanel>
+                            <local:SkeletonBlock Width="64" Height="28" HorizontalAlignment="Left" />
+                            <local:SkeletonBlock Width="96" Height="11" HorizontalAlignment="Left" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="1" Style="{StaticResource StatCardStyle}" Margin="6,0,6,0">
+                        <StackPanel>
+                            <local:SkeletonBlock Width="48" Height="28" HorizontalAlignment="Left" />
+                            <local:SkeletonBlock Width="80" Height="11" HorizontalAlignment="Left" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+                    <Border Grid.Column="2" Style="{StaticResource StatCardStyle}" Margin="6,0,0,0">
+                        <StackPanel>
+                            <local:SkeletonBlock Width="72" Height="28" HorizontalAlignment="Left" />
+                            <local:SkeletonBlock Width="70" Height="11" HorizontalAlignment="Left" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+                </Grid>
+
+                <local:SkeletonBlock Width="130" Height="14" HorizontalAlignment="Left" Margin="2,0,0,10" />
+                <Border CornerRadius="8" Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="14,12,14,2" Margin="0,0,0,20">
+                    <ItemsControl x:Name="SkeletonArtistRows" ItemTemplate="{StaticResource SkeletonArtistRowTemplate}" />
+                </Border>
+
+                <local:SkeletonBlock Width="100" Height="14" HorizontalAlignment="Left" Margin="2,0,0,10" />
+                <Border CornerRadius="8" Background="{DynamicResource ControlFillColorDefaultBrush}" Padding="14,12,14,2">
+                    <ItemsControl x:Name="SkeletonTrackRows" ItemTemplate="{StaticResource SkeletonTrackRowTemplate}" />
+                </Border>
             </StackPanel>
 
             <!-- Ни один трек ещё не досмотрен хотя бы до половины — считать нечего -->
