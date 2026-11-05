@@ -421,7 +421,7 @@
                                                     Visibility="Collapsed" IsHitTestVisible="False" />
                 </Grid>
 
-                <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                <StackPanel x:Name="HeaderTextPanel" Margin="10,0,0,0" VerticalAlignment="Center">
                     <!-- Ширина 120 = 200 (окно) − 20 (отступы) − 50 (ArtworkCanvas) − 10 (отступ до текста); размер окна фиксирован (NoResize).
                          TextBlock в Canvas, а не в Border: иначе layout обрезал бы его до 120px до RenderTransform, и бегущей строке нечего прокручивать. -->
                     <Border x:Name="TitleClipBorder" Width="120" ClipToBounds="True" HorizontalAlignment="Left">

@@ -16,17 +16,23 @@ public partial class MiniPlayerWindow : Window
     private readonly IMiniPlayerHost _mainWindow;
     private bool _isDraggingProgress;
 
-    // HeaderPanel в XAML имеет отступы "10,8,10,2": при видимой полосе прогресса нижний отступ меньше, чтобы утянуть заголовок к бару;
-    // без полосы он увеличивается до 10 (см. ApplyProgressBarVisibility).
+    // Отступы шапки: нижний равен верхнему (10,8,10,10) и от полосы прогресса не зависит, потому что полоса лежит внутри шапки
+    // (см. ApplyProgressPlacement).
     private const double HeaderHorizontalMargin = 10;
     private const double HeaderTopMargin = 8;
-    private const double HeaderBottomMarginWithProgress = 2;
     private const double HeaderBottomMarginWithoutProgress = 10;
 
-    // Раскладка кнопок «Снизу»: полоса прогресса лежит прямо на теле плеера (под обложкой и названием, в самой нижней части шапки),
-    // а не отдельной строкой под ним. Нижний отступ шапки равен высоте этой полосы, чтобы они не пересекались.
-    private const double ProgressOnPlayerHeight = 14;
-    private const double HeaderBottomMarginProgressOnPlayer = 14;
+    // Раскладка кнопок «Снизу»: полоса прогресса лежит в шапке, правее обложки и под названием, а её нижний край совпадает с нижним
+    // краем обложки, то есть не ниже неё. Высота окна от полосы не растёт: нижний отступ шапки такой же, как без полосы.
+    private const double ProgressOnPlayerHeight = 10;
+    // 200 (окно) − 20 (отступы шапки) − 50 (холст обложки) − 10 (отступ до текста): та же ширина, что у названия.
+    private const double ProgressOnPlayerWidth = 120;
+    private const double ArtworkCanvasSize = 50;
+    private const double ArtworkTextGap = 10;
+    // Обложка 42×42 стоит по центру холста 50×50, поэтому её край на 4 выше края холста.
+    private const double ArtworkInset = 4;
+    // Полоса стоит чуть ниже нижнего края обложки: так между ней и исполнителем остаётся воздух.
+    private const double ProgressLowering = 2;
     private const double ProgressSeparateRowHeight = 20;
 
     // Из настроек (см. ApplyProgressBarVisibility) — показывать полосу прогресса сейчас или нет.
@@ -571,6 +577,7 @@ public partial class MiniPlayerWindow : Window
             {
                 _volumeOverlaySuppressedControls = true;
                 ControlsPanel.Visibility = Visibility.Collapsed;
+                SyncProgressRowWithOverlayControls();
             }
         }
 
@@ -631,6 +638,7 @@ public partial class MiniPlayerWindow : Window
         if (RootBorder.IsMouseOver)
         {
             ControlsPanel.Visibility = Visibility.Visible;
+            SyncProgressRowWithOverlayControls();
             HeaderPanel.Visibility = Visibility.Hidden;
             HeaderPanel.IsHitTestVisible = false;
         }
@@ -1308,6 +1316,7 @@ public partial class MiniPlayerWindow : Window
         HeaderPanel.Visibility = Visibility.Visible;
         HeaderPanel.IsHitTestVisible = true;
         ControlsPanel.Visibility = Visibility.Collapsed;
+        SyncProgressRowWithOverlayControls();
         Height = MeasureContentHeight();
     }
 
@@ -1324,25 +1333,33 @@ public partial class MiniPlayerWindow : Window
         UpdateControlsPanelOverlayMargin();
     }
 
-    // «Снизу»: полоса прогресса прямо на плеере (в нижней части шапки, видна без наведения), кнопки при наведении раскрываются под
-    // ней. «Поверх обложки»: прежняя отдельная строка под шапкой. Без полосы нижний отступ заголовка равен верхнему
-    // (10,8,10,10 вместо 10,8,10,2), чтобы вокруг него было поровну места (см. HeaderBottomMarginWithProgress/WithoutProgress).
+    // Полоса прогресса всегда в шапке; кнопки при наведении раскрываются под шапкой («Снизу») или поверх неё
+    // («Поверх обложки»; пока они видны, полоса прячется).
     private void ApplyProgressPlacement()
     {
-        bool onPlayer = !_buttonsOverlayMode && _showProgress;
+        // Полоса стоит в шапке при любой раскладке кнопок («Снизу» и «Поверх обложки»), поэтому отдельная строка ей больше не нужна.
+        bool onPlayer = _showProgress;
         Grid.SetRow(ProgressRow, onPlayer ? 0 : 1);
         ProgressRow.VerticalAlignment = onPlayer ? VerticalAlignment.Bottom : VerticalAlignment.Stretch;
+        ProgressRow.HorizontalAlignment = onPlayer ? HorizontalAlignment.Left : HorizontalAlignment.Stretch;
+        ProgressRow.Width = onPlayer ? ProgressOnPlayerWidth : double.NaN;
         ProgressRow.Height = onPlayer ? ProgressOnPlayerHeight : ProgressSeparateRowHeight;
         ProgressRow.Margin = onPlayer
-            ? new Thickness(HeaderHorizontalMargin, 0, HeaderHorizontalMargin, 0)
+            ? new Thickness(HeaderHorizontalMargin + ArtworkCanvasSize + ArtworkTextGap, 0, 0, HeaderBottomMarginWithoutProgress + ArtworkInset - ProgressLowering)
             : new Thickness(HeaderHorizontalMargin, 4, HeaderHorizontalMargin, 0);
+        _progressTrackWidth = onPlayer ? ProgressOnPlayerWidth : Math.Max(MiniPlayerSizePreset.BaseWidth - 20, 0);
 
-        double headerBottom = onPlayer
-            ? HeaderBottomMarginProgressOnPlayer
-            : _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress;
+        // Название и исполнитель прижаты к верху обложки, чтобы под ними осталось место для полосы.
+        HeaderTextPanel.VerticalAlignment = onPlayer ? VerticalAlignment.Top : VerticalAlignment.Center;
+        HeaderTextPanel.Margin = onPlayer ? new Thickness(ArtworkTextGap, ArtworkInset, 0, 0) : new Thickness(ArtworkTextGap, 0, 0, 0);
+
+        const double headerBottom = HeaderBottomMarginWithoutProgress;
         HeaderPanel.Margin = new Thickness(HeaderHorizontalMargin, HeaderTopMargin, HeaderHorizontalMargin, headerBottom);
 
         Height = MeasureContentHeight();
+
+        // Ширина полосы изменилась: закрашенную часть пересчитываем сразу, а не на следующем тике воспроизведения.
+        SetStripProgress(_lastTotalSeconds > 0 ? Math.Clamp(_lastCurrentSeconds / _lastTotalSeconds, 0.0, 1.0) : 0.0);
     }
 
     // Вид полосы (AppSettings.MiniPlayerProgressStyle): обычная, волна Material или ползунок Material; перемотка везде через слой поверх.
@@ -1394,9 +1411,12 @@ public partial class MiniPlayerWindow : Window
         ProgressFill.CornerRadius = radius;
     }
 
+    // Ширина полосы: на всю ширину шапки или, при раскладке «Снизу», только под названием (см. ApplyProgressPlacement).
+    private double _progressTrackWidth = Math.Max(MiniPlayerSizePreset.BaseWidth - 20, 0);
+
     private void SetStripProgress(double ratio)
     {
-        ProgressFill.Width = Math.Max(MiniPlayerSizePreset.BaseWidth - 20, 0) * ratio;
+        ProgressFill.Width = _progressTrackWidth * ratio;
         ProgressMaterial.Progress = ratio;
         ProgressMaterialSlider.Progress = ratio;
     }
@@ -1405,8 +1425,8 @@ public partial class MiniPlayerWindow : Window
     // а не по занятому месту, и съезжали бы при смене видимости полосы; top − bottom — асимметрия отступов HeaderPanel.
     private void UpdateControlsPanelOverlayMargin()
     {
-        double headerBottom = _showProgress ? HeaderBottomMarginWithProgress : HeaderBottomMarginWithoutProgress;
-        ControlsPanelMarginOverlay = new Thickness(0, HeaderTopMargin - headerBottom, 0, 0);
+        // Высота шапки от полосы не зависит: она лежит внутри шапки, и нижний отступ всегда один.
+        ControlsPanelMarginOverlay = new Thickness(0, HeaderTopMargin - HeaderBottomMarginWithoutProgress, 0, 0);
         if (_buttonsOverlayMode) ControlsPanel.Margin = ControlsPanelMarginOverlay;
     }
 
@@ -1631,9 +1651,19 @@ public partial class MiniPlayerWindow : Window
         ArtProgressOutline.StrokeDashOffset = -startOffset / thickness;
     }
 
+    // В режиме «Поверх обложки» кнопки на время наведения занимают то место, где лежит полоса: пока они видны, полоса прячется
+    // (и не ловит клики), иначе её нижний край торчал бы из-под кнопок.
+    private void SyncProgressRowWithOverlayControls()
+    {
+        bool hidden = _buttonsOverlayMode && ControlsPanel.Visibility == Visibility.Visible;
+        ProgressRow.Opacity = hidden ? 0 : 1;
+        ProgressRow.IsHitTestVisible = !hidden;
+    }
+
     private void RootBorder_MouseEnter(object sender, MouseEventArgs e)
     {
         ControlsPanel.Visibility = Visibility.Visible;
+        SyncProgressRowWithOverlayControls();
 
         if (_buttonsOverlayMode)
         {
@@ -1651,6 +1681,7 @@ public partial class MiniPlayerWindow : Window
     private void RootBorder_MouseLeave(object sender, MouseEventArgs e)
     {
         ControlsPanel.Visibility = Visibility.Collapsed;
+        SyncProgressRowWithOverlayControls();
 
         if (_buttonsOverlayMode)
         {
