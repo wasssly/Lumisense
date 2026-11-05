@@ -140,6 +140,9 @@ public partial class NowPlayingWindow : Window
 
     private UIElement? _glowElement;
 
+    // Построчный пружинный сдвиг для перехода «Как в Apple Music».
+    private readonly LyricsLineSpringShifter _lineShifter = new();
+
     // Активная строка стоит по вертикали в центре списка, а не у нижнего края, как после ScrollIntoView.
     private void SmoothScrollLyricsToLine(LyricLine line)
     {
@@ -160,25 +163,53 @@ public partial class NowPlayingWindow : Window
 
         try
         {
+            // TranslatePoint учитывает и пружинное смещение строки; место строки в раскладке — без него.
             Point itemTop = container.TranslatePoint(new Point(0, 0), SyncedLyricsList);
+            itemTop.Y -= _lineShifter.CurrentShift(container);
             double viewportHeight = Math.Min(viewer.ViewportHeight, SyncedLyricsList.ActualHeight);
             double maxOffset = Math.Max(0, viewer.ExtentHeight - viewer.ViewportHeight);
             // Целое число пикселей: при нечётной разности высот центр даёт смещение x,5, и строка останавливалась между
             // пикселями. Тогда её картинка с эффектами (свечение, размытие), которая привязана к целым пикселям, и обычный
             // текст стояли на полпикселя по-разному, а при смене способа отрисовки текст «дёргался».
+            string transition = LyricsTransitionStyle.Normalize(_owner.Settings.SyncedLyricsTransition);
             double target = Math.Clamp(Math.Round(
-                viewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) / 2), 0, Math.Floor(maxOffset));
+                viewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) * LyricsTransitionStyle.AnchorFraction(transition)),
+                0, Math.Floor(maxOffset));
+            double scrollMs = LyricsTransitionStyle.ScrollMs(transition, 520);
 
-            if (AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.Lyrics))
+            if (scrollMs <= 0 || AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.Lyrics))
             {
+                _lineShifter.Cancel();
                 viewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
                 viewer.ScrollToVerticalOffset(target);
                 return;
             }
 
-            var animation = new DoubleAnimation(viewer.VerticalOffset, target, new Duration(TimeSpan.FromMilliseconds(520)))
+            if (transition == LyricsTransitionStyle.AppleMusic)
             {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut },
+                // Список прокручивается сразу, а каждая строка сама едет на место пружиной со своей задержкой.
+                double delta = target - viewer.VerticalOffset;
+                viewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
+                if (Math.Abs(delta) < 0.5) return;
+
+                viewer.ScrollToVerticalOffset(target);
+                int activeIndex = _syncedLines.IndexOf(line);
+                if (activeIndex < 0 || Math.Abs(delta) > viewportHeight * 1.5)
+                {
+                    // Далёкий скачок (перемотка): волна по всему списку выглядела бы хаотично.
+                    _lineShifter.Cancel();
+                    return;
+                }
+
+                _lineShifter.Shift(LyricsLineSpringShifter.CollectLines(SyncedLyricsList, activeIndex, _syncedLines.Count), delta, transition);
+                return;
+            }
+
+            _lineShifter.Cancel();
+
+            var animation = new DoubleAnimation(viewer.VerticalOffset, target, new Duration(TimeSpan.FromMilliseconds(scrollMs)))
+            {
+                EasingFunction = LyricsTransitionStyle.ScrollEase(transition),
             };
             viewer.BeginAnimation(AnimatedScrollOffsetProperty, animation, HandoffBehavior.SnapshotAndReplace);
         }
@@ -300,6 +331,9 @@ public partial class NowPlayingWindow : Window
     // (AppSettings.SyncedLyricsHighlightEffect). Вызывается при создании окна и из MainWindow при смене настроек.
     internal void ApplyLyricsAppearance()
     {
+        if (LyricsTransitionStyle.Normalize(_owner.Settings.SyncedLyricsTransition) != LyricsTransitionStyle.AppleMusic)
+            _lineShifter.Cancel();
+
         double fontSize = Math.Clamp(_owner.Settings.NowPlayingLyricsFontSize,
             LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
         bool fontChanged = Math.Abs(SyncedLyricsList.FontSize - fontSize) > 0.01;
@@ -1263,7 +1297,11 @@ public partial class NowPlayingWindow : Window
         double fadeStep = LyricsHighlightStyle.FadeStep(settings.SyncedLyricsFadeStrength);
         double activeScale = LyricsHighlightStyle.ScaleFactor(settings.SyncedLyricsScalePercent);
         int visibleRadius = LyricsHighlightStyle.VisibleRadius(LyricsHighlightStyle.NormalizeVisibleLines(settings.SyncedLyricsVisibleLines));
-        bool animateNow = animate && !AccessibilityPreferences.ShouldReduceMotion(settings, AnimationAreas.Lyrics);
+        string transition = LyricsTransitionStyle.Normalize(settings.SyncedLyricsTransition);
+        bool animateNow = animate && transition != LyricsTransitionStyle.None
+            && !AccessibilityPreferences.ShouldReduceMotion(settings, AnimationAreas.Lyrics);
+        _lineDuration = new Duration(TimeSpan.FromMilliseconds(Math.Max(1, LyricsTransitionStyle.LineMs(transition))));
+        _lineEase = LyricsTransitionStyle.LineEase(transition);
         double originX = LyricsTextAlignmentMode.ToTextAlignment(settings.LyricsTextAlignment) switch
         {
             TextAlignment.Center => 0.5,
@@ -1281,6 +1319,8 @@ public partial class NowPlayingWindow : Window
 
             bool active = i == _activeLyricIndex;
             int distance = Math.Abs(i - anchor);
+            // Волна Apple Music: строки ниже активной подхватывают движение по очереди.
+            _lineDelay = LyricsTransitionStyle.LineDelay(transition, i > anchor && anchor >= 0 ? i - anchor : 0);
             double opacity = active
                 ? 1.0
                 : fade ? Math.Clamp(InactiveLineOpacity - fadeStep * (distance - 1), MinimumInactiveOpacity, InactiveLineOpacity) : InactiveLineOpacity;
@@ -1317,6 +1357,8 @@ public partial class NowPlayingWindow : Window
 
             AnimatePillColor(item, active && pill ? Color.FromArgb(0x3B, 0xFF, 0xFF, 0xFF) : Color.FromArgb(0x00, 0xFF, 0xFF, 0xFF), animateNow);
         }
+
+        _lineDelay = TimeSpan.Zero;
     }
 
     // Строки, чьё состояние могло измениться при смене активной: две строки или, при затухании, окрестность обеих.
@@ -1342,11 +1384,15 @@ public partial class NowPlayingWindow : Window
         if (current >= 0) ApplyLyricLineStates(current, current, animate: true);
     }
 
-    private static readonly Duration LineStateDuration = new(TimeSpan.FromMilliseconds(320));
+    // Параметры перехода строк (LyricsTransitionStyle) на время одного прохода ApplyLyricLineStates: длительность, сглаживание
+    // и задержка строки, по которой у Apple Music строится волна.
+    private Duration _lineDuration = new(TimeSpan.FromMilliseconds(320));
+    private IEasingFunction _lineEase = new CubicEase { EasingMode = EasingMode.EaseOut };
+    private TimeSpan _lineDelay = TimeSpan.Zero;
 
     // Яркость текста строки задаётся альфа-каналом цвета (Foreground наследуется текстом), а не Opacity элемента:
     // так строка и её свечение всегда рисуются одним и тем же путём, без скачка в конце анимации.
-    private static void AnimateTextAlpha(ListBoxItem item, double alpha, bool animate)
+    private void AnimateTextAlpha(ListBoxItem item, double alpha, bool animate)
     {
         Color to = Color.FromArgb((byte)Math.Round(Math.Clamp(alpha, 0, 1) * 255), 0xFF, 0xFF, 0xFF);
         if (item.Foreground is not SolidColorBrush { IsFrozen: false } brush)
@@ -1364,11 +1410,11 @@ public partial class NowPlayingWindow : Window
         }
 
         brush.BeginAnimation(SolidColorBrush.ColorProperty,
-            new ColorAnimation(to, LineStateDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
+            new ColorAnimation(to, _lineDuration) { EasingFunction = _lineEase, BeginTime = _lineDelay },
             HandoffBehavior.SnapshotAndReplace);
     }
 
-    private static void AnimateOpacity(UIElement element, double to, bool animate)
+    private void AnimateOpacity(UIElement element, double to, bool animate)
     {
         if (!animate)
         {
@@ -1378,12 +1424,12 @@ public partial class NowPlayingWindow : Window
         }
 
         element.BeginAnimation(UIElement.OpacityProperty,
-            new DoubleAnimation(to, LineStateDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
+            new DoubleAnimation(to, _lineDuration) { EasingFunction = _lineEase, BeginTime = _lineDelay },
             HandoffBehavior.SnapshotAndReplace);
     }
 
     // BlurEffect остаётся на строке даже при нулевом радиусе (у активной): так отрисовка текста не переключается скачком.
-    private static void ApplyBlur(UIElement element, bool enabled, double radius, bool animate)
+    private void ApplyBlur(UIElement element, bool enabled, double radius, bool animate)
     {
         if (!enabled)
         {
@@ -1414,11 +1460,11 @@ public partial class NowPlayingWindow : Window
         }
 
         blur.BeginAnimation(System.Windows.Media.Effects.BlurEffect.RadiusProperty,
-            new DoubleAnimation(radius, LineStateDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
+            new DoubleAnimation(radius, _lineDuration) { EasingFunction = _lineEase, BeginTime = _lineDelay },
             HandoffBehavior.SnapshotAndReplace);
     }
 
-    private static void AnimateScale(ScaleTransform transform, double to, bool animate)
+    private void AnimateScale(ScaleTransform transform, double to, bool animate)
     {
         if (!animate)
         {
@@ -1429,12 +1475,11 @@ public partial class NowPlayingWindow : Window
             return;
         }
 
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        transform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(to, LineStateDuration) { EasingFunction = easing }, HandoffBehavior.SnapshotAndReplace);
-        transform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(to, LineStateDuration) { EasingFunction = easing }, HandoffBehavior.SnapshotAndReplace);
+        transform.BeginAnimation(ScaleTransform.ScaleXProperty, new DoubleAnimation(to, _lineDuration) { EasingFunction = _lineEase, BeginTime = _lineDelay }, HandoffBehavior.SnapshotAndReplace);
+        transform.BeginAnimation(ScaleTransform.ScaleYProperty, new DoubleAnimation(to, _lineDuration) { EasingFunction = _lineEase, BeginTime = _lineDelay }, HandoffBehavior.SnapshotAndReplace);
     }
 
-    private static void AnimatePillColor(ListBoxItem item, Color to, bool animate)
+    private void AnimatePillColor(ListBoxItem item, Color to, bool animate)
     {
         if (item.Background is not SolidColorBrush { IsFrozen: false } brush)
         {
@@ -1450,7 +1495,7 @@ public partial class NowPlayingWindow : Window
         }
 
         brush.BeginAnimation(SolidColorBrush.ColorProperty,
-            new ColorAnimation(to, LineStateDuration) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } },
+            new ColorAnimation(to, _lineDuration) { EasingFunction = _lineEase, BeginTime = _lineDelay },
             HandoffBehavior.SnapshotAndReplace);
     }
 
@@ -1463,6 +1508,7 @@ public partial class NowPlayingWindow : Window
             viewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
             viewer.ScrollToTop();
         }
+        _lineShifter.Cancel();
         PlainLyricsScroll.ScrollToTop();
     }
 

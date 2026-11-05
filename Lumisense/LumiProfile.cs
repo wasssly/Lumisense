@@ -188,6 +188,12 @@ public static class LumiProfileIO
         target.SyncedLyricsBlurInactive = source.SyncedLyricsBlurInactive;
         target.SyncedLyricsGlowStrength = source.SyncedLyricsGlowStrength;
         target.SyncedLyricsBlurStrength = source.SyncedLyricsBlurStrength;
+        target.SyncedLyricsTransition = LyricsTransitionStyle.Normalize(source.SyncedLyricsTransition);
+        target.CustomLyricsPresets = (source.CustomLyricsPresets ?? new List<LyricsPreset>())
+            .Where(preset => preset is { Name.Length: > 0 and <= 40 } && !LyricsPreset.IsBuiltInName(preset.Name))
+            .Select(preset => preset.Clone())
+            .ToList();
+        target.LyricsPresetName = source.LyricsPresetName is { Length: <= 40 } presetName ? presetName : string.Empty;
         target.CoverBaseFromCover = source.CoverBaseFromCover;
         target.WindowBackdropType = source.WindowBackdropType;
         target.ProgressBarStyle = source.ProgressBarStyle;

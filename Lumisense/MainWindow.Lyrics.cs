@@ -345,6 +345,7 @@ public partial class MainWindow
         System.Windows.Controls.ScrollViewer? scrollViewer = FindVisualChild<System.Windows.Controls.ScrollViewer>(LyricsPanelSyncedList);
         if (scrollViewer is null) return;
 
+        _lyricsLineShifter.Cancel();
         scrollViewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
         scrollViewer.ScrollToTop();
     }
@@ -354,6 +355,9 @@ public partial class MainWindow
         if (dependencyObject is System.Windows.Controls.ScrollViewer scrollViewer && args.NewValue is double offset)
             scrollViewer.ScrollToVerticalOffset(offset);
     }
+
+    // Построчный пружинный сдвиг для перехода «Как в Apple Music» в панели текста.
+    private readonly LyricsLineSpringShifter _lyricsLineShifter = new();
 
     private void SmoothScrollLyricsToActiveLine(MainWindowLyricLine activeLine)
     {
@@ -375,16 +379,50 @@ public partial class MainWindow
         try
         {
             Point itemTop = container.TranslatePoint(new Point(0, 0), LyricsPanelSyncedList);
+            itemTop.Y -= _lyricsLineShifter.CurrentShift(container);
             double viewportHeight = Math.Min(scrollViewer.ViewportHeight, LyricsPanelSyncedList.ActualHeight);
             double maxOffset = Math.Max(0, scrollViewer.ExtentHeight - scrollViewer.ViewportHeight);
+            string transition = LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition);
             double targetOffset = Math.Clamp(
-                scrollViewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) / 2,
+                scrollViewer.VerticalOffset + itemTop.Y - (viewportHeight - container.ActualHeight) * LyricsTransitionStyle.AnchorFraction(transition),
                 0, maxOffset);
+            double scrollMs = LyricsTransitionStyle.ScrollMs(transition, 360);
+
+            if (scrollMs <= 0 || AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Lyrics))
+            {
+                _lyricsLineShifter.Cancel();
+                scrollViewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
+                scrollViewer.ScrollToVerticalOffset(targetOffset);
+                return;
+            }
+
+            if (transition == LyricsTransitionStyle.AppleMusic)
+            {
+                // Список прокручивается сразу, а каждая строка сама едет на место пружиной со своей задержкой.
+                double delta = targetOffset - scrollViewer.VerticalOffset;
+                scrollViewer.BeginAnimation(AnimatedScrollOffsetProperty, null);
+                if (Math.Abs(delta) < 0.5) return;
+
+                scrollViewer.ScrollToVerticalOffset(targetOffset);
+                int activeIndex = _mainWindowSyncedLyrics.IndexOf(activeLine);
+                if (activeIndex < 0 || Math.Abs(delta) > viewportHeight * 1.5)
+                {
+                    // Далёкий скачок (перемотка): волна по всему списку выглядела бы хаотично.
+                    _lyricsLineShifter.Cancel();
+                    return;
+                }
+
+                _lyricsLineShifter.Shift(
+                    LyricsLineSpringShifter.CollectLines(LyricsPanelSyncedList, activeIndex, _mainWindowSyncedLyrics.Count), delta, transition);
+                return;
+            }
+
+            _lyricsLineShifter.Cancel();
 
             var animation = new DoubleAnimation(scrollViewer.VerticalOffset, targetOffset,
-                new Duration(TimeSpan.FromMilliseconds(360)))
+                new Duration(TimeSpan.FromMilliseconds(scrollMs)))
             {
-                EasingFunction = new CubicEase { EasingMode = EasingMode.EaseInOut }
+                EasingFunction = LyricsTransitionStyle.ScrollEase(transition)
             };
             scrollViewer.BeginAnimation(AnimatedScrollOffsetProperty, animation, HandoffBehavior.SnapshotAndReplace);
         }
@@ -426,6 +464,9 @@ public partial class MainWindow
     // не используем, чтобы текст оставался нейтральным при любой теме.
     public void ApplySyncedLyricsAppearance()
     {
+        if (LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition) != LyricsTransitionStyle.AppleMusic)
+            _lyricsLineShifter.Cancel();
+
         ApplyLyricsTextAlignment();
         UpdateCoverForLyrics(_isPlaylistVisible && _isLyricsPanelActive);
         _nowPlayingWindow?.ApplyLyricsAppearance();
@@ -518,8 +559,16 @@ public partial class MainWindow
             return;
         }
 
-        var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
-        var duration = new Duration(TimeSpan.FromMilliseconds(230));
+        string lineTransition = LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition);
+        double lineMs = LyricsTransitionStyle.LineMs(lineTransition);
+        if (lineMs <= 0)
+        {
+            ApplySyncedLyricsLineAppearance(line, active, animate: false);
+            return;
+        }
+
+        IEasingFunction easing = LyricsTransitionStyle.LineEase(lineTransition);
+        var duration = new Duration(TimeSpan.FromMilliseconds(lineMs * 0.72));
         line.Foreground.BeginAnimation(SolidColorBrush.ColorProperty,
             new ColorAnimation(foreground, duration) { EasingFunction = easing });
         line.ScaleTransform.BeginAnimation(ScaleTransform.ScaleXProperty,

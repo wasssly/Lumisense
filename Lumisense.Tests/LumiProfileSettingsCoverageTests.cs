@@ -68,6 +68,7 @@ public sealed class LumiProfileSettingsCoverageTests
             case nameof(AppSettings.TrackChangeToastArtSide): return current as string == "Left" ? "Right" : "Left";
             case nameof(AppSettings.TrackChangeToastTextAlignment): return current as string == "Left" ? "Right" : "Left";
             case nameof(AppSettings.LyricsTextAlignment): return current as string == "Left" ? "Right" : "Left";
+            case nameof(AppSettings.SyncedLyricsTransition): return current as string == "AppleMusic" ? "Soft" : "AppleMusic";
             case nameof(AppSettings.FavoriteHeartAnimation): return current as string == "Fill" ? "Ring" : "Fill";
             case nameof(AppSettings.MiniPlayerSizePreset): return current as string == "Classic" ? "Compact" : "Classic";
             case nameof(AppSettings.MiniPlayerStyle): return current as string == "Classic" ? "Island" : "Classic";
@@ -101,6 +102,7 @@ public sealed class LumiProfileSettingsCoverageTests
         if (type == typeof(ProgressBarAppearance)) return new ProgressBarAppearance { ColorMode = "Custom", TrackThickness = 1.5 };
         if (type == typeof(HotkeyBinding)) return new HotkeyBinding { Ctrl = true, Shift = true, Key = "Z" };
         if (type == typeof(List<string>)) return new List<string> { "different-item" };
+        if (type == typeof(List<LyricsPreset>)) return new List<LyricsPreset> { new() { Name = "different", SyncedLyricsFontSize = 17 } };
         if (type == typeof(List<EqualizerPreset>)) return new List<EqualizerPreset> { new() { Name = "different" } };
         if (type == typeof(List<SavedPlaylistFolder>))
             return new List<SavedPlaylistFolder> { new() { DisplayName = "different", Tracks = { "different.mp3" } } };

@@ -189,6 +189,8 @@ public partial class SettingsWindow : FluentWindow
         int savedVisibleLines = LyricsHighlightStyle.NormalizeVisibleLines(_settings.SyncedLyricsVisibleLines);
         SyncedLyricsVisibleLinesSlider.Value = savedVisibleLines == 0 ? SyncedLyricsVisibleLinesSlider.Maximum : savedVisibleLines;
         UpdateSyncedLyricsHighlightTexts();
+        SelectComboByTag(LyricsTransitionCombo, LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition));
+        RefreshLyricsPresetList();
         NowPlayingBackgroundOrbsRadio.IsChecked = _settings.NowPlayingBackground == "Orbs";
         NowPlayingBackgroundWavesRadio.IsChecked = _settings.NowPlayingBackground == "Waves";
         NowPlayingBackgroundCloudsRadio.IsChecked = _settings.NowPlayingBackground is not ("Orbs" or "Waves");
@@ -1396,6 +1398,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Выравнивание текста песни", "Тексты песен", "Lyrics", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
         Add("Дополнительный источник текстов", "Тексты песен", "Lyrics", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease qq kugou paxsenix lyricify русские исполнители extra source");
         Add("Фон Now Playing", "Обложка и Now Playing", "Cover", NowPlayingBackgroundCloudsRadio, "фон now playing облака цветные шары волны background orbs clouds waves");
+        Add("Пресет оформления текста песни", "Тексты песен", "Lyrics", LyricsPresetCombo, "пресет оформление текст песни караоке apple music классика минимализм сохранить свой preset lyrics style");
+        Add("Переход между строками текста", "Тексты песен", "Lyrics", LyricsTransitionCombo, "переход анимация строк текст песни apple music плавный быстрый волна прокрутка lyrics transition animation");
         Add("Скрывать обложку при тексте песни", "Тексты песен", "Lyrics", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
         Add("Анимация избранного", "Обложка и Now Playing", "Cover", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
         Add("Размер мини-плеера", "Мини-плеер", "MiniPlayer", MiniSizeClassicRadio, "размер мини плеер компактный классический текущий 1.21 size preset");
@@ -2003,7 +2007,169 @@ public partial class SettingsWindow : FluentWindow
     }
 
     // Один общий предпросмотр в карточке «Текст песни» отражает размер, эффект, выравнивание и режим сразу.
-    private void UpdateLyricsPreview() => LyricsPreview.Apply(_settings);
+    private void UpdateLyricsPreview()
+    {
+        LyricsPreview.Apply(_settings);
+        MarkLyricsPresetCustom();
+    }
+
+    // ----- Пресеты оформления текста песни -----
+    private IEnumerable<LyricsPreset> AllLyricsPresets() => LyricsPreset.BuiltIn.Concat(_settings.CustomLyricsPresets);
+
+    private LyricsPreset? FindLyricsPreset(string? name) =>
+        string.IsNullOrEmpty(name) ? null : AllLyricsPresets().FirstOrDefault(preset => string.Equals(preset.Name, name, StringComparison.OrdinalIgnoreCase));
+
+    private void RefreshLyricsPresetList()
+    {
+        bool wasInitializing = _isInitializing;
+        _isInitializing = true;
+        try
+        {
+            LyricsPresetCombo.Items.Clear();
+            LyricsPresetCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = LocalizationService.Translate("Свои настройки"), Tag = string.Empty });
+            foreach (LyricsPreset preset in AllLyricsPresets())
+                LyricsPresetCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = LocalizationService.Translate(preset.Name), Tag = preset.Name });
+
+            LyricsPreset? current = FindLyricsPreset(_settings.LyricsPresetName);
+            SelectComboByTag(LyricsPresetCombo, current?.Name ?? string.Empty);
+        }
+        finally
+        {
+            _isInitializing = wasInitializing;
+        }
+
+        UpdateLyricsPresetButtons();
+    }
+
+    private void UpdateLyricsPresetButtons()
+    {
+        string selected = SelectedTag(LyricsPresetCombo, string.Empty);
+        LyricsPresetDeleteButton.IsEnabled = selected.Length > 0 && !LyricsPreset.IsBuiltInName(selected);
+    }
+
+    // Если настройки после выбора пресета изменили вручную и они больше не совпадают с ним, выбранным становится «Свои настройки».
+    private void MarkLyricsPresetCustom()
+    {
+        if (_isInitializing || string.IsNullOrEmpty(_settings.LyricsPresetName)) return;
+
+        LyricsPreset? preset = FindLyricsPreset(_settings.LyricsPresetName);
+        if (preset is not null && LyricsPreset.Capture(_settings, preset.Name).HasSameValues(preset)) return;
+
+        _settings.LyricsPresetName = string.Empty;
+        RefreshLyricsPresetList();
+    }
+
+    private void LyricsPresetCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        string name = SelectedTag(LyricsPresetCombo, string.Empty);
+        LyricsPreset? preset = FindLyricsPreset(name);
+        if (preset is null)
+        {
+            _settings.LyricsPresetName = string.Empty;
+        }
+        else
+        {
+            preset.ApplyTo(_settings);
+            ReloadLyricsAppearanceControls();
+            _owner.ApplySyncedLyricsAppearance();
+            _owner.RefreshLyricsDisplayMode();
+        }
+
+        UpdateLyricsPresetButtons();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // Подтягивает в элементы страницы значения, которые изменил пресет.
+    private void ReloadLyricsAppearanceControls()
+    {
+        bool wasInitializing = _isInitializing;
+        _isInitializing = true;
+        try
+        {
+            SyncedLyricsFontSizeSlider.Value = Math.Clamp(_settings.SyncedLyricsFontSize, 12, 20);
+            SyncedLyricsFontSizeValueText.Text = $"{SyncedLyricsFontSizeSlider.Value:0} px";
+            NowPlayingLyricsFontSizeSlider.Value = Math.Clamp(_settings.NowPlayingLyricsFontSize,
+                LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
+            NowPlayingLyricsFontSizeValueText.Text = $"{NowPlayingLyricsFontSizeSlider.Value:0} px";
+
+            string effect = _settings.SyncedLyricsHighlightEffect;
+            SyncedLyricsEffectNoneRadio.IsChecked = effect == "None";
+            SyncedLyricsEffectGlowPillRadio.IsChecked = effect == "GlowPill";
+            SyncedLyricsEffectPillRadio.IsChecked = effect == "Pill";
+            SyncedLyricsEffectBarRadio.IsChecked = effect == "Bar";
+            SyncedLyricsEffectGlowRadio.IsChecked = effect is not ("None" or "GlowPill" or "Pill" or "Bar");
+
+            SyncedLyricsScaleCheckBox.IsChecked = _settings.SyncedLyricsScaleActiveLine;
+            SyncedLyricsFadeCheckBox.IsChecked = _settings.SyncedLyricsFadeDistantLines;
+            SyncedLyricsBlurCheckBox.IsChecked = _settings.SyncedLyricsBlurInactive;
+            SyncedLyricsGlowStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsGlowStrength, 10, 100);
+            SyncedLyricsBlurStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsBlurStrength,
+                LyricsHighlightStyle.MinBlurStrength, LyricsHighlightStyle.MaxBlurStrength);
+            SyncedLyricsFadeStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsFadeStrength, 0, 100);
+            SyncedLyricsScalePercentSlider.Value = Math.Clamp(_settings.SyncedLyricsScalePercent,
+                LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
+            int visibleLines = LyricsHighlightStyle.NormalizeVisibleLines(_settings.SyncedLyricsVisibleLines);
+            SyncedLyricsVisibleLinesSlider.Value = visibleLines == 0 ? SyncedLyricsVisibleLinesSlider.Maximum : visibleLines;
+            UpdateSyncedLyricsHighlightTexts();
+
+            LyricsAlignCenterRadio.IsChecked = _settings.LyricsTextAlignment == "Center";
+            LyricsAlignRightRadio.IsChecked = _settings.LyricsTextAlignment == "Right";
+            LyricsAlignLeftRadio.IsChecked = _settings.LyricsTextAlignment is not ("Center" or "Right");
+            LyricsDisplayPlainRadio.IsChecked = _settings.LyricsDisplayMode == "Plain";
+            LyricsDisplaySyncedRadio.IsChecked = _settings.LyricsDisplayMode != "Plain";
+            HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
+            SelectComboByTag(LyricsTransitionCombo, LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition));
+            LyricsPreview.Apply(_settings);
+        }
+        finally
+        {
+            _isInitializing = wasInitializing;
+        }
+    }
+
+    private void LyricsTransitionCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing || LyricsTransitionCombo.SelectedItem is null) return;
+
+        _settings.SyncedLyricsTransition = LyricsTransitionStyle.Normalize(SelectedTag(LyricsTransitionCombo, LyricsTransitionStyle.Smooth));
+        MarkLyricsPresetCustom();
+        _owner.ApplySyncedLyricsAppearance();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void LyricsPresetSaveButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new TextInputDialog("Сохранить пресет", "Название пресета:", _settings.LyricsPresetName, _settings) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+
+        string name = dialog.ResultText.Trim();
+        if (name.Length == 0) return;
+        if (name.Length > 40) name = name[..40];
+        if (LyricsPreset.IsBuiltInName(name))
+        {
+            // Встроенные пресеты не перезаписываются: сохраняем рядом под другим именем.
+            name += " 2";
+        }
+
+        _settings.CustomLyricsPresets.RemoveAll(preset => string.Equals(preset.Name, name, StringComparison.OrdinalIgnoreCase));
+        _settings.CustomLyricsPresets.Add(LyricsPreset.Capture(_settings, name));
+        _settings.LyricsPresetName = name;
+        RefreshLyricsPresetList();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void LyricsPresetDeleteButton_Click(object sender, RoutedEventArgs e)
+    {
+        string name = SelectedTag(LyricsPresetCombo, string.Empty);
+        if (name.Length == 0 || LyricsPreset.IsBuiltInName(name)) return;
+
+        _settings.CustomLyricsPresets.RemoveAll(preset => string.Equals(preset.Name, name, StringComparison.OrdinalIgnoreCase));
+        _settings.LyricsPresetName = string.Empty;
+        RefreshLyricsPresetList();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
 
     private void UpdateBadgePreview()
     {
@@ -2050,6 +2216,7 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.HideCoverInLyricsPanel = HideCoverInLyricsCheckBox.IsChecked == true;
+        MarkLyricsPresetCustom();
         _owner.ApplySyncedLyricsAppearance();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
@@ -2090,6 +2257,7 @@ public partial class SettingsWindow : FluentWindow
         NowPlayingLyricsFontSizeValueText.Text = $"{e.NewValue:0} px";
         _settings.NowPlayingLyricsFontSize = (int)Math.Clamp(Math.Round(e.NewValue),
             LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
+        MarkLyricsPresetCustom();
         _owner.ApplySyncedLyricsAppearance();
     }
 

@@ -1361,6 +1361,35 @@
                                 <TextBlock Text="Предпросмотр" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
                                 <local:LyricsPreviewControl x:Name="LyricsPreview" />
 
+                                <TextBlock Text="Пресет оформления" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,20,0,4" />
+                                <TextBlock Text="Пресет задаёт сразу всё оформление текста песни: размеры, эффект, размытие, выравнивание, режим и переход. Если после выбора что-то поменять вручную, пресет станет «Своими настройками». Свои пресеты можно сохранить под любым именем."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,10" TextWrapping="Wrap" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <ComboBox x:Name="LyricsPresetCombo" Grid.Column="0" HorizontalAlignment="Stretch"
+                                              SelectionChanged="LyricsPresetCombo_SelectionChanged" />
+                                    <ui:Button x:Name="LyricsPresetSaveButton" Grid.Column="1" Content="Сохранить как…" Appearance="Secondary"
+                                               Margin="8,0,0,0" Click="LyricsPresetSaveButton_Click" />
+                                    <ui:Button x:Name="LyricsPresetDeleteButton" Grid.Column="2" Content="Удалить" Appearance="Secondary"
+                                               Margin="8,0,0,0" Click="LyricsPresetDeleteButton_Click" />
+                                </Grid>
+
+                                <TextBlock Text="Переход между строками" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,20,0,4" />
+                                <TextBlock Text="Как строки меняются при смене активной: прокрутка, длительность и волна по строкам ниже. «Как в Apple Music» ставит активную строку выше центра и пускает волну по строкам ниже."
+                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,10" TextWrapping="Wrap" />
+                                <ComboBox x:Name="LyricsTransitionCombo" HorizontalAlignment="Left" MinWidth="260"
+                                          SelectionChanged="LyricsTransitionCombo_SelectionChanged">
+                                    <ComboBoxItem Tag="Smooth" Content="Плавный (по умолчанию)" />
+                                    <ComboBoxItem Tag="AppleMusic" Content="Как в Apple Music" />
+                                    <ComboBoxItem Tag="Soft" Content="Мягкое растворение" />
+                                    <ComboBoxItem Tag="Quick" Content="Быстрый" />
+                                    <ComboBoxItem Tag="None" Content="Без анимации" />
+                                </ComboBox>
+
                                 <TextBlock Text="Размер шрифта" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,20,0,8" />
                                 <Grid Margin="0,0,0,2">
                                     <Grid.ColumnDefinitions>

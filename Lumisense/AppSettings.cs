@@ -151,6 +151,13 @@ public class AppSettings
     // Выравнивание текста песни в панели главного окна и в Now Playing: "Left" | "Center" | "Right".
     public string LyricsTextAlignment { get; set; } = "Left";
 
+    // Переход между строками синхронного текста (см. LyricsTransitionStyle): "Smooth" | "AppleMusic" | "Soft" | "Quick" | "None".
+    public string SyncedLyricsTransition { get; set; } = "Smooth";
+
+    // Имя выбранного пресета оформления текста песни; пусто — настройки менялись вручную. Свои пресеты хранятся здесь же.
+    public string LyricsPresetName { get; set; } = string.Empty;
+    public List<LyricsPreset> CustomLyricsPresets { get; set; } = new();
+
     // Анимация сердечка при добавлении в избранное: "None" | "Sparks" | "Fill" | "Ring".
     public string FavoriteHeartAnimation { get; set; } = "Fill";
 
