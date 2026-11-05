@@ -90,7 +90,8 @@ public partial class StatisticsWindow : FluentWindow
             if (metadata is not null)
             {
                 if (!string.IsNullOrWhiteSpace(metadata.Title)) title = metadata.Title;
-                if (!string.IsNullOrWhiteSpace(metadata.Artist)) artist = metadata.Artist;
+                // Как в плеере (TrackPreparationService): нет исполнителя в теге — берём исполнителя альбома.
+                if (!string.IsNullOrWhiteSpace(metadata.DisplayArtist)) artist = metadata.DisplayArtist;
             }
 
             return (Path: kv.Key, Count: kv.Value, Title: title, Artist: artist);

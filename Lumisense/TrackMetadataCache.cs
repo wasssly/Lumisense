@@ -7,7 +7,11 @@ namespace Lumisense;
 // Запись действует, пока совпадают размер и время изменения файла.
 internal static class TrackMetadataCache
 {
-    internal sealed record Entry(string? Title, string? Artist, string? AlbumArtist);
+    internal sealed record Entry(string? Title, string? Artist, string? AlbumArtist)
+    {
+        // Исполнитель для показа: тег Artist, а если он пуст — AlbumArtist (так же, как в плеере).
+        public string? DisplayArtist => !string.IsNullOrWhiteSpace(Artist) ? Artist : AlbumArtist;
+    }
 
     private sealed record Stamp(long LastWriteTicks, long Length, Entry Entry);
 
