@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
 using Lyricify.Lyrics.Helpers;
 using Lyricify.Lyrics.Models;
@@ -18,15 +19,27 @@ internal static class LyricifyLyricsSource
     private const int MaxResults = 4;
 
     // Китайские серверы иногда отвечают очень медленно; без предела один зависший источник тормозил бы весь поиск.
-    private static readonly TimeSpan SourceTimeout = TimeSpan.FromSeconds(5);
+    private static readonly TimeSpan SourceTimeout = TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan CacheLifetime = TimeSpan.FromMinutes(30);
+    private static readonly ConcurrentDictionary<string, CachedSearch> SearchCache = new();
+
+    private sealed record CachedSearch(DateTime StoredAtUtc, IReadOnlyList<OnlineLyricsResult> Results);
     private static readonly Regex TimestampRegex = LyricsTextHygiene.Timestamp;
     private static readonly char[] ArtistSeparators = { ';', ',' };
 
     // NetEase и QQ Music опрашиваются параллельно: у них разные каталоги, и зарубежные треки чаще находятся хотя бы в одном.
     // Порядок результатов — сначала NetEase, затем QQ Music; сбой одного источника не мешает другому.
-    public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchAsync(string title, string artist, CancellationToken token)
+    private static readonly Task<IReadOnlyList<OnlineLyricsResult>> NoResults =
+        Task.FromResult<IReadOnlyList<OnlineLyricsResult>>(Array.Empty<OnlineLyricsResult>());
+
+    // onlySource — опросить только этот источник (null — все); failures собирает имена источников, которые не ответили,
+    // чтобы окно поиска отличало «не ответил» от «ничего не найдено».
+    public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchAsync(
+        string title, string artist, CancellationToken token, string? onlySource = null, ConcurrentBag<string>? failures = null)
     {
         if (string.IsNullOrWhiteSpace(title)) return Array.Empty<OnlineLyricsResult>();
+
+        bool Wants(string name) => onlySource is null || string.Equals(onlySource, name, StringComparison.OrdinalIgnoreCase);
 
         var metadata = new TrackMultiArtistMetadata { Title = title.Trim() };
         if (!string.IsNullOrWhiteSpace(artist) && artist != "—")
@@ -34,18 +47,20 @@ internal static class LyricifyLyricsSource
             metadata.Artists = artist.Split(ArtistSeparators, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).ToList();
         }
 
-        Task<IReadOnlyList<OnlineLyricsResult>> neteaseSearch = SearchSourceAsync(
+        Task<IReadOnlyList<OnlineLyricsResult>> neteaseSearch = !Wants(SourceName) ? NoResults : SearchSourceAsync(
             SourceName, new NeteaseSearcher(), metadata,
             (result, sourceToken) => result is NeteaseSearchResult neteaseResult ? LoadNeteaseAsync(neteaseResult, sourceToken) : Task.FromResult<OnlineLyricsResult?>(null),
-            token);
-        Task<IReadOnlyList<OnlineLyricsResult>> qqSearch = SearchSourceAsync(
+            failures, token);
+        Task<IReadOnlyList<OnlineLyricsResult>> qqSearch = !Wants(QqSourceName) ? NoResults : SearchSourceAsync(
             QqSourceName, new QQMusicSearcher(), metadata,
             (result, sourceToken) => result is QQMusicSearchResult qqResult ? LoadQqAsync(qqResult, sourceToken) : Task.FromResult<OnlineLyricsResult?>(null),
-            token);
+            failures, token);
 
         // Kugou и Paxsenix сами обрабатывают сбои и таймауты; их результаты идут после NetEase и QQ Music.
-        Task<IReadOnlyList<OnlineLyricsResult>> kugouSearch = KugouLyricsSource.SearchAsync(title, artist, token);
-        Task<IReadOnlyList<OnlineLyricsResult>> paxsenixSearch = PaxsenixLyricsSource.SearchAsync(title, artist, token);
+        Task<IReadOnlyList<OnlineLyricsResult>> kugouSearch = Wants(KugouLyricsSource.SourceName)
+            ? KugouLyricsSource.SearchAsync(title, artist, token) : NoResults;
+        Task<IReadOnlyList<OnlineLyricsResult>> paxsenixSearch = Wants(PaxsenixLyricsSource.SourceName)
+            ? PaxsenixLyricsSource.SearchAsync(title, artist, token) : NoResults;
 
         IReadOnlyList<OnlineLyricsResult>[] groups = await Task.WhenAll(neteaseSearch, qqSearch, kugouSearch, paxsenixSearch).ConfigureAwait(false);
         return groups.SelectMany(group => group).ToList();
@@ -56,37 +71,79 @@ internal static class LyricifyLyricsSource
         ISearcher searcher,
         TrackMultiArtistMetadata metadata,
         Func<ISearchResult, CancellationToken, Task<OnlineLyricsResult?>> load,
+        ConcurrentBag<string>? failures,
         CancellationToken token)
     {
-        // Общий предел времени на источник (поиск и загрузка текстов); отмена пользователем отличается от таймаута.
-        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
-        timeout.CancelAfter(SourceTimeout);
-        CancellationToken sourceToken = timeout.Token;
+        // Удачный ответ запоминается: китайские серверы отвечают нестабильно (лимиты на частые запросы, таймауты), и повторный
+        // поиск того же трека раньше мог ничего не найти, хотя минуту назад текст нашёлся.
+        string cacheKey = $"{sourceName}|{metadata.Title}|{string.Join(';', metadata.Artists ?? [])}".ToLowerInvariant();
+        if (SearchCache.TryGetValue(cacheKey, out CachedSearch? cached) && DateTime.UtcNow - cached.StoredAtUtc < CacheLifetime)
+            return cached.Results;
 
-        try
+        // Две попытки: сбой или таймаут источника часто временные. Пустой ответ без ошибки — «действительно не найдено»,
+        // его не повторяем.
+        for (int attempt = 1; attempt <= 2; attempt++)
         {
-            List<ISearchResult> found = await searcher.SearchForResults(metadata).WaitAsync(sourceToken).ConfigureAwait(false);
-            if (found.Count == 0) return Array.Empty<OnlineLyricsResult>();
+            // Общий предел времени на попытку (поиск и загрузка текстов); отмена пользователем отличается от таймаута.
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+            timeout.CancelAfter(SourceTimeout);
+            CancellationToken sourceToken = timeout.Token;
 
-            // Тексты запрашиваются параллельно только для нескольких лучших совпадений.
-            Task<OnlineLyricsResult?>[] tasks = found.Take(MaxResults).Select(result => load(result, sourceToken)).ToArray();
-            OnlineLyricsResult?[] loaded = await Task.WhenAll(tasks).ConfigureAwait(false);
-            return loaded.Where(result => result is not null).Select(result => result!).ToList();
+            try
+            {
+                List<ISearchResult> found = await searcher.SearchForResults(metadata).WaitAsync(sourceToken).ConfigureAwait(false);
+                if (found.Count == 0) return Array.Empty<OnlineLyricsResult>();
+
+                // Тексты грузятся параллельно для нескольких лучших совпадений; сбой одной загрузки не отменяет остальные,
+                // но считается отдельно от «текста нет» (load вернул null).
+                int loadFailures = 0;
+                async Task<OnlineLyricsResult?> LoadSafeAsync(ISearchResult result)
+                {
+                    try
+                    {
+                        return await load(result, sourceToken).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) when (token.IsCancellationRequested)
+                    {
+                        throw;
+                    }
+                    catch (Exception ex)
+                    {
+                        Interlocked.Increment(ref loadFailures);
+                        Logger.Info($"Текст {sourceName} не получен: {ex.Message}");
+                        return null;
+                    }
+                }
+
+                Task<OnlineLyricsResult?>[] tasks = found.Take(MaxResults).Select(LoadSafeAsync).ToArray();
+                OnlineLyricsResult?[] loaded = await Task.WhenAll(tasks).ConfigureAwait(false);
+                List<OnlineLyricsResult> results = loaded.Where(result => result is not null).Select(result => result!).ToList();
+
+                // Варианты нашлись, но ни один текст не удалось получить из-за сбоев (а не потому, что текстов нет): пробуем ещё раз.
+                if (results.Count == 0 && loadFailures > 0) throw new InvalidOperationException("тексты найденных вариантов не загрузились");
+                if (results.Count == 0) return Array.Empty<OnlineLyricsResult>();
+
+                SearchCache[cacheKey] = new CachedSearch(DateTime.UtcNow, results);
+                return results;
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Info($"Источник текстов {sourceName} не ответил за {SourceTimeout.TotalSeconds:0} с (попытка {attempt})");
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Источник текстов {sourceName} недоступен (попытка {attempt}): {ex.Message}");
+            }
+
+            if (attempt == 1) await Task.Delay(400, token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (OperationCanceledException)
-        {
-            Logger.Info($"Источник текстов {sourceName} не ответил за {SourceTimeout.TotalSeconds:0} с");
-            return Array.Empty<OnlineLyricsResult>();
-        }
-        catch (Exception ex)
-        {
-            Logger.Warn($"Источник текстов {sourceName} недоступен: {ex.Message}");
-            return Array.Empty<OnlineLyricsResult>();
-        }
+
+        failures?.Add(sourceName);
+        return Array.Empty<OnlineLyricsResult>();
     }
 
     private static async Task<OnlineLyricsResult?> LoadNeteaseAsync(NeteaseSearchResult result, CancellationToken token)
@@ -103,11 +160,6 @@ internal static class LyricifyLyricsSource
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.Info($"Текст NetEase не получен ({result.Id}): {ex.Message}");
-            return null;
         }
     }
 
@@ -127,11 +179,6 @@ internal static class LyricifyLyricsSource
         catch (OperationCanceledException) when (token.IsCancellationRequested)
         {
             throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.Info($"Текст QQ Music не получен ({result.Mid}): {ex.Message}");
-            return null;
         }
     }
 

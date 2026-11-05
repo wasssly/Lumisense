@@ -302,6 +302,8 @@ public static class LumiProfileIO
             target.FavoriteHeartAnimation = source.FavoriteHeartAnimation;
         target.HideCoverInLyricsPanel = source.HideCoverInLyricsPanel;
         target.UseExtraLyricsSource = source.UseExtraLyricsSource;
+        if (source.LyricsManualSearchSource is "All" or "LRCLIB" or "NetEase" or "QQ Music" or "Kugou" or "Paxsenix")
+            target.LyricsManualSearchSource = source.LyricsManualSearchSource;
         if (source.NowPlayingBackground is "Clouds" or "Orbs" or "Waves")
             target.NowPlayingBackground = source.NowPlayingBackground;
         if (source.SettingsNavigationStyle is "Sidebar" or "Pills" or "FloatingBar")

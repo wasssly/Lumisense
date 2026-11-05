@@ -276,6 +276,8 @@ internal static class SettingsIntegrityService
         settings.LastPositionSeconds = Math.Max(0, double.IsFinite(settings.LastPositionSeconds) ? settings.LastPositionSeconds : 0);
 
         settings.PlayerViewMode = AllowedOrNull(settings.PlayerViewMode, "Square", "Rectangular", "Mini");
+        settings.LyricsManualSearchSource = Allowed(settings.LyricsManualSearchSource, defaults.LyricsManualSearchSource,
+            "All", "LRCLIB", "NetEase", "QQ Music", "Kugou", "Paxsenix");
         settings.RepeatMode = Allowed(settings.RepeatMode, defaults.RepeatMode, "Off", "All", "One");
         settings.MiniPlayerProgressStyle = Allowed(settings.MiniPlayerProgressStyle, defaults.MiniPlayerProgressStyle, "Default", "Material", "MaterialSlider");
         settings.MiniPlayerArtworkProgressStyle = Allowed(settings.MiniPlayerArtworkProgressStyle, defaults.MiniPlayerArtworkProgressStyle, "Default", "Material", "MaterialSlider");

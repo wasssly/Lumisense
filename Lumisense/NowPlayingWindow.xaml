@@ -48,6 +48,34 @@
             </Setter>
         </Style>
 
+        <!-- Кнопка-«таблетка» выбора источника в панели поиска текста. -->
+        <Style x:Key="LyricsSourceChipStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="#D0FFFFFF" />
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="0,0,6,6" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border x:Name="Chip" CornerRadius="13" Padding="12,5" Background="#22FFFFFF"
+                                BorderBrush="#33FFFFFF" BorderThickness="1">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              TextElement.Foreground="{TemplateBinding Foreground}" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="#38FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Chip" Property="Background" Value="#CC3D9BEA" />
+                                <Setter TargetName="Chip" Property="BorderBrush" Value="#70B8F4" />
+                                <Setter Property="Foreground" Value="White" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="LyricsSearchResultStyle" TargetType="ListBoxItem">
             <Setter Property="Padding" Value="14,11" />
             <Setter Property="Margin" Value="0,3" />
@@ -311,8 +339,8 @@
                                 <!-- Отдельный слой результатов не меняет размеры карточки и позволяет
                                      вернуться к текущему тексту одной кнопкой. -->
                                 <Border x:Name="OnlineLyricsSearchPanel" Background="#F5222733" BorderBrush="#42FFFFFF"
-                                        BorderThickness="1" CornerRadius="16" Padding="14" Margin="0,8,0,0"
-                                        Height="420" VerticalAlignment="Top" Visibility="Collapsed">
+                                        BorderThickness="1" CornerRadius="16" Padding="16" Margin="0,8,0,0"
+                                        Height="460" VerticalAlignment="Top" Visibility="Collapsed">
                                     <Grid ClipToBounds="True">
                                         <Grid.RowDefinitions>
                                             <RowDefinition Height="Auto" />
@@ -320,27 +348,32 @@
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="Auto" />
                                             <RowDefinition Height="*" />
+                                            <RowDefinition Height="Auto" />
                                         </Grid.RowDefinitions>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Результаты поиска" FontSize="16" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" />
+                                            <StackPanel>
+                                                <TextBlock Text="Поиск текста песни" FontSize="17" FontWeight="SemiBold" Foreground="White" />
+                                                <TextBlock Text="Выберите вариант и нажмите «Применить» или дважды щёлкните по нему."
+                                                           FontSize="12" Foreground="#86FFFFFF" Margin="0,3,0,0" TextWrapping="Wrap" />
+                                            </StackPanel>
                                             <ui:Button Grid.Column="1" Width="30" Height="30" Padding="0" Appearance="Secondary"
-                                                       ToolTip="Назад к тексту" Click="CloseOnlineLyricsSearchButton_Click">
+                                                       VerticalAlignment="Top" ToolTip="Назад к тексту" Click="CloseOnlineLyricsSearchButton_Click">
                                                 <ui:Button.Icon><local:SvgPathIcon Icon="IconDismiss" Size="13" /></ui:Button.Icon>
                                             </ui:Button>
                                         </Grid>
-                                        <Grid Grid.Row="1" Margin="0,10,0,0">
+                                        <Grid Grid.Row="1" Margin="0,14,0,0">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <Border Grid.Column="0" Height="44" Background="#2A303B" BorderBrush="#5FFFFFFF"
-                                                    BorderThickness="1" CornerRadius="8" ClipToBounds="False">
+                                                    BorderThickness="1" CornerRadius="10" ClipToBounds="False">
                                                 <TextBox x:Name="LyricsSearchQueryTextBox" BorderThickness="0" Background="Transparent"
-                                                         Height="42" Padding="12,0" VerticalContentAlignment="Center"
+                                                         Height="42" Padding="14,0" VerticalContentAlignment="Center"
                                                          TextAlignment="Left" FontSize="14" TextWrapping="NoWrap" AcceptsReturn="False"
                                                          Foreground="White" CaretBrush="White"
                                                          ToolTip="Исполнитель — название или название трека"
@@ -353,32 +386,106 @@
                                                     Background="#3D9BEA" BorderBrush="#70B8F4" BorderThickness="1" Foreground="White"
                                                     Click="RunLyricsSearchButton_Click" />
                                         </Grid>
-                                        <TextBlock x:Name="OnlineLyricsSearchStatusText" Grid.Row="2" Foreground="#A8FFFFFF" FontSize="12"
-                                                   TextWrapping="Wrap" Margin="0,8,0,4" MaxHeight="36" />
-                                        <StackPanel Grid.Row="3" Orientation="Horizontal" VerticalAlignment="Center">
-                                            <TextBlock Text="Нет подходящего варианта?" FontSize="12" Foreground="#86FFFFFF" VerticalAlignment="Center" />
-                                            <ui:Button Content="Genius" Appearance="Secondary" Padding="10,4" Margin="10,0,0,0"
-                                                       ToolTip="Открыть поиск на Genius" Click="OpenGeniusSearchButton_Click" />
-                                            <ui:Button Content="Вставить текст" Appearance="Secondary" Padding="10,4" Margin="6,0,0,0"
-                                                       ToolTip="Сохранить текст песни из буфера обмена" Click="PasteLyricsFromClipboardButton_Click" />
-                                        </StackPanel>
+                                        <!-- Источник ручного поиска: LRCLIB по умолчанию даёт мало русских текстов, а остальные источники
+                                             по настройке выключены, поэтому выбор доступен прямо здесь (запоминается). -->
+                                        <WrapPanel x:Name="LyricsSearchSourcePanel" Grid.Row="2" Orientation="Horizontal" Margin="0,12,0,0">
+                                            <TextBlock Text="Источник:" FontSize="12" Foreground="#A8FFFFFF"
+                                                       VerticalAlignment="Center" Margin="0,0,10,6" />
+                                                <RadioButton Tag="All" Content="Все" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                                <RadioButton Tag="LRCLIB" Content="LRCLIB" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                                <RadioButton Tag="NetEase" Content="NetEase" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                                <RadioButton Tag="QQ Music" Content="QQ Music" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                                <RadioButton Tag="Kugou" Content="Kugou" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                                <RadioButton Tag="Paxsenix" Content="Paxsenix" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                        </WrapPanel>
+                                        <TextBlock x:Name="OnlineLyricsSearchStatusText" Grid.Row="3" Foreground="#A8FFFFFF" FontSize="12"
+                                                   TextWrapping="Wrap" Margin="0,2,0,0" MaxHeight="36" />
                                         <Border Grid.Row="4" Margin="0,8,0,0" Padding="0,0,8,0" Background="Transparent" ClipToBounds="True">
                                             <ListBox x:Name="OnlineLyricsResultsList" Padding="0,0,12,0" Background="Transparent" BorderThickness="0"
-
-                                                 ItemContainerStyle="{StaticResource LyricsSearchResultStyle}"
-                                                 MouseDoubleClick="OnlineLyricsResultsList_MouseDoubleClick"
-                                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                            <ListBox.ItemTemplate>
-                                                <DataTemplate>
-                                                    <StackPanel>
-                                                        <TextBlock Text="{Binding DisplayName}" Foreground="White" FontSize="14" TextTrimming="CharacterEllipsis" />
-                                                        <TextBlock Text="{Binding AlbumName}" Foreground="#9EFFFFFF" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
-                                                        <TextBlock Text="{Binding Duration, StringFormat={}{0:0} сек.}" Foreground="#78FFFFFF" FontSize="11" Margin="0,3,0,0" />
-                                                    </StackPanel>
-                                                </DataTemplate>
-                                            </ListBox.ItemTemplate>
+                                                     ItemContainerStyle="{StaticResource LyricsSearchResultStyle}"
+                                                     MouseDoubleClick="OnlineLyricsResultsList_MouseDoubleClick"
+                                                     SelectionChanged="OnlineLyricsResultsList_SelectionChanged"
+                                                     KeyDown="OnlineLyricsResultsList_KeyDown"
+                                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                                <ListBox.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <StackPanel>
+                                                                <TextBlock Text="{Binding DisplayName}" Foreground="White" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                                                <TextBlock Text="{Binding AlbumName}" Foreground="#9EFFFFFF" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,3,0,0" />
+                                                                <TextBlock Text="{Binding Duration, StringFormat={}{0:0} сек.}" Foreground="#78FFFFFF" FontSize="11" Margin="0,3,0,0" />
+                                                            </StackPanel>
+                                                            <!-- Метка «Синхр.» у вариантов с отметками времени, «Текст» — у обычного текста. -->
+                                                            <Border Grid.Column="1" CornerRadius="9" Padding="8,2" Margin="10,2,0,0" VerticalAlignment="Top">
+                                                                <Border.Style>
+                                                                    <Style TargetType="Border">
+                                                                        <Setter Property="Background" Value="#33FFFFFF" />
+                                                                        <Style.Triggers>
+                                                                            <DataTrigger Binding="{Binding HasSyncedLyrics}" Value="True">
+                                                                                <Setter Property="Background" Value="#883D9BEA" />
+                                                                            </DataTrigger>
+                                                                        </Style.Triggers>
+                                                                    </Style>
+                                                                </Border.Style>
+                                                                <!-- Две подписи, а не одна с Text из стиля: перевод интерфейса ставит Text локально и перебил бы триггер. -->
+                                                                <Grid>
+                                                                    <TextBlock Text="Текст" FontSize="11" Foreground="White">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding HasSyncedLyrics}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                    <TextBlock Text="Синхр." FontSize="11" Foreground="White">
+                                                                        <TextBlock.Style>
+                                                                            <Style TargetType="TextBlock">
+                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding HasSyncedLyrics}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </TextBlock.Style>
+                                                                    </TextBlock>
+                                                                </Grid>
+                                                            </Border>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ListBox.ItemTemplate>
                                             </ListBox>
                                         </Border>
+                                        <Grid Grid.Row="5" Margin="0,10,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="Нет подходящего варианта?" FontSize="12" Foreground="#86FFFFFF" VerticalAlignment="Center" />
+                                                <ui:Button Content="Genius" Appearance="Secondary" Padding="10,4" Margin="10,0,0,0"
+                                                           ToolTip="Открыть поиск на Genius" Click="OpenGeniusSearchButton_Click" />
+                                                <ui:Button Content="Вставить текст" Appearance="Secondary" Padding="10,4" Margin="6,0,0,0"
+                                                           ToolTip="Сохранить текст песни из буфера обмена" Click="PasteLyricsFromClipboardButton_Click" />
+                                            </StackPanel>
+                                            <Button x:Name="ApplyOnlineLyricsButton" Grid.Column="1" Height="36" MinWidth="110" IsEnabled="False"
+                                                    Content="Применить" Padding="16,0" FontSize="13" FontWeight="SemiBold"
+                                                    Background="#3D9BEA" BorderBrush="#70B8F4" BorderThickness="1" Foreground="White"
+                                                    Click="ApplyOnlineLyricsButton_Click" />
+                                        </Grid>
                                     </Grid>
                                 </Border>
                             </Grid>

@@ -541,42 +541,76 @@ public static class LyricsService
     private static bool IsNoFilePlaceholder(string title) =>
         title == NoFileTitlePlaceholder || title == LocalizationService.Translate(NoFileTitlePlaceholder);
 
+    // Ручной поиск добавляет результаты следующих вариантов запроса, пока их меньше EnoughManualResults;
+    // MaxManualResults ограничивает длину списка.
+    private const int EnoughManualResults = 8;
+    private const int MaxManualResults = 30;
+    public const string LrcLibSourceName = "LRCLIB";
+
+    // sourceFilter — выбор источника в окне поиска: null — все (дополнительные по настройке), "LRCLIB" — только LRCLIB,
+    // иное имя (NetEase, QQ Music, Kugou, Paxsenix) — только он, если дополнительные источники включены в настройках.
     public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineVariantsAsync(
         string trackName,
         string artistName,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        string? sourceFilter = null,
+        System.Collections.Concurrent.ConcurrentBag<string>? failedSources = null)
     {
-        // Варианты: как в теге, без пометок версии, с первым исполнителем, только название и, наконец, общий запрос.
-        // Сначала только LRCLIB: он быстрый. Дополнительные источники опрашиваются один раз в конце и дописываются к выдаче,
-        // а не повторяются на каждом варианте запроса.
-        IReadOnlyList<OnlineLyricsResult> primary = Array.Empty<OnlineLyricsResult>();
-        LyricsRateLimitException? rateLimit = null;
-        try
+        // Дополнительные источники работают только при включённой настройке: выбор такого источника при выключенной настройке
+        // (например, сохранённый раньше) считается выбором LRCLIB.
+        if (!ExtraSourceEnabled && sourceFilter is not null
+            && !string.Equals(sourceFilter, LrcLibSourceName, StringComparison.OrdinalIgnoreCase))
         {
-            foreach ((string title, string artist) in LyricsMatcher.BuildQueryVariants(trackName, artistName))
+            sourceFilter = LrcLibSourceName;
+        }
+
+        bool useLrcLib = sourceFilter is null || string.Equals(sourceFilter, LrcLibSourceName, StringComparison.OrdinalIgnoreCase);
+        string? extraOnly = sourceFilter is null || useLrcLib ? null : sourceFilter;
+        bool useExtra = ExtraSourceEnabled && (sourceFilter is null || extraOnly is not null);
+
+        // Варианты: как в теге, без пометок версии, с первым исполнителем, только название и, наконец, общий запрос.
+        // Результаты вариантов объединяются, пока их мало (раньше поиск вставал на первом непустом, пусть и неподходящем).
+        // Дополнительные источники опрашиваются один раз в конце, а не на каждом варианте запроса.
+        var primary = new List<OnlineLyricsResult>();
+        LyricsRateLimitException? rateLimit = null;
+        if (useLrcLib)
+        {
+            var seenIds = new HashSet<long>();
+            void AddPrimary(IEnumerable<OnlineLyricsResult> found)
             {
-                primary = await SearchLrcLibAsync(title, artist, cancellationToken);
-                if (primary.Count > 0) break;
+                foreach (OnlineLyricsResult result in found)
+                {
+                    if (primary.Count < MaxManualResults && seenIds.Add(result.Id)) primary.Add(result);
+                }
             }
 
-            string? generalQuery = BuildGeneralQuery(trackName, artistName);
-            if (primary.Count == 0 && generalQuery is not null)
-                primary = await SearchLrcLibAsync(generalQuery, string.Empty, cancellationToken, generalQuery: true);
-        }
-        catch (LyricsRateLimitException ex)
-        {
-            // Недоступность или лимит LRCLIB не должны отменять поиск в остальных источниках.
-            rateLimit = ex;
-        }
-        catch (LrcLibUnavailableException)
-        {
+            try
+            {
+                foreach ((string title, string artist) in LyricsMatcher.BuildQueryVariants(trackName, artistName))
+                {
+                    AddPrimary(await SearchLrcLibAsync(title, artist, cancellationToken));
+                    if (primary.Count >= EnoughManualResults) break;
+                }
+
+                string? generalQuery = BuildGeneralQuery(trackName, artistName);
+                if (primary.Count < EnoughManualResults && generalQuery is not null)
+                    AddPrimary(await SearchLrcLibAsync(generalQuery, string.Empty, cancellationToken, generalQuery: true));
+            }
+            catch (LyricsRateLimitException ex)
+            {
+                // Недоступность или лимит LRCLIB не должны отменять поиск в остальных источниках.
+                rateLimit = ex;
+            }
+            catch (LrcLibUnavailableException)
+            {
+            }
         }
 
         IReadOnlyList<OnlineLyricsResult> extra = Array.Empty<OnlineLyricsResult>();
-        if (ExtraSourceEnabled)
+        if (useExtra)
         {
             (string extraTitle, string extraArtist) = ExtraSourceQuery(trackName, artistName);
-            extra = await LyricifyLyricsSource.SearchAsync(extraTitle, extraArtist, cancellationToken);
+            extra = await LyricifyLyricsSource.SearchAsync(extraTitle, extraArtist, cancellationToken, extraOnly, failedSources);
         }
 
         if (primary.Count == 0 && extra.Count == 0 && rateLimit is not null) throw rateLimit;

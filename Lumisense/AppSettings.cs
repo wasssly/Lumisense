@@ -171,6 +171,9 @@ public class AppSettings
     // Дополнительный источник текстов песен (NetEase через Lyricify.Lyrics.Helper); по умолчанию выключен.
     public bool UseExtraLyricsSource { get; set; }
 
+    // Источник в ручном поиске текста (Now Playing): "All" — все, иначе "LRCLIB", "NetEase", "QQ Music", "Kugou" или "Paxsenix".
+    public string LyricsManualSearchSource { get; set; } = "All";
+
     // Размер мини-плеера: "Compact" | "Current" | "Classic" (по умолчанию размер версии 1.21.0).
     public string MiniPlayerSizePreset { get; set; } = "Classic";
 

@@ -66,6 +66,8 @@ public partial class NowPlayingWindow : Window
         ApplyBackgroundMode();
         SizeChanged += (_, _) => UpdateBackdropGeometry();
         OnlineLyricsResultsList.ItemsSource = _onlineResults;
+        ApplyLyricsSearchSourceSelection();
+        UpdateLyricsSearchSourceChips();
         Loaded += NowPlayingWindow_Loaded;
         Closed += NowPlayingWindow_Closed;
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
@@ -1536,6 +1538,7 @@ public partial class NowPlayingWindow : Window
 
         CancelOnlineSearch();
         _onlineResults.Clear();
+        UpdateLyricsSearchSourceChips();
         OnlineLyricsSearchPanel.Visibility = Visibility.Visible;
         LyricsSearchQueryTextBox.Text = BuildDefaultLyricsSearchQuery();
         OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Проверьте запрос и нажмите «Искать» или Enter.");
@@ -1598,6 +1601,42 @@ public partial class NowPlayingWindow : Window
             : (text, string.Empty);
     }
 
+    private IEnumerable<System.Windows.Controls.RadioButton> LyricsSearchSourceRadios() =>
+        LyricsSearchSourcePanel.Children.OfType<System.Windows.Controls.RadioButton>();
+
+    private void ApplyLyricsSearchSourceSelection()
+    {
+        string wanted = _owner.Settings.LyricsManualSearchSource;
+        foreach (var radio in LyricsSearchSourceRadios()) radio.IsChecked = (string)radio.Tag == wanted;
+    }
+
+    // Дополнительные источники (NetEase, QQ Music, Kugou, Paxsenix) показываются только при включённой настройке «Дополнительный
+    // источник текстов»; если выбранный источник из их числа, а настройку выключили, выбор возвращается на «Все».
+    private void UpdateLyricsSearchSourceChips()
+    {
+        bool extra = _owner.Settings.UseExtraLyricsSource;
+        foreach (var radio in LyricsSearchSourceRadios())
+        {
+            string source = (string)radio.Tag;
+            if (source is "All" or LyricsService.LrcLibSourceName) continue;
+
+            radio.Visibility = extra ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (!extra && _owner.Settings.LyricsManualSearchSource is not ("All" or LyricsService.LrcLibSourceName))
+        {
+            _owner.Settings.LyricsManualSearchSource = "All";
+            ApplyLyricsSearchSourceSelection();
+        }
+    }
+
+    // Выбор запоминается в общих настройках и сохраняется вместе с ними при ближайшем сохранении.
+    private void LyricsSearchSourceRadio_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is System.Windows.Controls.RadioButton { Tag: string source })
+            _owner.Settings.LyricsManualSearchSource = source;
+    }
+
     private async Task SearchLyricsAsync(string trackPath)
     {
         (string trackName, string artistName) = ParseLyricsSearchQuery(LyricsSearchQueryTextBox.Text ?? string.Empty);
@@ -1630,7 +1669,11 @@ public partial class NowPlayingWindow : Window
 
         try
         {
-            IReadOnlyList<OnlineLyricsResult> results = await LyricsService.SearchOnlineVariantsAsync(trackName, artistName, token);
+            UpdateLyricsSearchSourceChips();
+            string selectedSource = _owner.Settings.LyricsManualSearchSource;
+            var failedSources = new System.Collections.Concurrent.ConcurrentBag<string>();
+            IReadOnlyList<OnlineLyricsResult> results = await LyricsService.SearchOnlineVariantsAsync(
+                trackName, artistName, token, selectedSource == "All" ? null : selectedSource, failedSources);
             if (token.IsCancellationRequested)
                 return; // отмена: статус принадлежит новому поиску или закрытию окна
 
@@ -1644,9 +1687,16 @@ public partial class NowPlayingWindow : Window
             foreach (OnlineLyricsResult result in results)
                 _onlineResults.Add(result);
 
+            // Источник, который не ответил (таймаут, сбой), не равен «ничего не найдено»: об этом пишем отдельно.
+            string failed = string.Join(", ", failedSources.Distinct());
             OnlineLyricsSearchStatusText.Text = _onlineResults.Count == 0
-                ? LocalizationService.Translate("Во встроенной базе совпадения не найдены. Измените запрос или откройте Genius ниже.")
-                : LocalizationService.Format("Найдено вариантов: {0}. Дважды кликните нужный вариант, чтобы сохранить его.", _onlineResults.Count);
+                ? (failed.Length > 0
+                    ? LocalizationService.Format("Источники не ответили: {0}. Повторите поиск чуть позже или выберите другой источник.", failed)
+                    : selectedSource == "All"
+                        ? LocalizationService.Translate("Во встроенной базе совпадения не найдены. Измените запрос или откройте Genius ниже.")
+                        : LocalizationService.Format("В источнике {0} совпадений не найдено. Выберите другой источник или измените запрос.", selectedSource))
+                : LocalizationService.Format("Найдено вариантов: {0}. Дважды кликните нужный вариант, чтобы сохранить его.", _onlineResults.Count)
+                    + (failed.Length > 0 ? LocalizationService.Format(" Не ответили: {0}.", failed) : string.Empty);
         }
         catch (LyricsRateLimitException ex)
         {
@@ -1756,9 +1806,25 @@ public partial class NowPlayingWindow : Window
     }
 
     private void OnlineLyricsResultsList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        => BackgroundTask.FireAndForget(OnlineLyricsResultsList_MouseDoubleClickAsync(sender, e), nameof(OnlineLyricsResultsList_MouseDoubleClick));
+        => BackgroundTask.FireAndForget(ApplySelectedOnlineResultAsync(), nameof(OnlineLyricsResultsList_MouseDoubleClick));
 
-    private async Task OnlineLyricsResultsList_MouseDoubleClickAsync(object sender, MouseButtonEventArgs e)
+    private void ApplyOnlineLyricsButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ApplySelectedOnlineResultAsync(), nameof(ApplyOnlineLyricsButton_Click));
+
+    private void OnlineLyricsResultsList_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter) return;
+
+        e.Handled = true;
+        BackgroundTask.FireAndForget(ApplySelectedOnlineResultAsync(), nameof(OnlineLyricsResultsList_KeyDown));
+    }
+
+    // Кнопка «Применить» доступна, только когда в списке выбран вариант.
+    private void OnlineLyricsResultsList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        => ApplyOnlineLyricsButton.IsEnabled = OnlineLyricsResultsList.SelectedItem is OnlineLyricsResult;
+
+    // Сохраняет выбранный вариант как текст трека: двойной щелчок, Enter и кнопка «Применить» делают одно и то же.
+    private async Task ApplySelectedOnlineResultAsync()
     {
         if (OnlineLyricsResultsList.SelectedItem is not OnlineLyricsResult result) return;
         string? trackPath = _owner.CurrentTrackPath;
@@ -1766,6 +1832,7 @@ public partial class NowPlayingWindow : Window
 
         OnlineLyricsSearchStatusText.Text = LocalizationService.Translate("Сохраняю выбранный текст…");
         OnlineLyricsResultsList.IsEnabled = false;
+        ApplyOnlineLyricsButton.IsEnabled = false;
         try
         {
             await LyricsService.SaveOnlineResultAsync(trackPath, result, CancellationToken.None);
@@ -1780,6 +1847,7 @@ public partial class NowPlayingWindow : Window
         {
             OnlineLyricsSearchStatusText.Text = LocalizationService.Translate($"Не удалось сохранить текст: {ex.Message}");
             OnlineLyricsResultsList.IsEnabled = true;
+            ApplyOnlineLyricsButton.IsEnabled = OnlineLyricsResultsList.SelectedItem is OnlineLyricsResult;
         }
     }
 
