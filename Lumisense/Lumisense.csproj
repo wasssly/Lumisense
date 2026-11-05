@@ -7,7 +7,8 @@
     <Nullable>enable</Nullable>
     <!-- Предупреждения компилятора считаются ошибками; предупреждения аудита уязвимостей NuGet (NU1901-NU1904) остаются предупреждениями, чтобы новая запись в базе не ломала сборку. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <!-- NU1900: проверка уязвимостей не смогла связаться с nuget.org (нет сети, прокси, VPN) — это не ошибка кода, сборку не ломаем. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900;NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>

@@ -14,7 +14,8 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <!-- Как в проекте приложения: предупреждения компилятора и анализаторов xUnit считаются ошибками, аудит уязвимостей NuGet (NU1901-NU1904) остаётся предупреждением. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+    <!-- NU1900: проверка уязвимостей не смогла связаться с nuget.org (нет сети, прокси, VPN) — это не ошибка кода, сборку не ломаем. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1900;NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
   </PropertyGroup>
 
   <ItemGroup>
