@@ -561,6 +561,7 @@ public partial class SettingsWindow : FluentWindow
     // _isInitializing глушит Changed-обработчики, чтобы не применять настройку повторно и не зациклить обновления.
     public void RefreshMiniPlayerToggles()
     {
+        bool wasInitializing1 = _isInitializing;
         _isInitializing = true;
         try
         {
@@ -577,7 +578,7 @@ public partial class SettingsWindow : FluentWindow
         finally
         {
             // Без finally исключение выше оставило бы флаг включённым, и окно перестало бы сохранять любые изменения.
-            _isInitializing = false;
+            _isInitializing = wasInitializing1;
         }
     }
 
@@ -585,6 +586,7 @@ public partial class SettingsWindow : FluentWindow
     // или кнопкой мини-плеера, чтобы страница не отставала от состояния.
     public void RefreshViewModeRadios()
     {
+        bool wasInitializing2 = _isInitializing;
         _isInitializing = true;
         try
         {
@@ -597,7 +599,7 @@ public partial class SettingsWindow : FluentWindow
         }
         finally
         {
-            _isInitializing = false;
+            _isInitializing = wasInitializing2;
         }
     }
 
@@ -971,6 +973,7 @@ public partial class SettingsWindow : FluentWindow
         }
 
         // Откат без повторного срабатывания Checked и без записи выбора в настройки.
+        bool wasInitializing4 = _isInitializing;
         _isInitializing = true;
         try
         {
@@ -979,7 +982,7 @@ public partial class SettingsWindow : FluentWindow
         }
         finally
         {
-            _isInitializing = false;
+            _isInitializing = wasInitializing4;
         }
     }
 
@@ -2891,6 +2894,7 @@ public partial class SettingsWindow : FluentWindow
         if (StartupManager.SetEnabled(LaunchOnStartupCheckBox.IsChecked == true)) return;
 
         // Реестр не изменился — возвращаем флажок к фактическому состоянию.
+        bool wasInitializing7 = _isInitializing;
         _isInitializing = true;
         try
         {
@@ -2898,7 +2902,7 @@ public partial class SettingsWindow : FluentWindow
         }
         finally
         {
-            _isInitializing = false;
+            _isInitializing = wasInitializing7;
         }
     }
 
@@ -3366,6 +3370,7 @@ public partial class SettingsWindow : FluentWindow
 
         // _isInitializing глушит ValueChanged при сбросе слайдеров в 0: ResetEqualizer уже применил всё разом,
         // а десять отдельных SetEqualizerBandGain были бы лишними.
+        bool wasInitializing8 = _isInitializing;
         _isInitializing = true;
         try
         {
@@ -3377,7 +3382,7 @@ public partial class SettingsWindow : FluentWindow
         }
         finally
         {
-            _isInitializing = false;
+            _isInitializing = wasInitializing8;
         }
     }
 
@@ -3432,6 +3437,7 @@ public partial class SettingsWindow : FluentWindow
 
         // Пресет применился в MainWindow — подтягиваем актуальные значения обратно в слайдеры,
         // так же как при обычном открытии окна (см. _isInitializing выше).
+        bool wasInitializing9 = _isInitializing;
         _isInitializing = true;
         try
         {
@@ -3444,7 +3450,7 @@ public partial class SettingsWindow : FluentWindow
         }
         finally
         {
-            _isInitializing = false;
+            _isInitializing = wasInitializing9;
         }
 
         if (EqualizerEnabledCheckBox.IsChecked != true)
