@@ -355,10 +355,12 @@ public static class UpdateChecker
     // Полный список опубликованных релизов для выбора версии и отката. Сбой (лимит GitHub 403/429, сеть, 5xx) повторяется
     // с короткой паузой (ReleaseListRetryPolicy), а если не прошло, возвращается сохранённая копия прошлого удачного списка
     // с пометкой IsFromCache: так откат на старую версию доступен, даже когда API отвечает 403.
-    // Один запрос ждёт не больше ReleaseListRequestTimeout (общий таймаут клиента 30 с слишком долгий: три попытки подряд
+    // Один запрос ждёт начало ответа ReleaseListHeadersTimeout, тело — ReleaseListBodyTimeout (общий таймаут 30 с слишком долгий: три попытки подряд
     // выглядели как зависание, особенно за VPN, где GitHub API режется или упирается в лимит общего адреса).
     // attemptProgress получает номер текущей попытки, чтобы окно настроек показывало, что загрузка идёт.
-    private static readonly System.TimeSpan ReleaseListRequestTimeout = System.TimeSpan.FromSeconds(8);
+    // Ответ на 100 релизов весит сотни килобайт: 8 с на весь запрос не хватало за VPN, поэтому начало ответа и тело ждём отдельно.
+    private static readonly System.TimeSpan ReleaseListHeadersTimeout = System.TimeSpan.FromSeconds(12);
+    private static readonly System.TimeSpan ReleaseListBodyTimeout = System.TimeSpan.FromSeconds(40);
 
     public static async Task<ReleaseListResult> GetAllReleasesAsync(CancellationToken ct = default, IProgress<int>? attemptProgress = null)
     {
@@ -409,7 +411,7 @@ public static class UpdateChecker
     {
         // Таймаут запроса — отменой связанного токена: настоящая отмена пользователем (ct) по-прежнему прерывает всё.
         using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-        timeoutCts.CancelAfter(ReleaseListRequestTimeout);
+        timeoutCts.CancelAfter(ReleaseListHeadersTimeout);
         CancellationToken requestToken = timeoutCts.Token;
 
         try
@@ -419,7 +421,9 @@ public static class UpdateChecker
             if (cache is { ETag: { Length: > 0 } cachedEtag })
                 request.Headers.TryAddWithoutValidation("If-None-Match", cachedEtag);
 
-            using var response = await Http.SendAsync(request, requestToken);
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            using var response = await Http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, requestToken);
+            timeoutCts.CancelAfter(ReleaseListBodyTimeout); // начало ответа получено: тело читаем с отдельным запасом времени
             if (response.StatusCode == System.Net.HttpStatusCode.NotModified && cache is not null)
             {
                 cache.FetchedAt = DateTimeOffset.UtcNow;
@@ -456,7 +460,10 @@ public static class UpdateChecker
             var releases = new List<ReleaseListItem>();
             foreach (var releaseEl in doc.RootElement.EnumerateArray())
             {
-                if (releaseEl.TryGetProperty("draft", out var draftEl) && draftEl.GetBoolean()) continue;
+                // Один релиз с необычными полями не должен ронять весь список: он пропускается, а причина пишется в журнал.
+                try
+                {
+                if (releaseEl.TryGetProperty("draft", out var draftEl) && draftEl.ValueKind == JsonValueKind.True) continue;
                 string tagName = releaseEl.TryGetProperty("tag_name", out var tagEl) ? tagEl.GetString() ?? "" : "";
                 string version = tagName.TrimStart('v', 'V');
                 if (string.IsNullOrEmpty(version)) continue;
@@ -475,9 +482,16 @@ public static class UpdateChecker
                     ReleaseNotesUrl = releaseEl.TryGetProperty("html_url", out var htmlEl) ? htmlEl.GetString() : null,
                     ReleaseNotes = releaseEl.TryGetProperty("body", out var bodyEl) ? bodyEl.GetString() : null,
                     PublishedAt = publishedAt,
-                    IsPrerelease = releaseEl.TryGetProperty("prerelease", out var preEl) && preEl.GetBoolean(),
+                    IsPrerelease = releaseEl.TryGetProperty("prerelease", out var preEl) && preEl.ValueKind == JsonValueKind.True,
                 });
+                }
+                catch (System.Exception ex) when (ex is InvalidOperationException or FormatException or KeyNotFoundException)
+                {
+                    Logger.Warn($"Релиз пропущен при разборе списка версий: {ex.GetType().Name}: {ex.Message}");
+                }
             }
+
+            Logger.Info($"Список релизов получен: {releases.Count} шт., {stopwatch.ElapsedMilliseconds} мс.");
 
             if (releases.Count > 0)
                 ReleaseListCache.TrySave(new ReleaseListCacheData { ETag = etag, FetchedAt = DateTimeOffset.UtcNow, Releases = releases });
@@ -490,7 +504,7 @@ public static class UpdateChecker
         }
         catch (System.Exception ex)
         {
-            Logger.Warn($"Не удалось загрузить список релизов: {ex.Message}");
+            Logger.Warn($"Не удалось загрузить список релизов: {ex.GetType().Name}: {ex.Message}");
             return (new ReleaseListResult
             {
                 FailureKind = UpdateFailureKind.Network,
