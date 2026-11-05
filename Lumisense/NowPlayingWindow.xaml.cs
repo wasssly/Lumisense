@@ -1028,11 +1028,20 @@ public partial class NowPlayingWindow : Window
     }
 
     private void NextLyricsVariantButton_Click(object sender, RoutedEventArgs e)
-        => BackgroundTask.FireAndForget(ShowNextLyricsVariantAsync(), nameof(NextLyricsVariantButton_Click));
+        => BackgroundTask.FireAndForget(ShowNextLyricsVariantAsync(showMenu: false), nameof(NextLyricsVariantButton_Click));
 
-    // «Другой вариант»: переключает текущий трек на следующий найденный текст (с кругом по списку) и сохраняет его так же,
-    // как выбор в ручном поиске. Если известные варианты закончились, один раз догружает дополнительные источники.
-    private async Task ShowNextLyricsVariantAsync()
+    private void LyricsVariantMenuButton_Click(object sender, RoutedEventArgs e)
+        => BackgroundTask.FireAndForget(ShowNextLyricsVariantAsync(showMenu: true), nameof(LyricsVariantMenuButton_Click));
+
+    private void SetLyricsVariantButtonsEnabled(bool enabled)
+    {
+        NextLyricsVariantButton.IsEnabled = enabled;
+        LyricsVariantMenuButton.IsEnabled = enabled;
+    }
+
+    // «Другой вариант»: переключает на следующий найденный текст по кругу и сохраняет его как выбор в ручном поиске;
+    // стрелка (showMenu) открывает список вариантов (дополнительные источники догружаются один раз).
+    private async Task ShowNextLyricsVariantAsync(bool showMenu)
     {
         if (_lyricsVariantBusy) return;
 
@@ -1054,7 +1063,7 @@ public partial class NowPlayingWindow : Window
         CancellationToken token = searchCts.Token;
 
         _lyricsVariantBusy = true;
-        NextLyricsVariantButton.IsEnabled = false;
+        SetLyricsVariantButtonsEnabled(false);
         try
         {
             string title = _owner.CurrentTitle, artist = _owner.CurrentArtist;
@@ -1076,7 +1085,7 @@ public partial class NowPlayingWindow : Window
                 _lyricsVariantsLrcLibLoaded = true;
             }
 
-            if (_lyricsVariantIndex + 1 >= _lyricsVariants.Count && !_lyricsVariantsExtraLoaded)
+            if ((showMenu || _lyricsVariantIndex + 1 >= _lyricsVariants.Count) && !_lyricsVariantsExtraLoaded)
             {
                 SetLyricsStatusText(LocalizationService.Translate("Ищем другие варианты…"), loading: true);
                 AddVariants(await LyricsService.FindExtraVariantsAsync(title, artist, duration, token));
@@ -1091,6 +1100,14 @@ public partial class NowPlayingWindow : Window
                 SetLyricsStatusText(LocalizationService.Translate(_lyricsVariants.Count == 0
                     ? "Подходящих вариантов не найдено"
                     : "Других вариантов нет"));
+                return;
+            }
+
+            if (showMenu)
+            {
+                // Подпись «Ищем другие варианты…» на время поиска заменяется прежней подписью источника.
+                SetLyricsStatusText(LocalizationService.Translate(_lyrics.SourceLabel));
+                ShowLyricsVariantMenu(trackPath);
                 return;
             }
 
@@ -1123,7 +1140,85 @@ public partial class NowPlayingWindow : Window
                 _onlineSearchCts = null;
             searchCts.Dispose();
             _lyricsVariantBusy = false;
-            NextLyricsVariantButton.IsEnabled = true;
+            SetLyricsVariantButtonsEnabled(true);
+        }
+    }
+
+    // Список вариантов под стрелкой кнопки: выбор нужного сразу, без перебора по кругу. Текущий вариант отмечен галочкой.
+    private void ShowLyricsVariantMenu(string trackPath)
+    {
+        var menu = new System.Windows.Controls.ContextMenu
+        {
+            PlacementTarget = LyricsVariantMenuButton,
+            Placement = System.Windows.Controls.Primitives.PlacementMode.Bottom,
+            StaysOpen = false,
+        };
+
+        for (int i = 0; i < _lyricsVariants.Count; i++)
+        {
+            OnlineLyricsResult variant = _lyricsVariants[i];
+            int index = i;
+            string kind = LocalizationService.Translate(variant.HasSyncedLyrics ? "синхронный" : "обычный");
+            string name = string.IsNullOrWhiteSpace(variant.ArtistName) ? variant.TrackName : $"{variant.ArtistName} — {variant.TrackName}";
+            if (name.Length > 48) name = name[..47] + "…";
+
+            var item = new System.Windows.Controls.MenuItem
+            {
+                Header = $"{variant.Source} · {kind} · {name}",
+                IsCheckable = true,
+                IsChecked = i == _lyricsVariantIndex,
+            };
+            item.Click += (_, _) => BackgroundTask.FireAndForget(ApplyLyricsVariantAsync(trackPath, index), nameof(ApplyLyricsVariantAsync));
+            menu.Items.Add(item);
+        }
+
+        menu.IsOpen = true;
+    }
+
+    // Применяет выбранный в меню вариант: сохраняет его так же, как выбор в ручном поиске, и перечитывает текст.
+    private async Task ApplyLyricsVariantAsync(string trackPath, int index)
+    {
+        if (_lyricsVariantBusy || index < 0 || index >= _lyricsVariants.Count) return;
+        if (!string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase)) return;
+
+        CancelOnlineSearch();
+        var searchCts = new CancellationTokenSource();
+        _onlineSearchCts = searchCts;
+        CancellationToken token = searchCts.Token;
+
+        _lyricsVariantBusy = true;
+        SetLyricsVariantButtonsEnabled(false);
+        try
+        {
+            await LyricsService.SaveOnlineResultAsync(trackPath, _lyricsVariants[index], token);
+            if (token.IsCancellationRequested || !string.Equals(trackPath, _owner.CurrentTrackPath, StringComparison.OrdinalIgnoreCase))
+                return;
+
+            _lyricsVariantIndex = index;
+            // Перечитываем текст обычным путём, как после выбора в ручном поиске, чтобы показать ровно то, что сохранено.
+            _lyricsTrackPath = null;
+            await LoadLyricsAsync(trackPath);
+            LyricsModeText.Text += $" · {index + 1}/{_lyricsVariants.Count}";
+        }
+        catch (LyricsRateLimitException)
+        {
+            SetLyricsStatusText(LocalizationService.Translate("Поиск временно ограничен"));
+        }
+        catch (OperationCanceledException)
+        {
+            // Смена трека или запуск другого поиска.
+        }
+        catch
+        {
+            SetLyricsStatusText(LocalizationService.Translate("Не удалось сменить вариант текста"));
+        }
+        finally
+        {
+            if (ReferenceEquals(_onlineSearchCts, searchCts))
+                _onlineSearchCts = null;
+            searchCts.Dispose();
+            _lyricsVariantBusy = false;
+            SetLyricsVariantButtonsEnabled(true);
         }
     }
 
