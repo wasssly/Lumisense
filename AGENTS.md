@@ -456,6 +456,16 @@ Before creating a commit, inspect the actual diff and write the commit message b
 
 ---
 
+## Commit Signatures and Trailers
+
+Do not sign commits: no GPG or SSH signature, no `-S`, no `commit.gpgsign`. If the environment signs by default, create commits with `--no-gpg-sign`. A signature made with a tool's own key shows as "Unverified" on GitHub.
+
+Do not add `Signed-off-by`, `Co-Authored-By`, `Claude-Session`, "Generated with ..." or any other attribution or trailer lines to commit messages or pull request descriptions.
+
+Commits are authored and committed as the repository owner.
+
+---
+
 # 10. Git Changes
 
 Do not modify files unrelated to the requested task.
