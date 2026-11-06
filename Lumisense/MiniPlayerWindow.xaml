@@ -522,18 +522,24 @@
                 BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" BorderThickness="1"
                 HorizontalAlignment="Center" VerticalAlignment="Center"
                 Opacity="0" IsHitTestVisible="False">
-            <StackPanel Orientation="Horizontal">
-                <local:SvgPathIcon x:Name="VolumeIndicatorIcon" Icon="IconSpeaker" Size="14"
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <local:SvgPathIcon x:Name="VolumeIndicatorIcon" Icon="IconSpeaker2" Size="14"
                                    VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
-                <!-- Скрытый «100%» держит ширину: иначе плашка меняет размер, когда в проценте меняется число цифр. -->
-                <Grid Margin="7,0,0,0" VerticalAlignment="Center">
-                    <TextBlock Text="100%" FontSize="14" FontWeight="SemiBold" Visibility="Hidden" />
-                    <TextBlock x:Name="VolumeIndicatorText" Text="30%" FontSize="14" FontWeight="SemiBold"
-                               HorizontalAlignment="Right"
-                               Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                <Grid x:Name="VolumeIndicatorTrack" Grid.Column="1" Width="76" Height="5" Margin="9,0,0,0" VerticalAlignment="Center">
+                    <Border CornerRadius="2.5" Background="{DynamicResource TextFillColorPrimaryBrush}" Opacity="0.2" />
+                    <Border x:Name="VolumeIndicatorFill" CornerRadius="2.5" HorizontalAlignment="Left" Width="5"
+                            Background="{DynamicResource TextFillColorPrimaryBrush}" />
                 </Grid>
-            </StackPanel>
+                <local:RollingDigits x:Name="VolumeIndicatorText" Grid.Column="2" Width="26" Margin="8,0,0,0" FontSize="13" FontWeight="SemiBold"
+                                     HorizontalAlignment="Center" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+            </Grid>
             </Border>
         </Grid>
     </Border>

@@ -565,8 +565,12 @@ public partial class MiniPlayerWindow : Window
     {
         double shownOpacity = VolumeIndicator.Opacity;
         double headerOpacity = HeaderPanel.Opacity;
-        VolumeIndicatorText.Text = $"{(int)Math.Round(volume * 100)}%";
-        VolumeIndicatorIcon.Icon = volume <= 0.0 ? "IconSpeakerMute" : "IconSpeaker";
+        double progressOpacity = ProgressRow.Opacity;
+        volume = Math.Clamp(volume, 0, 1);
+        VolumeIndicatorText.Text = ((int)Math.Round(volume * 100)).ToString();
+        VolumeIndicatorIcon.Icon = volume <= 0.0 ? "IconSpeakerMute" : volume < 0.5 ? "IconSpeaker" : "IconSpeaker2";
+        SetVolumeIndicatorFill(volume, animate: shownOpacity > 0.05
+            && !AccessibilityPreferences.ShouldReduceMotion(_mainWindow.Settings, AnimationAreas.MiniPlayer));
 
         if (_buttonsOverlayMode)
         {
@@ -602,6 +606,80 @@ public partial class MiniPlayerWindow : Window
         HeaderPanel.BeginAnimation(UIElement.OpacityProperty, null);
         VolumeIndicator.BeginAnimation(UIElement.OpacityProperty, CreateVolumeFade(shownOpacity, 1, 0));
         HeaderPanel.BeginAnimation(UIElement.OpacityProperty, CreateVolumeFade(headerOpacity, 0, 1));
+        FadeProgressRowForVolume(progressOpacity);
+    }
+
+    private void FadeProgressRowForVolume(double startOpacity)
+    {
+        if (!_showProgress) return;
+
+        _volumeFadeStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        StartProgressVolumeFade(startOpacity, elapsedSeconds: 0);
+    }
+
+    private DoubleAnimationUsingKeyFrames? _progressVolumeFade;
+    private long _volumeFadeStart;
+
+    private void StartProgressVolumeFade(double current, double elapsedSeconds)
+    {
+        var fade = CreateProgressVolumeFade(current, ProgressRowRestOpacity(), elapsedSeconds);
+        _progressVolumeFade = fade;
+        ProgressRow.IsHitTestVisible = false;
+        fade.Completed += (_, _) =>
+        {
+            if (!ReferenceEquals(_progressVolumeFade, fade)) return;
+
+            _progressVolumeFade = null;
+            double finalOpacity = ProgressRowRestOpacity();
+            ProgressRow.BeginAnimation(UIElement.OpacityProperty, null);
+            ProgressRow.Opacity = finalOpacity;
+            ProgressRow.IsHitTestVisible = finalOpacity > 0;
+        };
+        ProgressRow.BeginAnimation(UIElement.OpacityProperty, fade);
+    }
+
+    private void RetargetProgressFadeForVolume()
+    {
+        if (_progressVolumeFade is null) return;
+
+        double elapsed = System.Diagnostics.Stopwatch.GetElapsedTime(_volumeFadeStart).TotalSeconds;
+        StartProgressVolumeFade(ProgressRow.Opacity, elapsed);
+    }
+
+    private static DoubleAnimationUsingKeyFrames CreateProgressVolumeFade(double current, double rest, double elapsed)
+    {
+        double holdEnd = Math.Max(0.9 - elapsed, 0);
+        double end = Math.Max(1.25 - elapsed, holdEnd + 0.01);
+        var fade = new DoubleAnimationUsingKeyFrames();
+        fade.KeyFrames.Add(new DiscreteDoubleKeyFrame(current, KeyTime.FromTimeSpan(TimeSpan.Zero)));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(Math.Min(0.12 * current, holdEnd)))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(holdEnd))));
+        fade.KeyFrames.Add(new LinearDoubleKeyFrame(rest, KeyTime.FromTimeSpan(TimeSpan.FromSeconds(end))));
+        return fade;
+    }
+
+    private double ProgressRowRestOpacity()
+    {
+        if (!_buttonsOverlayMode) return 1;
+
+        bool controlsBack = _volumeOverlaySuppressedControls ? RootBorder.IsMouseOver : ControlsPanel.Visibility == Visibility.Visible;
+        return controlsBack ? 0 : 1;
+    }
+
+    private void SetVolumeIndicatorFill(double volume, bool animate)
+    {
+        double width = Math.Max(5, volume * VolumeIndicatorTrack.Width);
+        if (!animate)
+        {
+            VolumeIndicatorFill.BeginAnimation(WidthProperty, null);
+            VolumeIndicatorFill.Width = width;
+            return;
+        }
+
+        VolumeIndicatorFill.BeginAnimation(WidthProperty, new DoubleAnimation(width, TimeSpan.FromMilliseconds(140))
+        {
+            EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut }
+        });
     }
 
     // Плавно доводит прозрачность до target, держит до 0.9 с и возвращает к rest за 0.35 с; первый кадр фиксирует текущее значение.
@@ -1656,6 +1734,7 @@ public partial class MiniPlayerWindow : Window
     private void SyncProgressRowWithOverlayControls()
     {
         bool hidden = _buttonsOverlayMode && ControlsPanel.Visibility == Visibility.Visible;
+        if (_progressVolumeFade is null) ProgressRow.BeginAnimation(UIElement.OpacityProperty, null);
         ProgressRow.Opacity = hidden ? 0 : 1;
         ProgressRow.IsHitTestVisible = !hidden;
     }
@@ -1664,6 +1743,7 @@ public partial class MiniPlayerWindow : Window
     {
         ControlsPanel.Visibility = Visibility.Visible;
         SyncProgressRowWithOverlayControls();
+        RetargetProgressFadeForVolume();
 
         if (_buttonsOverlayMode)
         {
@@ -1682,6 +1762,7 @@ public partial class MiniPlayerWindow : Window
     {
         ControlsPanel.Visibility = Visibility.Collapsed;
         SyncProgressRowWithOverlayControls();
+        RetargetProgressFadeForVolume();
 
         if (_buttonsOverlayMode)
         {

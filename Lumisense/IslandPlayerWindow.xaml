@@ -281,9 +281,9 @@
                 </Grid>
 
                 <StackPanel x:Name="OpenVolume" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top"
-                            Margin="0,55,30,0" Opacity="0.6" IsHitTestVisible="False">
-                    <local:SvgPathIcon x:Name="OpenVolumeIcon" Icon="IconSpeaker2" Size="13" Foreground="#99FFFFFF" VerticalAlignment="Center" />
-                    <local:RollingDigits x:Name="OpenVolumeText" FontSize="11" Foreground="#99FFFFFF" Margin="5,0,0,0" VerticalAlignment="Center" />
+                            Margin="0,55,30,0" IsHitTestVisible="False">
+                    <local:SvgPathIcon x:Name="OpenVolumeIcon" Icon="IconSpeaker2" Size="13" VerticalAlignment="Center" />
+                    <local:RollingDigits x:Name="OpenVolumeText" FontSize="11" Margin="5,0,0,0" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <!-- Боковые кнопки: функцию каждой (избранное, повтор, текст песни) выбирают в настройках. У повтора

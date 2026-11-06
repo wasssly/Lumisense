@@ -126,6 +126,7 @@ internal partial class IslandPlayerWindow : Window
     {
         _host = host;
         InitializeComponent();
+        OpenVolumeIcon.Foreground = OpenVolumeText.Foreground = _openVolumeBrush;
         _springs = [_width, _height, _radius, _scale, _lean, _coverLeft, _coverTop, _coverSize, _coverScale, _away, _overshoot];
         _views = [CompactView, ToastView, VolumeView, OpenView, MenuView];
         _lyricLines = [LyricLine0, LyricLine1, LyricLine2, LyricLine3, LyricLine4];
@@ -425,11 +426,11 @@ internal partial class IslandPlayerWindow : Window
     }
 
     // ----- Состояния -----
-
     // Ширина свёрнутого, раскрытого острова и карточки трека меняется настройкой; меню и громкость остаются прежними.
     private double WidthFactor => Math.Clamp(Settings.IslandWidthPercent, 80, 130) / 100.0;
 
     private bool IsCircle => Settings.IslandShape == "Circle";
+
 
     private Shape ShapeOf(State state)
     {
@@ -486,10 +487,10 @@ internal partial class IslandPlayerWindow : Window
             _compactLyricsOn = _lyrics.Kind == LyricsKind.Synced && _lyrics.Lines.Count > 0;
             SetLyricsShown(false);
         }
-        if (next == State.Menu)
+        if (next == State.Menu) RefreshMenuText();
+        if (next is State.Menu or State.Open)
         {
-            RefreshMenuText();
-            // Наведённый остров увеличен на HoverScale; его плавный возврат к 1 масштабировал бы текст меню на каждом кадре раскрытия.
+            // Возврат масштаба пружиной двигал бы текст меню и значок громкости на каждом кадре раскрытия.
             _scale.Value = 1;
             _scale.Velocity = 0;
         }
@@ -1337,7 +1338,8 @@ internal partial class IslandPlayerWindow : Window
     }
 
     // В раскрытом острове громкость показана всегда (слева от эквалайзера); при изменении индикатор ненадолго ярче.
-    private const double OpenVolumeRest = 0.6;
+    private static readonly Color OpenVolumeRest = Color.FromArgb(0xB0, 0xFF, 0xFF, 0xFF);
+    private readonly SolidColorBrush _openVolumeBrush = new(OpenVolumeRest);
 
     private void ShowOpenVolume(double level, bool flash = false)
     {
@@ -1346,11 +1348,11 @@ internal partial class IslandPlayerWindow : Window
         OpenVolumeIcon.Icon = level <= 0 ? "IconSpeakerMute" : level < 0.5 ? "IconSpeaker" : "IconSpeaker2";
         if (!flash || ReduceMotion) return;
 
-        var show = new DoubleAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(1900) };
-        show.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120))));
-        show.KeyFrames.Add(new LinearDoubleKeyFrame(1, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1500))));
-        show.KeyFrames.Add(new LinearDoubleKeyFrame(OpenVolumeRest, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1900))));
-        OpenVolume.BeginAnimation(OpacityProperty, show);
+        var show = new ColorAnimationUsingKeyFrames { Duration = TimeSpan.FromMilliseconds(1900) };
+        show.KeyFrames.Add(new LinearColorKeyFrame(Colors.White, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(120))));
+        show.KeyFrames.Add(new LinearColorKeyFrame(Colors.White, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1500))));
+        show.KeyFrames.Add(new LinearColorKeyFrame(OpenVolumeRest, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(1900))));
+        _openVolumeBrush.BeginAnimation(SolidColorBrush.ColorProperty, show);
     }
 
     private void ShowVolume(double level)
