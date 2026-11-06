@@ -21,6 +21,22 @@ internal static class LyricsTextHygiene
     // У NetEase бывают служебные строки в виде JSON: {"t":0,"c":[{"tx":"作曲: "}...]}.
     private static readonly Regex JsonCreditLine = new(@"^\s*\{\s*""t""\s*:", RegexOptions.Compiled | RegexOptions.CultureInvariant);
 
+    private const string SectionNames =
+        @"intro|outro|verse|pre[\s-]?chorus|post[\s-]?chorus|chorus|hook|refrain|bridge|interlude|instrumental|solo|break|breakdown|drop|skit|spoken|rap|part|coda"
+        + @"|couplet|strophe|strofe|estribillo|puente|ritornello|pont"
+        + @"|куплет|припев|пре[\s-]?припев|проигрыш|бридж|интро|аутро|вступление|переход|инструментал|соло|концовка|реп|речитатив|строфа|кода";
+
+    private static readonly Regex SectionMarker = new(
+        @"^\s*[\[\(【（]\s*(?:(?:final|last|double|extra|guitar|instrumental|финальный|последний)\s+)?(?:" + SectionNames + @")"
+        + @"(?:[\s\-–]*(?:\d+[a-z]?|[ivx]+|x\d+))*(?:\s*[:：][^\]\)】）]*)?\s*[\]\)】）]\s*",
+        RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.IgnoreCase);
+
+    public static string StripSectionMarker(string? text) =>
+        string.IsNullOrEmpty(text) ? string.Empty : SectionMarker.Replace(text, string.Empty, 1).Trim();
+
+    public static bool IsSectionMarker(string? text) =>
+        !string.IsNullOrWhiteSpace(text) && StripSectionMarker(text).Length == 0;
+
     public static bool IsCreditLine(string? text) =>
         !string.IsNullOrWhiteSpace(text) && (CreditLine.IsMatch(text) || JsonCreditLine.IsMatch(text));
 
@@ -29,9 +45,17 @@ internal static class LyricsTextHygiene
     {
         if (string.IsNullOrWhiteSpace(text)) return string.Empty;
 
-        IEnumerable<string> lines = text.Replace("\r\n", "\n").Split('\n')
-            .Select(line => Timestamp.Replace(line, string.Empty).Trim())
-            .Where(line => !IsCreditLine(line));
+        var lines = new List<string>();
+        foreach (string rawLine in text.Replace("\r\n", "\n").Split('\n'))
+        {
+            string line = Timestamp.Replace(rawLine, string.Empty).Trim();
+            if (IsCreditLine(line)) continue;
+
+            string stripped = StripSectionMarker(line);
+            if (line.Length > 0 && stripped.Length == 0) continue;
+            lines.Add(stripped);
+        }
+
         return string.Join(Environment.NewLine, lines).Trim();
     }
 
@@ -45,7 +69,7 @@ internal static class LyricsTextHygiene
             {
                 string line = Timestamp.Replace(rawLine, string.Empty).Trim();
                 // Служебные теги вида [ar:Имя] и [offset:0] строками песни не являются.
-                if (line.Length > 0 && !IsCreditLine(line) && !line.StartsWith('[')) return true;
+                if (line.Length > 0 && !IsCreditLine(line) && !IsSectionMarker(line) && !line.StartsWith('[')) return true;
             }
 
             return false;

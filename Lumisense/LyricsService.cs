@@ -899,6 +899,11 @@ public static class LyricsService
             string text = TimestampRegex.Replace(line, string.Empty).Trim();
             // Строки авторов в начале текста («作曲 : …», «Composer: …») не входят в песню.
             if (LyricsTextHygiene.IsCreditLine(text)) continue;
+            if (text.Length > 0)
+            {
+                text = LyricsTextHygiene.StripSectionMarker(text);
+                if (text.Length == 0) continue;
+            }
             foreach (Match timestamp in timestamps)
             {
                 if (!int.TryParse(timestamp.Groups["minutes"].Value, out int minutes) ||

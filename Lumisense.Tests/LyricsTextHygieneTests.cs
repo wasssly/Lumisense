@@ -57,4 +57,40 @@ public sealed class LyricsTextHygieneTests
     [Fact]
     public void CreateDocument_CreditsOnlyResultIsEmpty() =>
         Assert.Equal(LyricsKind.None, LyricsService.CreateDocumentFromOnlineResult(Online("作曲 : A\n作词 : B", null)).Kind);
+
+    [Theory]
+    [InlineData("[Verse]", true)]
+    [InlineData("[Verse 1]", true)]
+    [InlineData("[Chorus: Artist]", true)]
+    [InlineData("[Pre-Chorus]", true)]
+    [InlineData("[Куплет 1]", true)]
+    [InlineData("[Припев]", true)]
+    [InlineData("(Chorus)", true)]
+    [InlineData("【Verse 2】", true)]
+    [InlineData("(Hold me tight)", false)]
+    [InlineData("Verse of mine", false)]
+    [InlineData("[ar:Artist]", false)]
+    [InlineData("", false)]
+    public void IsSectionMarker_RecognizesPartLabels(string text, bool expected) =>
+        Assert.Equal(expected, LyricsTextHygiene.IsSectionMarker(text));
+
+    [Fact]
+    public void CreateDocument_DropsSectionMarkersFromSyncedLyrics()
+    {
+        const string lrc = "[00:05.00][Verse 1]\n[00:06.00]First line\n[00:10.00][Chorus] Second line\n[00:15.00]";
+
+        LyricsDocument document = LyricsService.CreateDocumentFromOnlineResult(Online(null, lrc));
+
+        Assert.Equal(LyricsKind.Synced, document.Kind);
+        Assert.Equal(new[] { "First line", "Second line", "" }, document.Lines.Select(line => line.Text).ToArray());
+    }
+
+    [Fact]
+    public void CreateDocument_DropsSectionMarkersFromPlainLyrics()
+    {
+        LyricsDocument document = LyricsService.CreateDocumentFromOnlineResult(Online("[Verse 1]\nFirst line\n\n[Припев]\nSecond line", null));
+
+        Assert.Equal(LyricsKind.Plain, document.Kind);
+        Assert.Equal("First line" + Environment.NewLine + Environment.NewLine + "Second line", document.PlainText);
+    }
 }
