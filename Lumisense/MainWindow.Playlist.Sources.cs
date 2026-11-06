@@ -51,6 +51,23 @@ public partial class MainWindow
 
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] paths || paths.Length == 0) return;
 
+        var outcome = await AddDroppedItemsAsync(paths);
+        if (outcome.Aborted) return;
+
+        if (!outcome.FoundAnything)
+        {
+            string message = outcome.FoundAnyFolder
+                ? "В перетащенных папках не найдено поддерживаемых аудиофайлов."
+                : "Среди перетащенного не найдено ни поддерживаемых аудиофайлов, ни папок.";
+            LocalizedMessageBox.Show(this, message,
+                "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+        }
+    }
+
+    private readonly record struct DropOutcome(bool FoundAnything, bool FoundAnyFolder, bool Aborted);
+
+    private async Task<DropOutcome> AddDroppedItemsAsync(IEnumerable<string> paths)
+    {
         var newFiles = new List<string>();
         bool foundAnyFolder = false;
         bool foundAnything = false;
@@ -71,18 +88,20 @@ public partial class MainWindow
             // если в итоге не добавилось ничего.
         }
 
-        if (_isExiting) return;
+        if (_isExiting) return new DropOutcome(foundAnything, foundAnyFolder, Aborted: true);
         if (newFiles.Count > 0)
             AddLooseFiles(newFiles);
 
-        if (!foundAnything)
-        {
-            string message = foundAnyFolder
-                ? "В перетащенных папках не найдено поддерживаемых аудиофайлов."
-                : "Среди перетащенного не найдено ни поддерживаемых аудиофайлов, ни папок.";
-            LocalizedMessageBox.Show(this, message,
-                "Ничего не найдено", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
-        }
+        return new DropOutcome(foundAnything, foundAnyFolder, Aborted: false);
+    }
+
+    async Task<DroppedAddResult> IMiniPlayerHost.AddDroppedPathsAsync(IReadOnlyList<string> paths)
+    {
+        int before = FlattenAll().Count;
+        var outcome = await AddDroppedItemsAsync(paths);
+        if (outcome.Aborted) return new DroppedAddResult(0, false);
+
+        return new DroppedAddResult(Math.Max(0, FlattenAll().Count - before), outcome.FoundAnything);
     }
 
     // Клик по объединённой кнопке "Добавить" открывает её собственное контекстное меню

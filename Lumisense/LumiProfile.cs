@@ -355,6 +355,7 @@ public static class LumiProfileIO
         if (target.IslandLeftButton == target.IslandRightButton)
             target.IslandRightButton = target.IslandLeftButton == "Lyrics" ? "Favorite" : "Lyrics";
         target.IslandRoundCover = source.IslandRoundCover;
+        target.IslandAcceptDrops = source.IslandAcceptDrops;
         if (source.IslandEqualizerStyle is "Bars" or "Dots") target.IslandEqualizerStyle = source.IslandEqualizerStyle;
         if (source.IslandShape is "Capsule" or "Circle") target.IslandShape = source.IslandShape;
         if (source.IslandBackdrop is "None" or "Glow" or "Matrix" or "Wave") target.IslandBackdrop = source.IslandBackdrop;

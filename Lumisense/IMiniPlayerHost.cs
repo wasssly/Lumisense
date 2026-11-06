@@ -3,6 +3,8 @@ using System.Windows.Media;
 
 namespace Lumisense;
 
+internal readonly record struct DroppedAddResult(int Added, bool FoundSupported);
+
 // Всё, что MiniPlayerWindow берёт у MainWindow: окно зависит от этого интерфейса, а не от всего MainWindow.
 internal interface IMiniPlayerHost
 {
@@ -42,6 +44,8 @@ internal interface IMiniPlayerHost
     void ExternalToggleFavoriteCurrentTrack();
     void ExternalSeekRatio(double ratio);
     void ExternalChangeVolume(double delta);
+
+    Task<DroppedAddResult> AddDroppedPathsAsync(IReadOnlyList<string> paths);
 
     void ExitMiniMode(bool returnToMiniOnNextTaskbarMinimize = false);
     void ShowSettingsWindow(string? section = null);

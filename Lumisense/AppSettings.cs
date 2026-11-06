@@ -217,6 +217,7 @@ public class AppSettings
     public string IslandLeftButton { get; set; } = "Favorite";
     public string IslandRightButton { get; set; } = "Lyrics";
     public bool IslandRoundCover { get; set; }
+    public bool IslandAcceptDrops { get; set; } = true;
     // Ширина свёрнутого и раскрытого острова в процентах от обычной (80–130).
     public int IslandWidthPercent { get; set; } = 100;
     // Не показывать уведомление о смене трека в углу экрана, пока мини-плеер в виде «Остров»: остров показывает его сам.

@@ -20,7 +20,7 @@ internal partial class IslandPlayerWindow : Window
 
     private enum Grab { None, Held, Pull, Lean }
 
-    private enum State { Compact, Toast, Open, Volume, Menu }
+    private enum State { Compact, Toast, Open, Volume, Menu, Drop }
 
     private const double HostWidth = 640;
     private const double MinPill = 24, MinScale = 0.01;
@@ -50,6 +50,7 @@ internal partial class IslandPlayerWindow : Window
     private static readonly Shape OpenLyricsShape = new(440, 412, 40);
     private const double MenuRowHeight = 38, MenuPadding = 24;
     private static readonly Shape VolumeShape = new(250, 34, 17);
+    private static readonly Shape DropShape = new(320, 78, 34);
     private static readonly CoverSpot CompactCover = new(7, 6, 22);
     private static readonly CoverSpot CircleCover = new(2, 2, 30);
     private static readonly CoverSpot ToastCover = new(12, 12, 44);
@@ -128,7 +129,7 @@ internal partial class IslandPlayerWindow : Window
         InitializeComponent();
         OpenVolumeIcon.Foreground = OpenVolumeText.Foreground = _openVolumeBrush;
         _springs = [_width, _height, _radius, _scale, _lean, _coverLeft, _coverTop, _coverSize, _coverScale, _away, _overshoot];
-        _views = [CompactView, ToastView, VolumeView, OpenView, MenuView];
+        _views = [CompactView, ToastView, VolumeView, OpenView, MenuView, DropView];
         _lyricLines = [LyricLine0, LyricLine1, LyricLine2, LyricLine3, LyricLine4];
         LyricsLines.RenderTransform = _lyricsShift;
         foreach (var line in _lyricLines)
@@ -168,7 +169,7 @@ internal partial class IslandPlayerWindow : Window
         _collapseTimer.Tick += (_, _) =>
         {
             _collapseTimer.Stop();
-            if (IsCardOpen && !_hovered && _grab == Grab.None && !_lyricsShown) SetState(State.Compact);
+            if (IsCardOpen && !_hovered && _grab == Grab.None && !_lyricsShown && !_dragActive) SetState(State.Compact);
         };
         _toastTimer.Tick += (_, _) =>
         {
@@ -193,6 +194,7 @@ internal partial class IslandPlayerWindow : Window
             _overshoot.Target = 0;
             StartLoop();
         };
+        InitializeDrop();
         SourceInitialized += (_, _) => ApplyNoActivateStyle();
         Loaded += (_, _) =>
         {
@@ -201,6 +203,7 @@ internal partial class IslandPlayerWindow : Window
             ApplySettingsLive();
             ApplyViewStateInstantly();
             _keepTimer.Start();
+            StartDropWatch();
             _loadedAt = _clock.Elapsed;
             UpdateTrackInfo(_host.CurrentTitle, _host.CurrentArtist, _host.CurrentArtBrush, announce: false);
             UpdatePlayback(_host.PlaybackState.Current);
@@ -259,6 +262,7 @@ internal partial class IslandPlayerWindow : Window
         _awayTimer.Stop();
         _overshootTimer.Stop();
         _keepTimer.Stop();
+        ShutdownDrop();
         StopLoop();
     }
 
@@ -449,6 +453,7 @@ internal partial class IslandPlayerWindow : Window
         State.Toast => ToastShape,
         State.Open => _lyricsShown ? OpenLyricsShape : OpenShape,
         State.Volume => VolumeShape,
+        State.Drop => DropShape,
         State.Menu => new Shape(270, VisibleMenuRows * MenuRowHeight + MenuPadding, 32),
         _ => CompactShape
     };
@@ -465,6 +470,7 @@ internal partial class IslandPlayerWindow : Window
         State.Toast => ToastView,
         State.Open => OpenView,
         State.Volume => VolumeView,
+        State.Drop => DropView,
         State.Menu => MenuView,
         _ => CompactView
     };
@@ -536,8 +542,9 @@ internal partial class IslandPlayerWindow : Window
         var shape = ShapeOf(_state);
         var spot = SpotOf(_state);
         bool compact = _state == State.Compact;
-        double pull = RubberBand(_pull, MaxPull);
-        double lean = Math.Sign(_leanDrag) * RubberBand(Math.Abs(_leanDrag), MaxLean);
+        double pull = RubberBand(_pull + _attractPull, MaxPull);
+        double leanRaw = _leanDrag + _attractLean;
+        double lean = Math.Sign(leanRaw) * RubberBand(Math.Abs(leanRaw), MaxLean);
         bool dragging = _grab is Grab.Pull or Grab.Lean;
 
         _width.Target = shape.Width + pull * PullWidening + Math.Abs(lean) * LeanStretch;
@@ -570,7 +577,7 @@ internal partial class IslandPlayerWindow : Window
     // В раскрытом плеере обложка уменьшается на паузе и «пружинит» обратно при возобновлении.
     private void UpdateCoverScaleTarget()
     {
-        double to = _state == State.Volume || _state == State.Menu ? 0 : _state == State.Open && !_isPlaying ? PausedCoverScale : 1;
+        double to = _state == State.Volume || _state == State.Menu || _state == State.Drop ? 0 : _state == State.Open && !_isPlaying ? PausedCoverScale : 1;
         if (to == _coverScale.Target) return;
 
         bool lively = _state == State.Open && to == 1;
@@ -1357,6 +1364,8 @@ internal partial class IslandPlayerWindow : Window
 
     private void ShowVolume(double level)
     {
+        if (_state == State.Drop) return;
+
         level = Math.Clamp(level, 0, 1);
         string percent = ((int)Math.Round(level * 100)).ToString();
         string icon = level <= 0 ? "IconSpeakerMute" : level < 0.5 ? "IconSpeaker" : "IconSpeaker2";

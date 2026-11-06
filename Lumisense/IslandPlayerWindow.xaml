@@ -12,6 +12,7 @@
         ShowInTaskbar="False"
         ShowActivated="False"
         Topmost="True"
+        AllowDrop="True" DragEnter="Window_DragEnter" DragOver="Window_DragOver" DragLeave="Window_DragLeave" Drop="Window_Drop"
         TextOptions.TextFormattingMode="Ideal"
         TextOptions.TextHintingMode="Animated"
         TextOptions.TextRenderingMode="Grayscale"
@@ -88,7 +89,7 @@
           MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
           MouseLeftButtonDown="Island_MouseLeftButtonDown" MouseMove="Island_MouseMove"
           MouseDown="Island_MouseDown" MouseRightButtonUp="Island_MouseRightButtonUp" MouseWheel="Island_MouseWheel"
-          MouseLeftButtonUp="Island_MouseLeftButtonUp" LostMouseCapture="Island_LostMouseCapture">
+          MouseLeftButtonUp="Island_MouseLeftButtonUp" LostMouseCapture="Island_LostMouseCapture" AllowDrop="True">
         <Grid.RenderTransform>
             <TransformGroup>
                 <ScaleTransform x:Name="IslandScale" />
@@ -96,6 +97,9 @@
                 <TranslateTransform x:Name="IslandOffset" Y="6" />
             </TransformGroup>
         </Grid.RenderTransform>
+
+        <Border x:Name="DropCatcher" Width="540" Height="170" HorizontalAlignment="Center" VerticalAlignment="Top"
+                Background="#01000000" AllowDrop="True" IsHitTestVisible="False" Visibility="Collapsed" />
 
         <!-- Тень из двух полупрозрачных контуров: размытие эффектом на каждом кадре растяжения давало микрофризы. -->
         <Path x:Name="ShadowFar" Fill="Black" Stroke="Black" StrokeThickness="34" StrokeLineJoin="Round" Opacity="0" IsHitTestVisible="False" />
@@ -116,6 +120,26 @@
                 <StackPanel Margin="68,0,26,0" VerticalAlignment="Center" IsHitTestVisible="False">
                     <TextBlock x:Name="ToastTitle" Foreground="White" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
                     <TextBlock x:Name="ToastArtist" Foreground="#99FFFFFF" FontSize="12" Margin="0,1,0,0" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+            </Grid>
+
+            <Grid x:Name="DropView" Width="320" Height="78" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
+                <Grid Width="46" Height="46" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="18,0,0,0">
+                    <Ellipse x:Name="DropPulse" Stroke="White" StrokeThickness="1.5" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.RenderTransform>
+                            <ScaleTransform x:Name="DropPulseScale" />
+                        </Ellipse.RenderTransform>
+                    </Ellipse>
+                    <Ellipse x:Name="DropDisc" Margin="3" Fill="#26FFFFFF" RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.RenderTransform>
+                            <ScaleTransform x:Name="DropDiscScale" />
+                        </Ellipse.RenderTransform>
+                    </Ellipse>
+                    <local:SvgPathIcon x:Name="DropIcon" Icon="IconAddFile" Size="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Grid>
+                <StackPanel Margin="78,0,22,0" VerticalAlignment="Center" IsHitTestVisible="False">
+                    <TextBlock x:Name="DropTitle" Foreground="White" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock x:Name="DropSubtitle" Foreground="#99FFFFFF" FontSize="12" Margin="0,1,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>
 
