@@ -101,6 +101,7 @@ public partial class MiniPlayerWindow : Window
     internal MiniPlayerWindow(IMiniPlayerHost mainWindow)
     {
         InitializeComponent();
+        if (AppEdition.IsLite) NowPlayingContextMenuItem.Visibility = Visibility.Collapsed;
 
         _mainWindow = mainWindow;
         ApplyAccessibilityPreferences();

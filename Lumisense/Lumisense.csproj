@@ -31,6 +31,10 @@
 
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(LiteBuild)' == 'true'">
+    <DefineConstants>$(DefineConstants);LITE</DefineConstants>
+  </PropertyGroup>
+
   <!-- Локальный Velopack feed компилируется только в ручных тестовых сборках. Обычные
        и tag-релизы не содержат этот код даже при наличии переменной среды. -->
   <PropertyGroup Condition="'$(VelopackLocalFeedTest)' == 'true'">

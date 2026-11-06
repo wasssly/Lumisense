@@ -408,6 +408,11 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         _audioOutputRecoveryService = new(
             _audioOutputRecoveryCoordinator, TimeSpan.FromMilliseconds(OutputRecoveryCooldownMilliseconds));
         InitializeComponent();
+        if (AppEdition.IsLite)
+        {
+            StatisticsButton.Visibility = Visibility.Collapsed;
+            NowPlayingMenuItem.Visibility = Visibility.Collapsed;
+        }
         AccessibilityPreferences.ApplyToWindow(this, _settings);
         ApplyLyricsTextAlignment();
         LyricsPanelSyncedList.ItemsSource = _mainWindowSyncedLyrics;
@@ -1224,6 +1229,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // (чтение тегов, StatisticsWindow.LoadAsync) и логически не относятся к настройкам.
     public void ShowStatisticsWindow()
     {
+        if (AppEdition.IsLite) return;
         if (_statisticsWindow == null)
         {
             _statisticsWindow = new StatisticsWindow(_settings);
@@ -1288,6 +1294,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
     public void ShowNowPlayingWindow()
     {
+        if (AppEdition.IsLite) return;
         if (_nowPlayingWindow is null)
         {
             if (IsVisible && !_isMiniMode && WindowState != WindowState.Minimized)
@@ -1493,7 +1500,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     {
         if (!_settings.ShowTrackChangeToast || !ShouldShowTrackChangeToast(origin, autoPlay)) return;
         // В мини-плеере «Остров» карточку о смене трека показывает сам остров: системное уведомление по желанию скрывается.
-        if (_settings.IslandHideSystemToast && _isMiniMode && _settings.MiniPlayerStyle == "Island") return;
+        if (_settings.IslandHideSystemToast && _isMiniMode && UsesIslandStyle) return;
 
         _trackChangeToastController.Show(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
             _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, ResolveToastTint());
@@ -1618,6 +1625,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // поэтому Discord не зависит от текстовых полей UI.
     private void UpdateDiscordRichPresence(bool force)
     {
+        if (AppEdition.IsLite) return;
         if (_discordTrackChangePending) return;
 
         var audioFile = _audioFile;

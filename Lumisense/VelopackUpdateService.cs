@@ -17,7 +17,11 @@ namespace Lumisense;
 internal sealed class VelopackUpdateService
 {
     internal const string PackId = "Wasssly.Lumisense";
+#if LITE
+    internal const string ReleaseChannel = "win-lite";
+#else
     internal const string ReleaseChannel = "win";
+#endif
     // Публичный latest/download ведёт на releases.win.json последнего релиза: SimpleWebSource читает feed напрямую,
     // без GitHub Releases API и его rate limit; workflow публикует feed рядом с full/delta в каждом tag release.
     internal const string PublicReleaseFeedUrl = "https://github.com/wasssly/Lumisense/releases/latest/download/";

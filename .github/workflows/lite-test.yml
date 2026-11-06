@@ -1,0 +1,62 @@
+# Пробная сборка лайт-версии: ничего не публикует, только кладёт установщик и пакеты Velopack в артефакты запуска.
+# Лайт обновляется по каналу win-lite из того же GitHub Release, что и обычная версия (feed: releases.win-lite.json),
+# поэтому настоящая публикация добавляется в release.yml отдельным шагом после проверки этой сборки.
+
+name: Lite test build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Версия пробной сборки (например 1.23.0-lite.1)"
+        required: true
+        default: "0.0.0-lite.1"
+
+permissions:
+  contents: read
+
+jobs:
+  lite:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Publish Lumisense Lite (self-contained win-x64)
+        run: dotnet publish Lumisense/Lumisense.csproj -c Release -r win-x64 --self-contained true -p:LiteBuild=true -p:Version=${{ inputs.version }}
+
+      - name: Install Velopack CLI
+        shell: pwsh
+        run: |
+          dotnet tool install --global vpk --version 1.2.161
+          "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Package Lite (Setup.exe, channel win-lite)
+        shell: pwsh
+        run: |
+          vpk pack `
+            --packId Wasssly.LumisenseLite `
+            --packVersion "${{ inputs.version }}" `
+            --packDir "Lumisense\bin\Release\net10.0-windows10.0.19041.0\win-x64\publish" `
+            --mainExe Lumisense.exe `
+            --runtime win-x64 `
+            --channel win-lite `
+            --outputDir VelopackLite `
+            --packTitle "Lumisense Lite" `
+            --packAuthors wasssly `
+            --shortcuts StartMenuRoot `
+            --icon "Lumisense\Icons\app\lumisense-spotlight.ico" `
+            --noPortable true
+          if ($LASTEXITCODE -ne 0) { throw "Velopack Lite package creation failed." }
+
+      - name: Upload Lite build
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: Lumisense-Lite-${{ inputs.version }}
+          path: VelopackLite/*
+          if-no-files-found: error

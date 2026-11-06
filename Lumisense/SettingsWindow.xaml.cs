@@ -109,6 +109,14 @@ public partial class SettingsWindow : FluentWindow
     {
         InitializeComponent();
         InitializeNavScroll();
+        if (AppEdition.IsLite)
+        {
+            NavIsland.Visibility = Visibility.Collapsed;
+            MiniStyleCard.Visibility = Visibility.Collapsed;
+            DiscordCard.Visibility = Visibility.Collapsed;
+            if (MiniContextNowPlayingCheckBox.Parent is FrameworkElement nowPlayingRow) nowPlayingRow.Visibility = Visibility.Collapsed;
+            HideNowPlayingAndStatisticsSettings();
+        }
         WindowSizing.FitToWorkArea(this);
         _autoScrollTimer.Tick += AutoScrollTimer_Tick;
         // Class handlers получают событие даже если дочерний контрол пометил MouseDown
@@ -410,6 +418,7 @@ public partial class SettingsWindow : FluentWindow
         }
 
         BuildSearchIndex();
+        if (AppEdition.IsLite) PruneSearchIndexForLite();
 
         RefreshAppVersionText();
         RefreshLyricsCacheInfo();
