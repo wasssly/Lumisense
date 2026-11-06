@@ -108,6 +108,7 @@ public partial class SettingsWindow : FluentWindow
     internal SettingsWindow(AppSettings settings, ISettingsHost owner, string? initialPage = null)
     {
         InitializeComponent();
+        InitializeNavScroll();
         WindowSizing.FitToWorkArea(this);
         _autoScrollTimer.Tick += AutoScrollTimer_Tick;
         // Class handlers получают событие даже если дочерний контрол пометил MouseDown
@@ -4219,6 +4220,7 @@ public partial class SettingsWindow : FluentWindow
 
         // Один ScrollViewer на все страницы (см. SettingsWindow.xaml) без сброса помнил бы прокрутку прошлой вкладки;
         // SearchResultItem_Click позже отложенно прокрутит к найденному элементу и просто переопределит позицию.
+        ResetNavScrollMemory();
         PART_ContentScroll.ScrollToTop();
 
         FrameworkElement? activePage = key switch
