@@ -10,6 +10,7 @@ public sealed class LoudnessSampleProvider : ISampleProvider
 {
     private const double BassHz = 100, TrebleHz = 8000;
     private const double MaxBassDb = 9, MaxTrebleDb = 4;
+    private static readonly double HalfGainDb = 20 * Math.Log10(2);
 
     private sealed record Coefficients(double[] Bass, double[] Treble, bool Active);
 
@@ -55,7 +56,7 @@ public sealed class LoudnessSampleProvider : ISampleProvider
     public static (double BassDb, double TrebleDb) BoostFor(double volumeGain, int strengthPercent)
     {
         double attenuationDb = -20 * Math.Log10(Math.Clamp(volumeGain, 0.001, 1));
-        double beyond = Math.Max(0, attenuationDb - 6);
+        double beyond = Math.Max(0, attenuationDb - HalfGainDb); // порог — половина полной громкости
         double strength = Math.Clamp(strengthPercent, 0, 100) / 100.0;
         return (Math.Min(beyond * 0.35, MaxBassDb) * strength, Math.Min(beyond * 0.15, MaxTrebleDb) * strength);
     }
