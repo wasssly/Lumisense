@@ -654,10 +654,6 @@ public class AppSettings
     // MainWindow подстраиваются под BandFrequencies, а не доверяют длине массива.
     public bool EqualizerEnabled { get; set; }
 
-    // Bypass временно пропускает сигнал мимо фильтров, но не меняет включение EQ, значения
-    // полос или пресеты. После выключения Bypass сохранённая коррекция возвращается сразу.
-    public bool EqualizerBypass { get; set; }
-
     // Авто-преамп: общий звук ослабляется на величину максимального подъёма АЧХ эквалайзера, чтобы подъём не давал клиппинг.
     public bool EqualizerAutoHeadroom { get; set; } = true;
 

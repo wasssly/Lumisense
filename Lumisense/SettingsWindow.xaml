@@ -3103,14 +3103,6 @@
                                 <TextBlock Text="10 полос графического эквалайзера — регулировки применяются сразу же, без перезапуска трека."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
 
-                                <CheckBox x:Name="EqualizerBypassCheckBox"
-                                          Content="EQ Bypass (временно отключить обработку)"
-                                          Checked="EqualizerBypassCheckBox_Changed"
-                                          Unchecked="EqualizerBypassCheckBox_Changed"
-                                          Margin="0,0,0,0" />
-                                <TextBlock Text="Пропускает сигнал мимо фильтров, не меняя настройки полос. Удобно для быстрого сравнения звука с EQ и без."
-                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
-
                                 <CheckBox x:Name="DeviceSoundProfilesCheckBox"
                                           Content="Запоминать звук для каждого устройства"
                                           Checked="DeviceSoundProfilesCheckBox_Changed"
@@ -3122,7 +3114,7 @@
                                           Content="Авто-преамп (защита от перегрузки)"
                                           Checked="EqualizerAutoHeadroomCheckBox_Changed"
                                           Unchecked="EqualizerAutoHeadroomCheckBox_Changed" />
-                                <TextBlock Text="Снижает общую громкость на величину максимального подъёма эквалайзера, чтобы бас и другие подъёмы не приводили к искажениям."
+                                <TextBlock Text="Снижает общую громкость на величину максимального подъёма эквалайзера, чтобы подъёмы не приводили к искажениям. Поэтому если поднять все полосы на одинаковую величину, громкость не изменится: общий подъём компенсируется. Выключите, если нужна именно большая громкость."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
 
                                 <Grid>

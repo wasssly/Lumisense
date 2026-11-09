@@ -338,7 +338,6 @@ public static class LumiProfileIO
         target.ShuffleMode = source.ShuffleMode;
         target.UpdateDownloadSource = source.UpdateDownloadSource;
         target.EqualizerEnabled = source.EqualizerEnabled;
-        target.EqualizerBypass = source.EqualizerBypass;
         target.EqualizerAutoHeadroom = source.EqualizerAutoHeadroom;
         target.EqualizerBandGainsDb = source.EqualizerBandGainsDb.ToArray();
         target.DiscordRichPresenceShowCoverArt = source.DiscordRichPresenceShowCoverArt;

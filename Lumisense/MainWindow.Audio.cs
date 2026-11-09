@@ -40,7 +40,7 @@ public partial class MainWindow
             _equalizer.SetBandGain(band, band < saved.Length ? saved[band] : 0);
 
         _equalizer.AutoHeadroom = _settings.EqualizerAutoHeadroom;
-        _equalizer.Enabled = _settings.EqualizerEnabled && !_settings.EqualizerBypass;
+        _equalizer.Enabled = _settings.EqualizerEnabled;
     }
 
     public bool IsEqualizerEnabled => _settings.EqualizerEnabled;
@@ -130,8 +130,6 @@ public partial class MainWindow
         if (_tempoProvider != null)
             _tempoProvider.PitchSemiTones = clamped;
     }
-
-    public bool IsEqualizerBypass => _settings.EqualizerBypass;
 
     public bool IsEqualizerAutoHeadroom => _settings.EqualizerAutoHeadroom;
 

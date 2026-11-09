@@ -77,12 +77,10 @@ internal interface ISettingsAudioHost
 internal interface ISettingsEqualizerHost
 {
     bool IsEqualizerEnabled { get; }
-    bool IsEqualizerBypass { get; }
     bool IsEqualizerAutoHeadroom { get; }
     IReadOnlyList<EqualizerPreset> EqualizerPresets { get; }
     double GetEqualizerBandGain(int band);
     void SetEqualizerEnabled(bool enabled);
-    void SetEqualizerBypass(bool bypass);
     void SetEqualizerAutoHeadroom(bool enabled);
     void SetEqualizerBandGain(int band, double gainDb);
     void ResetEqualizer();

@@ -194,7 +194,7 @@ public partial class MainWindow
             _outputDiagnostics.ActiveFormat,
             Math.Abs(_runtimePlaybackRate - 1.0) > 0.0001 || Math.Abs(_settings.PlaybackPitchSemitones) > 0.0001,
             Math.Abs(_replayGainFactor - 1.0) > 1e-6,
-            _settings.EqualizerEnabled && !_settings.EqualizerBypass && _settings.EqualizerBandGainsDb.Any(gain => Math.Abs(gain) > 0.005),
+            _settings.EqualizerEnabled && _settings.EqualizerBandGainsDb.Any(gain => Math.Abs(gain) > 0.005),
             _settings.PlaybackChannelMode == "Mono",
             _settings.PlaybackBalance != 0,
             _masterVolume is not null && Math.Abs(_masterVolume.Gain - 1f) > 1e-6f,
