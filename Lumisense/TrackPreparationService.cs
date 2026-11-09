@@ -129,7 +129,8 @@ internal sealed class TrackPreparationService
         var audioFileReaderTimer = Stopwatch.StartNew();
         var reader = new AudioFileReader(filePath)
         {
-            Volume = ComputeAudioFileVolume(options.VolumeSliderValue, options.UseLogarithmicVolume, replayGain)
+            // Здесь только ReplayGain (до эквалайзера); громкость ползунка применяется в конце цепочки (MasterVolumeSampleProvider).
+            Volume = (float)replayGain
         };
         long audioFileReaderMilliseconds = audioFileReaderTimer.ElapsedMilliseconds;
         try

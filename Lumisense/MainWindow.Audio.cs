@@ -288,12 +288,17 @@ public partial class MainWindow
 
     public void RefreshVolumeCurve()
     {
-        if (_audioFile != null)
-            _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
+        ApplyVolumeToChain(VolumeSlider.Value);
     }
 
-    // Громкость учитывает _replayGainFactor — то же место конвейера (AudioFileReader.Volume, до эквалайзера).
-    private float ComputeAudioFileVolume(double sliderValue) => ComputeAudioFileVolume(sliderValue, _replayGainFactor);
+    // ReplayGain идёт в AudioFileReader.Volume (до эквалайзера), громкость ползунка — в MasterVolumeSampleProvider (после него).
+    private void ApplyVolumeToChain(double sliderValue)
+    {
+        if (_audioFile != null)
+            _audioFile.Volume = (float)_replayGainFactor;
+        if (_masterVolume != null)
+            _masterVolume.Gain = ComputeAudioFileVolume(sliderValue, 1.0);
+    }
 
     private float ComputeAudioFileVolume(double sliderValue, double replayGainFactor) =>
         TrackPreparationService.ComputeAudioFileVolume(sliderValue, _settings.UseLogarithmicVolume, replayGainFactor);
@@ -317,8 +322,7 @@ public partial class MainWindow
         if (!_settings.ReplayGainEnabled || path == null)
         {
             _replayGainFactor = 1.0;
-            if (_audioFile != null)
-                _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
+            ApplyVolumeToChain(VolumeSlider.Value);
             return;
         }
 
@@ -338,8 +342,7 @@ public partial class MainWindow
                 !string.Equals(path, _currentTrackPath, StringComparison.Ordinal)) return;
 
             _replayGainFactor = gain;
-            if (_audioFile != null)
-                _audioFile.Volume = ComputeAudioFileVolume(VolumeSlider.Value);
+            ApplyVolumeToChain(VolumeSlider.Value);
         }
         catch (OperationCanceledException)
         {
@@ -415,8 +418,7 @@ public partial class MainWindow
 
     private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (_audioFile != null)
-            _audioFile.Volume = ComputeAudioFileVolume(e.NewValue);
+        ApplyVolumeToChain(e.NewValue);
 
         if (VolumeValueText != null)
             VolumeValueText.Text = $"{(int)Math.Round(e.NewValue * 100)}%";

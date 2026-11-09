@@ -63,6 +63,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // Измеряет уже обработанный эквалайзером сигнал для визуальной реакции Now Playing.
     private AudioLevelSampleProvider? _audioLevelMeter;
     private ChannelModeSampleProvider? _channelMode;
+    private MasterVolumeSampleProvider? _masterVolume;
     // Данные для режимов подписи состояния трека (TrackStateBadgeMode), считаются один раз при загрузке трека.
     private string? _currentTrackExtensionText;
     private string? _currentTrackQualityText;
