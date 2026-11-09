@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Lumisense;
 using Xunit;
 
@@ -6,16 +7,32 @@ namespace Lumisense.Tests;
 public sealed class HotkeyConfigurationTests
 {
     [Fact]
-    public void NewGlobalHotkeys_HaveDistinctCtrlAltDefaults()
+    public void NewInstall_HasNoGlobalHotkeysAssigned()
     {
         var settings = new AppSettings();
 
-        Assert.Equal("F", settings.HotkeyToggleFavorite.Key);
-        Assert.Equal("L", settings.HotkeyToggleLyrics.Key);
-        Assert.Equal("N", settings.HotkeyToggleMiniPlayer.Key);
+        HotkeyBinding[] all =
+        [
+            settings.HotkeyPlayPause, settings.HotkeyNext, settings.HotkeyPrevious, settings.HotkeyStop,
+            settings.HotkeyVolumeUp, settings.HotkeyVolumeDown, settings.HotkeyMute, settings.HotkeyShuffle,
+            settings.HotkeyRepeat, settings.HotkeyToggleFavorite, settings.HotkeyToggleLyrics,
+            settings.HotkeyToggleMiniPlayer, settings.HotkeySeekForward, settings.HotkeySeekBackward,
+            settings.HotkeyDeleteTrack
+        ];
 
-        Assert.True(settings.HotkeyToggleFavorite.Ctrl && settings.HotkeyToggleFavorite.Alt);
-        Assert.True(settings.HotkeyToggleLyrics.Ctrl && settings.HotkeyToggleLyrics.Alt);
-        Assert.True(settings.HotkeyToggleMiniPlayer.Ctrl && settings.HotkeyToggleMiniPlayer.Alt);
+        Assert.All(all, binding => Assert.True(binding.IsEmpty));
+    }
+
+    [Fact]
+    public void SavedHotkeys_AreKeptWhenSettingsAreLoaded()
+    {
+        const string json = "{\"HotkeyPlayPause\":{\"Ctrl\":true,\"Alt\":true,\"Key\":\"P\"}}";
+
+        AppSettings? loaded = JsonSerializer.Deserialize<AppSettings>(json);
+
+        Assert.NotNull(loaded);
+        Assert.Equal("P", loaded.HotkeyPlayPause.Key);
+        Assert.True(loaded.HotkeyPlayPause.Ctrl && loaded.HotkeyPlayPause.Alt);
+        Assert.True(loaded.HotkeyNext.IsEmpty);
     }
 }

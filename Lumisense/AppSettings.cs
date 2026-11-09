@@ -601,28 +601,28 @@ public class AppSettings
     public double? SettingsWindowLeft { get; set; }
     public double? SettingsWindowTop { get; set; }
 
-    // Глобальные хоткеи; по умолчанию Ctrl+Alt+<клавиша>, чтобы не конфликтовать с набором текста. Работают в
-    // дополнение к физическим мультимедийным клавишам, которые всегда активны и не настраиваются.
-    public HotkeyBinding HotkeyPlayPause { get; set; } = new() { Ctrl = true, Alt = true, Key = "P" };
-    public HotkeyBinding HotkeyNext { get; set; } = new() { Ctrl = true, Alt = true, Key = "Right" };
-    public HotkeyBinding HotkeyPrevious { get; set; } = new() { Ctrl = true, Alt = true, Key = "Left" };
-    public HotkeyBinding HotkeyStop { get; set; } = new() { Ctrl = true, Alt = true, Key = "S" };
-    public HotkeyBinding HotkeyVolumeUp { get; set; } = new() { Ctrl = true, Alt = true, Key = "Up" };
-    public HotkeyBinding HotkeyVolumeDown { get; set; } = new() { Ctrl = true, Alt = true, Key = "Down" };
-    public HotkeyBinding HotkeyMute { get; set; } = new() { Ctrl = true, Alt = true, Key = "M" };
-    public HotkeyBinding HotkeyShuffle { get; set; } = new() { Ctrl = true, Alt = true, Key = "U" };
-    public HotkeyBinding HotkeyRepeat { get; set; } = new() { Ctrl = true, Alt = true, Key = "R" };
-    public HotkeyBinding HotkeyToggleFavorite { get; set; } = new() { Ctrl = true, Alt = true, Key = "F" };
-    public HotkeyBinding HotkeyToggleLyrics { get; set; } = new() { Ctrl = true, Alt = true, Key = "L" };
-    public HotkeyBinding HotkeyToggleMiniPlayer { get; set; } = new() { Ctrl = true, Alt = true, Key = "N" };
+    // Глобальные хоткеи по умолчанию не заданы (пустая привязка): у новых установок работают только физические
+    // мультимедийные клавиши, а комбинации пользователь назначает сам на странице «Горячие клавиши». Раньше по умолчанию
+    // стояли Ctrl+Alt+<клавиша>; у существующих пользователей сохранённые в settings.json значения остаются без изменений.
+    // Пустая привязка не регистрируется в системе (GlobalMediaHotKeys.TryRegister) и не считается конфликтом.
+    public HotkeyBinding HotkeyPlayPause { get; set; } = new();
+    public HotkeyBinding HotkeyNext { get; set; } = new();
+    public HotkeyBinding HotkeyPrevious { get; set; } = new();
+    public HotkeyBinding HotkeyStop { get; set; } = new();
+    public HotkeyBinding HotkeyVolumeUp { get; set; } = new();
+    public HotkeyBinding HotkeyVolumeDown { get; set; } = new();
+    public HotkeyBinding HotkeyMute { get; set; } = new();
+    public HotkeyBinding HotkeyShuffle { get; set; } = new();
+    public HotkeyBinding HotkeyRepeat { get; set; } = new();
+    public HotkeyBinding HotkeyToggleFavorite { get; set; } = new();
+    public HotkeyBinding HotkeyToggleLyrics { get; set; } = new();
+    public HotkeyBinding HotkeyToggleMiniPlayer { get; set; } = new();
 
-    // Перемотка на 5 секунд, как колесо над прогресс-баром (MainWindow.SeekBy); Ctrl+Alt+Shift, чтобы не совпасть
-    // с занятыми Ctrl+Alt+Right/Left (следующий/предыдущий трек).
-    public HotkeyBinding HotkeySeekForward { get; set; } = new() { Ctrl = true, Alt = true, Shift = true, Key = "Right" };
-    public HotkeyBinding HotkeySeekBackward { get; set; } = new() { Ctrl = true, Alt = true, Shift = true, Key = "Left" };
+    // Перемотка на 5 секунд, как колесо над прогресс-баром (MainWindow.SeekBy).
+    public HotkeyBinding HotkeySeekForward { get; set; } = new();
+    public HotkeyBinding HotkeySeekBackward { get; set; } = new();
 
-    // Не включена по умолчанию (пустая привязка): удаление необратимо, пользователь назначает комбинацию сам,
-    // а не рискует удалить трек хоткеем по умолчанию.
+    // Удаление необратимо: как и остальные хоткеи, по умолчанию не назначено, пользователь выбирает комбинацию сам.
     public HotkeyBinding HotkeyDeleteTrack { get; set; } = new();
 
     // Как выбирается следующий трек при включённом шаффле (ShuffleModes): "Deck" — колода без повторов (по умолчанию),
