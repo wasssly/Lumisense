@@ -171,6 +171,9 @@ jobs:
         with:
           name: "Lumisense ${{ steps.ver.outputs.version }}"
           body_path: release_notes.md
+          # Версия с суффиксом (1.24.0-beta.1) публикуется как pre-release: GitHub не отдаёт её через /releases/latest
+          # и releases/latest/download, поэтому ни EXE-, ни MSI-копии не получат её как обычное обновление.
+          prerelease: ${{ contains(steps.ver.outputs.version, '-') }}
           files: Lumisense-${{ steps.ver.outputs.version }}-Setup.exe
 
       # merge добавляет `releases.win.json`, full/delta nupkg и MSI в уже созданный GitHub
@@ -181,6 +184,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          # Pre-release остаётся pre-release и после merge: флаг --pre передаётся только для версий с суффиксом,
+          # поэтому на обычных релизах команда не меняется.
+          $preArgs = @()
+          if ("${{ steps.ver.outputs.version }}".Contains("-")) { $preArgs = @("--pre", "true") }
           vpk upload github `
             --repoUrl "https://github.com/${{ github.repository }}" `
             --channel win `
@@ -189,7 +196,8 @@ jobs:
             --publish true `
             --merge true `
             --releaseName "Lumisense ${{ steps.ver.outputs.version }}" `
-            --tag "v${{ steps.ver.outputs.version }}"
+            --tag "v${{ steps.ver.outputs.version }}" `
+            @preArgs
           if ($LASTEXITCODE -ne 0) { throw "Velopack asset upload failed." }
 
       # vpk upload reads the manifest written by vpk pack (incl. its Setup bootstrapper), so the file must stay until
@@ -309,6 +317,10 @@ jobs:
             "X-GitHub-Api-Version" = "2022-11-28"
           }
           $release = Invoke-RestMethod -Headers $headers -Uri "https://api.github.com/repos/${{ github.repository }}/releases/tags/v$env:RELEASE_VERSION"
+          $expectPrerelease = $env:RELEASE_VERSION.Contains("-")
+          if ([bool]$release.prerelease -ne $expectPrerelease) {
+            throw "Release prerelease flag is '$($release.prerelease)' but version '$env:RELEASE_VERSION' requires '$expectPrerelease'."
+          }
           $legacyInstallerName = "Lumisense-$env:RELEASE_VERSION-Setup.exe"
           $legacyAssets = @($release.assets | Where-Object { $_.name -eq $legacyInstallerName })
           if ($legacyAssets.Count -ne 1) { throw "Expected exactly one $legacyInstallerName asset, found $($legacyAssets.Count)." }

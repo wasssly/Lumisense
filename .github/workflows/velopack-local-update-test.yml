@@ -6,11 +6,11 @@ on:
       base_version:
         description: "Версия устанавливаемой test-only MSI-копии"
         required: true
-        default: "1.16.0-test.2"
+        default: "1.23.0-test.1"
       candidate_version:
         description: "Версия, до которой test-only copy должна обновиться из локального feed"
         required: true
-        default: "1.16.0-test.3"
+        default: "1.23.0-test.2"
 
 permissions:
   contents: read
