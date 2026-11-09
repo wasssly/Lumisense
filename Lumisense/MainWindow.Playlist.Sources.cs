@@ -104,6 +104,23 @@ public partial class MainWindow
         return new DroppedAddResult(Math.Max(0, FlattenAll().Count - before), outcome.FoundAnything);
     }
 
+    // Файл из Проводника: добавляем в плейлист и запускаем первый аудиофайл (AddLooseFiles сам запускает его в пустом плейлисте).
+    public async Task OpenExternalPathsAsync(IReadOnlyList<string> paths)
+    {
+        // Восстановление плейлиста при старте идёт в Loaded: добавленное раньше него было бы затёрто.
+        for (int i = 0; i < 100 && !_playlistRestoreCompleted && !_isExiting; i++)
+            await Task.Delay(50);
+        if (_isExiting) return;
+
+        bool wasEmpty = FlattenAll().Count == 0;
+        var outcome = await AddDroppedItemsAsync(paths);
+        if (outcome.Aborted || wasEmpty) return;
+
+        string? first = paths.FirstOrDefault(path => File.Exists(path) &&
+            SupportedExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase));
+        if (first is not null) LoadAndPlay(first);
+    }
+
     // Клик по объединённой кнопке "Добавить" открывает её собственное контекстное меню
     // (выбор "Файлы…" / "Папку…") прямо под кнопкой, как обычное выпадающее меню.
     private void AddButton_Click(object sender, RoutedEventArgs e)

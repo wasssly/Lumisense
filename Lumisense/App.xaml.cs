@@ -1,4 +1,7 @@
+using System.IO;
+using System.IO.Pipes;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
@@ -10,6 +13,8 @@ public partial class App : Application
     // Global-имена не нужны — плеер не запускается из разных пользовательских сессий одновременно
     private const string SingleInstanceMutexName = "Lumisense_SingleInstance_9F3C7B21";
     private const string ToggleViewEventName = "Lumisense_ToggleView_9F3C7B21";
+    private const string OpenFilesPipeName = "Lumisense_OpenFiles_9F3C7B21";
+    private const int MaxExternalPaths = 1000;
 
     // держим живыми на всё время работы приложения, иначе GC может собрать их раньше времени
     private Mutex? _singleInstanceMutex;
@@ -132,8 +137,22 @@ public partial class App : Application
         // занят, сигналим работающему экземпляру переключить вид (см. WaitForToggleSignal) и выходим.
         _singleInstanceMutex = new Mutex(initiallyOwned: true, SingleInstanceMutexName, out bool createdNew);
 
+        // Проводник передаёт путь файла аргументом командной строки («Открыть с помощью», двойной клик по ассоциации).
+        List<string> externalPaths = Environment.GetCommandLineArgs().Skip(1)
+            .Where(arg => arg.Length > 0 && !arg.StartsWith('-') && arg.IndexOfAny(Path.GetInvalidPathChars()) < 0)
+            .Select(arg => Path.GetFullPath(arg))
+            .Take(MaxExternalPaths)
+            .ToList();
+
         if (!createdNew)
         {
+            // Файл важнее переключения вида: пользователь хотел его воспроизвести, а не свернуть плеер.
+            if (externalPaths.Count > 0 && TrySendPathsToRunningInstance(externalPaths))
+            {
+                Shutdown();
+                return;
+            }
+
             Logger.Info("Плеер уже запущен — переключаю вид у уже открытого экземпляра и завершаюсь (это не ошибка).");
 
             try
@@ -153,13 +172,15 @@ public partial class App : Application
         }
 
         _toggleViewEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ToggleViewEventName);
+        BackgroundTask.FireAndForget(Task.Run(() => ListenForExternalPathsAsync(_shutdownCts.Token)),
+            nameof(ListenForExternalPathsAsync));
 
         // Конструктор MainWindow может бросить исключение до появления окна (например, из-за повреждённого settings.json):
         // ловим широко, логируем и показываем сообщение вместо тихого падения, затем корректно завершаемся.
         MainWindow window;
         try
         {
-            window = new MainWindow();
+            window = new MainWindow(skipLastTrackRestore: externalPaths.Count > 0);
         }
         catch (Exception ex)
         {
@@ -183,17 +204,20 @@ public partial class App : Application
 
         Logger.Info("Главное окно создано и показано — запуск завершён успешно.");
 
-        // Дешёвая проверка реестра, без влияния на время запуска (см. RepairContextMenuScopeIfBroken).
-        BackgroundTask.FireAndForget(Task.Run(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken),
-            nameof(LegacyIntegrationRepairService.RepairContextMenuScopeIfBroken));
+        if (externalPaths.Count > 0)
+            BackgroundTask.FireAndForget(window.OpenExternalPathsAsync(externalPaths), "OpenExternalPathsAsync");
+
+        // Пункт «Открыть в Lumisense» больше не регистрируется; записи прежних версий убираем при запуске (дёшево, no-op после первого раза).
+        BackgroundTask.FireAndForget(Task.Run(ShellIntegrationCleanup.RemoveContextMenuEntries),
+            nameof(ShellIntegrationCleanup.RemoveContextMenuEntries));
         BackgroundTask.FireAndForget(Task.Run(StartupManager.RepairStalePath), nameof(StartupManager.RepairStalePath));
         // Отдельный, гораздо более редкий случай (см. метод) — свой Task.Run, чтобы UAC-промпт
         // (если он вообще понадобится) не блокировал очередь выше.
-        if (LegacyIntegrationRepairService.TryClaimLegacyHklmWildcardCleanup(window.Settings))
+        if (LegacyIntegrationRepairService.TryClaimLegacyHklmContextMenuCleanup(window.Settings))
         {
             BackgroundTask.FireAndForget(SettingsManager.SaveAsync(window.Settings), "SaveSettingsAsync");
-            BackgroundTask.FireAndForget(Task.Run(LegacyIntegrationRepairService.CleanupLegacyHklmWildcardContextMenu),
-                nameof(LegacyIntegrationRepairService.CleanupLegacyHklmWildcardContextMenu));
+            BackgroundTask.FireAndForget(Task.Run(LegacyIntegrationRepairService.CleanupLegacyHklmContextMenu),
+                nameof(LegacyIntegrationRepairService.CleanupLegacyHklmContextMenu));
         }
 
         // Этот вызов возможен лишь после успешного создания MSI-окна. Он одноразово обрабатывает
@@ -201,6 +225,68 @@ public partial class App : Application
         UpdateMigrationGuard.TryShowFirstRunNotice();
 
         WaitForToggleSignal(window);
+    }
+
+    private static bool TrySendPathsToRunningInstance(IReadOnlyList<string> paths)
+    {
+        try
+        {
+            using var client = new NamedPipeClientStream(".", OpenFilesPipeName, PipeDirection.Out, PipeOptions.CurrentUserOnly);
+            // Первый экземпляр между подключениями пересоздаёт канал, поэтому короткое ожидание обязательно.
+            client.Connect(3000);
+            using var writer = new StreamWriter(client, new UTF8Encoding(false));
+            foreach (string path in paths)
+                writer.WriteLine(path);
+            writer.Flush();
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось передать файлы уже запущенному экземпляру: {ex.Message}");
+            return false;
+        }
+    }
+
+    // Принимает пути от повторных запусков по одному подключению за раз; сами пути проверяет MainWindow (формат, существование).
+    private async Task ListenForExternalPathsAsync(CancellationToken token)
+    {
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                await using var server = new NamedPipeServerStream(OpenFilesPipeName, PipeDirection.In, 1,
+                    PipeTransmissionMode.Byte, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
+                await server.WaitForConnectionAsync(token);
+
+                // Клиент, подключившийся и замолчавший, не должен занимать приём навсегда.
+                using var readTimeout = CancellationTokenSource.CreateLinkedTokenSource(token);
+                readTimeout.CancelAfter(TimeSpan.FromSeconds(5));
+
+                using var reader = new StreamReader(server, new UTF8Encoding(false));
+                var paths = new List<string>();
+                while (paths.Count < MaxExternalPaths && await reader.ReadLineAsync(readTimeout.Token) is { } line)
+                {
+                    if (line.Length > 0) paths.Add(line);
+                }
+
+                if (paths.Count == 0 || Dispatcher.HasShutdownStarted) continue;
+                _ = Dispatcher.BeginInvoke(new Action(() =>
+                {
+                    if (MainWindow is MainWindow window)
+                        BackgroundTask.FireAndForget(window.OpenExternalPathsAsync(paths), "OpenExternalPathsAsync");
+                }));
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                // Сбой одного подключения не должен останавливать приём; пауза не даёт крутиться в цикле при постоянной ошибке.
+                Logger.Warn($"Ошибка приёма файлов от повторного запуска: {ex.Message}");
+                await Task.Delay(500, CancellationToken.None);
+            }
+        }
     }
 
     // Ждёт сигнала от повторного запуска в фоновом потоке и переключает вид через Dispatcher.Invoke.

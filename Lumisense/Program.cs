@@ -22,6 +22,8 @@ internal static class Program
                 // Hook лишь создаёт marker. Никаких диалогов, удаления legacy Inno Setup или
                 // обращения к настройкам здесь нет: Run() должен быстро завершать lifecycle path.
                 .OnFirstRun(version => VelopackMigrationLifecycle.MarkFirstVelopackRun(version.ToString()))
+                // Удаление: плеер сам регистрировал ассоциацию, меню и автозапуск в HKCU, поэтому и снимает их сам.
+                .OnBeforeUninstallFastCallback(_ => ShellIntegrationCleanup.RemoveAll())
                 .Run();
         }
         catch (Exception ex)
