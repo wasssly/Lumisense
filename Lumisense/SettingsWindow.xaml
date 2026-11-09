@@ -2230,6 +2230,16 @@
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                             </StackPanel>
                         </Border>
+
+                        <!-- См. AppSettings.PlaybackSpeedChangesPitch. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="PlaybackSpeedChangesPitchCheckBox" Content="Скорость меняет тон (как на виниле)"
+                                          Checked="PlaybackSpeedChangesPitchCheckBox_Changed" Unchecked="PlaybackSpeedChangesPitchCheckBox_Changed" />
+                                <TextBlock Text="Ползунок скорости ускоряет или замедляет звук вместе с тоном, без растяжения и артефактов. По умолчанию тон сохраняется."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
                     </StackPanel>
 
                     <StackPanel x:Name="PageProgress" Visibility="Collapsed">

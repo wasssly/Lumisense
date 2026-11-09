@@ -329,6 +329,9 @@ public class AppSettings
     // Независимое изменение высоты тона в полутонах. 0 — исходный тон.
     public double PlaybackPitchSemitones { get; set; } = 0.0;
 
+    // Скорость «как на виниле»: ползунок скорости меняет и тон (SoundTouch Rate) вместо растяжения без смены тона (Tempo).
+    public bool PlaybackSpeedChangesPitch { get; set; }
+
     public bool MinimizeToTrayOnClose { get; set; } = true; // Сворачивать в трей вместо закрытия
 
     // Не показывать окно сразу после запуска, только значок в трее; автозапуск с Windows хранится отдельно (StartupManager)

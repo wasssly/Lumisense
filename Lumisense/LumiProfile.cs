@@ -225,6 +225,7 @@ public static class LumiProfileIO
         target.DiscordRichPresenceShowTimeline = source.DiscordRichPresenceShowTimeline;
         target.PlaybackSpeed = source.PlaybackSpeed;
         target.PlaybackPitchSemitones = source.PlaybackPitchSemitones;
+        target.PlaybackSpeedChangesPitch = source.PlaybackSpeedChangesPitch;
         target.MinimizeToTrayOnClose = source.MinimizeToTrayOnClose;
         target.StartHiddenInTray = source.StartHiddenInTray;
         target.NeverAutoPlayLastTrackOnStartup = source.NeverAutoPlayLastTrackOnStartup;

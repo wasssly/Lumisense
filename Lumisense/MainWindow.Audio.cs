@@ -47,9 +47,14 @@ public partial class MainWindow
 
     private void ApplyPlaybackRateToCurrentStream()
     {
-        if (_tempoProvider != null)
-            _tempoProvider.Tempo = _runtimePlaybackRate;
+        if (_tempoProvider == null) return;
+
+        bool vinyl = _settings.PlaybackSpeedChangesPitch;
+        _tempoProvider.Tempo = vinyl ? 1.0 : _runtimePlaybackRate;
+        _tempoProvider.Rate = vinyl ? _runtimePlaybackRate : 1.0;
     }
+
+    public void RefreshPlaybackRateMode() => ApplyPlaybackRateToCurrentStream();
 
     private void ReapplySavedPlaybackRateAfterTrackReady(int generation)
     {
