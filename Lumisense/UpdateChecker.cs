@@ -994,9 +994,8 @@ public static class UpdateChecker
         if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
             return uri.AbsolutePath.StartsWith("/wasssly/Lumisense/releases/download/", StringComparison.OrdinalIgnoreCase);
 
-        return uri.Host.EndsWith("gh-proxy.org", StringComparison.OrdinalIgnoreCase) ||
-               uri.Host.Equals("gh-proxy.com", StringComparison.OrdinalIgnoreCase) ||
-               uri.Host.Equals("ghfast.top", StringComparison.OrdinalIgnoreCase);
+        // Остальные хосты из TrustedDownloadHosts — зеркала; путь у них не проверяется, защиту даёт SHA-256 установщика.
+        return true;
     }
 
     internal static bool TryParseSha256(string? value, out byte[] hash)

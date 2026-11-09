@@ -47,13 +47,10 @@
     <PackageReference Include="z440.atl.core" Version="7.18.0" />
     <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.2.1" />
     <PackageReference Include="SharpVectors.Wpf" Version="1.8.6" />
-    <!-- Прототип delta-обновлений; CLI vpk в workflow закреплён на ту же версию. -->
-    <PackageReference Include="Velopack" Version="1.2.161" />
-  </ItemGroup>
-
-  <!-- Локальный Discord IPC / Rich Presence. -->
-  <ItemGroup>
+    <!-- Локальный Discord IPC / Rich Presence; фиксированная версия делает восстановление сборки воспроизводимым. -->
     <PackageReference Include="DiscordRichPresence" Version="1.6.1.70" />
+    <!-- Velopack: установка и delta-обновления; CLI vpk в release.yml закреплён на ту же версию. -->
+    <PackageReference Include="Velopack" Version="1.2.161" />
   </ItemGroup>
 
   <ItemGroup>
@@ -84,6 +81,17 @@
     <None Include="lib\libmp3lame.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+  </ItemGroup>
+
+  <!-- GPL-3.0 требует передавать текст лицензии вместе с программой: файлы попадают в publish-каталог, а значит и в установщики. -->
+  <ItemGroup>
+    <None Include="..\LICENSE" Link="LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\THIRD-PARTY-NOTICES.md" Link="THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Icons\PHOSPHOR_ICONS_LICENSE.txt" Link="licenses\PHOSPHOR_ICONS_LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="Icons\FONTAWESOME_LICENSE.txt" Link="licenses\FONTAWESOME_LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\docs\APACHE-2.0_LICENSE.txt" Link="licenses\APACHE-2.0_LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\docs\LYRICIFY_LYRICS_HELPER_LICENSE.txt" Link="licenses\LYRICIFY_LYRICS_HELPER_LICENSE.txt" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="lib\THIRD-PARTY-NOTICES.md" Link="licenses\LAME-NOTICE.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

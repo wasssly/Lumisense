@@ -27,7 +27,10 @@ Compression=lzma2/ultra64
 SolidCompression=yes
 InternalCompressLevel=ultra64
 
-MinVersion=0,6.1.7600
+; Совпадает с SupportedOSPlatformVersion в Lumisense.csproj: Windows 10 версии 1809 или новее.
+MinVersion=10.0.17763
+; GPL-3.0 требует передавать текст лицензии вместе с программой; мастер показывает его отдельным шагом.
+LicenseFile=..\LICENSE
 PrivilegesRequired=admin
 
 SetupIconFile=..\Lumisense\Icons\app\lumisense-spotlight.ico
@@ -80,30 +83,10 @@ Root: HKCR; Subkey: ".aiff\OpenWithProgids"; ValueType: string; ValueName: "Lumi
 Root: HKCR; Subkey: ".aif\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKCR; Subkey: ".wma\OpenWithProgids"; ValueType: string; ValueName: "Lumisense.AudioFile"; ValueData: ""; Flags: uninsdeletevalue
 
+; Весь ProgId удаляется ключом: значения без ключа оставляли пустой обработчик, и Windows продолжала предлагать Lumisense по умолчанию.
+Root: HKCR; Subkey: "Lumisense.AudioFile"; Flags: uninsdeletekey
 Root: HKCR; Subkey: "Lumisense.AudioFile\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\Lumisense.exe,0"; Flags: uninsdeletevalue
 Root: HKCR; Subkey: "Lumisense.AudioFile\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-; Пункт показывается только для поддерживаемых аудиофайлов. Wildcard (*) здесь намеренно
-; не используется: он добавлял «Открыть в Lumisense» к текстовым и любым другим файлам.
-Root: HKCR; Subkey: "SystemFileAssociations\.mp3\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.mp3\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.wav\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.wav\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.flac\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.flac\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.m4a\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.m4a\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.aac\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.aac\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.ogg\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.opus\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.aiff\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.aif\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.ogg\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.opus\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.aiff\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.aif\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.wma\shell\LumisenseOpen"; ValueType: string; ValueName: ""; ValueData: "{cm:OpenInLumisense}"; Flags: uninsdeletevalue
-Root: HKCR; Subkey: "SystemFileAssociations\.wma\shell\LumisenseOpen\command"; ValueType: string; ValueName: ""; ValueData: """{app}\Lumisense.exe"" ""%1"""; Flags: uninsdeletevalue
 
 [Run]
 Filename: "{app}\Lumisense.exe"; Description: "{cm:LaunchLumisense}"; Flags: postinstall nowait skipifsilent
@@ -116,13 +99,11 @@ english.CreateDesktopIcon=Create a desktop shortcut
 english.CreateStartMenuIcon=Create a Start Menu shortcut
 english.AdditionalIcons=Additional shortcuts:
 english.UninstallLumisense=Uninstall Lumisense
-english.OpenInLumisense=Open in Lumisense
 english.LaunchLumisense=Launch Lumisense
 russian.CreateDesktopIcon=Создать значок на рабочем столе
 russian.CreateStartMenuIcon=Создать ярлык в меню «Пуск»
 russian.AdditionalIcons=Дополнительные значки:
 russian.UninstallLumisense=Удалить Lumisense
-russian.OpenInLumisense=Открыть в Lumisense
 russian.LaunchLumisense=Запустить Lumisense
 
 [Code]
@@ -136,6 +117,27 @@ begin
   // До этой версии пункт регистрировался в *\shell и показывался для любого файла; старый ключ удаляем при
   // установке/обновлении, иначе он остаётся в реестре после перехода на SystemFileAssociations.<extension>.
   RegDeleteKeyIncludingSubkeys(HKEY_CLASSES_ROOT, '*\\shell\\LumisenseOpen');
+end;
+
+procedure RemoveContextMenuEntry(const Extension: String);
+begin
+  // Пункт «Открыть в Lumisense» больше не регистрируется. Записи прежних версий удаляем целиком: пустой ключ
+  // оставался бы в меню под техническим именем «LumisenseOpen».
+  RegDeleteKeyIncludingSubkeys(HKEY_CLASSES_ROOT, 'SystemFileAssociations\' + Extension + '\shell\LumisenseOpen');
+end;
+
+procedure RemoveContextMenuEntries;
+begin
+  RemoveContextMenuEntry('.mp3');
+  RemoveContextMenuEntry('.wav');
+  RemoveContextMenuEntry('.flac');
+  RemoveContextMenuEntry('.m4a');
+  RemoveContextMenuEntry('.aac');
+  RemoveContextMenuEntry('.ogg');
+  RemoveContextMenuEntry('.opus');
+  RemoveContextMenuEntry('.aiff');
+  RemoveContextMenuEntry('.aif');
+  RemoveContextMenuEntry('.wma');
 end;
 
 procedure RemoveLegacyDefaultAssociation(const Extension: String);
@@ -165,6 +167,7 @@ end;
 function InitializeSetup(): Boolean;
 begin
   RemoveLegacyWildcardContextMenu;
+  RemoveContextMenuEntries;
   RemoveLegacyDefaultAssociations;
   Result := True;
 end;

@@ -39,6 +39,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     public UpdateAvailableWindow(UpdateCheckResult result, AppSettings? settings = null)
     {
         InitializeComponent();
+        AutomationNames.Set(DownloadProgressBar, "Ход загрузки обновления");
 
         // Фиксированные 700 px не помещаются на низких экранах (768 px и меньше): окно не выше рабочей области, список изменений
         // в нём просто прокручивается.
