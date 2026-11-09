@@ -12,9 +12,9 @@
 |---|---|
 | `Wasssly.Lumisense-win.msi` | Устанавливает базовую test-only Velopack-версию. |
 | `releases.win.json` | Локальный feed Windows-канала. |
-| `Wasssly.Lumisense-<base>-win-full.nupkg` | Установленная исходная версия. |
-| `Wasssly.Lumisense-<candidate>-win-full.nupkg` | Full fallback следующей версии. |
-| `Wasssly.Lumisense-<candidate>-win-delta.nupkg` | Delta, который Velopack должен предпочесть при обновлении. |
+| `Wasssly.Lumisense-<base>-full.nupkg` | Установленная исходная версия. |
+| `Wasssly.Lumisense-<candidate>-full.nupkg` | Full fallback следующей версии. |
+| `Wasssly.Lumisense-<candidate>-delta.nupkg` | Delta, который Velopack должен предпочесть при обновлении. |
 | `delta-measurement.json` | Размеры full/delta и SHA-256 проверки reconstruction. |
 | `README-LOCAL-UPDATE-TEST.md` | Краткие команды прямо в artifact. |
 

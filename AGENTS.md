@@ -302,6 +302,8 @@ Preserve backwards compatibility when existing users may have data created by ol
 
 If compatibility logic is non-obvious, document the reason with a short comment.
 
+When a change adds, removes, or alters a network request to an external host (new service, new domain, changed data sent), update `docs/NETWORK_AND_PRIVACY.md` in the same change.
+
 ---
 
 # 8. Updates and Installer

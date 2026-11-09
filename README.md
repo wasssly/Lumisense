@@ -31,6 +31,7 @@
 - [Обновления](#обновления)
 - [Технологии](#технологии)
   - [Структура репозитория](#структура-репозитория)
+- [Лицензия](#лицензия)
 - [Обратная связь](#обратная-связь)
 - [English](#english)
 
@@ -42,7 +43,7 @@
 
 ### Воспроизведение и звук
 
-- Поддержка MP3, WAV, WMA, FLAC, M4A, AAC, OGG и OPUS.
+- Поддержка MP3, WAV, WMA, FLAC, M4A, AAC, OGG, OPUS и AIFF.
 - Управление воспроизведением: запуск, пауза, остановка, предыдущий и следующий трек.
 - Перемотка по прогресс-бару и переход к следующей композиции.
 - Три режима повтора: без повтора, повтор всего плейлиста и повтор одного трека.
@@ -215,9 +216,16 @@ Lumisense может проверять наличие новых версий �
 Lumisense/
 ├── .github/workflows/ci.yml            — проверка сборки, unit-тестов и зависимостей
 ├── .github/workflows/release.yml       — сборка и публикация релизов по тегу
+├── .github/workflows/lite-test.yml     — пробная сборка лайт-версии (ничего не публикует)
+├── .github/workflows/velopack-local-update-test.yml — проверка обновления Velopack на локальном feed
 ├── Installer/Lumisense.iss             — сценарий установщика Inno Setup
+├── AGENTS.md                           — правила работы над проектом
+├── LICENSE / THIRD-PARTY-NOTICES.md    — лицензия GPL-3.0 и лицензии компонентов
+├── global.json                         — версия .NET SDK
 ├── docs/UPDATES.md                     — установка, обновления и назначение release assets
 ├── docs/NETWORK_AND_PRIVACY.md         — сетевые запросы и приватность
+├── docs/PERFORMANCE_BASELINE.md        — замеры производительности
+├── docs/VELOPACK_*.md                  — миграция на Velopack и локальная проверка обновлений
 ├── tools/                              — скрипты подготовки релиза
 ├── Lumisense.Tests/                    — unit-тесты
 └── Lumisense/                          — исходный код плеера
@@ -250,6 +258,10 @@ Lumisense/
     └── Icons/                           — наборы SVG-иконок и значки приложения
 ```
 
+## Лицензия
+
+Lumisense распространяется под лицензией [GNU GPL v3.0](LICENSE). Лицензии используемых компонентов перечислены в [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); эти файлы и тексты лицензий входят в установленное приложение.
+
 ## Обратная связь
 
 Перед созданием issue проверьте, что используете последнюю доступную версию. В сообщении укажите:
@@ -280,7 +292,7 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 
 #### Playback and audio
 
-- MP3, WAV, WMA, FLAC, M4A, AAC, OGG, OPUS, and other formats supported by NAudio.
+- MP3, WAV, WMA, FLAC, M4A, AAC, OGG, OPUS, AIFF, and other formats supported by NAudio.
 - Play, pause, stop, track navigation, seeking, repeat modes, and history-aware shuffle across all active playlist folders.
 - Persisted shuffle history and queue state between launches.
 - Ten-band equalizer, presets, EQ Bypass, ReplayGain, playback speed, and pitch controls.
@@ -357,9 +369,16 @@ Key internal components include `AudioPlaybackCoordinator`, `TrackPreparationSer
 Lumisense/
 ├── .github/workflows/ci.yml            — build, unit-test, and dependency checks
 ├── .github/workflows/release.yml       — builds and publishes releases from tags
+├── .github/workflows/lite-test.yml     — trial build of the lite edition (publishes nothing)
+├── .github/workflows/velopack-local-update-test.yml — Velopack update check against a local feed
 ├── Installer/Lumisense.iss             — Inno Setup installer script
+├── AGENTS.md                           — project working rules
+├── LICENSE / THIRD-PARTY-NOTICES.md    — GPL-3.0 license and third-party licenses
+├── global.json                         — .NET SDK version
 ├── docs/UPDATES.md                     — installation, updates, and release asset guide
 ├── docs/NETWORK_AND_PRIVACY.md         — network requests and privacy
+├── docs/PERFORMANCE_BASELINE.md        — performance measurements
+├── docs/VELOPACK_*.md                  — Velopack migration and local update testing
 ├── tools/                              — release preparation scripts
 ├── Lumisense.Tests/                    — unit tests
 └── Lumisense/                          — player source code
@@ -391,6 +410,10 @@ Lumisense/
     ├── lib/                             — libmp3lame.dll and LAME license notice
     └── Icons/                           — SVG icon packs and application icons
 ```
+
+### License
+
+Lumisense is licensed under the [GNU GPL v3.0](LICENSE). Licenses of the bundled components are listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md); these files and the license texts ship with the installed application.
 
 ### Feedback
 
