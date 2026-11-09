@@ -129,8 +129,8 @@ public partial class App : Application
         };
 
         Logger.Info($"Lumisense запускается — версия ОС {Environment.OSVersion}, .NET {Environment.Version}, 64-бит: {Environment.Is64BitProcess}");
-        // Наблюдаемый migration guard: legacy Inno Setup остаётся основным путём, пока
-        // приложение не будет установлено через Velopack MSI в отдельном переходном релизе.
+        // Наблюдаемый migration guard: в журнал пишется способ установки (Inno Setup EXE или Velopack MSI),
+        // от него зависит механизм обновления; оба пути поддерживаются.
         UpdateMigrationGuard.LogCurrentMode();
 
         // В мини-режиме окон нет на панели задач, и повторный клик по ярлыку запустил бы второй процесс: если Mutex

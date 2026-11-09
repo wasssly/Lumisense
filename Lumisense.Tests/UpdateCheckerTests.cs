@@ -49,6 +49,10 @@ public sealed class UpdateCheckerTests
     [InlineData("https://gh-proxy.org.evil.example/a.exe")]
     [InlineData("https://evilgh-proxy.org/a.exe")]
     [InlineData("https://objects.githubusercontent.com/a.exe")]
+    [InlineData("https://gh-proxy.org/a.exe")]
+    [InlineData("https://gh-proxy.org/https://github.com/someone-else/Lumisense/releases/download/v1.2.3/a.exe")]
+    [InlineData("https://ghfast.top/https://github.com/wasssly/Lumisense/archive/main.zip")]
+    [InlineData("https://ghfast.top/https://evil.example/wasssly/Lumisense/releases/download/v1.2.3/a.exe")]
     [InlineData("/wasssly/Lumisense/releases/download/v1.2.3/a.exe")]
     [InlineData("")]
     public void TryValidateDownloadUrl_RejectsUntrustedAddresses(string url)

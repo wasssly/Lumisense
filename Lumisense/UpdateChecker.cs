@@ -52,9 +52,6 @@ public sealed class UpdateCheckResult
     // legacy Inno Setup-кодом, поэтому старые сценарии отката/переустановки остаются прежними.
     public UpdateInfo? VelopackUpdate { get; init; }
 
-    // Адрес feed, который нашёл обновление (UpdateFeedSources): скачивать нужно с него же, а не с адреса по умолчанию.
-    public string? VelopackFeedUrl { get; init; }
-
     public UpdateFailureKind FailureKind { get; init; }
     public int? HttpStatusCode { get; init; }
     public string? TechnicalDetail { get; init; }
@@ -235,13 +232,8 @@ public static class UpdateChecker
         var velopack = new VelopackUpdateService();
         if (velopack.IsManagedInstall)
         {
-            // Все адреса feed проверяются одновременно (UpdateFeedSources); без зеркал в списке один официальный адрес.
-            UpdateFeedRaceResult raced = await UpdateFeedRace.CheckAsync(
-                UpdateFeedSources.FeedUrls,
-                (feedUrl, token) => new VelopackUpdateService(feedUrl).CheckAsync(token),
-                UpdateFeedRace.DefaultUpToDateGrace,
-                ct);
-            VelopackProbeResult probe = raced.Result;
+            // Feed только один: официальный GitHub Release (VelopackUpdateService.PublicReleaseFeedUrl).
+            VelopackProbeResult probe = await velopack.CheckAsync(ct);
             return probe.Status switch
             {
                 VelopackProbeStatus.UpdateAvailable when probe.Update is not null => new UpdateCheckResult
@@ -252,8 +244,7 @@ public static class UpdateChecker
                     LatestVersion = probe.Update.TargetFullRelease.Version.ToString(),
                     ReleaseNotes = probe.Update.TargetFullRelease.NotesMarkdown,
                     ReleaseNotesUrl = $"https://github.com/{RepoOwner}/{RepoName}/releases/tag/v{probe.Update.TargetFullRelease.Version}",
-                    VelopackUpdate = probe.Update,
-                    VelopackFeedUrl = raced.FeedUrl
+                    VelopackUpdate = probe.Update
                 },
                 VelopackProbeStatus.UpToDate => new UpdateCheckResult
                 {
@@ -994,8 +985,14 @@ public static class UpdateChecker
         if (uri.Host.Equals("github.com", StringComparison.OrdinalIgnoreCase))
             return uri.AbsolutePath.StartsWith("/wasssly/Lumisense/releases/download/", StringComparison.OrdinalIgnoreCase);
 
-        // Остальные хосты из TrustedDownloadHosts — зеркала; путь у них не проверяется, защиту даёт SHA-256 установщика.
-        return true;
+        // Остальные хосты из TrustedDownloadHosts — зеркала. Адрес зеркала всегда имеет вид
+        // https://<зеркало>/<исходный адрес GitHub> (см. ApplyDownloadSource), поэтому исходный адрес обязан указывать
+        // на release-файлы этого репозитория: иначе через доверенное зеркало открывался бы любой чужой файл.
+        // Дополнительно целостность гарантирует SHA-256 установщика. Сравнение идёт по строке, а не по Uri.AbsolutePath:
+        // Uri может сжимать «//» внутри пути, и вложенный «https://» перестал бы совпадать.
+        return value.StartsWith(
+            $"https://{uri.Host}/https://github.com/wasssly/Lumisense/releases/download/",
+            StringComparison.OrdinalIgnoreCase);
     }
 
     internal static bool TryParseSha256(string? value, out byte[] hash)

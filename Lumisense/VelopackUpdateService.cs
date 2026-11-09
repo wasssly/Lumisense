@@ -33,25 +33,18 @@ internal sealed class VelopackUpdateService
     private readonly UpdateManager _manager;
     private readonly IUpdateSource _source;
 
-    public VelopackUpdateService() : this(PublicReleaseFeedUrl)
+    // Feed один — официальный GitHub Release; зеркал feed нет и не планируется (зеркала действуют только для EXE/MSI).
+    public VelopackUpdateService()
     {
-    }
-
-    // feedUrl — адрес из UpdateFeedSources; скачивание обновления должно идти с того же адреса, который его нашёл.
-    public VelopackUpdateService(string feedUrl)
-    {
-        _manager = CreateManager(feedUrl, out bool usesLocalTestFeed, out IUpdateSource source);
+        _manager = CreateManager(out bool usesLocalTestFeed, out IUpdateSource source);
         _source = source;
         UsesLocalTestFeed = usesLocalTestFeed;
-        FeedUrl = feedUrl;
     }
-
-    public string FeedUrl { get; }
 
     public bool IsManagedInstall => _manager.IsInstalled;
     public bool UsesLocalTestFeed { get; }
 
-    private static UpdateManager CreateManager(string feedUrl, out bool usesLocalTestFeed, out IUpdateSource source)
+    private static UpdateManager CreateManager(out bool usesLocalTestFeed, out IUpdateSource source)
     {
         var options = new UpdateOptions { ExplicitChannel = ReleaseChannel };
 
@@ -66,7 +59,7 @@ internal sealed class VelopackUpdateService
 #endif
 
         usesLocalTestFeed = false;
-        source = new SimpleWebSource(feedUrl);
+        source = new SimpleWebSource(PublicReleaseFeedUrl);
         return new UpdateManager(source, options);
     }
 

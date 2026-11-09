@@ -712,6 +712,11 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             if (result.Status != UpdateCheckStatus.UpdateAvailable) return;
             if (result.LatestVersion != null && result.LatestVersion == _settings.SkippedUpdateVersion) return;
 
+            // Старт в трее или мини-режиме: окно ещё не показано, и раньше диалог молча пропускался без повторной
+            // попытки (у EXE-копий это единственный автоматический способ узнать о версии). Теперь ждём, пока окно
+            // впервые станет видимым, и показываем диалог тогда; при закрытии приложения ожидание отменяется.
+            if (!IsVisible)
+                await WaitUntilVisibleAsync(_lifetimeCts.Token);
             if (_isExiting || !IsVisible) return;
             var dialog = new UpdateAvailableWindow(result, _settings);
             // Owner можно ставить только на уже показанное окно (актуально, если старт был в
@@ -726,6 +731,29 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         catch
         {
             // Фоновая необязательная проверка — молча игнорируем любые сбои
+        }
+    }
+
+    // Ждёт, пока окно впервые станет видимым; продолжение выполняется в UI-потоке, откуда ожидание и начато.
+    private async System.Threading.Tasks.Task WaitUntilVisibleAsync(CancellationToken cancellationToken)
+    {
+        if (IsVisible) return;
+
+        var visible = new System.Threading.Tasks.TaskCompletionSource(
+            System.Threading.Tasks.TaskCreationOptions.RunContinuationsAsynchronously);
+        DependencyPropertyChangedEventHandler handler = (_, e) =>
+        {
+            if (e.NewValue is true) visible.TrySetResult();
+        };
+
+        IsVisibleChanged += handler;
+        try
+        {
+            await visible.Task.WaitAsync(cancellationToken);
+        }
+        finally
+        {
+            IsVisibleChanged -= handler;
         }
     }
 
