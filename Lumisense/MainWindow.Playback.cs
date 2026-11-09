@@ -115,6 +115,7 @@ public partial class MainWindow
 
             StartOutputChain(generation, performance);
             ApplyPlaybackStartState(autoPlay);
+            StartLoudnessScanIfNeeded(filePath);
 
             // Причина и факт запуска передаются политике уведомлений явно: так автопереход,
             // выбор трека на паузе и восстановление сессии не маскируются друг под друга.

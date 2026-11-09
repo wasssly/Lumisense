@@ -795,6 +795,8 @@ public static class LocalizationService
         ["Не показывать карточку"] = "No card",
         ["Анимация карточки"] = "Card animation",
         ["Пространство и громкость"] = "Space and loudness",
+        ["Измерять громкость файлов без тегов"] = "Measure loudness of untagged files",
+        ["Если в файле нет ReplayGain-тегов, плеер сам измеряет его громкость по стандарту EBU R128 в фоне, пока трек играет, запоминает результат и выравнивает файл до уровня −18 LUFS. Первый раз громкость может слегка скакнуть, когда измерение закончится."] = "If a file has no ReplayGain tags, the player measures its loudness in the background per EBU R128 while the track plays, remembers the result and levels the file to −18 LUFS. The first time, the volume may shift slightly when the measurement finishes.",
         ["Переход между треками без паузы (бета)"] = "Gapless track transitions (beta)",
         ["Следующий трек открывается заранее и подхватывается без остановки звука: живые альбомы и сведённые подряд записи идут без провала. Работает при автопереходе, если у треков одинаковая частота дискретизации и число каналов; иначе, при повторе одного трека и после ручного выбора переход обычный."] = "The next track is opened ahead of time and picked up without stopping the sound, so live albums and continuous mixes play without a dip. It works on automatic transitions when the tracks share the same sample rate and channel count; otherwise, with single-track repeat and after a manual pick, the transition is the usual one.",
         ["Ширина стереобазы"] = "Stereo width",

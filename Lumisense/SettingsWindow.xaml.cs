@@ -336,6 +336,7 @@ public partial class SettingsWindow : FluentWindow
         SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
         ReplayGainAlbumCheckBox.IsChecked = _settings.ReplayGainAlbumMode;
+        LoudnessScanCheckBox.IsChecked = _settings.LoudnessScanEnabled;
         LimiterCheckBox.IsChecked = _settings.LimiterEnabled;
         PlaybackSpeedChangesPitchCheckBox.IsChecked = _settings.PlaybackSpeedChangesPitch;
         ReplayGainPreampSlider.Value = Math.Clamp(_settings.ReplayGainPreampDb, -12, 12);
@@ -1522,6 +1523,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Перемотка назад", "Горячие клавиши", "Hotkeys", HotkeySeekBackwardButton, "seek backward назад перемотка 5 секунд горячая клавиша");
         Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
+        Add("Измерять громкость файлов без тегов", "Воспроизведение", "Playback", LoudnessScanCheckBox, "громкость измерение анализ replaygain r128 lufs без тегов нормализация");
         Add("Переход между треками без паузы", "Воспроизведение", "Playback", GaplessCheckBox, "гэплесс gapless без паузы переход трек альбом бесшовный");
         Add("Ширина стереобазы", "Воспроизведение", "Playback", StereoWidthSlider, "ширина стерео база stereo width моно шире");
         Add("Кроссфид для наушников", "Воспроизведение", "Playback", CrossfeedSlider, "кроссфид crossfeed наушники стерео голова");
@@ -4109,6 +4111,14 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.ReplayGainEnabled = ReplayGainCheckBox.IsChecked == true;
         _owner.RefreshReplayGain();
+    }
+
+    private void LoudnessScanCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.LoudnessScanEnabled = LoudnessScanCheckBox.IsChecked == true;
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void LimiterCheckBox_Changed(object sender, RoutedEventArgs e)

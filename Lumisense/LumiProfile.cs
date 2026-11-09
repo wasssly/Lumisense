@@ -236,6 +236,7 @@ public static class LumiProfileIO
         target.SavedVolume = source.SavedVolume;
         target.UseLogarithmicVolume = source.UseLogarithmicVolume;
         target.ReplayGainEnabled = source.ReplayGainEnabled;
+        target.LoudnessScanEnabled = source.LoudnessScanEnabled;
         target.ReplayGainAlbumMode = source.ReplayGainAlbumMode;
         target.ReplayGainPreampDb = source.ReplayGainPreampDb;
         target.PlaybackChannelMode = source.PlaybackChannelMode;

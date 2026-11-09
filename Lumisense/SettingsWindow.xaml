@@ -2208,6 +2208,10 @@
                                           Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
                                 <TextBlock Text="Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <CheckBox x:Name="LoudnessScanCheckBox" Content="Измерять громкость файлов без тегов" Margin="0,14,0,0"
+                                          Checked="LoudnessScanCheckBox_Changed" Unchecked="LoudnessScanCheckBox_Changed" />
+                                <TextBlock Text="Если в файле нет ReplayGain-тегов, плеер сам измеряет его громкость по стандарту EBU R128 в фоне, пока трек играет, запоминает результат и выравнивает файл до уровня −18 LUFS. Первый раз громкость может слегка скакнуть, когда измерение закончится."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
                                 <CheckBox x:Name="ReplayGainAlbumCheckBox" Content="Альбомный режим" Margin="0,14,0,0"
                                           Checked="ReplayGainAlbumCheckBox_Changed" Unchecked="ReplayGainAlbumCheckBox_Changed" />
                                 <TextBlock Text="Берёт громкость альбома, чтобы сохранить разницу между тихими и громкими треками внутри альбома. Если альбомного тега нет, используется трековый."

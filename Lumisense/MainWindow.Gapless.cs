@@ -216,6 +216,7 @@ public partial class MainWindow
         if (_shuffleSession.IsEnabled && _playlistRestoreCompleted)
             PersistPlaybackAndPlaylistState(asyncSave: true);
 
+        StartLoudnessScanIfNeeded(armed.Path);
         SetTrackUserState(TrackUserState.Playing);
         ShowTrackChangeToast(TrackChangeOrigin.Automatic, true);
         ScrollPlaylistToCurrentTrack();

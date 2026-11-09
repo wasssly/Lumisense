@@ -73,7 +73,9 @@ public static class ReplayGainReader
                 found = true;
             }
 
-            if (!found) return 1.0;
+            // Тегов нет: берём результат собственного анализа громкости (LoudnessScanner), если он уже посчитан.
+            if (!found)
+                return LoudnessCache.TryGetLufs(track.Path, out double lufs) ? LoudnessAnalyzer.GainLinearFor(lufs, preampDb) : 1.0;
 
             double linear = System.Math.Pow(10.0, (gainDb + System.Math.Clamp(preampDb, -MaxPreampDb, MaxPreampDb)) / 20.0);
             if (peak > 0)
@@ -84,6 +86,21 @@ public static class ReplayGainReader
         catch
         {
             return 1.0;
+        }
+    }
+
+    // Есть ли в файле хоть какой-то ReplayGain/R128-тег (трековый или альбомный).
+    public static bool HasGainTag(string filePath)
+    {
+        try
+        {
+            var track = new ATL.Track(filePath);
+            return TryReadDb(track, GainKeys, out _) || TryReadDb(track, AlbumGainKeys, out _)
+                   || TryReadDb(track, R128TrackKeys, out _) || TryReadDb(track, R128AlbumKeys, out _);
+        }
+        catch
+        {
+            return true; // не смогли прочитать тег — не трогаем файл анализом
         }
     }
 
