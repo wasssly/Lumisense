@@ -30,8 +30,29 @@ public partial class MainWindow
         if (_audioFile is null)
             return;
 
-        _audioFile.CurrentTime = position;
-        _tempoProvider?.Clear();
+        var audioFile = _audioFile;
+        var tempoProvider = _tempoProvider;
+        var masterVolume = _masterVolume;
+        void ApplySeek()
+        {
+            audioFile.CurrentTime = position;
+            tempoProvider?.Clear();
+        }
+
+        // Перемотка идёт через audio thread с короткими затуханием и нарастанием, чтобы не было щелчка.
+        // Если Read не вызывается (вывод остановлен), перемотка выполняется здесь.
+        if (_isPlaying && masterVolume is not null)
+        {
+            masterVolume.RequestSeek(ApplySeek);
+            _ = Task.Delay(300).ContinueWith(_ => Dispatcher.BeginInvoke(() =>
+            {
+                if (ReferenceEquals(_masterVolume, masterVolume))
+                    masterVolume.TakePendingSeek()?.Invoke();
+            }), TaskScheduler.Default);
+            return;
+        }
+
+        ApplySeek();
 
         // На паузе таймер прогресса остановлен: сообщаем новую позицию подписчикам (мини-плеер, остров, Now Playing) сразу.
         if (!_isPlaying)

@@ -52,6 +52,37 @@ public sealed class MasterVolumeSampleProviderTests
             Assert.Equal(output[frame], output[frame + 1]);
     }
 
+    [Fact]
+    public void Seek_RunsOnReadWithFadeOutAndFadeIn()
+    {
+        var source = new ConstantProvider(Enumerable.Repeat(1f, 9600).ToArray(), 1);
+        var provider = new MasterVolumeSampleProvider(source, 1f);
+        bool seeked = false;
+        provider.RequestSeek(() => seeked = true);
+
+        var first = new float[960];
+        provider.Read(first);
+        var second = new float[960];
+        provider.Read(second);
+
+        Assert.True(seeked);
+        Assert.Equal(1f, first[0], 6);
+        Assert.True(first[^1] < 0.01f, $"Конец старого звука {first[^1]:F4}");
+        Assert.True(second[0] < 0.01f, $"Начало нового звука {second[0]:F4}");
+        Assert.Equal(1f, second[^1], 5);
+        Assert.Null(provider.TakePendingSeek());
+    }
+
+    [Fact]
+    public void TakePendingSeek_ReturnsActionOnlyOnce()
+    {
+        var provider = new MasterVolumeSampleProvider(new ConstantProvider(new float[4], 1), 1f);
+        provider.RequestSeek(() => { });
+
+        Assert.NotNull(provider.TakePendingSeek());
+        Assert.Null(provider.TakePendingSeek());
+    }
+
     private sealed class ConstantProvider : ISampleProvider
     {
         private readonly float[] _samples;
