@@ -12,8 +12,29 @@ public partial class MainWindow
     // Заготовка нужна и для гэплесса, и для кроссфейда.
     private bool GaplessOrCrossfadeWanted => _settings.GaplessEnabled || _settings.CrossfadeSeconds > 0;
 
-    private Func<long> RemainingFramesOf(NAudio.Wave.AudioFileReader reader) =>
-        () => (long)((reader.TotalTime - reader.CurrentTime).TotalSeconds / Math.Max(0.25, _runtimePlaybackRate) * reader.WaveFormat.SampleRate);
+    // Остаток трека в кадрах выходного формата (после ресемплинга, если он есть) с учётом скорости.
+    private Func<long> RemainingFramesOf(NAudio.Wave.AudioFileReader reader, int outputSampleRate) =>
+        () => (long)((reader.TotalTime - reader.CurrentTime).TotalSeconds / Math.Max(0.25, _runtimePlaybackRate) * outputSampleRate);
+
+    // Приводит следующий трек к формату выхода (моно↔стерео, частота); null, если число каналов не поддержано.
+    private static NAudio.Wave.ISampleProvider? ConvertToOutputFormat(NAudio.Wave.ISampleProvider source, NAudio.Wave.WaveFormat target)
+    {
+        var current = source;
+        if (current.WaveFormat.Channels != target.Channels)
+        {
+            if (current.WaveFormat.Channels == 1 && target.Channels == 2)
+                current = new NAudio.Wave.SampleProviders.MonoToStereoSampleProvider(current);
+            else if (current.WaveFormat.Channels == 2 && target.Channels == 1)
+                current = new NAudio.Wave.SampleProviders.StereoToMonoSampleProvider(current);
+            else
+                return null;
+        }
+
+        if (current.WaveFormat.SampleRate != target.SampleRate)
+            current = new NAudio.Wave.SampleProviders.WdlResamplingSampleProvider(current, target.SampleRate);
+
+        return current;
+    }
 
     // Длина перекрытия в кадрах для пары треков: не длиннее половины любого из них и 0 для треков одного альбома.
     private int ComputeCrossfadeFrames(PreparedTrack next)
@@ -25,7 +46,7 @@ public partial class MainWindow
             return 0;
 
         double limit = Math.Min(_audioFile.TotalTime.TotalSeconds, next.AudioFile.TotalTime.TotalSeconds) / 2;
-        return (int)(Math.Min(seconds, limit) * _audioFile.WaveFormat.SampleRate);
+        return (int)(Math.Min(seconds, limit) * (_gapless?.WaveFormat.SampleRate ?? _audioFile.WaveFormat.SampleRate));
     }
 
     private NAudio.Wave.AudioFileReader? _gaplessPreviousFile;
@@ -91,6 +112,37 @@ public partial class MainWindow
         ArmGapless();
     }
 
+    // Читает теги и обложки соседей заранее: ручное переключение тогда не ждёт диск. При шафле историю не трогаем.
+    private void SchedulePrefetchNeighbors()
+    {
+        if (_isExiting || Dispatcher.HasShutdownStarted) return;
+
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () =>
+        {
+            try
+            {
+                string? current = _currentTrackPath;
+                if (string.IsNullOrEmpty(current)) return;
+
+                var paths = new List<string?> { _playbackQueue.PeekNext() };
+                if (!_shuffleSession.IsEnabled)
+                {
+                    paths.Add(ComputeNextTrackPath(current));
+                    paths.Add(ComputePreviousTrackPath(current));
+                }
+
+                foreach (var path in paths.Where(p => !string.IsNullOrEmpty(p)).Distinct(StringComparer.OrdinalIgnoreCase))
+                {
+                    if (!PathEquals(path, current) && File.Exists(path)) TrackTagCache.Prefetch(path!);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Не удалось запланировать предзагрузку соседних треков: {ex.Message}");
+            }
+        });
+    }
+
     private bool IsGaplessArmStillValid(ArmedGaplessTrack armed)
     {
         if (!GaplessOrCrossfadeWanted || _repeatMode == RepeatMode.One || _repeatMode != armed.Repeat
@@ -149,11 +201,12 @@ public partial class MainWindow
                 || _gapless is null || _audioFile is null || !GaplessOrCrossfadeWanted)
                 return;
 
-            var format = _audioFile.WaveFormat;
-            var nextFormat = prepared.AudioFile.WaveFormat;
-            if (nextFormat.SampleRate != format.SampleRate || nextFormat.Channels != format.Channels)
+            var outputFormat = _gapless.WaveFormat;
+            var chain = BuildChain(prepared.Equalizer);
+            var tail = ConvertToOutputFormat(chain.Meter, outputFormat);
+            if (tail is null)
             {
-                // Другая частота или каналы: без ресемплинга бесшовно не получится, этот переход пойдёт обычным путём.
+                // Число каналов, которое не умеем привести к выходу (не моно и не стерео): переход пойдёт обычным путём.
                 _gaplessRejectedPath = next;
                 return;
             }
@@ -165,12 +218,12 @@ public partial class MainWindow
                 Path = next,
                 PreviousPath = current,
                 Prepared = prepared,
-                Chain = BuildChain(prepared.Equalizer),
+                Chain = chain,
                 FromQueue = fromQueue,
                 Shuffle = _shuffleSession.IsEnabled,
                 Repeat = _repeatMode
             };
-            if (!_gapless.Arm(armed.Chain.Meter, armed, crossfadeFrames, RemainingFramesOf(prepared.AudioFile))) return;
+            if (!_gapless.Arm(tail, armed, crossfadeFrames, RemainingFramesOf(prepared.AudioFile, outputFormat.SampleRate))) return;
 
             prepared = null;
             _gaplessArmed = armed;
@@ -270,6 +323,7 @@ public partial class MainWindow
             PersistPlaybackAndPlaylistState(asyncSave: true);
 
         StartLoudnessScanIfNeeded(armed.Path);
+        SchedulePrefetchNeighbors();
         SetTrackUserState(TrackUserState.Playing);
         ShowTrackChangeToast(TrackChangeOrigin.Automatic, true);
         ScrollPlaylistToCurrentTrack();

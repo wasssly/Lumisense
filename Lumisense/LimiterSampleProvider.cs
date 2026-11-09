@@ -27,6 +27,9 @@ public sealed class LimiterSampleProvider : ISampleProvider
     private readonly double _attackStep;
     private readonly double _releaseStep;
     private int _enabled = 1;
+    private bool _primed;
+    private bool _needsFlush;
+    private int _flushRemaining;
 
     public LimiterSampleProvider(ISampleProvider source)
     {
@@ -51,12 +54,61 @@ public sealed class LimiterSampleProvider : ISampleProvider
 
     public int Read(Span<float> buffer)
     {
+        if (!_primed)
+        {
+            _primed = true;
+            Prime();
+        }
+
         int samplesRead = _source.Read(buffer);
-        if (samplesRead == 0) return 0;
+        if (samplesRead == 0) return Flush(buffer);
 
-        bool enabled = Enabled;
-        int frames = samplesRead / _channels;
+        _needsFlush = true;
+        _flushRemaining = _lookahead;
+        Process(buffer, samplesRead / _channels, Enabled);
+        return samplesRead;
+    }
 
+    // Заполняет линию задержки первыми кадрами источника; результат не выдаётся (там была бы тишина).
+    private void Prime()
+    {
+        var temp = new float[_lookahead * _channels];
+        int filled = 0;
+        while (filled < temp.Length)
+        {
+            int read = _source.Read(temp.AsSpan(filled));
+            if (read <= 0) break;
+            filled += read;
+        }
+
+        if (filled == 0) return;
+
+        Process(temp, filled / _channels, Enabled);
+        _needsFlush = true;
+        _flushRemaining = _lookahead;
+    }
+
+    // Конец источника: отдаёт кадры, оставшиеся в линии задержки, прогоняя их через ту же обработку с нулевым входом.
+    private int Flush(Span<float> buffer)
+    {
+        if (!_needsFlush) return 0;
+
+        int frames = Math.Min(buffer.Length / _channels, _flushRemaining);
+        if (frames <= 0)
+        {
+            _needsFlush = false;
+            return 0;
+        }
+
+        buffer[..(frames * _channels)].Clear();
+        Process(buffer, frames, Enabled);
+        _flushRemaining -= frames;
+        if (_flushRemaining <= 0) _needsFlush = false;
+        return frames * _channels;
+    }
+
+    private void Process(Span<float> buffer, int frames, bool enabled)
+    {
         for (int frame = 0; frame < frames; frame++)
         {
             int offset = frame * _channels;
@@ -101,7 +153,5 @@ public sealed class LimiterSampleProvider : ISampleProvider
             _delayPosition = (_delayPosition + 1) % _lookahead;
             _frameIndex++;
         }
-
-        return samplesRead;
     }
 }

@@ -29,9 +29,24 @@ public sealed class LimiterSampleProviderTests
         float[] input = Enumerable.Range(0, 4800).Select(i => 0.5f * (float)Math.Sin(i * 0.05)).ToArray();
         float[] output = Run(input, 1);
 
-        const int delay = 96;
-        for (int i = delay; i < input.Length; i++)
-            Assert.Equal(input[i - delay], output[i], 6);
+        for (int i = 0; i < input.Length; i++)
+            Assert.Equal(input[i], output[i], 6);
+    }
+
+    [Fact]
+    public void StreamLength_IsPreserved_AndTheTailIsFlushed()
+    {
+        float[] input = Enumerable.Repeat(0.25f, 1000).ToArray();
+        var provider = new LimiterSampleProvider(new ArrayProvider(input, 2));
+
+        var all = new System.Collections.Generic.List<float>();
+        var buffer = new float[64];
+        int read;
+        while ((read = provider.Read(buffer)) > 0)
+            all.AddRange(buffer.Take(read));
+
+        Assert.Equal(input.Length, all.Count);
+        Assert.All(all, sample => Assert.Equal(0.25f, sample, 6));
     }
 
     [Fact]

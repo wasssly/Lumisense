@@ -116,6 +116,7 @@ public partial class MainWindow
             StartOutputChain(generation, performance);
             ApplyPlaybackStartState(autoPlay);
             StartLoudnessScanIfNeeded(filePath);
+            SchedulePrefetchNeighbors();
 
             // Причина и факт запуска передаются политике уведомлений явно: так автопереход,
             // выбор трека на паузе и восстановление сессии не маскируются друг под друга.
@@ -221,7 +222,7 @@ public partial class MainWindow
     {
         var chain = BuildChain(_equalizer!);
         AssignChain(chain);
-        _gapless = new GaplessSampleProvider(chain.Meter, RemainingFramesOf(_audioFile!));
+        _gapless = new GaplessSampleProvider(chain.Meter, RemainingFramesOf(_audioFile!, chain.Meter.WaveFormat.SampleRate));
         _gapless.Switched += OnGaplessSwitched;
         _gapless.PreviousFinished += OnGaplessPreviousFinished;
         var fadeIn = new FadeInOutSampleProvider(_gapless, initiallySilent: true);

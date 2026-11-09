@@ -88,40 +88,24 @@ internal sealed class TrackPreparationService
         var tagsTimer = Stopwatch.StartNew();
         try
         {
-            var tagFile = new ATL.Track(filePath);
+            var tags = TrackTagCache.GetOrLoad(filePath);
             if (options.ReplayGainEnabled)
             {
                 var replayGainTimer = Stopwatch.StartNew();
-                replayGain = ReplayGainReader.GetGainLinear(tagFile, options.ReplayGainPreferAlbum, options.ReplayGainPreampDb);
+                replayGain = ReplayGainReader.GetGainLinear(tags.Track, options.ReplayGainPreferAlbum, options.ReplayGainPreampDb);
                 replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
             }
-            title = tagFile.Title;
-            album = tagFile.Album;
-            bitrateKbps = Math.Max(0, tagFile.Bitrate);
-            artist = !string.IsNullOrWhiteSpace(tagFile.Artist)
-                ? tagFile.Artist
-                : tagFile.AlbumArtist;
-            TrackMetadataCache.Remember(filePath, tagFile.Title, tagFile.Artist, tagFile.AlbumArtist);
-            tagsMilliseconds = tagsTimer.ElapsedMilliseconds;
+            title = tags.Title;
+            album = tags.Album;
+            artist = tags.Artist;
+            bitrateKbps = tags.BitrateKbps;
+            albumArt = tags.AlbumArt;
+            albumArtBytes = tags.AlbumArtBytes;
+            albumArtMimeType = tags.AlbumArtMimeType;
+            albumArtPictureType = tags.AlbumArtPictureType;
+            tagsMilliseconds = tags.TagsMilliseconds;
+            embeddedArtworkMilliseconds = tags.ArtworkMilliseconds;
             tagsMeasured = true;
-            if (tagFile.EmbeddedPictures.Count > 0)
-            {
-                var artworkTimer = Stopwatch.StartNew();
-                var picture = tagFile.EmbeddedPictures[0];
-                albumArtBytes = picture.PictureData;
-                using var stream = new MemoryStream(albumArtBytes);
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.DecodePixelWidth = ArtworkDisplayDecodePixelWidth;
-                bitmap.StreamSource = stream;
-                bitmap.EndInit();
-                bitmap.Freeze();
-                albumArt = bitmap;
-                albumArtMimeType = AlbumArtPictureKindExtensions.DetectAlbumArtMimeType(albumArtBytes);
-                albumArtPictureType = AlbumArtPictureKindExtensions.FromAtl(picture.PicType);
-                embeddedArtworkMilliseconds = artworkTimer.ElapsedMilliseconds;
-            }
         }
         catch (Exception ex)
         {
