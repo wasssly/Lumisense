@@ -122,31 +122,6 @@ public sealed class LyricsExtraSourcesTests
     }
 
     [Fact]
-    public void Paxsenix_ParseYoutubeVideos_AcceptsArrayAndWrappedObject()
-    {
-        const string bare = """[{"videoId":"vid1","title":"Song","author":"Singer","duration":"3:35"}]""";
-        const string wrapped = """{"results":[{"id":"vid2","title":"Other","artist":"X","duration":"1:02:03"}]}""";
-
-        var first = PaxsenixLyricsSource.ParseYoutubeVideos(bare);
-        var second = PaxsenixLyricsSource.ParseYoutubeVideos(wrapped);
-
-        Assert.Equal("vid1", Assert.Single(first).Id);
-        Assert.Equal(215, first[0].DurationSeconds);
-        Assert.Equal("vid2", Assert.Single(second).Id);
-        Assert.Equal(3723, second[0].DurationSeconds);
-    }
-
-    [Theory]
-    [InlineData("3:25", 205)]
-    [InlineData("0:07", 7)]
-    [InlineData("x:yy", 0)]
-    [InlineData("", 0)]
-    public void Paxsenix_ParseColonDuration(string value, double expected)
-    {
-        Assert.Equal(expected, PaxsenixLyricsSource.ParseColonDuration(value));
-    }
-
-    [Fact]
     public void Paxsenix_HasUsableTiming_NeedsAtLeastTwoDistinctTimestamps()
     {
         Assert.True(PaxsenixLyricsSource.HasUsableTiming("[00:01.00]a\n[00:02.00]b"));

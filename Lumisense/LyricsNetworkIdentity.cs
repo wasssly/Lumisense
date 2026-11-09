@@ -7,7 +7,7 @@ namespace Lumisense;
 // metadata через UpdateChecker, поэтому release workflow меняет User-Agent автоматически.
 internal static class LyricsNetworkIdentity
 {
-    private const string ProjectUrl = "https://github.com/wasssly/Lumisense";
+    private const string ProjectUrl = DiscordRichPresenceDefaults.GitHubRepositoryUrl;
 
     public static string UserAgentValue => $"Lumisense/{UpdateChecker.GetCurrentVersion()} (+{ProjectUrl})";
 

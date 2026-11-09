@@ -432,8 +432,29 @@ public static class LyricsService
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonicalPath))).ToLowerInvariant();
     }
 
-    // Включает дополнительный источник текстов (NetEase через Lyricify); выставляется из настроек.
+    // Включает дополнительные источники текстов (NetEase, QQ Music, Kugou, Paxsenix); выставляется из настроек.
     public static bool ExtraSourceEnabled { get; set; }
+
+    // Какие именно дополнительные источники включены (имена как в OnlineLyricsResult.Source). Набор подменяется целиком,
+    // а не изменяется: поиск идёт в фоновых потоках и читает его без блокировок.
+    private static volatile HashSet<string> _enabledExtraSources = new(StringComparer.OrdinalIgnoreCase)
+    {
+        LyricifyLyricsSource.SourceName, LyricifyLyricsSource.QqSourceName, KugouLyricsSource.SourceName, PaxsenixLyricsSource.SourceName
+    };
+
+    public static bool IsExtraSourceEnabled(string sourceName) => ExtraSourceEnabled && _enabledExtraSources.Contains(sourceName);
+
+    public static void ApplyExtraSourceSettings(AppSettings settings)
+    {
+        var enabled = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        if (settings.UseNetEaseLyrics) enabled.Add(LyricifyLyricsSource.SourceName);
+        if (settings.UseQqMusicLyrics) enabled.Add(LyricifyLyricsSource.QqSourceName);
+        if (settings.UseKugouLyrics) enabled.Add(KugouLyricsSource.SourceName);
+        if (settings.UsePaxsenixLyrics) enabled.Add(PaxsenixLyricsSource.SourceName);
+
+        _enabledExtraSources = enabled;
+        ExtraSourceEnabled = settings.UseExtraLyricsSource;
+    }
 
     // Встроенный поиск по LRCLIB. Никакой ключ не нужен, но сервис просит корректный User-Agent
     // и последовательные запросы; UI отменяет предыдущий поиск до начала следующего.
@@ -556,9 +577,9 @@ public static class LyricsService
         string? sourceFilter = null,
         System.Collections.Concurrent.ConcurrentBag<string>? failedSources = null)
     {
-        // Дополнительные источники работают только при включённой настройке: выбор такого источника при выключенной настройке
-        // (например, сохранённый раньше) считается выбором LRCLIB.
-        if (!ExtraSourceEnabled && sourceFilter is not null
+        // Дополнительные источники работают только при включённой настройке (и самого сервиса): выбор такого источника при
+        // выключенной настройке (например, сохранённый раньше) считается выбором LRCLIB.
+        if (sourceFilter is not null && !IsExtraSourceEnabled(sourceFilter)
             && !string.Equals(sourceFilter, LrcLibSourceName, StringComparison.OrdinalIgnoreCase))
         {
             sourceFilter = LrcLibSourceName;
@@ -654,6 +675,41 @@ public static class LyricsService
         if (candidates.Count == 0 && rateLimit is not null) throw rateLimit;
 
         return new AutomaticLyricsLookup(matches.FirstOrDefault(), candidates.Count, matches);
+    }
+
+    // Document — то, что показать; Lookup — результат автоподбора, если он запускался (иначе null).
+    public sealed record LyricsLoadResult(LyricsDocument Document, AutomaticLyricsLookup? Lookup);
+
+    // Общий порядок для панели главного окна и острова: локальный текст, затем автоподбор — только при политике AutoExact
+    // и только точное совпадение, которое сохраняется рядом с треком. isCurrent позволяет окну прервать загрузку, если трек
+    // уже сменился: тогда возвращается null и показывать нечего.
+    public static async Task<LyricsLoadResult?> LoadWithAutomaticLookupAsync(
+        string? trackPath,
+        string trackName,
+        string artistName,
+        double durationSeconds,
+        string searchPolicy,
+        CancellationToken cancellationToken,
+        Action? onSearching = null,
+        Func<bool>? isCurrent = null)
+    {
+        LyricsDocument document = await LoadAsync(trackPath, cancellationToken);
+        if (isCurrent is not null && !isCurrent()) return null;
+        if (document.Kind != LyricsKind.None || string.IsNullOrWhiteSpace(trackPath) || searchPolicy != "AutoExact")
+            return new LyricsLoadResult(document, null);
+
+        onSearching?.Invoke();
+        AutomaticLyricsLookup lookup = await FindAutomaticAsync(trackName, artistName, durationSeconds, cancellationToken);
+        if (isCurrent is not null && !isCurrent()) return null;
+
+        if (lookup.Best is { } exact)
+        {
+            await SaveOnlineResultAsync(trackPath, exact, cancellationToken);
+            if (isCurrent is not null && !isCurrent()) return null;
+            document = CreateDocumentFromOnlineResult(exact);
+        }
+
+        return new LyricsLoadResult(document, lookup);
     }
 
     // Варианты текста из LRCLIB для кнопки «Другой вариант», когда автоподбор их не запоминал (текст был сохранён раньше).

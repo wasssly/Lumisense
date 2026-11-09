@@ -9,6 +9,13 @@ public static class LyricsHighlightStyle
     // Сила свечения 0–100 %: радиус от 4 до 12 px и яркость от 0,3 до 0,8. Слишком широкое свечение размывало контуры букв.
     public const int DefaultGlowStrength = 60;
 
+    // Границы слайдеров в настройках (SyncedLyricsFontSizeSlider и SyncedLyricsGlowStrengthSlider в SettingsWindow.xaml):
+    // значения из файла настроек и профиля приводятся к ним, чтобы слайдер и фактический размер совпадали.
+    public const double MinSyncedFontSize = 12;
+    public const double MaxSyncedFontSize = 20;
+    public const int MinGlowStrength = 10;
+    public const int MaxGlowStrength = 100;
+
     public static double GlowBlurRadius(int strength) => 4 + 8 * Math.Clamp(strength, 0, 100) / 100.0;
 
     public static double GlowOpacity(int strength) => 0.3 + 0.5 * Math.Clamp(strength, 0, 100) / 100.0;

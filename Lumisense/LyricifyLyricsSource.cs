@@ -39,7 +39,9 @@ internal static class LyricifyLyricsSource
     {
         if (string.IsNullOrWhiteSpace(title)) return Array.Empty<OnlineLyricsResult>();
 
-        bool Wants(string name) => onlySource is null || string.Equals(onlySource, name, StringComparison.OrdinalIgnoreCase);
+        // Сервис опрашивается, только если он включён в настройках: отключённый не получает название и исполнителя трека.
+        bool Wants(string name) => LyricsService.IsExtraSourceEnabled(name)
+            && (onlySource is null || string.Equals(onlySource, name, StringComparison.OrdinalIgnoreCase));
 
         var metadata = new TrackMultiArtistMetadata { Title = title.Trim() };
         if (!string.IsNullOrWhiteSpace(artist) && artist != "—")

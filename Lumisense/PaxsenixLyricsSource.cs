@@ -6,10 +6,10 @@ using System.Text.RegularExpressions;
 
 namespace Lumisense;
 
-// Paxsenix (lyrics.paxsenix.org): открытый прокси к текстам Apple Music и YouTube. Для Apple Music песню сначала ищем в
-// публичном каталоге iTunes (нужен числовой id), затем берём текст у Paxsenix; для YouTube — поиск видео и LRC по его id.
-// Работает только при включённой настройке дополнительных источников (AppSettings.UseExtraLyricsSource): название и
-// исполнитель трека уходят на серверы Paxsenix и Apple. Любой сбой источника превращается в пустой список.
+// Paxsenix (lyrics.paxsenix.org): открытый прокси к текстам Apple Music. Песню сначала ищем в публичном каталоге iTunes
+// (нужен числовой id), затем берём текст у Paxsenix. Ветка YouTube убрана: низкая точность совпадений.
+// Работает только при включённой настройке дополнительных источников (AppSettings.UseExtraLyricsSource и UsePaxsenixLyrics):
+// название и исполнитель трека уходят на серверы Paxsenix и Apple. Любой сбой источника превращается в пустой список.
 internal static class PaxsenixLyricsSource
 {
     public const string SourceName = "Paxsenix";
@@ -17,15 +17,12 @@ internal static class PaxsenixLyricsSource
     private const string Root = "https://lyrics.paxsenix.org";
     private const string ItunesSearch = "https://itunes.apple.com/search";
     private const int MaxAppleSongs = 3;
-    private const int MaxYoutubeVideos = 2;
     // Apple Music у Paxsenix отвечает медленно: ему отведено больше времени, чем остальным источникам.
     private static readonly TimeSpan SourceTimeout = TimeSpan.FromSeconds(10);
     private static readonly Regex TimestampRegex = LyricsTextHygiene.Timestamp;
     private static readonly HttpClient Http = CreateHttpClient();
 
     internal sealed record ItunesSong(long TrackId, string Title, string Artist, string Album, double DurationSeconds);
-
-    internal sealed record YoutubeVideo(string Id, string Title, string Author, double DurationSeconds);
 
     public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchAsync(string title, string artist, CancellationToken token)
     {
@@ -37,11 +34,7 @@ internal static class PaxsenixLyricsSource
         timeout.CancelAfter(SourceTimeout);
         CancellationToken sourceToken = timeout.Token;
 
-        // Каждая ветка защищена отдельно: таймаут или сбой одной не должны отбрасывать результат другой.
-        IReadOnlyList<OnlineLyricsResult>[] groups = await Task.WhenAll(
-            GuardAsync("Apple Music", () => SearchAppleMusicAsync(query, sourceToken), token),
-            GuardAsync("YouTube", () => SearchYoutubeAsync(query, sourceToken), token)).ConfigureAwait(false);
-        return groups.SelectMany(group => group).ToList();
+        return await GuardAsync("Apple Music", () => SearchAppleMusicAsync(query, sourceToken), token).ConfigureAwait(false);
     }
 
     private static async Task<IReadOnlyList<OnlineLyricsResult>> GuardAsync(
@@ -103,38 +96,6 @@ internal static class PaxsenixLyricsSource
         }
     }
 
-    private static async Task<IReadOnlyList<OnlineLyricsResult>> SearchYoutubeAsync(string query, CancellationToken token)
-    {
-        string json = await Http.GetStringAsync($"{Root}/youtube/search?q={Uri.EscapeDataString(query)}", token).ConfigureAwait(false);
-        IReadOnlyList<YoutubeVideo> videos = ParseYoutubeVideos(json);
-        if (videos.Count == 0) return Array.Empty<OnlineLyricsResult>();
-
-        Task<OnlineLyricsResult?>[] tasks = videos.Take(MaxYoutubeVideos).Select(video => LoadYoutubeLyricsAsync(video, token)).ToArray();
-        OnlineLyricsResult?[] loaded = await Task.WhenAll(tasks).ConfigureAwait(false);
-        return loaded.Where(result => result is not null).Select(result => result!).ToList();
-    }
-
-    private static async Task<OnlineLyricsResult?> LoadYoutubeLyricsAsync(YoutubeVideo video, CancellationToken token)
-    {
-        try
-        {
-            string lrc = (await Http.GetStringAsync($"{Root}/youtube/lyrics?id={Uri.EscapeDataString(video.Id)}", token).ConfigureAwait(false)).Trim();
-            if (!HasUsableTiming(lrc)) return null;
-
-            long id = -(4_000_000_000_000L + LyricifyLyricsSource.StableHash(video.Id));
-            return new OnlineLyricsResult(id, video.Title, video.Author, string.Empty, video.DurationSeconds, null, lrc, SourceName);
-        }
-        catch (OperationCanceledException) when (token.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex)
-        {
-            Logger.Info($"Текст Paxsenix (YouTube) не получен ({video.Id}): {ex.Message}");
-            return null;
-        }
-    }
-
     internal static IReadOnlyList<ItunesSong> ParseItunesSongs(string json)
     {
         using JsonDocument document = JsonDocument.Parse(json);
@@ -177,56 +138,6 @@ internal static class PaxsenixLyricsSource
 
         string? plain = OnlineLyricsJson.GetString(root, "plain");
         return (null, string.IsNullOrWhiteSpace(plain) ? null : plain.Trim());
-    }
-
-    internal static IReadOnlyList<YoutubeVideo> ParseYoutubeVideos(string json)
-    {
-        using JsonDocument document = JsonDocument.Parse(json);
-        JsonElement items = document.RootElement;
-        // Бывает и голый массив, и объект с массивом внутри.
-        if (items.ValueKind == JsonValueKind.Object)
-        {
-            foreach (string name in new[] { "results", "data", "items" })
-            {
-                if (items.TryGetProperty(name, out JsonElement inner) && inner.ValueKind == JsonValueKind.Array)
-                {
-                    items = inner;
-                    break;
-                }
-            }
-        }
-
-        if (items.ValueKind != JsonValueKind.Array) return Array.Empty<YoutubeVideo>();
-
-        var videos = new List<YoutubeVideo>();
-        foreach (JsonElement item in items.EnumerateArray())
-        {
-            string? id = OnlineLyricsJson.GetFirstString(item, "videoId", "video_id", "id");
-            string? title = OnlineLyricsJson.GetString(item, "title");
-            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(title)) continue;
-
-            videos.Add(new YoutubeVideo(
-                id,
-                title.Trim(),
-                OnlineLyricsJson.GetFirstString(item, "author", "artist", "channel")?.Trim() ?? string.Empty,
-                ParseColonDuration(OnlineLyricsJson.GetString(item, "duration"))));
-        }
-
-        return videos;
-    }
-
-    // «3:25» или «1:02:03» → секунды; неразобранное значение — 0 (длительность неизвестна).
-    internal static double ParseColonDuration(string? value)
-    {
-        if (string.IsNullOrWhiteSpace(value)) return 0;
-        double total = 0;
-        foreach (string part in value.Split(':'))
-        {
-            if (!double.TryParse(part, NumberStyles.Float, CultureInfo.InvariantCulture, out double number)) return 0;
-            total = total * 60 + number;
-        }
-
-        return total;
     }
 
     // Собирает LRC из построчных данных Apple Music; фоновые партии (бэк-вокал) пропускаются, чтобы не удваивать строки.

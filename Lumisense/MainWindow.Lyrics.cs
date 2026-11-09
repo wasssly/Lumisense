@@ -144,28 +144,15 @@ public partial class MainWindow
 
         try
         {
-            LyricsDocument document = await LyricsService.LoadAsync(trackPath, token);
-            if (!IsMainWindowLyricsRequestCurrent(trackPath, token)) return;
-
             // Такое же безопасное автодополнение, как в Now Playing: онлайн-результат берём
             // только при точном совпадении title + artist и сохраняем в соседний LRC/TXT.
-            if (document.Kind == LyricsKind.None && !string.IsNullOrWhiteSpace(trackPath))
-            {
-                LyricsPanelSourceText.Text = LocalizationService.Translate("Ищем текст…");
-                LyricsService.AutomaticLyricsLookup lookup = await LyricsService.FindAutomaticAsync(
-                    CurrentTitle, CurrentArtist, CurrentTrackDurationSeconds, token);
-                if (!IsMainWindowLyricsRequestCurrent(trackPath, token)) return;
+            LyricsService.LyricsLoadResult? loaded = await LyricsService.LoadWithAutomaticLookupAsync(
+                trackPath, CurrentTitle, CurrentArtist, CurrentTrackDurationSeconds, _settings.LyricsSearchPolicy, token,
+                onSearching: () => LyricsPanelSourceText.Text = LocalizationService.Translate("Ищем текст…"),
+                isCurrent: () => IsMainWindowLyricsRequestCurrent(trackPath, token));
+            if (loaded is null) return;
 
-                OnlineLyricsResult? exact = lookup.Best;
-                if (exact is not null)
-                {
-                    await LyricsService.SaveOnlineResultAsync(trackPath, exact, token);
-                    if (!IsMainWindowLyricsRequestCurrent(trackPath, token)) return;
-                    document = LyricsService.CreateDocumentFromOnlineResult(exact);
-                }
-            }
-
-            SetMainWindowLyrics(document);
+            SetMainWindowLyrics(loaded.Document);
         }
         catch (LyricsRateLimitException)
         {
@@ -536,10 +523,9 @@ public partial class MainWindow
 
         // В панели главного окна выделение — только свечение; подложка, полоска, увеличение и затухание живут в Now Playing.
         // Старые значения Scale/GlowScale безопасно читаются как Glow.
-        bool useScale = false;
         bool useGlow = active && LyricsHighlightStyle.HasGlow(_settings.SyncedLyricsHighlightEffect);
         Color foreground = active ? Colors.White : Color.FromRgb(142, 142, 142);
-        double scale = useScale ? 1.055 : 1.0;
+        const double scale = 1.0;
         double glowBlur = LyricsHighlightStyle.GlowBlurRadius(_settings.SyncedLyricsGlowStrength);
         double glowOpacity = useGlow ? LyricsHighlightStyle.GlowOpacity(_settings.SyncedLyricsGlowStrength) : 0.0;
         int glowVersion = ++line.GlowVersion;

@@ -180,18 +180,9 @@ internal static class KugouLyricsSource
         return text.Length == 0 ? null : text;
     }
 
-    // Сначала HTTPS; если соединение не удалось (устаревшие узлы Kugou), повторяем по HTTP.
-    private static async Task<string> GetStringAsync(string hostAndPath, CancellationToken token)
-    {
-        try
-        {
-            return await Http.GetStringAsync("https://" + hostAndPath, token).ConfigureAwait(false);
-        }
-        catch (HttpRequestException)
-        {
-            return await Http.GetStringAsync("http://" + hostAndPath, token).ConfigureAwait(false);
-        }
-    }
+    // Только HTTPS: повтор по HTTP отправлял бы название и исполнителя открытым текстом.
+    private static Task<string> GetStringAsync(string hostAndPath, CancellationToken token) =>
+        Http.GetStringAsync("https://" + hostAndPath, token);
 
     private static HttpClient CreateHttpClient()
     {
