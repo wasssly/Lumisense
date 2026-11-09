@@ -23,22 +23,22 @@ public sealed class LoudnessAnalyzerTests
     [Fact]
     public void FullScaleMonoSine_IsAboutMinus3Lufs()
     {
-        double lufs = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(Sine(997, 1.0, 5, 1), 1));
+        double lufs = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(Sine(997, 1.0, 5, 1), 1), TestContext.Current.CancellationToken);
         Assert.InRange(lufs, -3.3, -2.7);
     }
 
     [Fact]
     public void HalvingTheAmplitudeLowersLoudnessByAboutSixDecibels()
     {
-        double loud = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(Sine(997, 0.5, 5, 2), 2));
-        double quiet = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(Sine(997, 0.25, 5, 2), 2));
+        double loud = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(Sine(997, 0.5, 5, 2), 2), TestContext.Current.CancellationToken);
+        double quiet = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(Sine(997, 0.25, 5, 2), 2), TestContext.Current.CancellationToken);
         Assert.InRange(loud - quiet, 5.9, 6.1);
     }
 
     [Fact]
     public void Silence_IsNegativeInfinity()
     {
-        double lufs = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(new float[48000 * 2 * 3], 2));
+        double lufs = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(new float[48000 * 2 * 3], 2), TestContext.Current.CancellationToken);
         Assert.True(double.IsNegativeInfinity(lufs));
     }
 
@@ -47,8 +47,8 @@ public sealed class LoudnessAnalyzerTests
     {
         var loud = Sine(997, 0.5, 4, 2);
         var quiet = Sine(997, 0.005, 20, 2);
-        double mixed = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(loud.Concat(quiet).ToArray(), 2));
-        double onlyLoud = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(loud, 2));
+        double mixed = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(loud.Concat(quiet).ToArray(), 2), TestContext.Current.CancellationToken);
+        double onlyLoud = LoudnessAnalyzer.MeasureIntegratedLufs(new Source(loud, 2), TestContext.Current.CancellationToken);
         Assert.InRange(Math.Abs(mixed - onlyLoud), 0, 0.5);
     }
 
