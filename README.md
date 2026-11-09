@@ -216,7 +216,6 @@ Lumisense может проверять наличие новых версий �
 Lumisense/
 ├── .github/workflows/ci.yml            — проверка сборки, unit-тестов и зависимостей
 ├── .github/workflows/release.yml       — сборка и публикация релизов по тегу
-├── .github/workflows/lite-test.yml     — пробная сборка лайт-версии (ничего не публикует)
 ├── .github/workflows/velopack-local-update-test.yml — проверка обновления Velopack на локальном feed
 ├── Installer/Lumisense.iss             — сценарий установщика Inno Setup
 ├── AGENTS.md                           — правила работы над проектом
@@ -369,7 +368,6 @@ Key internal components include `AudioPlaybackCoordinator`, `TrackPreparationSer
 Lumisense/
 ├── .github/workflows/ci.yml            — build, unit-test, and dependency checks
 ├── .github/workflows/release.yml       — builds and publishes releases from tags
-├── .github/workflows/lite-test.yml     — trial build of the lite edition (publishes nothing)
 ├── .github/workflows/velopack-local-update-test.yml — Velopack update check against a local feed
 ├── Installer/Lumisense.iss             — Inno Setup installer script
 ├── AGENTS.md                           — project working rules
