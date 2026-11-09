@@ -43,6 +43,15 @@ public sealed class LumiProfileSettingsCoverageTests
         nameof(AppSettings.DeviceKindOverrides)                          // то же
     };
 
+    // Настройки конкретного компьютера: импорт профиля их не переносит (положение окон зависит от мониторов, устройство
+    // и режим WASAPI — от звуковой карты), но «Сбросить настройки» возвращает их к значениям по умолчанию.
+    private static readonly HashSet<string> MachineSpecific = new(StringComparer.Ordinal)
+    {
+        nameof(AppSettings.MiniPlayerLeft), nameof(AppSettings.MiniPlayerTop),
+        nameof(AppSettings.SettingsWindowLeft), nameof(AppSettings.SettingsWindowTop),
+        nameof(AppSettings.OutputDeviceName), nameof(AppSettings.WasapiMode)
+    };
+
     // Пользовательские данные, которые импорт не заменяет, а добавляет к своим (LumiProfileIO.MergeEqualizerPresets);
     // сброс настроек их тоже не трогает. Поэтому у них нет места ни среди «копируемых», ни среди «не переносимых».
     private static readonly HashSet<string> MergedOnImport = new(StringComparer.Ordinal)
@@ -145,15 +154,16 @@ public sealed class LumiProfileSettingsCoverageTests
     {
         var names = AllSettingsProperties().Select(property => property.Name).ToHashSet(StringComparer.Ordinal);
 
-        Assert.Equal(new List<string>(), UserDataAndRuntimeState.Concat(NotTransferable).Concat(MergedOnImport).Where(name => !names.Contains(name)).ToList());
+        Assert.Equal(new List<string>(), UserDataAndRuntimeState.Concat(NotTransferable).Concat(MachineSpecific).Concat(MergedOnImport).Where(name => !names.Contains(name)).ToList());
         Assert.Equal(new List<string>(), UserDataAndRuntimeState.Intersect(NotTransferable).ToList());
+        Assert.Equal(new List<string>(), MachineSpecific.Intersect(UserDataAndRuntimeState.Concat(NotTransferable).Concat(MergedOnImport)).ToList());
         Assert.Equal(new List<string>(), MergedOnImport.Intersect(UserDataAndRuntimeState.Concat(NotTransferable)).ToList());
     }
 
     [Fact]
     public void ImportCopiesEverySettingExceptTheOnesListedAsNotTransferable()
     {
-        var excluded = UserDataAndRuntimeState.Concat(NotTransferable).ToHashSet(StringComparer.Ordinal);
+        var excluded = UserDataAndRuntimeState.Concat(NotTransferable).Concat(MachineSpecific).ToHashSet(StringComparer.Ordinal);
         var forgotten = new List<string>();
         var copiedButListedAsExcluded = new List<string>();
 
@@ -199,6 +209,50 @@ public sealed class LumiProfileSettingsCoverageTests
         }
 
         Assert.Equal(new List<string>(), notReset);
+    }
+
+    [Fact]
+    public void Apply_KeepsMachineSpecificSettingsOfThisComputer()
+    {
+        var live = new AppSettings
+        {
+            MiniPlayerLeft = 120, MiniPlayerTop = 80, SettingsWindowLeft = 300, SettingsWindowTop = 200,
+            OutputDeviceName = "Speakers (this PC)", WasapiMode = "Exclusive"
+        };
+        var imported = new AppSettings
+        {
+            MiniPlayerLeft = 5000, MiniPlayerTop = 4000, SettingsWindowLeft = 6000, SettingsWindowTop = 3000,
+            OutputDeviceName = "Headphones (other PC)", WasapiMode = "Shared"
+        };
+
+        LumiProfileIO.Apply(imported, live);
+
+        Assert.Equal(120, live.MiniPlayerLeft);
+        Assert.Equal(80, live.MiniPlayerTop);
+        Assert.Equal(300, live.SettingsWindowLeft);
+        Assert.Equal(200, live.SettingsWindowTop);
+        Assert.Equal("Speakers (this PC)", live.OutputDeviceName);
+        Assert.Equal("Exclusive", live.WasapiMode);
+    }
+
+    [Fact]
+    public void ResetToDefaults_ReturnsMachineSpecificSettingsToDefaults()
+    {
+        var live = new AppSettings
+        {
+            MiniPlayerLeft = 120, MiniPlayerTop = 80, SettingsWindowLeft = 300, SettingsWindowTop = 200,
+            OutputDeviceName = "Speakers (this PC)", WasapiMode = "Exclusive"
+        };
+
+        LumiProfileIO.ResetToDefaults(live);
+
+        var defaults = new AppSettings();
+        Assert.Equal(defaults.MiniPlayerLeft, live.MiniPlayerLeft);
+        Assert.Equal(defaults.MiniPlayerTop, live.MiniPlayerTop);
+        Assert.Equal(defaults.SettingsWindowLeft, live.SettingsWindowLeft);
+        Assert.Equal(defaults.SettingsWindowTop, live.SettingsWindowTop);
+        Assert.Equal(defaults.OutputDeviceName, live.OutputDeviceName);
+        Assert.Equal(defaults.WasapiMode, live.WasapiMode);
     }
 
     [Fact]

@@ -156,6 +156,8 @@ public static class LumiProfileIO
 
     // Явный allowlist намеренно не использует reflection: добавление нового свойства в
     // AppSettings не должно автоматически сделать его импортируемым или сбрасываемым.
+    // Настройки этого компьютера (CopyMachineSpecificSettings) импорт не трогает: позиции окон, устройство вывода и режим
+    // WASAPI зависят от мониторов и звуковой карты, на другом компьютере окно оказалось бы за экраном, а режим не заработал бы.
     public static void Apply(AppSettings imported, AppSettings live)
     {
         CopyTransferableSettings(imported, live);
@@ -196,7 +198,22 @@ public static class LumiProfileIO
     // статистику, пресеты и состояние текущего сеанса.
     public static void ResetToDefaults(AppSettings live)
     {
-        CopyTransferableSettings(new AppSettings(), live);
+        var defaults = new AppSettings();
+        CopyTransferableSettings(defaults, live);
+        CopyMachineSpecificSettings(defaults, live);
+    }
+
+    // Только сброс настроек: возвращает положение окон, устройство вывода и режим WASAPI к значениям по умолчанию.
+    // В импорт профиля эти поля не входят (см. Apply).
+    private static void CopyMachineSpecificSettings(AppSettings source, AppSettings target)
+    {
+        target.OutputDeviceName = source.OutputDeviceName;
+        target.MiniPlayerLeft = source.MiniPlayerLeft;
+        target.MiniPlayerTop = source.MiniPlayerTop;
+        target.SettingsWindowLeft = source.SettingsWindowLeft;
+        target.SettingsWindowTop = source.SettingsWindowTop;
+        if (source.WasapiMode is "Shared" or "Exclusive")
+            target.WasapiMode = source.WasapiMode;
     }
 
     private static void CopyTransferableSettings(AppSettings source, AppSettings target)
@@ -287,7 +304,6 @@ public static class LumiProfileIO
         target.MiniPlayerSecondaryButton = source.MiniPlayerSecondaryButton;
         target.MiniPlayerInfoMode = source.MiniPlayerInfoMode;
         target.MiniPlayerArtistMarquee = source.MiniPlayerArtistMarquee;
-        target.OutputDeviceName = source.OutputDeviceName;
         target.LyricsSearchPolicy = source.LyricsSearchPolicy;
         target.ShowTrackChangeToast = source.ShowTrackChangeToast;
         target.TrackChangeToastPolicy = source.TrackChangeToastPolicy;
@@ -307,10 +323,6 @@ public static class LumiProfileIO
         target.MiniPlayerShowArtworkProgress = source.MiniPlayerShowArtworkProgress;
         target.MiniPlayerArtworkProgressColorMode = source.MiniPlayerArtworkProgressColorMode;
         target.MiniPlayerArtworkProgressColorHex = source.MiniPlayerArtworkProgressColorHex;
-        target.MiniPlayerLeft = source.MiniPlayerLeft;
-        target.MiniPlayerTop = source.MiniPlayerTop;
-        target.SettingsWindowLeft = source.SettingsWindowLeft;
-        target.SettingsWindowTop = source.SettingsWindowTop;
         target.HotkeyPlayPause = source.HotkeyPlayPause;
         target.HotkeyNext = source.HotkeyNext;
         target.HotkeyPrevious = source.HotkeyPrevious;
@@ -345,8 +357,6 @@ public static class LumiProfileIO
             target.IconPack = source.IconPack;
         if (AppIcons.IsKnown(source.AppIcon))
             target.AppIcon = source.AppIcon;
-        if (source.WasapiMode is "Shared" or "Exclusive")
-            target.WasapiMode = source.WasapiMode;
         if (source.TrackChangeToastArtSide is "Left" or "Right")
             target.TrackChangeToastArtSide = source.TrackChangeToastArtSide;
         if (source.LyricsTextAlignment is "Left" or "Center" or "Right")
