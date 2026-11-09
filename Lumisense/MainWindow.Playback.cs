@@ -184,7 +184,7 @@ public partial class MainWindow
 
     private void StartOutputChain(int generation, TrackLoadPerformanceMeasurement performance)
     {
-        _channelMode = new ChannelModeSampleProvider(_equalizer!) { MonoEnabled = _settings.PlaybackChannelMode == "Mono" };
+        _channelMode = new ChannelModeSampleProvider(_equalizer!) { MonoEnabled = _settings.PlaybackChannelMode == "Mono", Balance = _settings.PlaybackBalance };
         _audioLevelMeter = new AudioLevelSampleProvider(_channelMode) { Enabled = AudioLevelMeterWanted };
         var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
         fadeIn.BeginFadeIn(70);

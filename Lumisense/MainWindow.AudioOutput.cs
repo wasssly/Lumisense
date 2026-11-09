@@ -124,6 +124,7 @@ public partial class MainWindow
                 _outputDiagnostics.ActiveWasapiMode = "Shared";
             }
             _audioOutputSession.Attach(_outputDevice!, _outputEndpoint!);
+            PublishOutputDeviceInfo(_outputEndpoint!);
         }
         catch
         {
@@ -234,10 +235,57 @@ public partial class MainWindow
         _ = Dispatcher.BeginInvoke(new Action(() => HandleAudioOutputEndpointChanged(e)), DispatcherPriority.Background);
     }
 
+    private string _outputDeviceName = "";
+    private AudioOutputKind _outputDeviceKind;
+    private string? _outputDeviceId;
+    private DateTime _lastDeviceArrivalUtc = DateTime.MinValue;
+
+    public string CurrentOutputDeviceName => _outputDeviceName;
+    public AudioOutputKind CurrentOutputKind => _outputDeviceKind;
+
+    // Карточку показываем только при переходе на другое устройство; повторное открытие того же лишь обновляет значок.
+    private void PublishOutputDeviceInfo(MMDevice endpoint)
+    {
+        string name, id;
+        try
+        {
+            name = endpoint.FriendlyName?.Trim() ?? "";
+            id = endpoint.ID;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось прочитать имя устройства вывода: {ex.Message}");
+            return;
+        }
+
+        bool switched = _outputDeviceId is not null && !string.Equals(_outputDeviceId, id, StringComparison.Ordinal);
+        bool arrived = DateTime.UtcNow - _lastDeviceArrivalUtc < TimeSpan.FromSeconds(8);
+        _outputDeviceId = id;
+        _outputDeviceName = name;
+        _outputDeviceKind = AudioOutputKindClassifier.Classify(name);
+        var info = new AudioOutputDeviceInfo(name, _outputDeviceKind, switched, switched && arrived);
+        OutputDeviceChanged?.Invoke(info);
+    }
+
+    // Показывает карточку в острове на текущем устройстве (или на примере, если имя ещё не известно).
+    public void PreviewDeviceConnectOverlay()
+    {
+        var info = new AudioOutputDeviceInfo(
+            string.IsNullOrWhiteSpace(_outputDeviceName) ? LocalizationService.Translate("Наушники (пример)") : _outputDeviceName,
+            string.IsNullOrWhiteSpace(_outputDeviceName) ? AudioOutputKind.Headphones : _outputDeviceKind,
+            Announce: true, NewlyConnected: true);
+
+        if (_settings.DeviceConnectStyle == "Island") OutputDeviceChanged?.Invoke(info);
+    }
+
     private void HandleAudioOutputEndpointChanged(AudioOutputEndpointChangedEventArgs e)
     {
         if (_isExiting)
             return;
+
+        if (e.Kind == AudioOutputEndpointChangeKind.DeviceAdded ||
+            e.Kind == AudioOutputEndpointChangeKind.DeviceStateChanged && e.State is DeviceState.Active)
+            _lastDeviceArrivalUtc = DateTime.UtcNow;
 
         if (e.Kind != AudioOutputEndpointChangeKind.DevicePropertiesChanged)
             AudioOutputDeviceService.InvalidateDeviceCache();

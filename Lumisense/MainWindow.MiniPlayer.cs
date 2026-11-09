@@ -33,7 +33,7 @@ public partial class MainWindow
         Logger.Info($"EnterMiniMode: вызываю _integrations.Tray.Show() (стартовый вызов={_isApplyingStartupSettings}).");
         _integrations.Tray?.Show("Lumisense");
 
-        if (_settings.MiniPlayerStyle == "Island")
+        if (UsesIslandStyle)
         {
             ShowIslandWindow();
             _isMiniMode = true;
@@ -68,6 +68,8 @@ public partial class MainWindow
         Hide();
     }
 
+    private bool UsesIslandStyle => _settings.MiniPlayerStyle == "Island";
+
     private void ShowIslandWindow()
     {
         // Остров всегда поверх окон (кроме чужих полноэкранных), поэтому настройка «поверх окон» мини-плеера на него не действует.
@@ -87,7 +89,7 @@ public partial class MainWindow
         _islandWindow?.Close();
         _islandWindow = null;
 
-        if (_settings.MiniPlayerStyle == "Island")
+        if (UsesIslandStyle)
         {
             ShowIslandWindow();
             return;

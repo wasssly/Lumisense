@@ -114,6 +114,9 @@
                            IsHitTestVisible="False" />
                 <local:IslandEqualizer x:Name="IslandBars" Width="21" Height="16" HorizontalAlignment="Right"
                                        VerticalAlignment="Center" Margin="0,0,13,0" IsHitTestVisible="False" />
+                <local:SvgPathIcon x:Name="DeviceIcon" Icon="IconAudioWave" Size="16" Foreground="White"
+                                   HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,15,0"
+                                   Visibility="Collapsed" IsHitTestVisible="False" />
             </Grid>
 
             <Grid x:Name="ToastView" Width="340" Height="68" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed">
@@ -135,7 +138,21 @@
                             <ScaleTransform x:Name="DropDiscScale" />
                         </Ellipse.RenderTransform>
                     </Ellipse>
-                    <local:SvgPathIcon x:Name="DropIcon" Icon="IconAddFile" Size="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    <local:SvgPathIcon x:Name="DropIcon" Icon="IconAddFile" Size="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       RenderTransformOrigin="0.5,0.5">
+                        <local:SvgPathIcon.RenderTransform>
+                            <ScaleTransform x:Name="DropIconScale" />
+                        </local:SvgPathIcon.RenderTransform>
+                    </local:SvgPathIcon>
+                    <Grid x:Name="DropCheck" Width="17" Height="17" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-3,-3"
+                          Visibility="Collapsed" RenderTransformOrigin="0.5,0.5">
+                        <Grid.RenderTransform>
+                            <ScaleTransform x:Name="DropCheckScale" />
+                        </Grid.RenderTransform>
+                        <Ellipse Fill="#FF30D158" Stroke="#FF000000" StrokeThickness="2" />
+                        <Path Data="M 4.8,8.8 L 7.3,11.2 L 12,5.8" Stroke="White" StrokeThickness="1.7" StrokeStartLineCap="Round"
+                              StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                    </Grid>
                 </Grid>
                 <StackPanel Margin="78,0,22,0" VerticalAlignment="Center" IsHitTestVisible="False">
                     <TextBlock x:Name="DropTitle" Foreground="White" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />

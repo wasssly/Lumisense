@@ -252,6 +252,7 @@ public partial class SettingsWindow : FluentWindow
         IslandTrackToastCheckBox.IsChecked = _settings.IslandTrackToast;
         IslandAutoCollapseCheckBox.IsChecked = _settings.IslandAutoCollapse;
         IslandEqualizerCheckBox.IsChecked = _settings.IslandShowEqualizer;
+        IslandCompactDeviceCheckBox.IsChecked = _settings.IslandCompactShowDevice;
         IslandAccentRimCheckBox.IsChecked = _settings.IslandAccentRim;
         IslandProgressRimCheckBox.IsChecked = _settings.IslandProgressRim;
         IslandBlurTransitionsCheckBox.IsChecked = _settings.IslandBlurTransitions;
@@ -331,6 +332,11 @@ public partial class SettingsWindow : FluentWindow
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
         ChannelModeMonoRadio.IsChecked = _settings.PlaybackChannelMode == "Mono";
         ChannelModeStereoRadio.IsChecked = _settings.PlaybackChannelMode != "Mono";
+        PlaybackBalanceSlider.Value = Math.Clamp(_settings.PlaybackBalance, -100, 100);
+        DeviceConnectStyleCombo.SelectedItem = DeviceConnectStyleCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.DeviceConnectStyle, StringComparison.Ordinal))
+            ?? DeviceConnectStyleCombo.Items[0];
+        UpdatePlaybackBalanceText();
         BadgeModeExtensionRadio.IsChecked = _settings.TrackStateBadgeMode == "Extension";
         BadgeModeQualityRadio.IsChecked = _settings.TrackStateBadgeMode == "Quality";
         BadgeModeFileSizeRadio.IsChecked = _settings.TrackStateBadgeMode == "FileSize";
@@ -1468,6 +1474,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Переключить мини-плеер", "Горячие клавиши", "Hotkeys", HotkeyToggleMiniPlayerButton, "мини плеер mini player переключить показать скрыть горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
+        Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
+        Add("Анимация подключения устройства", "Воспроизведение", "Playback", DeviceConnectStyleCombo, "подключение устройство наушники bluetooth анимация карточка connect device airpods");
         Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output wasapi shared");
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels");
@@ -3520,6 +3528,7 @@ public partial class SettingsWindow : FluentWindow
         _settings.IslandTrackToast = IslandTrackToastCheckBox.IsChecked == true;
         _settings.IslandAutoCollapse = IslandAutoCollapseCheckBox.IsChecked == true;
         _settings.IslandShowEqualizer = IslandEqualizerCheckBox.IsChecked == true;
+        _settings.IslandCompactShowDevice = IslandCompactDeviceCheckBox.IsChecked == true;
         _settings.IslandAccentRim = IslandAccentRimCheckBox.IsChecked == true;
         _settings.IslandProgressRim = IslandProgressRimCheckBox.IsChecked == true;
         _settings.IslandBlurTransitions = IslandBlurTransitionsCheckBox.IsChecked == true;
@@ -3989,6 +3998,40 @@ public partial class SettingsWindow : FluentWindow
         _settings.PlaybackChannelMode = ChannelModeMonoRadio.IsChecked == true ? "Mono" : "Stereo";
         _owner.ApplyChannelMode();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // См. AppSettings.DeviceConnectStyle.
+    private void DeviceConnectStyleCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.DeviceConnectStyle = (DeviceConnectStyleCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "Island";
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void DeviceConnectPreviewButton_Click(object sender, RoutedEventArgs e) => _owner.PreviewDeviceConnectOverlay();
+
+    // См. AppSettings.PlaybackBalance.
+    private void PlaybackBalanceSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdatePlaybackBalanceText();
+        if (_isInitializing) return;
+
+        _settings.PlaybackBalance = (int)Math.Clamp(Math.Round(PlaybackBalanceSlider.Value), -100, 100);
+        _owner.ApplyChannelMode();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void PlaybackBalanceSlider_MouseDoubleClick(object sender, MouseButtonEventArgs e) => PlaybackBalanceSlider.Value = 0;
+
+    private void UpdatePlaybackBalanceText()
+    {
+        if (PlaybackBalanceValueText is null || PlaybackBalanceSlider is null) return;
+
+        int value = (int)Math.Round(PlaybackBalanceSlider.Value);
+        PlaybackBalanceValueText.Text = value == 0
+            ? LocalizationService.Translate("Центр")
+            : $"{LocalizationService.Translate(value < 0 ? "Л" : "П")} {Math.Abs(value)}%";
     }
 
     // См. AppSettings.TrackStateBadgeMode.

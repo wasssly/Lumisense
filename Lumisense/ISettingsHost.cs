@@ -57,6 +57,7 @@ internal interface ISettingsAudioHost
     void RefreshVolumeCurve();
     void RefreshReplayGain();
     void ApplyChannelMode();
+    void PreviewDeviceConnectOverlay();
     void ApplyOutputDeviceSelection();
     void ApplyPlaybackProcessPriority();
     AudioOutputRuntimeStatus GetOutputDeviceRuntimeStatus();

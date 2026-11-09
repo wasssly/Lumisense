@@ -20,3 +20,4 @@ Thumbs.db
 # Результаты замеров производительности (tools/Measure-LumisenseRuntime.ps1)
 lumisense-baseline.csv
 lumisense-memory.csv
+

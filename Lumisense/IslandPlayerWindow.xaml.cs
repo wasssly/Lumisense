@@ -213,6 +213,8 @@ internal partial class IslandPlayerWindow : Window
         DpiChanged += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(PositionOnMonitor));
 
         _host.TrackInfoChanged += OnTrackInfoChanged;
+        _host.OutputDeviceChanged += OnOutputDeviceChanged;
+        DeviceIcon.Icon = AudioOutputKindClassifier.IconKey(_host.CurrentOutputKind);
         _host.PlaybackState.Changed += OnPlaybackChanged;
         _host.VolumeChanged += OnHostVolumeChanged;
         _host.RepeatModeChanged += OnRepeatModeChanged;
@@ -248,6 +250,7 @@ internal partial class IslandPlayerWindow : Window
     private void OnWindowClosed(object? sender, EventArgs e)
     {
         _host.TrackInfoChanged -= OnTrackInfoChanged;
+        _host.OutputDeviceChanged -= OnOutputDeviceChanged;
         _host.PlaybackState.Changed -= OnPlaybackChanged;
         _host.VolumeChanged -= OnHostVolumeChanged;
         _host.RepeatModeChanged -= OnRepeatModeChanged;
@@ -312,6 +315,7 @@ internal partial class IslandPlayerWindow : Window
         var brush = new SolidColorBrush(_host.GetResolvedAccentColor());
         brush.Freeze();
         IslandBars.Fill = OpenBars.Fill = brush.Color;
+        DeviceIcon.Foreground = brush;
         MenuSpeedSlider.Accent = MenuPitchSlider.Accent = brush.Color;
         SeekSegments.Accent = brush.Color;
         IslandBackdropLayer.Tint(brush.Color);
@@ -330,7 +334,8 @@ internal partial class IslandPlayerWindow : Window
         OpenView.Width = ShapeOf(State.Open).Width;
         OpenBars.Visibility = Settings.IslandShowEqualizer ? Visibility.Visible : Visibility.Collapsed;
         // В круге нет места ни для названия, ни для эквалайзера.
-        IslandBars.Visibility = Settings.IslandShowEqualizer && !IsCircle ? Visibility.Visible : Visibility.Collapsed;
+        IslandBars.Visibility = Settings.IslandShowEqualizer && !ShowDeviceInCompact ? Visibility.Visible : Visibility.Collapsed;
+        DeviceIcon.Visibility = ShowDeviceInCompact ? Visibility.Visible : Visibility.Collapsed;
         CompactTitle.Visibility = IsCircle ? Visibility.Collapsed : Visibility.Visible;
         IslandBars.Dots = OpenBars.Dots = Settings.IslandEqualizerStyle == "Dots";
         IslandBackdropLayer.Mode = Settings.IslandBackdrop switch
@@ -2034,12 +2039,33 @@ internal partial class IslandPlayerWindow : Window
         }
     }
 
+    // ----- Устройство вывода -----
+
+    // В круге места нет ни для эквалайзера, ни для значка устройства.
+    private bool ShowDeviceInCompact => Settings.IslandCompactShowDevice && !IsCircle;
+
+    private void OnOutputDeviceChanged(AudioOutputDeviceInfo info)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            _ = Dispatcher.BeginInvoke(new Action(() => OnOutputDeviceChanged(info)));
+            return;
+        }
+
+        DeviceIcon.Icon = AudioOutputKindClassifier.IconKey(info.Kind);
+        if (!info.Announce || Settings.DeviceConnectStyle != "Island" || IsAway || _dropHot || _dropBusy
+            || (Settings.IslandQuietInGames && _host.EffectiveGameOverlayCompatibilityEnabled)
+            || _state is not (State.Compact or State.Toast)) return;
+
+        _ = ShowDeviceCardAsync(info);
+    }
+
     // ----- Эквалайзер -----
 
     // Полоски движутся только пока остров свёрнут и трек играет; в других видах их не видно.
     private void UpdateEqualizerState()
     {
-        IslandBars.Active = _isPlaying && _state == State.Compact && Settings.IslandShowEqualizer && !ReduceMotion;
+        IslandBars.Active = _isPlaying && _state == State.Compact && Settings.IslandShowEqualizer && !ShowDeviceInCompact && !ReduceMotion;
         OpenBars.Active = _isPlaying && _state == State.Open && Settings.IslandShowEqualizer && !ReduceMotion;
         if (ReduceMotion)
         {

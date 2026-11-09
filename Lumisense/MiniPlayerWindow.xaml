@@ -208,7 +208,7 @@
                 </ContextMenu.Resources>
                 <MenuItem Tag="Settings" Header="Настройки" Click="SettingsMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=Settings}" />
-                <MenuItem Tag="NowPlaying" Header="Now Playing (полный экран)" Click="NowPlayingMenuItem_Click"
+                <MenuItem x:Name="NowPlayingContextMenuItem" Tag="NowPlaying" Header="Now Playing (полный экран)" Click="NowPlayingMenuItem_Click"
                           Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuActionVisibilityConverter}, ConverterParameter=NowPlaying}" />
                 <Separator Visibility="{Binding Source={x:Static local:MiniPlayerContextMenuActions.Instance}, Path=Epoch, Converter={StaticResource MiniPlayerContextMenuGroupVisibilityConverter}, ConverterParameter='Pin|Topmost|OverlayCompatibility'}" />
                 <MenuItem Tag="Pin" x:Name="PinnedMenuItem" Header="Закрепить" IsCheckable="True"

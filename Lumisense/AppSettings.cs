@@ -200,6 +200,11 @@ public class AppSettings
     public bool IslandTrackToast { get; set; } = true;
     public bool IslandAutoCollapse { get; set; } = true;
     public bool IslandShowEqualizer { get; set; } = true;
+    // Вместо эквалайзера в свёрнутом виде показывать значок устройства вывода (наушники, колонки, Bluetooth…).
+    public bool IslandCompactShowDevice { get; set; }
+    // Как показывать подключение и смену устройства вывода: "Island" (по умолчанию, анимированная карточка острова),
+    // или "Off".
+    public string DeviceConnectStyle { get; set; } = "Island";
     public bool IslandAccentRim { get; set; } = true;
     // Полоса прогресса трека по контуру свёрнутого острова.
     public bool IslandProgressRim { get; set; } = true;
@@ -272,6 +277,9 @@ public class AppSettings
 
     // "Stereo" (по умолчанию, звук как в файле) или "Mono" (каналы сводятся в один, см. ChannelModeSampleProvider).
     public string PlaybackChannelMode { get; set; } = "Stereo";
+
+    // Баланс левого и правого канала: от -100 (только левый) до 100 (только правый), 0 — без изменений (см. ChannelModeSampleProvider).
+    public int PlaybackBalance { get; set; }
 
     // Что показывает подпись под названием трека на главном экране: "State" (по умолчанию, состояние воспроизведения),
     // "Extension" (формат файла), "Quality" (битрейт и частота дискретизации), "FileSize" или "Custom" — набор из частей ниже,

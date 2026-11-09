@@ -284,6 +284,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // Отдельно от VolumeSlider_ValueChanged (тот срабатывает и при загрузке сохранённой громкости): для индикатора процентов
     // мини-плеера при изменении хоткеями/скроллом; аргумент — итоговая громкость 0..1, как VolumeSlider.Value.
     public event Action<double>? VolumeChanged;
+    public event Action<AudioOutputDeviceInfo>? OutputDeviceChanged;
 
     private void PublishPlaybackSnapshot()
     {
@@ -1491,7 +1492,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     {
         if (!_settings.ShowTrackChangeToast || !ShouldShowTrackChangeToast(origin, autoPlay)) return;
         // В мини-плеере «Остров» карточку о смене трека показывает сам остров: системное уведомление по желанию скрывается.
-        if (_settings.IslandHideSystemToast && _isMiniMode && _settings.MiniPlayerStyle == "Island") return;
+        if (_settings.IslandHideSystemToast && _isMiniMode && UsesIslandStyle) return;
 
         _trackChangeToastController.Show(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
             _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, ResolveToastTint());

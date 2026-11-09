@@ -187,6 +187,7 @@ public static class IconPacks
         "IconRepeatAll", "IconRepeatOne", "IconSearch", "IconSettings", "IconShuffle", "IconSpeaker",
         "IconSpeaker2", "IconSpeakerMute", "IconSpeed", "IconStop", "IconSun", "IconSync",
         "IconTelegram", "IconWindow", "IconWrench",
+        "IconHeadphones", "IconBluetooth", "IconMonitor", "IconUsb", "IconSpeakerHifi", "IconAudioWave",
     };
 
     public static string Current => IconPackContext.Instance.CurrentPack;

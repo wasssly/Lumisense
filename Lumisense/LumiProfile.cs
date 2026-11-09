@@ -205,6 +205,7 @@ public static class LumiProfileIO
         target.UseLogarithmicVolume = source.UseLogarithmicVolume;
         target.ReplayGainEnabled = source.ReplayGainEnabled;
         target.PlaybackChannelMode = source.PlaybackChannelMode;
+        target.PlaybackBalance = source.PlaybackBalance;
         target.TrackStateBadgeMode = source.TrackStateBadgeMode;
         target.TrackStateBadgeShowState = source.TrackStateBadgeShowState;
         target.TrackStateBadgeShowExtension = source.TrackStateBadgeShowExtension;
@@ -340,6 +341,8 @@ public static class LumiProfileIO
         target.IslandTrackToast = source.IslandTrackToast;
         target.IslandAutoCollapse = source.IslandAutoCollapse;
         target.IslandShowEqualizer = source.IslandShowEqualizer;
+        target.IslandCompactShowDevice = source.IslandCompactShowDevice;
+        target.DeviceConnectStyle = source.DeviceConnectStyle;
         target.IslandAccentRim = source.IslandAccentRim;
         target.IslandProgressRim = source.IslandProgressRim;
         target.IslandBlurTransitions = source.IslandBlurTransitions;

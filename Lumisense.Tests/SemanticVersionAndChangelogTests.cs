@@ -297,3 +297,19 @@ public sealed class ChangelogMatchesProjectVersionTests
 
     private static string SourceFile([System.Runtime.CompilerServices.CallerFilePath] string path = "") => path;
 }
+
+public sealed class AudioOutputKindClassifierTests
+{
+    [Theory]
+    [InlineData("Headphones (Realtek High Definition Audio)", AudioOutputKind.Headphones)]
+    [InlineData("Наушники (Realtek Audio)", AudioOutputKind.Headphones)]
+    [InlineData("Speakers (Realtek High Definition Audio)", AudioOutputKind.Speakers)]
+    [InlineData("Динамики (USB Audio)", AudioOutputKind.Usb)]
+    [InlineData("Headphones (WH-1000XM4 Hands-Free)", AudioOutputKind.Bluetooth)]
+    [InlineData("DELL U2720Q (NVIDIA High Definition Audio)", AudioOutputKind.Display)]
+    [InlineData("Digital Output (S/PDIF)", AudioOutputKind.Digital)]
+    [InlineData("", AudioOutputKind.Unknown)]
+    [InlineData("Что-то непонятное", AudioOutputKind.Unknown)]
+    public void Classify_UsesTheEndpointName(string name, AudioOutputKind expected) =>
+        Assert.Equal(expected, AudioOutputKindClassifier.Classify(name));
+}

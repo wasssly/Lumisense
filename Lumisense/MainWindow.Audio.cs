@@ -125,16 +125,7 @@ public partial class MainWindow
     {
         _settings.EqualizerEnabled = enabled;
         if (_equalizer != null)
-            _equalizer.Enabled = enabled && !_settings.EqualizerBypass;
-    }
-
-    // Bypass не сбрасывает ни флаг включения EQ, ни полосы, ни пресеты. Благодаря этому
-    // пользователь может сравнить звук «с EQ / без EQ» и вернуть обработку одним кликом.
-    public void SetEqualizerBypass(bool bypass)
-    {
-        _settings.EqualizerBypass = bypass;
-        if (_equalizer != null)
-            _equalizer.Enabled = _settings.EqualizerEnabled && !bypass;
+            _equalizer.Enabled = enabled;
     }
 
     public double GetEqualizerBandGain(int band) =>
@@ -299,8 +290,10 @@ public partial class MainWindow
 
     public void ApplyChannelMode()
     {
-        if (_channelMode != null)
-            _channelMode.MonoEnabled = _settings.PlaybackChannelMode == "Mono";
+        if (_channelMode == null) return;
+
+        _channelMode.MonoEnabled = _settings.PlaybackChannelMode == "Mono";
+        _channelMode.Balance = _settings.PlaybackBalance;
     }
 
     public void ApplyTrackStateBadgeMode() => UpdateTrackUserStatePresentation();

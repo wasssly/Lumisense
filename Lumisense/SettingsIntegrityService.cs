@@ -230,6 +230,8 @@ internal static class SettingsIntegrityService
         settings.ProgressBarStyle = Allowed(settings.ProgressBarStyle, defaults.ProgressBarStyle, "Slider", "Waveform", "Material", "MaterialSlider");
         settings.SliderStyle = Allowed(settings.SliderStyle, defaults.SliderStyle, "Default", "Material");
         settings.PlaybackChannelMode = Allowed(settings.PlaybackChannelMode, defaults.PlaybackChannelMode, "Stereo", "Mono");
+        settings.PlaybackBalance = Math.Clamp(settings.PlaybackBalance, -100, 100);
+        settings.DeviceConnectStyle = Allowed(settings.DeviceConnectStyle, defaults.DeviceConnectStyle, "Island", "Off");
         settings.TrackStateBadgeMode = Allowed(settings.TrackStateBadgeMode, defaults.TrackStateBadgeMode,
             "State", "Extension", "Quality", "FileSize", "Custom");
         settings.WasapiLatencyMilliseconds = settings.WasapiLatencyMilliseconds is 60 or 100 or 200

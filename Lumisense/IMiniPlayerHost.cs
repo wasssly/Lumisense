@@ -30,6 +30,10 @@ internal interface IMiniPlayerHost
     double CurrentPlaybackSeconds { get; }
     double CurrentTrackDurationSeconds { get; }
     AudioLevelSampleProvider? AudioLevelMeter { get; }
+    // Устройство вывода звука: имя и тип, плюс событие при смене (Announce — стоит показать пользователю).
+    event Action<AudioOutputDeviceInfo>? OutputDeviceChanged;
+    string CurrentOutputDeviceName { get; }
+    AudioOutputKind CurrentOutputKind { get; }
 
     // Остров просит считать уровень и спектр, пока у него идут эквалайзер или фон; Now Playing просит отдельно, измеритель считает, пока нужен хоть одному.
     void SetIslandAudioLevelWanted(bool wanted);

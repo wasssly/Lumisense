@@ -56,7 +56,8 @@ public sealed class TrackContextMenuActions : INotifyPropertyChanged
     public event PropertyChangedEventHandler? PropertyChanged;
 
     public bool IsDisabled(string? actionId) =>
-        actionId is not null && KnownActionIds.TryGetValue(actionId, out string? knownId) && _disabled.Contains(knownId);
+        actionId is not null && KnownActionIds.TryGetValue(actionId, out string? knownId)
+        && _disabled.Contains(knownId);
 
     public bool IsEnabled(string? actionId) => !IsDisabled(actionId);
 
