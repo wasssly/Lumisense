@@ -20,4 +20,5 @@ internal sealed record AudioOutputRuntimeStatus(
     string? LastRecoveryReason,
     int MeaningfulDeviceEventCount,
     AudioOutputEndpointChangeKind? LastDeviceEventKind,
-    string? LastDeviceEventEndpointId);
+    string? LastDeviceEventEndpointId,
+    SignalPathDescription? SignalPath = null);

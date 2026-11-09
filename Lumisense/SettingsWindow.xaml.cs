@@ -2880,6 +2880,11 @@ public partial class SettingsWindow : FluentWindow
             runtime.MeaningfulDeviceEventCount,
             lastEvent);
 
+        OutputDeviceSignalPathText.Text = runtime.SignalPath is null
+            ? string.Empty
+            : LocalizationService.Translate("Путь сигнала") + ": " + runtime.SignalPath.Text;
+        OutputDeviceSignalPathText.Visibility = runtime.SignalPath is null ? Visibility.Collapsed : Visibility.Visible;
+
         OutputDeviceStatusText.Text = runtime.FallbackFrom is { Length: > 0 }
             ? string.Format(
                 LocalizationService.Translate("Выбранное устройство «{0}» недоступно. Lumisense использует: {1}."),

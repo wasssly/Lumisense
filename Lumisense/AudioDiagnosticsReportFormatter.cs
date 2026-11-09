@@ -7,7 +7,8 @@ namespace Lumisense;
 internal static class AudioDiagnosticsReportFormatter
 {
     public static string Format(string version, AudioOutputRuntimeStatus status) =>
-        string.Join(Environment.NewLine,
+        string.Join(Environment.NewLine, new[]
+        {
             "Lumisense audio diagnostics",
             $"version: {version}",
             $"engine: {status.Engine}",
@@ -23,5 +24,8 @@ internal static class AudioDiagnosticsReportFormatter
             $"last-recovery: {status.LastRecoveryReason ?? "none"}",
             $"meaningful-device-events: {status.MeaningfulDeviceEventCount}",
             $"last-device-event: {status.LastDeviceEventKind?.ToString() ?? "none"}",
-            $"last-device-event-endpoint: {status.LastDeviceEventEndpointId ?? "n/a"}");
+            $"last-device-event-endpoint: {status.LastDeviceEventEndpointId ?? "n/a"}",
+            status.SignalPath is null ? null : $"signal-path: {status.SignalPath.Text.Replace("\n", " ")}",
+            status.SignalPath is null ? null : $"bit-perfect: {status.SignalPath.IsBitPerfect}"
+        }.Where(line => line is not null));
 }

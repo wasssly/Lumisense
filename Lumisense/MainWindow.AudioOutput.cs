@@ -177,7 +177,29 @@ public partial class MainWindow
             _outputDiagnostics.LastRecoveryReason,
             _outputDiagnostics.MeaningfulDeviceEventCount,
             _outputDiagnostics.LastDeviceEventKind,
-            _outputDiagnostics.LastDeviceEventEndpointId);
+            _outputDiagnostics.LastDeviceEventEndpointId,
+            BuildSignalPath());
+    }
+
+    private SignalPathDescription? BuildSignalPath()
+    {
+        if (_outputDevice is null || _audioFile is null) return null;
+
+        var format = _audioFile.WaveFormat;
+        var state = new SignalPathState(
+            format.SampleRate,
+            format.Channels,
+            string.IsNullOrEmpty(_currentTrackPath) ? null : System.IO.Path.GetExtension(_currentTrackPath),
+            string.Equals(_outputDiagnostics.ActiveWasapiMode, "Exclusive", StringComparison.OrdinalIgnoreCase),
+            _outputDiagnostics.ActiveFormat,
+            Math.Abs(_runtimePlaybackRate - 1.0) > 0.0001 || Math.Abs(_settings.PlaybackPitchSemitones) > 0.0001,
+            Math.Abs(_replayGainFactor - 1.0) > 1e-6,
+            _settings.EqualizerEnabled && !_settings.EqualizerBypass && _settings.EqualizerBandGainsDb.Any(gain => Math.Abs(gain) > 0.005),
+            _settings.PlaybackChannelMode == "Mono",
+            _settings.PlaybackBalance != 0,
+            _masterVolume is not null && Math.Abs(_masterVolume.Gain - 1f) > 1e-6f,
+            _settings.LimiterEnabled);
+        return SignalPathDescriber.Describe(state, localized: true);
     }
 
     // Отчёт формируется только по явному действию пользователя для clipboard. Он не включает
