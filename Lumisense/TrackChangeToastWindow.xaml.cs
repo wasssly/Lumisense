@@ -14,6 +14,9 @@ public partial class TrackChangeToastWindow : Window
     private static readonly TimeSpan VisibleDuration = TimeSpan.FromSeconds(3);
     private static readonly TimeSpan FadeDuration = TimeSpan.FromMilliseconds(200);
 
+    // Если в Windows отключены анимации («Показывать анимацию в Windows»), карточка появляется и исчезает мгновенно.
+    private static TimeSpan CurrentFadeDuration => SystemParameters.ClientAreaAnimation ? FadeDuration : TimeSpan.Zero;
+
     // Те же RGB, что у фона мини-плеера (MiniPlayerWindow.ApplyBackground), для согласованности двух плавающих окон.
     private static readonly Color DarkBackground = Color.FromRgb(0x1C, 0x1C, 0x1E);
     private static readonly Color LightBackground = Color.FromRgb(0xF2, 0xF2, 0xF2);
@@ -94,7 +97,7 @@ public partial class TrackChangeToastWindow : Window
             return;
         }
 
-        RootBorder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, FadeDuration));
+        RootBorder.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1, CurrentFadeDuration));
         _hideTimer.Start();
     }
 
@@ -139,7 +142,7 @@ public partial class TrackChangeToastWindow : Window
             return;
         }
 
-        var fadeOut = new DoubleAnimation(0, FadeDuration);
+        var fadeOut = new DoubleAnimation(0, CurrentFadeDuration);
         fadeOut.Completed += (_, _) => Hide();
         RootBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
     }

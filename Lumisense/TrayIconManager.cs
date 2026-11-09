@@ -136,9 +136,6 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         }
     }
 
-    // Тонируется автоматически через DynamicResource — метод-заглушка ради совместимости вызовов.
-    public void ApplyTheme(bool isLight) { }
-
     // Подсказка статичная ("Lumisense"): NotifyIconService.TooltipText — просто {get;set;}, без
     // Shell_NotifyIcon(NIM_MODIFY), так что живое обновление на уже показанной иконке потребовало
     // бы пере-Register() с миганием значка. Название трека — через SetNowPlaying в меню трея.

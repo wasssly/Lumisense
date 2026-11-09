@@ -56,6 +56,7 @@ public partial class NowPlayingWindow : Window
     {
         _owner = owner;
         InitializeComponent();
+        AutomationNames.Set(ArtworkProgressBar, "Прогресс воспроизведения");
         AccessibilityPreferences.ApplyToWindow(this, _owner.Settings);
 
         SyncedLyricsList.ItemsSource = _syncedLines;
@@ -1610,8 +1611,8 @@ public partial class NowPlayingWindow : Window
     {
         double current = Math.Max(currentSeconds, 0);
         double total = Math.Max(totalSeconds, 0);
-        PlaybackTimeText.Text = TimeSpan.FromSeconds(current).ToString(@"mm\:ss");
-        PlaybackDurationText.Text = TimeSpan.FromSeconds(total).ToString(@"mm\:ss");
+        PlaybackTimeText.Text = PlaybackTimeFormat.Format(TimeSpan.FromSeconds(current));
+        PlaybackDurationText.Text = PlaybackTimeFormat.Format(TimeSpan.FromSeconds(total));
         ArtworkProgressBar.Maximum = total > 0 ? total : 1;
         ArtworkProgressBar.Value = Math.Min(current, ArtworkProgressBar.Maximum);
         double ratio = total > 0 ? Math.Clamp(current / total, 0.0, 1.0) : 0.0;
@@ -1753,19 +1754,19 @@ public partial class NowPlayingWindow : Window
     }
 
     // Дополнительные источники (NetEase, QQ Music, Kugou, Paxsenix) показываются только при включённой настройке «Дополнительный
-    // источник текстов»; если выбранный источник из их числа, а настройку выключили, выбор возвращается на «Все».
+    // источник текстов» и отметке самого сервиса; если выбранный источник из их числа выключен, выбор возвращается на «Все».
     private void UpdateLyricsSearchSourceChips()
     {
-        bool extra = _owner.Settings.UseExtraLyricsSource;
         foreach (var radio in LyricsSearchSourceRadios())
         {
             string source = (string)radio.Tag;
             if (source is "All" or LyricsService.LrcLibSourceName) continue;
 
-            radio.Visibility = extra ? Visibility.Visible : Visibility.Collapsed;
+            radio.Visibility = LyricsService.IsExtraSourceEnabled(source) ? Visibility.Visible : Visibility.Collapsed;
         }
 
-        if (!extra && _owner.Settings.LyricsManualSearchSource is not ("All" or LyricsService.LrcLibSourceName))
+        string selected = _owner.Settings.LyricsManualSearchSource;
+        if (selected is not ("All" or LyricsService.LrcLibSourceName) && !LyricsService.IsExtraSourceEnabled(selected))
         {
             _owner.Settings.LyricsManualSearchSource = "All";
             ApplyLyricsSearchSourceSelection();

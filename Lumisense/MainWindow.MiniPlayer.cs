@@ -47,18 +47,7 @@ public partial class MainWindow
         };
         _miniPlayerWindow.ApplyOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
 
-        // Возвращаем мини-плеер на прежнее место; если позиция не задавалась — в правый нижний угол рабочей области.
-        if (_settings.MiniPlayerLeft.HasValue && _settings.MiniPlayerTop.HasValue)
-        {
-            _miniPlayerWindow.Left = _settings.MiniPlayerLeft.Value;
-            _miniPlayerWindow.Top = _settings.MiniPlayerTop.Value;
-        }
-        else
-        {
-            var workArea = SystemParameters.WorkArea;
-            _miniPlayerWindow.Left = workArea.Right - _miniPlayerWindow.Width - 24;
-            _miniPlayerWindow.Top = workArea.Bottom - _miniPlayerWindow.Height - 24;
-        }
+        PlaceMiniPlayerWindow(_miniPlayerWindow);
 
         _miniPlayerWindow.Closed += (_, _) => _miniPlayerWindow = null;
         _miniPlayerWindow.Show();
@@ -97,11 +86,30 @@ public partial class MainWindow
 
         _miniPlayerWindow = new MiniPlayerWindow(this) { Topmost = _settings.MiniPlayerAlwaysOnTop };
         _miniPlayerWindow.ApplyOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
-        var workArea = SystemParameters.WorkArea;
-        _miniPlayerWindow.Left = _settings.MiniPlayerLeft ?? workArea.Right - _miniPlayerWindow.Width - 24;
-        _miniPlayerWindow.Top = _settings.MiniPlayerTop ?? workArea.Bottom - _miniPlayerWindow.Height - 24;
+        PlaceMiniPlayerWindow(_miniPlayerWindow);
         _miniPlayerWindow.Closed += (_, _) => _miniPlayerWindow = null;
         _miniPlayerWindow.Show();
+    }
+
+    // Возвращаем мини-плеер на прежнее место; если позиция не задавалась или попадает на отключённый монитор — в правый нижний
+    // угол рабочей области (иначе окно оказалось бы за пределами экрана).
+    private void PlaceMiniPlayerWindow(MiniPlayerWindow window)
+    {
+        if (_settings.MiniPlayerLeft is double left && _settings.MiniPlayerTop is double top)
+        {
+            var bounds = new System.Drawing.Rectangle((int)left, (int)top,
+                (int)Math.Max(window.Width, 1), (int)Math.Max(window.Height, 1));
+            if (System.Windows.Forms.Screen.AllScreens.Any(screen => screen.WorkingArea.IntersectsWith(bounds)))
+            {
+                window.Left = left;
+                window.Top = top;
+                return;
+            }
+        }
+
+        var workArea = SystemParameters.WorkArea;
+        window.Left = workArea.Right - window.Width - 24;
+        window.Top = workArea.Bottom - window.Height - 24;
     }
 
     public void ApplyIslandMonitorLive() => _islandWindow?.PositionOnMonitor();

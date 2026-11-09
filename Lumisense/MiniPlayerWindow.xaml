@@ -240,17 +240,17 @@
                             <TextBlock Text="Вторая кнопка" VerticalAlignment="Center" Margin="0,0,10,0" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <ui:Button x:Name="MiniSecondaryRepeatContextButton" Tag="Repeat" Appearance="Secondary"
-                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Повтор"
+                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Повтор" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                                            Click="MiniSecondaryContextButton_Click">
                                     <ui:Button.Icon><local:SvgPathIcon Icon="IconRepeatAll" Size="12" /></ui:Button.Icon>
                                 </ui:Button>
                                 <ui:Button x:Name="MiniSecondaryShuffleContextButton" Tag="Shuffle" Appearance="Secondary"
-                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Перемешать"
+                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Перемешать" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                                            Click="MiniSecondaryContextButton_Click">
                                     <ui:Button.Icon><local:SvgPathIcon Icon="IconShuffle" Size="12" /></ui:Button.Icon>
                                 </ui:Button>
                                 <ui:Button x:Name="MiniSecondaryFavoriteContextButton" Tag="Favorite" Appearance="Secondary"
-                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Избранное"
+                                           Width="28" Height="28" Padding="0" Margin="2,0" ToolTip="Избранное" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                                            Click="MiniSecondaryContextButton_Click">
                                     <ui:Button.Icon><local:SvgPathIcon Icon="IconHeart" Size="12" /></ui:Button.Icon>
                                 </ui:Button>

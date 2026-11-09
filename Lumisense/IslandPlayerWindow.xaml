@@ -258,7 +258,7 @@
             <Grid x:Name="OpenView" UseLayoutRounding="True" SnapsToDevicePixels="True" Width="400" Height="176" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
                 <!-- Фон раскрытого острова (свечение, звёзды, матрица): сам решает, что рисовать, по настройке «Фон острова». -->
                 <local:IslandBackdrop x:Name="IslandBackdropLayer" Visibility="Collapsed" />
-                <!-- Эквалайзер раскрытого острова: 8 колонок справа сверху, как в архиве; свёрнутый остров показывает свой. -->
+                <!-- Эквалайзер раскрытого острова: 8 колонок справа сверху; свёрнутый остров показывает свой. -->
                 <local:IslandEqualizer x:Name="OpenBars" Bars="8" Width="38" Height="26" HorizontalAlignment="Right" VerticalAlignment="Top"
                                        Margin="0,25,30,0" IsHitTestVisible="False" />
                 <StackPanel x:Name="OpenTitleStack" Margin="98,20,74,0" Height="64" VerticalAlignment="Top" IsHitTestVisible="False">
@@ -292,7 +292,7 @@
                         <TextBlock x:Name="LyricsStatus" Foreground="#99FFFFFF" FontSize="13.5" TextAlignment="Center" VerticalAlignment="Center" />
                     </Grid>
                     <Button x:Name="LyricsVariantButton" Grid.Row="1" Style="{StaticResource IslandIconButtonStyle}" Width="Auto" MinWidth="28" Height="26"
-                            HorizontalAlignment="Center" ToolTip="Другой вариант текста" Click="LyricsVariantButton_Click">
+                            HorizontalAlignment="Center" ToolTip="Другой вариант текста" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="LyricsVariantButton_Click">
                         <StackPanel Orientation="Horizontal">
                             <local:SvgPathIcon Icon="IconRefresh" Size="13" Foreground="#99FFFFFF" VerticalAlignment="Center" />
                             <TextBlock x:Name="LyricsVariantText" Foreground="#99FFFFFF" FontSize="10.5" Margin="4,0,0,0" VerticalAlignment="Center" />

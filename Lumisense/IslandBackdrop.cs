@@ -238,7 +238,7 @@ internal sealed class IslandBackdrop : FrameworkElement
         dc.DrawGeometry(null, _wavePen, line);
     }
 
-    // Как в архиве: колонки точек вдоль нижнего края, середина — низкие частоты; точки, не влезающие в скруглённый контур, пропускаются.
+    // Колонки точек вдоль нижнего края, середина — низкие частоты; точки, не влезающие в скруглённый контур, пропускаются.
     private void DrawMatrix(DrawingContext dc, double w, double h)
     {
         dc.DrawGeometry(Shade(Colors.White, UnlitOpacity), null, LayOut(w, h));

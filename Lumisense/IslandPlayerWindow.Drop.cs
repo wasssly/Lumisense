@@ -21,6 +21,8 @@ internal partial class IslandPlayerWindow
 
     private readonly DispatcherTimer _dragWatch = new(DispatcherPriority.Background) { Interval = DragWatchInterval };
     private bool _dragActive, _dropHot, _dropBusy;
+    // Нажатие, начавшееся рядом с островом, — обычный клик (например, по «Закрыть» окна у верхнего края), а не перетаскивание файла.
+    private bool _pressSeen, _pressStartedNearIsland;
     private double _attractPull, _attractLean;
     private State _dropReturn = State.Compact;
     private string[] _dragPaths = [];
@@ -42,8 +44,18 @@ internal partial class IslandPlayerWindow
     // Windows считает целью drag&drop только окно с непрозрачными пикселями под курсором, поэтому зона приёма включается лишь при зажатой кнопке рядом с островом.
     private void DragWatch_Tick(object? sender, EventArgs e)
     {
+        bool leftDown = (GetAsyncKeyState(VkLButton) & 0x8000) != 0;
+        bool near = leftDown && IsCursorNearIsland();
+        if (!leftDown) _pressSeen = false;
+        else if (!_pressSeen)
+        {
+            _pressSeen = true;
+            _pressStartedNearIsland = near;
+        }
+
+        // Зона приёма перекрывала бы клик, начатый рядом с островом: кнопка «Закрыть» окна у верха экрана переставала работать.
         bool wanted = _dragActive || (Settings.IslandAcceptDrops && !IsAway && IsVisible && _grab == Grab.None && !_pressed
-            && (GetAsyncKeyState(VkLButton) & 0x8000) != 0 && IsCursorNearIsland());
+            && near && !_pressStartedNearIsland);
         var visibility = wanted ? Visibility.Visible : Visibility.Collapsed;
         if (DropCatcher.Visibility != visibility) DropCatcher.Visibility = visibility;
     }

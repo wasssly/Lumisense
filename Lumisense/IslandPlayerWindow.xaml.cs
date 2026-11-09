@@ -35,7 +35,7 @@ internal partial class IslandPlayerWindow : Window
     private const double PullToOpen = 42, LeanToSkip = 40;
     private const double PausedCoverScale = 0.85, CoverRadiusRatio = 0.22, RoundCoverRadiusRatio = 0.5;
     private const double RepeatDragDistance = 14, LyricRowHeight = 40;
-    private const double VolumeStep = 0.02, AwayMargin = 30;
+    private const double AwayMargin = 30;
     private const double VolumeMax = 0.999, VolumeMin = 0.001, VolumeOvershoot = 7, VolumeOvershootSquash = 0.22, VolumeTrackWidth = 162;
     private static readonly TimeSpan OvershootHold = TimeSpan.FromMilliseconds(140);
     private static readonly TimeSpan VolumeDuration = TimeSpan.FromMilliseconds(1300);
@@ -843,7 +843,7 @@ internal partial class IslandPlayerWindow : Window
         }
         if (fresh && IsSteady(view) && !ReduceMotion)
         {
-            // Как строки списка в архиве друга: элементы проявляются по очереди и чуть всплывают снизу, сам вид быстро становится видимым.
+            // Элементы списка проявляются по очереди и чуть всплывают снизу, сам вид быстро становится видимым.
             view.BeginAnimation(OpacityProperty, new DoubleAnimation(1, TimeSpan.FromMilliseconds(100)));
             Reveal(view == OpenView
                 ? [OpenTitleStack, OpenSeekRow, LeftSideButton, RightSideButton, OpenTransport, OpenBars]
@@ -1336,7 +1336,7 @@ internal partial class IslandPlayerWindow : Window
             return;
         }
 
-        _host.ExternalChangeVolume((up ? 1 : -1) * VolumeStep);
+        _host.ExternalChangeVolume((up ? 1 : -1) * PlaybackSteps.Volume);
         ShowVolume(_host.CurrentVolume);
     }
 
@@ -1712,28 +1712,23 @@ internal partial class IslandPlayerWindow : Window
     {
         try
         {
-            LyricsDocument document = await LyricsService.LoadAsync(path, token);
-            if (document.Kind == LyricsKind.None && !string.IsNullOrWhiteSpace(path))
-            {
-                var lookup = await LyricsService.FindAutomaticAsync(
-                    _host.CurrentTitle, _host.CurrentArtist, _host.PlaybackState.Current.DurationSeconds, token);
-                if (lookup.Best is { } exact)
-                {
-                    await LyricsService.SaveOnlineResultAsync(path, exact, token);
-                    document = LyricsService.CreateDocumentFromOnlineResult(exact);
+            LyricsService.LyricsLoadResult loaded = (await LyricsService.LoadWithAutomaticLookupAsync(
+                path, _host.CurrentTitle, _host.CurrentArtist, _host.PlaybackState.Current.DurationSeconds,
+                Settings.LyricsSearchPolicy, token))!;
 
-                    // Остальные совпадения запоминаем: если первым нашёлся простой текст, кнопка предложит синхронный.
-                    ResetLyricsVariants(path);
-                    _lyricsVariants.AddRange(lookup.Matches);
-                    _lyricsVariantIndex = Math.Max(0, _lyricsVariants.IndexOf(exact));
-                    _lyricsVariantsLrcLibLoaded = true;
-                    _lyricsVariantsExtraLoaded = lookup.Matches.Any(match => match.Source != "LRCLIB");
-                    UpdateLyricsVariantText();
-                }
+            if (loaded.Lookup is { Best: { } exact } lookup)
+            {
+                // Остальные совпадения запоминаем: если первым нашёлся простой текст, кнопка предложит синхронный.
+                ResetLyricsVariants(path);
+                _lyricsVariants.AddRange(lookup.Matches);
+                _lyricsVariantIndex = Math.Max(0, _lyricsVariants.IndexOf(exact));
+                _lyricsVariantsLrcLibLoaded = true;
+                _lyricsVariantsExtraLoaded = lookup.Matches.Any(match => match.Source != "LRCLIB");
+                UpdateLyricsVariantText();
             }
 
             if (token.IsCancellationRequested) return;
-            ShowLyrics(LyricsService.ApplyDisplayMode(document, Settings.LyricsDisplayMode));
+            ShowLyrics(LyricsService.ApplyDisplayMode(loaded.Document, Settings.LyricsDisplayMode));
         }
         catch (LyricsRateLimitException)
         {

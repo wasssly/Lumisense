@@ -101,6 +101,9 @@ public partial class MiniPlayerWindow : Window
     internal MiniPlayerWindow(IMiniPlayerHost mainWindow)
     {
         InitializeComponent();
+        AutomationNames.Set(MiniPlaybackRateContextSlider, "Скорость воспроизведения");
+        AutomationNames.Set(MiniPlaybackPitchContextSlider, "Тональность");
+        AutomationNames.Set(MiniOpacityContextSlider, "Прозрачность мини-плеера");
 
         _mainWindow = mainWindow;
         ApplyAccessibilityPreferences();
@@ -294,7 +297,8 @@ public partial class MiniPlayerWindow : Window
         if (totalSeconds <= 0) return "—";
 
         var remaining = TimeSpan.FromSeconds(Math.Max(totalSeconds - currentSeconds, 0));
-        return $"-{remaining:mm\\:ss} осталось";
+        // Строка подходит под шаблон «-{remaining:mm\\:ss} осталось» из словаря перевода.
+        return LocalizationService.Translate($"-{PlaybackTimeFormat.Format(remaining)} осталось");
     }
 
     // См. UpdateSecondaryLine — публичный вызов для MainWindow.ApplyMiniPlayerInfoModeLive.
@@ -984,17 +988,22 @@ public partial class MiniPlayerWindow : Window
         MiniContextSnapToEdgesMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerSnapToEdges;
         MiniContextShowProgressMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerShowProgress;
         MiniContextShowArtworkProgressMenuItem.IsChecked = _mainWindow.Settings.MiniPlayerShowArtworkProgress;
-        MiniContextArtworkStyleMenuItem.Header = "Обложка: " + ArtworkStyleLabel(_mainWindow.Settings.MiniPlayerArtworkStyle);
-        MiniContextButtonsLayoutMenuItem.Header = "Кнопки: " +
-            (_mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay" ? "поверх обложки" : "снизу");
+        MiniContextArtworkStyleMenuItem.Header = ArtworkStyleMenuHeader(_mainWindow.Settings.MiniPlayerArtworkStyle);
+        MiniContextButtonsLayoutMenuItem.Header = ButtonsLayoutMenuHeader(_mainWindow.Settings.MiniPlayerButtonsLayout);
     }
 
-    private static string ArtworkStyleLabel(string style) => style switch
-    {
-        "Vinyl" => "винил",
-        "StaticCircle" => "круг",
-        _ => "обычная"
-    };
+    // Заголовки пунктов собираются в коде после загрузки окна, поэтому LocalizationService.Apply до них не доходит: переводим сами.
+    private static string ArtworkStyleMenuHeader(string style) =>
+        LocalizationService.Translate("Обложка: ") + LocalizationService.Translate(style switch
+        {
+            "Vinyl" => "винил",
+            "StaticCircle" => "круг",
+            _ => "обычная"
+        });
+
+    private static string ButtonsLayoutMenuHeader(string layout) =>
+        LocalizationService.Translate("Кнопки: ") +
+        LocalizationService.Translate(layout == "Overlay" ? "поверх обложки" : "снизу");
 
     private void SnapToEdgesMenuItem_Click(object sender, RoutedEventArgs e)
     {
@@ -1025,7 +1034,7 @@ public partial class MiniPlayerWindow : Window
             "Vinyl" => "StaticCircle",
             _ => "Default"
         };
-        MiniContextArtworkStyleMenuItem.Header = "Обложка: " + ArtworkStyleLabel(_mainWindow.Settings.MiniPlayerArtworkStyle);
+        MiniContextArtworkStyleMenuItem.Header = ArtworkStyleMenuHeader(_mainWindow.Settings.MiniPlayerArtworkStyle);
         _mainWindow.ApplyMiniPlayerArtworkStyleLive();
         FireAndForget(SettingsManager.SaveAsync(_mainWindow.Settings), "SaveSettingsAsync");
     }
@@ -1034,8 +1043,7 @@ public partial class MiniPlayerWindow : Window
     {
         _mainWindow.Settings.MiniPlayerButtonsLayout =
             _mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay" ? "Below" : "Overlay";
-        MiniContextButtonsLayoutMenuItem.Header = "Кнопки: " +
-            (_mainWindow.Settings.MiniPlayerButtonsLayout == "Overlay" ? "поверх обложки" : "снизу");
+        MiniContextButtonsLayoutMenuItem.Header = ButtonsLayoutMenuHeader(_mainWindow.Settings.MiniPlayerButtonsLayout);
         _mainWindow.ApplyMiniPlayerButtonsLayoutLive();
         FireAndForget(SettingsManager.SaveAsync(_mainWindow.Settings), "SaveSettingsAsync");
     }
@@ -1779,7 +1787,7 @@ public partial class MiniPlayerWindow : Window
     // (5% за деление), что и у хоткеев и у прокрутки над ползунком в главном окне.
     private void RootBorder_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        _mainWindow.ExternalChangeVolume(Math.Sign(e.Delta) * 0.02);
+        _mainWindow.ExternalChangeVolume(Math.Sign(e.Delta) * PlaybackSteps.Volume);
         e.Handled = true;
     }
 

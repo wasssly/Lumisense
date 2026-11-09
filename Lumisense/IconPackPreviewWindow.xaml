@@ -38,7 +38,7 @@
                            Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
                 <ui:Button Width="30" Height="30" Padding="0" Opacity="0.6"
                            Appearance="Secondary" HorizontalAlignment="Right"
-                           ToolTip="Закрыть" Click="CloseButton_Click">
+                           ToolTip="Закрыть" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="CloseButton_Click">
                     <ui:Button.Icon>
                         <local:SvgPathIcon Icon="IconDismiss" Size="13" />
                     </ui:Button.Icon>

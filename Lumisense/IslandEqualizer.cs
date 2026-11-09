@@ -44,7 +44,7 @@ internal sealed class IslandEqualizer : FrameworkElement
         Unloaded += (_, _) => Stop();
     }
 
-    // Число полосок (5 в свёрнутом острове, 8 в раскрытом, как в архиве друга).
+    // Число полосок (5 в свёрнутом острове, 8 в раскрытом).
     public int Bars
     {
         get => _bars;
@@ -193,7 +193,7 @@ internal sealed class IslandEqualizer : FrameworkElement
             new Rect(x, (height - barHeight) / 2, BarWidth, barHeight), BarWidth / 2, BarWidth / 2);
     }
 
-    // Столбик из точек, как в архиве: зажигается снизу вверх, верхняя точка чуть белее; неполная верхняя точка растёт плавно.
+    // Столбик из точек: зажигается снизу вверх, верхняя точка чуть белее; неполная верхняя точка растёт плавно.
     private void DrawDots(DrawingContext dc, double x, double height, double level)
     {
         double fit = height / DotPitch, whole = Math.Floor(fit), part = Math.Clamp((fit - whole - 0.3) / 0.4, 0, 1);

@@ -100,7 +100,7 @@ public partial class MainWindow
         }
         else
         {
-            ExternalChangeVolume(delta.Y < 0 ? 0.04 : -0.04);
+            ExternalChangeVolume(delta.Y < 0 ? PlaybackSteps.CoverGestureVolume : -PlaybackSteps.CoverGestureVolume);
         }
 
         e.Handled = true;

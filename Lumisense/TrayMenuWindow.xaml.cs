@@ -40,8 +40,7 @@ public sealed partial class TrayMenuWindow : Window
             ItemsHost.Children.Add(BuildEntry(entry));
     }
 
-    // topInset сдвигает меню от верхнего края вниз: остров стоит у верхнего края, и меню не должно его закрывать.
-    public void ShowAtCursor(int topInset = 0)
+    public void ShowAtCursor()
     {
         var cursor = System.Windows.Forms.Cursor.Position;
         var screen = System.Windows.Forms.Screen.FromPoint(cursor);
@@ -69,7 +68,7 @@ public sealed partial class TrayMenuWindow : Window
         int x = _dirX < 0 ? work.Left
             : _dirX > 0 ? work.Right - w
             : Math.Clamp(cursor.X + w <= work.Right ? cursor.X : cursor.X - w, work.Left, Math.Max(work.Left, work.Right - w));
-        int y = _dirY < 0 ? work.Top + topInset
+        int y = _dirY < 0 ? work.Top
             : _dirY > 0 ? Math.Min(cursor.Y, work.Bottom) - h
             : Math.Clamp(cursor.Y - h >= work.Top ? cursor.Y - h : cursor.Y, work.Top, Math.Max(work.Top, work.Bottom - h));
 

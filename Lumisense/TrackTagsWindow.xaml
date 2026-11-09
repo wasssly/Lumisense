@@ -39,7 +39,7 @@
                     <ui:Button x:Name="CopyFileNameButton" Grid.Column="1" Appearance="Transparent"
                                Width="26" Height="26" Padding="0" Margin="8,0,0,0"
                                Click="CopyFileNameButton_Click"
-                               ToolTip="Скопировать название трека">
+                               ToolTip="Скопировать название трека" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                         <ui:Button.Icon>
                             <local:SvgPathIcon x:Name="CopyFileNameIcon" Icon="IconCopy" Size="13" />
                         </ui:Button.Icon>

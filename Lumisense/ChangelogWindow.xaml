@@ -266,7 +266,7 @@
 
                         <Button Grid.Column="1" x:Name="SortDirectionButton" Width="30" Height="30" Margin="8,0,0,0"
                                 Style="{StaticResource IconOnlyButtonStyle}" Click="SortDirectionButton_Click"
-                                ToolTip="Направление сортировки">
+                                ToolTip="Направление сортировки" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                             <local:SvgPathIcon x:Name="SortDirectionIcon" Icon="IconChevronDown" Size="14"
                                                 Foreground="White" />
                         </Button>
@@ -568,7 +568,7 @@
 
                 <Button x:Name="DetailsScrollTopButton" Width="32" Height="32" Margin="0,0,18,18"
                         HorizontalAlignment="Right" VerticalAlignment="Bottom"
-                        Style="{StaticResource IconOnlyButtonStyle}" ToolTip="Прокрутить вверх"
+                        Style="{StaticResource IconOnlyButtonStyle}" ToolTip="Прокрутить вверх" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                         Visibility="Collapsed" Click="DetailsScrollTopButton_Click" Panel.ZIndex="5">
                     <local:SvgPathIcon Icon="IconChevronDown" Size="14" Foreground="White"
                                         RenderTransformOrigin="0.5,0.5">

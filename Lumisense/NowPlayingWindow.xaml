@@ -139,11 +139,11 @@
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
                     <!-- Режим «только название, обложка и текст»: прячет панель текста, полосу прогресса и кнопки на обложке. -->
                     <ui:Button x:Name="FocusModeButton" Width="30" Height="30" Padding="0" Margin="0,0,8,0" Opacity="0.42" Appearance="Secondary"
-                               ToolTip="Скрыть панель управления и всё лишнее" Click="FocusModeButton_Click">
+                               ToolTip="Скрыть панель управления и всё лишнее" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="FocusModeButton_Click">
                         <ui:Button.Icon><local:SvgPathIcon Icon="IconWindow" Size="13" Foreground="#D0FFFFFF" /></ui:Button.Icon>
                     </ui:Button>
                     <ui:Button Width="30" Height="30" Padding="0" Opacity="0.42" Appearance="Secondary"
-                               ToolTip="Закрыть полноэкранный режим (Esc)" Click="CloseButton_Click">
+                               ToolTip="Закрыть полноэкранный режим (Esc)" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="CloseButton_Click">
                         <ui:Button.Icon><local:SvgPathIcon Icon="IconDismiss" Size="13" Foreground="#D0FFFFFF" /></ui:Button.Icon>
                     </ui:Button>
                 </StackPanel>
@@ -181,22 +181,22 @@
                             <Border x:Name="ArtworkControlsOverlay" Background="#94000000" CornerRadius="22" Opacity="0">
                                 <Grid>
                                     <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Orientation="Horizontal">
-                                    <ui:Button Width="50" Height="46" Padding="0" Appearance="Secondary" ToolTip="Предыдущий"
+                                    <ui:Button Width="50" Height="46" Padding="0" Appearance="Secondary" ToolTip="Предыдущий" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                                                Click="PreviousButton_Click">
                                         <ui:Button.Icon><local:SvgPathIcon Icon="IconPrevious" /></ui:Button.Icon>
                                     </ui:Button>
                                     <ui:Button x:Name="ArtworkPlayPauseButton" Width="68" Height="62" Padding="0" Margin="14,0"
-                                               Appearance="Primary" ToolTip="Пуск / пауза" Click="PlayPauseButton_Click">
+                                               Appearance="Primary" ToolTip="Пуск / пауза" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="PlayPauseButton_Click">
                                         <ui:Button.Icon><local:SvgPathIcon x:Name="ArtworkPlayPauseIcon" Icon="IconPlay" Size="20" /></ui:Button.Icon>
                                     </ui:Button>
-                                    <ui:Button Width="50" Height="46" Padding="0" Appearance="Secondary" ToolTip="Следующий"
+                                    <ui:Button Width="50" Height="46" Padding="0" Appearance="Secondary" ToolTip="Следующий" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                                                Click="NextButton_Click">
                                         <ui:Button.Icon><local:SvgPathIcon Icon="IconNext" /></ui:Button.Icon>
                                     </ui:Button>
                                 </StackPanel>
                                 <ui:Button x:Name="ShowLyricsOnArtworkButton" Width="40" Height="40" Padding="0"
                                            HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,16,16,0"
-                                           Appearance="Secondary" ToolTip="Показать панель текста" Visibility="Collapsed"
+                                           Appearance="Secondary" ToolTip="Показать панель текста" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Visibility="Collapsed"
                                            Click="ToggleLyricsButton_Click">
                                     <ui:Button.Icon><local:SvgPathIcon Icon="IconExpand" Size="16" /></ui:Button.Icon>
                                 </ui:Button>
@@ -298,24 +298,24 @@
                                     <!-- Составная кнопка: основная часть листает варианты текста по кругу, стрелка рядом открывает список вариантов. -->
                                     <StackPanel Orientation="Horizontal" Margin="0,0,6,0">
                                         <ui:Button x:Name="NextLyricsVariantButton" Width="30" Height="30" Padding="0" Appearance="Secondary"
-                                                   ToolTip="Другой вариант текста" Click="NextLyricsVariantButton_Click">
+                                                   ToolTip="Другой вариант текста" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="NextLyricsVariantButton_Click">
                                             <ui:Button.Icon><local:SvgPathIcon Icon="IconSync" Size="13" /></ui:Button.Icon>
                                         </ui:Button>
                                         <ui:Button x:Name="LyricsVariantMenuButton" Width="18" Height="30" Padding="0" Margin="1,0,0,0" Appearance="Secondary"
-                                                   ToolTip="Выбрать вариант текста (источник и вид)" Click="LyricsVariantMenuButton_Click">
+                                                   ToolTip="Выбрать вариант текста (источник и вид)" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="LyricsVariantMenuButton_Click">
                                             <ui:Button.Icon><local:SvgPathIcon Icon="IconChevronDown" Size="9" /></ui:Button.Icon>
                                         </ui:Button>
                                     </StackPanel>
                                     <ui:Button x:Name="FindLyricsButton" Width="30" Height="30" Padding="0" Appearance="Secondary"
-                                               ToolTip="Открыть встроенный поиск текста" Click="FindLyricsButton_Click">
+                                               ToolTip="Открыть встроенный поиск текста" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="FindLyricsButton_Click">
                                         <ui:Button.Icon><local:SvgPathIcon Icon="IconSearch" Size="13" /></ui:Button.Icon>
                                     </ui:Button>
                                     <ui:Button x:Name="ImportLyricsButton" Width="30" Height="30" Padding="0" Margin="6,0,0,0" Appearance="Secondary"
-                                               ToolTip="Загрузить .lrc или .txt" Click="ImportLyricsButton_Click">
+                                               ToolTip="Загрузить .lrc или .txt" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="ImportLyricsButton_Click">
                                         <ui:Button.Icon><local:SvgPathIcon Icon="IconAddFile" Size="13" /></ui:Button.Icon>
                                     </ui:Button>
                                     <ui:Button x:Name="ToggleLyricsButton" Width="30" Height="30" Padding="0" Margin="6,0,0,0"
-                                               Appearance="Secondary" ToolTip="Скрыть панель текста" Click="ToggleLyricsButton_Click">
+                                               Appearance="Secondary" ToolTip="Скрыть панель текста" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="ToggleLyricsButton_Click">
                                         <ui:Button.Icon><local:SvgPathIcon Icon="IconMinimizePlayer" Size="14" /></ui:Button.Icon>
                                     </ui:Button>
                                 </StackPanel>
@@ -374,7 +374,7 @@
                                                            FontSize="12" Foreground="#86FFFFFF" Margin="0,3,0,0" TextWrapping="Wrap" />
                                             </StackPanel>
                                             <ui:Button Grid.Column="1" Width="30" Height="30" Padding="0" Appearance="Secondary"
-                                                       VerticalAlignment="Top" ToolTip="Назад к тексту" Click="CloseOnlineLyricsSearchButton_Click">
+                                                       VerticalAlignment="Top" ToolTip="Назад к тексту" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}" Click="CloseOnlineLyricsSearchButton_Click">
                                                 <ui:Button.Icon><local:SvgPathIcon Icon="IconDismiss" Size="13" /></ui:Button.Icon>
                                             </ui:Button>
                                         </Grid>

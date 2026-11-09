@@ -25,6 +25,9 @@ internal partial class DiagnosticsWindow : FluentWindow
     {
         _host = host;
         InitializeComponent();
+        AutomationNames.Set(ScenarioCombo, "Сценарий проверки");
+        AutomationNames.Set(LeakDurationCombo, "Длительность проверки утечек");
+        AutomationNames.Set(RunProgress, "Ход проверки");
         WindowSizing.FitToWorkArea(this);
         AccessibilityPreferences.ApplyToWindow(this, settings);
         LocalizationService.Apply(this);
