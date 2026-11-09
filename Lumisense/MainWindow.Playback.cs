@@ -47,6 +47,7 @@ public partial class MainWindow
         }
 
         autoPlay = ResolveAutoPlay(autoPlay, preservePendingPlaybackState);
+        DisarmGapless();
 
         var previousGain = Interlocked.Exchange(ref _replayGainCts, null);
         previousGain?.Cancel();
@@ -184,15 +185,44 @@ public partial class MainWindow
         return prepared;
     }
 
+    // Звенья цепочки после эквалайзера; у гэплесс-следующего трека они строятся заранее и подставляются в поля при переходе.
+    private sealed record ChainParts(
+        ChannelModeSampleProvider ChannelMode,
+        StereoImageSampleProvider StereoImage,
+        LoudnessSampleProvider Loudness,
+        MasterVolumeSampleProvider Master,
+        LimiterSampleProvider Limiter,
+        AudioLevelSampleProvider Meter);
+
+    private ChainParts BuildChain(EqualizerSampleProvider equalizer)
+    {
+        var channelMode = new ChannelModeSampleProvider(equalizer) { MonoEnabled = _settings.PlaybackChannelMode == "Mono", Balance = _settings.PlaybackBalance };
+        var stereoImage = new StereoImageSampleProvider(channelMode) { WidthPercent = _settings.StereoWidthPercent, CrossfeedPercent = _settings.CrossfeedPercent };
+        float gain = ComputeAudioFileVolume(VolumeSlider.Value, 1.0);
+        var loudness = new LoudnessSampleProvider(stereoImage) { StrengthPercent = _settings.LoudnessCompensationPercent, VolumeGain = gain };
+        var master = new MasterVolumeSampleProvider(loudness, gain);
+        var limiter = new LimiterSampleProvider(master) { Enabled = _settings.LimiterEnabled };
+        var meter = new AudioLevelSampleProvider(limiter) { Enabled = AudioLevelMeterWanted };
+        return new ChainParts(channelMode, stereoImage, loudness, master, limiter, meter);
+    }
+
+    private void AssignChain(ChainParts chain)
+    {
+        _channelMode = chain.ChannelMode;
+        _stereoImage = chain.StereoImage;
+        _loudness = chain.Loudness;
+        _masterVolume = chain.Master;
+        _limiter = chain.Limiter;
+        _audioLevelMeter = chain.Meter;
+    }
+
     private void StartOutputChain(int generation, TrackLoadPerformanceMeasurement performance)
     {
-        _channelMode = new ChannelModeSampleProvider(_equalizer!) { MonoEnabled = _settings.PlaybackChannelMode == "Mono", Balance = _settings.PlaybackBalance };
-        _stereoImage = new StereoImageSampleProvider(_channelMode) { WidthPercent = _settings.StereoWidthPercent, CrossfeedPercent = _settings.CrossfeedPercent };
-        _loudness = new LoudnessSampleProvider(_stereoImage) { StrengthPercent = _settings.LoudnessCompensationPercent, VolumeGain = ComputeAudioFileVolume(VolumeSlider.Value, 1.0) };
-        _masterVolume = new MasterVolumeSampleProvider(_loudness, ComputeAudioFileVolume(VolumeSlider.Value, 1.0));
-        _limiter = new LimiterSampleProvider(_masterVolume) { Enabled = _settings.LimiterEnabled };
-        _audioLevelMeter = new AudioLevelSampleProvider(_limiter) { Enabled = AudioLevelMeterWanted };
-        var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
+        var chain = BuildChain(_equalizer!);
+        AssignChain(chain);
+        _gapless = new GaplessSampleProvider(chain.Meter);
+        _gapless.Switched += OnGaplessSwitched;
+        var fadeIn = new FadeInOutSampleProvider(_gapless, initiallySilent: true);
         fadeIn.BeginFadeIn(70);
         _activeFade = fadeIn;
         InitializeOutputDevice(fadeIn);
@@ -263,7 +293,7 @@ public partial class MainWindow
         ApplyPreparedAlbumArt(loaded, albumArtDirection);
     }
 
-    private void ApplyInitialPosition(TimeSpan? startPosition)
+    private void ApplyInitialPosition(TimeSpan? startPosition, bool seek = true)
     {
         var audioFile = _audioFile!;
         if (_settings.ProgressBarStyle == "Waveform")
@@ -272,7 +302,7 @@ public partial class MainWindow
         var position = startPosition.HasValue && startPosition.Value < audioFile.TotalTime
             ? startPosition.Value
             : TimeSpan.Zero;
-        audioFile.CurrentTime = position;
+        if (seek) audioFile.CurrentTime = position;
         ProgressSlider.Value = position.TotalSeconds;
         CurrentTimeText.Text = PlaybackTimeFormat.Format(position);
         ProgressWaveform.Progress = audioFile.TotalTime.TotalSeconds > 0
@@ -809,6 +839,8 @@ public partial class MainWindow
         }
 
         StopProgressTimerAndAnimation();
+        DisarmGapless();
+        _gapless = null;
 
         // Stop()/Dispose() поднимают PlaybackStopped и при естественном завершении, и при ручной остановке: без предварительной отписки
         // автопереключение из OutputDevice_PlaybackStopped вызывалось бы повторно для старого _audioFile, и автопереход работал через раз.

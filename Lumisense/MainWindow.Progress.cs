@@ -224,6 +224,7 @@ public partial class MainWindow
                 _actuallyPlayedSeconds += delta;
         }
         _lastTickPositionSeconds = position;
+        UpdateGaplessState();
 
         // Засчитывается, только когда реально прозвучала половина трека. Раньше проверялась
         // сама позиция, поэтому перетаскивание ползунка в конец сразу давало +1 к статистике.

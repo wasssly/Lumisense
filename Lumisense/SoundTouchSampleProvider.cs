@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using NAudio.Wave;
 using SoundTouch;
 
@@ -16,6 +17,7 @@ namespace Lumisense;
 internal sealed class SoundTouchSampleProvider : ISampleProvider
 {
     private const int TailFadeMilliseconds = 20;
+    private int _tailFadeEnabled = 1;
     private const double NeutralTolerance = 1e-9;
 
     private readonly ISampleProvider _source;
@@ -101,11 +103,18 @@ internal sealed class SoundTouchSampleProvider : ISampleProvider
         && Math.Abs(_processor.Pitch - 1.0) < NeutralTolerance
         && Math.Abs(_processor.Rate - 1.0) < NeutralTolerance;
 
+    // Выключается, когда следом без паузы идёт другой трек (гэплесс): затухание на стыке слышно как провал.
+    public bool TailFadeEnabled
+    {
+        get => Volatile.Read(ref _tailFadeEnabled) != 0;
+        set => Volatile.Write(ref _tailFadeEnabled, value ? 1 : 0);
+    }
+
     // После flush в FIFO лежит весь оставшийся хвост трека, поэтому его длина известна точно.
     // Затухание по нему убирает щелчок от обрыва на ненулевом sample.
     private void ApplyTailFade(Span<float> buffer, int channels, int framesRead, int framesRemaining)
     {
-        if (framesRead <= 0)
+        if (framesRead <= 0 || !TailFadeEnabled)
             return;
 
         // Трек короче затухания: часть уже отдана, поэтому затухаем на всём остатке без скачка.

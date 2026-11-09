@@ -355,6 +355,7 @@ public partial class SettingsWindow : FluentWindow
         CrossfeedSlider.Value = Math.Clamp(_settings.CrossfeedPercent, 0, 100);
         LoudnessCompensationSlider.Value = Math.Clamp(_settings.LoudnessCompensationPercent, 0, 100);
         UpdateStereoImageTexts();
+        GaplessCheckBox.IsChecked = _settings.GaplessEnabled;
         BadgeModeExtensionRadio.IsChecked = _settings.TrackStateBadgeMode == "Extension";
         BadgeModeQualityRadio.IsChecked = _settings.TrackStateBadgeMode == "Quality";
         BadgeModeFileSizeRadio.IsChecked = _settings.TrackStateBadgeMode == "FileSize";
@@ -1521,6 +1522,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Перемотка назад", "Горячие клавиши", "Hotkeys", HotkeySeekBackwardButton, "seek backward назад перемотка 5 секунд горячая клавиша");
         Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
+        Add("Переход между треками без паузы", "Воспроизведение", "Playback", GaplessCheckBox, "гэплесс gapless без паузы переход трек альбом бесшовный");
         Add("Ширина стереобазы", "Воспроизведение", "Playback", StereoWidthSlider, "ширина стерео база stereo width моно шире");
         Add("Кроссфид для наушников", "Воспроизведение", "Playback", CrossfeedSlider, "кроссфид crossfeed наушники стерео голова");
         Add("Тонкомпенсация громкости", "Воспроизведение", "Playback", LoudnessCompensationSlider, "тонкомпенсация loudness громкость низы тихо");
@@ -4223,6 +4225,15 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.PlaybackBalance = (int)Math.Clamp(Math.Round(PlaybackBalanceSlider.Value), -100, 100);
         _owner.ApplyChannelMode();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // См. AppSettings.GaplessEnabled; MainWindow снимает или готовит заготовку на ближайшем тике прогресса.
+    private void GaplessCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.GaplessEnabled = GaplessCheckBox.IsChecked == true;
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 

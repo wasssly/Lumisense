@@ -795,6 +795,8 @@ public static class LocalizationService
         ["Не показывать карточку"] = "No card",
         ["Анимация карточки"] = "Card animation",
         ["Пространство и громкость"] = "Space and loudness",
+        ["Переход между треками без паузы (бета)"] = "Gapless track transitions (beta)",
+        ["Следующий трек открывается заранее и подхватывается без остановки звука: живые альбомы и сведённые подряд записи идут без провала. Работает при автопереходе, если у треков одинаковая частота дискретизации и число каналов; иначе, при повторе одного трека и после ручного выбора переход обычный."] = "The next track is opened ahead of time and picked up without stopping the sound, so live albums and continuous mixes play without a dip. It works on automatic transitions when the tracks share the same sample rate and channel count; otherwise, with single-track repeat and after a manual pick, the transition is the usual one.",
         ["Ширина стереобазы"] = "Stereo width",
         ["100% — без изменений, 0% — моно, больше 100% — шире. Двойной щелчок возвращает 100%."] = "100% is unchanged, 0% is mono, above 100% is wider. Double-click resets to 100%.",
         ["Кроссфид для наушников"] = "Headphone crossfeed",

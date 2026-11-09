@@ -2333,6 +2333,16 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.GaplessEnabled / GaplessSampleProvider. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="GaplessCheckBox" Content="Переход между треками без паузы (бета)"
+                                          Checked="GaplessCheckBox_Changed" Unchecked="GaplessCheckBox_Changed" />
+                                <TextBlock Text="Следующий трек открывается заранее и подхватывается без остановки звука: живые альбомы и сведённые подряд записи идут без провала. Работает при автопереходе, если у треков одинаковая частота дискретизации и число каналов; иначе, при повторе одного трека и после ручного выбора переход обычный."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.LimiterEnabled / LimiterSampleProvider. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>

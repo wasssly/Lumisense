@@ -351,6 +351,9 @@ public class AppSettings
     // Лимитер в конце цепочки: пики выше -0,1 dBFS ослабляются вместо клиппинга (см. LimiterSampleProvider).
     public bool LimiterEnabled { get; set; } = true;
 
+    // Переход на следующий трек без паузы: следующий готовится заранее и подставляется на конце текущего (GaplessSampleProvider).
+    public bool GaplessEnabled { get; set; }
+
     // Ширина стереобазы в процентах (100 — без изменений), кроссфид для наушников (0 — выключен) и тонкомпенсация на малой громкости (0 — выключена).
     public int StereoWidthPercent { get; set; } = 100;
     public int CrossfeedPercent { get; set; }
