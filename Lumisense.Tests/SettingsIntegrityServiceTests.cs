@@ -43,6 +43,23 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
         Assert.Equal(expected, settings!.SyncedLyricsGlowStrength);
     }
 
+    [Theory]
+    [InlineData("Glow", "Glow")]
+    [InlineData("Wave", "Orbit")]
+    public void TryLoad_FallsBackToDefaultDeviceCardAnimation(string stored, string expected)
+    {
+        Assert.True(TryLoad($"{{\"DeviceCardAnimation\": \"{stored}\"}}", out var settings, out _));
+        Assert.Equal(expected, settings!.DeviceCardAnimation);
+    }
+
+    [Fact]
+    public void TryLoad_DropsInvalidDeviceKindOverrides()
+    {
+        Assert.True(TryLoad("{\"DeviceKindOverrides\": {\"a\": \"Headphones\", \"b\": \"Toaster\", \"c\": \"Unknown\"}}", out var settings, out _));
+        Assert.Equal(new[] { "a" }, settings!.DeviceKindOverrides.Keys);
+        Assert.Equal("Headphones", settings.DeviceKindOverrides["a"]);
+    }
+
     [Fact]
     public void TryLoad_MissingFile_ReturnsFalse()
     {

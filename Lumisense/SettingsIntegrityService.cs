@@ -233,6 +233,10 @@ internal static class SettingsIntegrityService
         settings.PlaybackBalance = Math.Clamp(settings.PlaybackBalance, -100, 100);
         settings.ReplayGainPreampDb = double.IsFinite(settings.ReplayGainPreampDb) ? Math.Clamp(settings.ReplayGainPreampDb, -ReplayGainReader.MaxPreampDb, ReplayGainReader.MaxPreampDb) : 0;
         settings.DeviceConnectStyle = Allowed(settings.DeviceConnectStyle, defaults.DeviceConnectStyle, "Island", "Off");
+        settings.DeviceCardAnimation = Allowed(settings.DeviceCardAnimation, defaults.DeviceCardAnimation, "Orbit", "Glow");
+        settings.DeviceKindOverrides = (settings.DeviceKindOverrides ?? new())
+            .Where(pair => !string.IsNullOrEmpty(pair.Key) && Enum.TryParse(pair.Value, out AudioOutputKind kind) && kind != AudioOutputKind.Unknown)
+            .ToDictionary(pair => pair.Key, pair => pair.Value, StringComparer.Ordinal);
         settings.TrackStateBadgeMode = Allowed(settings.TrackStateBadgeMode, defaults.TrackStateBadgeMode,
             "State", "Extension", "Quality", "FileSize", "Custom");
         settings.WasapiLatencyMilliseconds = settings.WasapiLatencyMilliseconds is 60 or 100 or 200

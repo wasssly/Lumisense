@@ -78,6 +78,7 @@ public static class AudioOutputKindClassifier
         AudioOutputKind.Speakers => "IconSpeakerHifi",
         AudioOutputKind.Display => "IconMonitor",
         AudioOutputKind.Usb => "IconUsb",
+        AudioOutputKind.Digital => "IconDigitalOutput",
         _ => "IconAudioWave"
     };
 

@@ -191,10 +191,11 @@ internal partial class IslandPlayerWindow
         StopDropPulse();
         Color accent = _host.GetResolvedAccentColor();
         DropDisc.Fill = new SolidColorBrush(Color.FromArgb(0x55, accent.R, accent.G, accent.B));
-        ShowDropText(LocalizationService.Translate(info.NewlyConnected ? "Устройство подключено" : "Звук переключён"), info.Name, AudioOutputKindClassifier.IconKey(info.Kind));
+        string iconKey = AudioOutputKindClassifier.IconKey(info.Kind);
+        ShowDropText(LocalizationService.Translate(info.NewlyConnected ? "Устройство подключено" : "Звук переключён"), info.Name, iconKey);
         DropCheck.Visibility = info.NewlyConnected ? Visibility.Visible : Visibility.Collapsed;
         SetState(State.Drop);
-        PlayDeviceCardIntro(info.NewlyConnected);
+        PlayDeviceCardIntro(info.NewlyConnected, accent);
 
         await Task.Delay(DeviceCardHold);
 
@@ -212,72 +213,109 @@ internal partial class IslandPlayerWindow
         scale.ScaleY = y;
     }
 
-    // Мягкое появление: диск всплывает, значок растёт пружиной, одна волна расходится от значка, текст выезжает справа,
-    // а у нового устройства следом выскакивает галочка.
-    private void PlayDeviceCardIntro(bool showCheck)
+    private static void ResetShift(TranslateTransform shift)
     {
-        var titleShift = EnsureTextShift(DropTitle);
-        var subtitleShift = EnsureTextShift(DropSubtitle);
+        shift.BeginAnimation(TranslateTransform.XProperty, null);
+        shift.BeginAnimation(TranslateTransform.YProperty, null);
+        shift.X = shift.Y = 0;
+    }
 
-        if (ReduceMotion)
-        {
-            ResetScale(DropIconScale, 1, 1);
-            ResetScale(DropCheckScale, 1, 1);
-            foreach (TextBlock text in new[] { DropTitle, DropSubtitle })
-            {
-                text.BeginAnimation(OpacityProperty, null);
-                text.Opacity = 1;
-            }
+    private static void ResetOpacity(UIElement element, double value)
+    {
+        element.BeginAnimation(OpacityProperty, null);
+        element.Opacity = value;
+    }
 
-            titleShift.BeginAnimation(TranslateTransform.XProperty, null);
-            subtitleShift.BeginAnimation(TranslateTransform.XProperty, null);
-            titleShift.X = subtitleShift.X = 0;
-            return;
-        }
-
-        // Анимации с задержкой держат конечное значение, поэтому перед запуском снимаем их и ставим стартовое, иначе элементы мигнут полным видом.
-        ResetScale(DropIconScale, 0.55, 0.55);
-        ResetScale(DropCheckScale, 0, 0);
+    // Все элементы карточки в обычном виде: анимации с задержкой держат конечное значение, поэтому перед запуском их надо снять,
+    // иначе элементы мигнут полным видом.
+    private void ResetDeviceCardVisuals()
+    {
+        ResetScale(DropDiscScale, 1, 1);
+        ResetScale(DropIconScale, 1, 1);
+        ResetScale(DropCheckScale, 1, 1);
+        ResetScale(DropGlowScale, 1, 1);
+        ResetOpacity(DropGlow, 0);
+        ResetOpacity(DropOrbit, 0);
+        DropOrbitRotate.BeginAnimation(RotateTransform.AngleProperty, null);
+        DropOrbitRotate.Angle = 0;
         foreach (TextBlock text in new[] { DropTitle, DropSubtitle })
         {
-            text.BeginAnimation(OpacityProperty, null);
-            text.Opacity = 0;
+            ResetOpacity(text, 1);
+            ResetShift(EnsureTextShift(text));
         }
+    }
 
-        titleShift.BeginAnimation(TranslateTransform.XProperty, null);
-        subtitleShift.BeginAnimation(TranslateTransform.XProperty, null);
-        titleShift.X = subtitleShift.X = 16;
-        DropPulse.BeginAnimation(OpacityProperty, null);
-        DropPulse.Opacity = 0;
+    private static DoubleAnimation Tween(double from, double to, int milliseconds, int begin = 0, IEasingFunction? easing = null) => new(from, to, TimeSpan.FromMilliseconds(milliseconds))
+    {
+        BeginTime = TimeSpan.FromMilliseconds(begin),
+        EasingFunction = easing ?? new CubicEase { EasingMode = EasingMode.EaseOut }
+    };
 
-        PopDropDisc();
+    private static DoubleAnimationUsingKeyFrames Keys(params (int Milliseconds, double Value)[] frames)
+    {
+        var animation = new DoubleAnimationUsingKeyFrames();
+        foreach (var (milliseconds, value) in frames)
+            animation.KeyFrames.Add(new EasingDoubleKeyFrame(value, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(milliseconds)), new SineEase { EasingMode = EasingMode.EaseInOut }));
+        return animation;
+    }
 
-        var spring = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 0.6 };
-        var grow = new DoubleAnimation(0.55, 1, TimeSpan.FromMilliseconds(520)) { BeginTime = TimeSpan.FromMilliseconds(80), EasingFunction = spring };
-        DropIconScale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
-        DropIconScale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+    private static void AnimateScale(ScaleTransform scale, AnimationTimeline animation)
+    {
+        scale.BeginAnimation(ScaleTransform.ScaleXProperty, animation);
+        scale.BeginAnimation(ScaleTransform.ScaleYProperty, animation);
+    }
 
-        var ripple = new DoubleAnimation(0.9, 1.9, TimeSpan.FromMilliseconds(900)) { BeginTime = TimeSpan.FromMilliseconds(220), EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } };
-        DropPulseScale.BeginAnimation(ScaleTransform.ScaleXProperty, ripple);
-        DropPulseScale.BeginAnimation(ScaleTransform.ScaleYProperty, ripple);
-        var rippleFade = new DoubleAnimationUsingKeyFrames { BeginTime = TimeSpan.FromMilliseconds(220) };
-        rippleFade.KeyFrames.Add(new LinearDoubleKeyFrame(0.7, KeyTime.FromTimeSpan(TimeSpan.Zero)));
-        rippleFade.KeyFrames.Add(new EasingDoubleKeyFrame(0, KeyTime.FromTimeSpan(TimeSpan.FromMilliseconds(900)), new CubicEase { EasingMode = EasingMode.EaseOut }));
-        DropPulse.BeginAnimation(OpacityProperty, rippleFade);
+    private static void PopCheck(ScaleTransform scale, int begin)
+    {
+        scale.ScaleX = scale.ScaleY = 0;
+        AnimateScale(scale, Tween(0, 1, 380, begin, new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 1 }));
+    }
 
-        var slide = new CubicEase { EasingMode = EasingMode.EaseOut };
-        AnimateTextIn(DropTitle, titleShift, 170, slide);
-        AnimateTextIn(DropSubtitle, subtitleShift, 250, slide);
+    private static Color Lighten(Color color, double amount) => Color.FromRgb(
+        (byte)(color.R + (255 - color.R) * amount), (byte)(color.G + (255 - color.G) * amount), (byte)(color.B + (255 - color.B) * amount));
 
-        if (!showCheck) return;
+    // Два варианта появления карточки (AppSettings.DeviceCardAnimation); у каждого свой набор движений, но текст и галочка нового устройства есть везде.
+    private void PlayDeviceCardIntro(bool showCheck, Color accent)
+    {
+        ResetDeviceCardVisuals();
+        if (ReduceMotion) return;
 
-        var pop = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(380))
+        var titleShift = EnsureTextShift(DropTitle);
+        var subtitleShift = EnsureTextShift(DropSubtitle);
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+        switch (Settings.DeviceCardAnimation)
         {
-            BeginTime = TimeSpan.FromMilliseconds(520),
-            EasingFunction = new BackEase { EasingMode = EasingMode.EaseOut, Amplitude = 1 }
-        };
-        DropCheckScale.BeginAnimation(ScaleTransform.ScaleXProperty, pop);
-        DropCheckScale.BeginAnimation(ScaleTransform.ScaleYProperty, pop);
+            case "Glow":
+                // Круглое пятно (64 px) целиком внутри карточки (78 px) и гаснет до прозрачного раньше края, поэтому квадрата и обрезки нет.
+                DropGlow.Fill = new RadialGradientBrush
+                {
+                    GradientStops =
+                    {
+                        new GradientStop(Color.FromArgb(0xE0, accent.R, accent.G, accent.B), 0),
+                        new GradientStop(Color.FromArgb(0x80, accent.R, accent.G, accent.B), 0.35),
+                        new GradientStop(Color.FromArgb(0x25, accent.R, accent.G, accent.B), 0.7),
+                        new GradientStop(Color.FromArgb(0, accent.R, accent.G, accent.B), 0.95)
+                    }
+                };
+                DropGlow.BeginAnimation(OpacityProperty, Keys((0, 0), (200, 1), (1100, 0)));
+                DropGlowScale.ScaleX = DropGlowScale.ScaleY = 0.45;
+                AnimateScale(DropGlowScale, Tween(0.45, 1, 1100));
+                DropIconScale.ScaleX = DropIconScale.ScaleY = 0.8;
+                AnimateScale(DropIconScale, Keys((0, 0.8), (260, 1.15), (560, 1)));
+                SlideTextIn(titleShift, subtitleShift, 240, 0, 0, ease);
+                if (showCheck) PopCheck(DropCheckScale, 520);
+                break;
+
+            default: // Orbit
+                PopDropDisc();
+                DropOrbit.Stroke = new SolidColorBrush(Lighten(accent, 0.4));
+                DropOrbit.BeginAnimation(OpacityProperty, Keys((0, 1), (800, 1), (1150, 0)));
+                DropOrbitRotate.BeginAnimation(RotateTransform.AngleProperty, Tween(0, 720, 1000, 0, new SineEase { EasingMode = EasingMode.EaseInOut }));
+                SlideTextIn(titleShift, subtitleShift, 900, 0, 10, ease);
+                if (showCheck) PopCheck(DropCheckScale, 1000);
+                break;
+        }
     }
 
     private static TranslateTransform EnsureTextShift(TextBlock text)
@@ -289,11 +327,28 @@ internal partial class IslandPlayerWindow
         return shift;
     }
 
-    private static void AnimateTextIn(TextBlock text, TranslateTransform shift, int beginMilliseconds, IEasingFunction easing)
+    // Заголовок и подзаголовок проявляются по очереди (с отставанием 80 мс), с выездом по X и/или Y.
+    private void SlideTextIn(TranslateTransform titleShift, TranslateTransform subtitleShift, int begin, double fromX, double fromY, IEasingFunction easing)
     {
-        var begin = TimeSpan.FromMilliseconds(beginMilliseconds);
-        text.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(360)) { BeginTime = begin });
-        shift.BeginAnimation(TranslateTransform.XProperty, new DoubleAnimation(16, 0, TimeSpan.FromMilliseconds(480)) { BeginTime = begin, EasingFunction = easing });
+        AnimateTextIn(DropTitle, titleShift, begin, fromX, fromY, easing);
+        AnimateTextIn(DropSubtitle, subtitleShift, begin + 80, fromX, fromY, easing);
+    }
+
+    private static void AnimateTextIn(TextBlock text, TranslateTransform shift, int beginMilliseconds, double fromX, double fromY, IEasingFunction easing)
+    {
+        text.Opacity = 0;
+        text.BeginAnimation(OpacityProperty, Tween(0, 1, 360, beginMilliseconds, new SineEase { EasingMode = EasingMode.EaseOut }));
+        if (fromX != 0)
+        {
+            shift.X = fromX;
+            shift.BeginAnimation(TranslateTransform.XProperty, Tween(fromX, 0, 480, beginMilliseconds, easing));
+        }
+
+        if (fromY != 0)
+        {
+            shift.Y = fromY;
+            shift.BeginAnimation(TranslateTransform.YProperty, Tween(fromY, 0, 480, beginMilliseconds, easing));
+        }
     }
 
 
@@ -467,6 +522,8 @@ internal partial class IslandPlayerWindow
         DropPulse.BeginAnimation(OpacityProperty, null);
         DropDiscScale.BeginAnimation(ScaleTransform.ScaleXProperty, null);
         DropDiscScale.BeginAnimation(ScaleTransform.ScaleYProperty, null);
+        ResetOpacity(DropGlow, 0);
+        ResetOpacity(DropOrbit, 0);
     }
 
     private void PopDropDisc()

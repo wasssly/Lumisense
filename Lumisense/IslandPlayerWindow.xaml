@@ -116,7 +116,11 @@
                                        VerticalAlignment="Center" Margin="0,0,13,0" IsHitTestVisible="False" />
                 <local:SvgPathIcon x:Name="DeviceIcon" Icon="IconAudioWave" Size="16" Foreground="White"
                                    HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,15,0"
-                                   Visibility="Collapsed" IsHitTestVisible="False" />
+                                   Visibility="Collapsed" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                    <local:SvgPathIcon.RenderTransform>
+                        <ScaleTransform x:Name="DeviceIconCounterScale" />
+                    </local:SvgPathIcon.RenderTransform>
+                </local:SvgPathIcon>
             </Grid>
 
             <Grid x:Name="ToastView" Width="340" Height="68" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed">
@@ -128,6 +132,11 @@
 
             <Grid x:Name="DropView" Width="320" Height="78" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed" IsHitTestVisible="False">
                 <Grid Width="46" Height="46" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="18,0,0,0">
+                    <Ellipse x:Name="DropGlow" Width="64" Height="64" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.RenderTransform>
+                            <ScaleTransform x:Name="DropGlowScale" />
+                        </Ellipse.RenderTransform>
+                    </Ellipse>
                     <Ellipse x:Name="DropPulse" Stroke="White" StrokeThickness="1.5" Opacity="0" RenderTransformOrigin="0.5,0.5">
                         <Ellipse.RenderTransform>
                             <ScaleTransform x:Name="DropPulseScale" />
@@ -136,6 +145,11 @@
                     <Ellipse x:Name="DropDisc" Margin="3" Fill="#26FFFFFF" RenderTransformOrigin="0.5,0.5">
                         <Ellipse.RenderTransform>
                             <ScaleTransform x:Name="DropDiscScale" />
+                        </Ellipse.RenderTransform>
+                    </Ellipse>
+                    <Ellipse x:Name="DropOrbit" StrokeThickness="2" StrokeDashArray="14 55" StrokeDashCap="Round" Opacity="0" RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.RenderTransform>
+                            <RotateTransform x:Name="DropOrbitRotate" />
                         </Ellipse.RenderTransform>
                     </Ellipse>
                     <local:SvgPathIcon x:Name="DropIcon" Icon="IconAddFile" Size="20" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"

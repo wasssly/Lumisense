@@ -386,6 +386,7 @@ public static class LumiProfileIO
         target.IslandShowEqualizer = source.IslandShowEqualizer;
         target.IslandCompactShowDevice = source.IslandCompactShowDevice;
         target.DeviceConnectStyle = source.DeviceConnectStyle;
+        target.DeviceCardAnimation = source.DeviceCardAnimation;
         target.IslandAccentRim = source.IslandAccentRim;
         target.IslandProgressRim = source.IslandProgressRim;
         target.IslandBlurTransitions = source.IslandBlurTransitions;

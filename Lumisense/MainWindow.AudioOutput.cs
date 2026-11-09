@@ -259,6 +259,9 @@ public partial class MainWindow
 
     private string _outputDeviceName = "";
     private AudioOutputKind _outputDeviceKind;
+    private AudioOutputKind _detectedOutputKind;
+    private int? _detectedFormFactor;
+    private string? _detectedJackSubType;
     private string? _outputDeviceId;
     private DateTime _lastDeviceArrivalUtc = DateTime.MinValue;
 
@@ -287,9 +290,61 @@ public partial class MainWindow
         _outputDeviceId = id;
         _outputDeviceName = name;
         SwitchDeviceSoundProfile(previousId, previousName, id, name);
-        _outputDeviceKind = AudioOutputKindClassifier.Classify(name, ReadEndpointFormFactor(endpoint), ReadEndpointJackSubType(endpoint));
+        _detectedFormFactor = ReadEndpointFormFactor(endpoint);
+        _detectedJackSubType = ReadEndpointJackSubType(endpoint);
+        _detectedOutputKind = AudioOutputKindClassifier.Classify(name, _detectedFormFactor, _detectedJackSubType);
+        _outputDeviceKind = ResolveOutputKind(id);
         var info = new AudioOutputDeviceInfo(name, _outputDeviceKind, switched, switched && arrived);
         OutputDeviceChanged?.Invoke(info);
+    }
+
+    private AudioOutputKind ResolveOutputKind(string endpointId) =>
+        _settings.DeviceKindOverrides.TryGetValue(endpointId, out string? tag) && Enum.TryParse(tag, out AudioOutputKind forced) && forced != AudioOutputKind.Unknown
+            ? forced
+            : _detectedOutputKind;
+
+    // Тип текущего устройства, выбранный вручную ("" — определять автоматически).
+    public string GetOutputKindOverride() =>
+        _outputDeviceId is not null && _settings.DeviceKindOverrides.TryGetValue(_outputDeviceId, out string? tag) ? tag : "";
+
+    public bool HasOutputDevice => _outputDeviceId is not null;
+
+    // Ручной выбор значка: пустое значение возвращает автоопределение. Остров перерисует значок без карточки.
+    public void SetOutputKindOverride(string tag)
+    {
+        if (_outputDeviceId is null) return;
+
+        if (string.IsNullOrEmpty(tag)) _settings.DeviceKindOverrides.Remove(_outputDeviceId);
+        else _settings.DeviceKindOverrides[_outputDeviceId] = tag;
+
+        _outputDeviceKind = ResolveOutputKind(_outputDeviceId);
+        OutputDeviceChanged?.Invoke(new AudioOutputDeviceInfo(_outputDeviceName, _outputDeviceKind, Announce: false, NewlyConnected: false));
+    }
+
+    // Что Windows сообщает о текущем устройстве: помогает понять, почему значок не тот.
+    public string GetOutputKindDetectionText()
+    {
+        if (_outputDeviceId is null) return LocalizationService.Translate("Устройство определится после запуска воспроизведения.");
+
+        string formFactor = _detectedFormFactor is { } value ? value switch
+        {
+            1 => "Speakers", 2 => "LineLevel", 3 => "Headphones", 4 => "Microphone", 5 => "Headset", 6 => "Handset",
+            7 => "UnknownDigitalPassthrough", 8 => "SPDIF", 9 => "DigitalAudioDisplayDevice", _ => value.ToString()
+        } : "—";
+        return string.Format(
+            LocalizationService.Translate("Windows сообщает: форм-фактор {0}, гнездо {1}. Определено как: {2}."),
+            formFactor,
+            string.IsNullOrWhiteSpace(_detectedJackSubType) ? "—" : _detectedJackSubType,
+            LocalizationService.Translate(_detectedOutputKind switch
+            {
+                AudioOutputKind.Headphones => "Наушники",
+                AudioOutputKind.Speakers => "Колонки",
+                AudioOutputKind.Bluetooth => "Bluetooth",
+                AudioOutputKind.Display => "Монитор / HDMI",
+                AudioOutputKind.Usb => "USB",
+                AudioOutputKind.Digital => "Цифровой выход",
+                _ => "не определено"
+            }));
     }
 
     // PKEY_AudioEndpoint_FormFactor и PKEY_AudioEndpoint_JackSubType: если драйвер их не отдаёт, тип определяется по имени.

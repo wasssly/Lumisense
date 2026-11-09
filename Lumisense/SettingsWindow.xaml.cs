@@ -346,6 +346,10 @@ public partial class SettingsWindow : FluentWindow
         DeviceConnectStyleCombo.SelectedItem = DeviceConnectStyleCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
             .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.DeviceConnectStyle, StringComparison.Ordinal))
             ?? DeviceConnectStyleCombo.Items[0];
+        DeviceCardAnimationCombo.SelectedItem = DeviceCardAnimationCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+            .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.DeviceCardAnimation, StringComparison.Ordinal))
+            ?? DeviceCardAnimationCombo.Items[0];
+        RefreshDeviceKindControls();
         UpdatePlaybackBalanceText();
         BadgeModeExtensionRadio.IsChecked = _settings.TrackStateBadgeMode == "Extension";
         BadgeModeQualityRadio.IsChecked = _settings.TrackStateBadgeMode == "Quality";
@@ -1514,6 +1518,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
         Add("Анимация подключения устройства", "Воспроизведение", "Playback", DeviceConnectStyleCombo, "подключение устройство наушники bluetooth анимация карточка connect device airpods");
+        Add("Анимация карточки устройства", "Воспроизведение", "Playback", DeviceCardAnimationCombo, "анимация карточка устройство волна орбита свечение раскрытие wave orbit glow animation");
+        Add("Значок устройства", "Воспроизведение", "Playback", DeviceKindCombo, "значок иконка устройство наушники колонки вручную icon headphones speakers override");
         Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output wasapi shared");
         Add("Защита от клиппинга (лимитер)", "Воспроизведение", "Playback", LimiterCheckBox, "лимитер клиппинг перегрузка искажения limiter clipping громкость пики");
         Add("Скорость меняет тон", "Воспроизведение", "Playback", PlaybackSpeedChangesPitchCheckBox, "скорость тон винил pitch rate speed ускорить замедлить");
@@ -2937,6 +2943,7 @@ public partial class SettingsWindow : FluentWindow
             runtime.MeaningfulDeviceEventCount,
             lastEvent);
 
+        RefreshDeviceKindControls();
         OutputDeviceSignalPathText.Text = runtime.SignalPath is null
             ? string.Empty
             : LocalizationService.Translate("Путь сигнала") + ": " + runtime.SignalPath.Text;
@@ -4162,6 +4169,44 @@ public partial class SettingsWindow : FluentWindow
     }
 
     private void DeviceConnectPreviewButton_Click(object sender, RoutedEventArgs e) => _owner.PreviewDeviceConnectOverlay();
+
+    // См. AppSettings.DeviceCardAnimation. Выбранный вариант сразу показывается в острове.
+    private void DeviceCardAnimationCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.DeviceCardAnimation = (DeviceCardAnimationCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "Orbit";
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        _owner.PreviewDeviceConnectOverlay();
+    }
+
+    // См. AppSettings.DeviceKindOverrides.
+    private void RefreshDeviceKindControls()
+    {
+        bool wasInitializing = _isInitializing;
+        _isInitializing = true;
+        try
+        {
+            string tag = _owner.GetOutputKindOverride();
+            DeviceKindCombo.SelectedItem = DeviceKindCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
+                .FirstOrDefault(item => string.Equals(item.Tag as string, tag, StringComparison.Ordinal)) ?? DeviceKindCombo.Items[0];
+            DeviceKindCombo.IsEnabled = _owner.HasOutputDevice;
+            DeviceKindDetectionText.Text = _owner.GetOutputKindDetectionText();
+        }
+        finally
+        {
+            _isInitializing = wasInitializing;
+        }
+    }
+
+    private void DeviceKindCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _owner.SetOutputKindOverride((DeviceKindCombo.SelectedItem as System.Windows.Controls.ComboBoxItem)?.Tag as string ?? "");
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        DeviceKindDetectionText.Text = _owner.GetOutputKindDetectionText();
+    }
 
     // См. AppSettings.PlaybackBalance.
     private void PlaybackBalanceSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)

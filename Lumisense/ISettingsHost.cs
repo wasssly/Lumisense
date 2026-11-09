@@ -61,6 +61,10 @@ internal interface ISettingsAudioHost
     void SetDeviceSoundProfilesEnabled(bool enabled);
     void ApplyChannelMode();
     void PreviewDeviceConnectOverlay();
+    bool HasOutputDevice { get; }
+    string GetOutputKindOverride();
+    void SetOutputKindOverride(string tag);
+    string GetOutputKindDetectionText();
     void ApplyOutputDeviceSelection();
     void ApplyPlaybackProcessPriority();
     AudioOutputRuntimeStatus GetOutputDeviceRuntimeStatus();

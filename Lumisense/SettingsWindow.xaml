@@ -2078,8 +2078,26 @@
                                     <ComboBoxItem Content="Карточка в острове" Tag="Island" />
                                     <ComboBoxItem Content="Не показывать карточку" Tag="Off" />
                                 </ComboBox>
+                                <TextBlock Text="Анимация карточки" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
+                                <ComboBox x:Name="DeviceCardAnimationCombo" SelectionChanged="DeviceCardAnimationCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="Орбита — дуга обегает значок, затем текст всплывает" Tag="Orbit" />
+                                    <ComboBoxItem Content="Свечение — вспышка цвета акцента за значком" Tag="Glow" />
+                                </ComboBox>
                                 <Button x:Name="DeviceConnectPreviewButton" Content="Показать пример" HorizontalAlignment="Left" Margin="0,0,0,12"
                                         Click="DeviceConnectPreviewButton_Click" />
+                                <TextBlock Text="Значок устройства" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
+                                <ComboBox x:Name="DeviceKindCombo" SelectionChanged="DeviceKindCombo_SelectionChanged"
+                                          HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,8">
+                                    <ComboBoxItem Content="Определять автоматически" Tag="" />
+                                    <ComboBoxItem Content="Наушники" Tag="Headphones" />
+                                    <ComboBoxItem Content="Колонки" Tag="Speakers" />
+                                    <ComboBoxItem Content="Bluetooth" Tag="Bluetooth" />
+                                    <ComboBoxItem Content="Монитор / HDMI" Tag="Display" />
+                                    <ComboBoxItem Content="USB" Tag="Usb" />
+                                    <ComboBoxItem Content="Цифровой выход" Tag="Digital" />
+                                </ComboBox>
+                                <TextBlock x:Name="DeviceKindDetectionText" Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" Margin="0,0,0,12" />
                                 <TextBlock Text="Системное устройство по умолчанию следует настройкам Windows. Если выбранные наушники или колонки отключены, Lumisense переключится на него автоматически."
                                            Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" />
 
@@ -3687,7 +3705,6 @@
                                     <ComboBoxItem Content="Без фона" Tag="None" />
                                     <ComboBoxItem Content="Свечение" Tag="Glow" />
                                     <ComboBoxItem Content="Матрица из точек" Tag="Matrix" />
-                                    <ComboBoxItem Content="Волна" Tag="Wave" />
                                 </ComboBox>
                                 <TextBlock Text="Полоса перемотки раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
                                 <ComboBox x:Name="IslandSeekStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"

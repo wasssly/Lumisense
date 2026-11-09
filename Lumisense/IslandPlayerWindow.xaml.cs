@@ -778,6 +778,30 @@ internal partial class IslandPlayerWindow : Window
         foreach (var view in _views)
             if (view != next && view.Visibility == Visibility.Visible) FadeOut(view);
         FadeIn(next);
+        TrackDeviceIconScale(next);
+    }
+
+    // Масштаб вида меняет размер значка на каждом кадре и он дрожит, поэтому значку задаётся обратный масштаб.
+    private bool _deviceIconTracking;
+
+    private void TrackDeviceIconScale(FrameworkElement next)
+    {
+        if (next != CompactView || DeviceIcon.Visibility != Visibility.Visible || _deviceIconTracking) return;
+
+        _deviceIconTracking = true;
+        CompositionTarget.Rendering += OnDeviceIconRendering;
+    }
+
+    private void OnDeviceIconRendering(object? sender, EventArgs e)
+    {
+        double total = FadeScaleOf(CompactView).ScaleX * FitScaleOf(CompactView).ScaleX;
+        bool settled = DeviceIcon.Visibility != Visibility.Visible || CompactView.Visibility != Visibility.Visible
+            || (!_morphing && Math.Abs(total - 1) < 0.002);
+        DeviceIconCounterScale.ScaleX = DeviceIconCounterScale.ScaleY = settled ? 1 : 1 / Math.Max(total, 0.05);
+        if (!settled) return;
+
+        CompositionTarget.Rendering -= OnDeviceIconRendering;
+        _deviceIconTracking = false;
     }
 
     private void FadeOut(FrameworkElement view)

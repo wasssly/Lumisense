@@ -212,6 +212,10 @@ public class AppSettings
     // Как показывать подключение и смену устройства вывода: "Island" (по умолчанию, анимированная карточка острова),
     // или "Off".
     public string DeviceConnectStyle { get; set; } = "Island";
+    // Анимация карточки устройства в острове: "Orbit" или "Glow".
+    public string DeviceCardAnimation { get; set; } = "Orbit";
+    // Тип устройства, заданный вручную (по id конечной точки): драйвер иногда называет наушники «Динамики».
+    public Dictionary<string, string> DeviceKindOverrides { get; set; } = new();
     public bool IslandAccentRim { get; set; } = true;
     // Полоса прогресса трека по контуру свёрнутого острова.
     public bool IslandProgressRim { get; set; } = true;

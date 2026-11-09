@@ -39,7 +39,8 @@ public sealed class LumiProfileSettingsCoverageTests
         nameof(AppSettings.CommunityDialogDismissed),                    // отметка «Не показывать» обращение на этой установке
         nameof(AppSettings.HklmContextMenuCleanupAttempted),     // служебная отметка этой машины
         nameof(AppSettings.TrackLoadTraceEnabled),                       // локальная диагностика
-        nameof(AppSettings.DeviceSoundProfiles)                          // привязаны к устройствам этого компьютера
+        nameof(AppSettings.DeviceSoundProfiles),                         // привязаны к устройствам этого компьютера
+        nameof(AppSettings.DeviceKindOverrides)                          // то же
     };
 
     // Пользовательские данные, которые импорт не заменяет, а добавляет к своим (LumiProfileIO.MergeEqualizerPresets);
@@ -119,6 +120,7 @@ public sealed class LumiProfileSettingsCoverageTests
         if (type == typeof(List<SavedPlaylistFolder>))
             return new List<SavedPlaylistFolder> { new() { DisplayName = "different", Tracks = { "different.mp3" } } };
         if (type == typeof(Dictionary<string, int>)) return new Dictionary<string, int> { ["different.mp3"] = 1 };
+        if (type == typeof(Dictionary<string, string>)) return new Dictionary<string, string> { ["different-endpoint"] = "Headphones" };
 
         throw new NotSupportedException($"Тест не умеет подбирать другое значение для {name} ({type.Name}): добавь случай в DifferentValue.");
     }
