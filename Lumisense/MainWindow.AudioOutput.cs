@@ -287,9 +287,41 @@ public partial class MainWindow
         _outputDeviceId = id;
         _outputDeviceName = name;
         SwitchDeviceSoundProfile(previousId, previousName, id, name);
-        _outputDeviceKind = AudioOutputKindClassifier.Classify(name);
+        _outputDeviceKind = AudioOutputKindClassifier.Classify(name, ReadEndpointFormFactor(endpoint), ReadEndpointJackSubType(endpoint));
         var info = new AudioOutputDeviceInfo(name, _outputDeviceKind, switched, switched && arrived);
         OutputDeviceChanged?.Invoke(info);
+    }
+
+    // PKEY_AudioEndpoint_FormFactor и PKEY_AudioEndpoint_JackSubType: если драйвер их не отдаёт, тип определяется по имени.
+    private static readonly PropertyKey EndpointFormFactorKey = new(new Guid("1da5d803-d492-4edd-8c23-e0c0ffee7f0e"), 0);
+    private static readonly PropertyKey EndpointJackSubTypeKey = new(new Guid("1da5d803-d492-4edd-8c23-e0c0ffee7f0e"), 8);
+
+    private static int? ReadEndpointFormFactor(MMDevice endpoint)
+    {
+        try
+        {
+            var properties = endpoint.Properties;
+            return properties.Contains(EndpointFormFactorKey) && properties[EndpointFormFactorKey].Value is uint value ? (int)value : null;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось прочитать форм-фактор устройства вывода: {ex.Message}");
+            return null;
+        }
+    }
+
+    private static string? ReadEndpointJackSubType(MMDevice endpoint)
+    {
+        try
+        {
+            var properties = endpoint.Properties;
+            return properties.Contains(EndpointJackSubTypeKey) ? properties[EndpointJackSubTypeKey].Value as string : null;
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось прочитать тип гнезда устройства вывода: {ex.Message}");
+            return null;
+        }
     }
 
     // Показывает карточку в острове на текущем устройстве (или на примере, если имя ещё не известно).

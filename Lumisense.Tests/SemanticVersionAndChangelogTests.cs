@@ -301,6 +301,19 @@ public sealed class ChangelogMatchesProjectVersionTests
 public sealed class AudioOutputKindClassifierTests
 {
     [Theory]
+    [InlineData("Динамики (Realtek(R) Audio)", null, "{DFF21CE2-F70F-11D0-B917-00A0C9223196}", AudioOutputKind.Headphones)]
+    [InlineData("Динамики (Realtek(R) Audio)", 3, null, AudioOutputKind.Headphones)]
+    [InlineData("Динамики (Realtek(R) Audio)", 5, null, AudioOutputKind.Headphones)]
+    [InlineData("Динамики (Realtek(R) Audio)", 1, "{DFF21CE1-F70F-11D0-B917-00A0C9223196}", AudioOutputKind.Speakers)]
+    [InlineData("Realtek Digital Output", 9, null, AudioOutputKind.Display)]
+    [InlineData("Out", 8, null, AudioOutputKind.Digital)]
+    [InlineData("WH-1000XM5 Hands-Free", 3, null, AudioOutputKind.Bluetooth)]
+    [InlineData("Something", null, null, AudioOutputKind.Unknown)]
+    [InlineData("Headphones (Realtek)", 1, null, AudioOutputKind.Headphones)]
+    public void EndpointProperties_TakePrecedenceOverTheName(string name, int? formFactor, string? jack, AudioOutputKind expected) =>
+        Assert.Equal(expected, AudioOutputKindClassifier.Classify(name, formFactor, jack));
+
+    [Theory]
     [InlineData("Headphones (Realtek High Definition Audio)", AudioOutputKind.Headphones)]
     [InlineData("Наушники (Realtek Audio)", AudioOutputKind.Headphones)]
     [InlineData("Speakers (Realtek High Definition Audio)", AudioOutputKind.Speakers)]

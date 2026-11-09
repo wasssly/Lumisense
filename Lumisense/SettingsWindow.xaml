@@ -325,11 +325,13 @@
              и спокойная палитра, но с заполнением от нижней (минимальной) точки к Thumb. -->
         <Style x:Key="SettingsEqualizerSliderStyle" TargetType="Slider">
             <Setter Property="Width" Value="28" />
+            <Setter Property="IsMoveToPointEnabled" Value="True" />
             <Setter Property="local:SliderSmoothing.IsEnabled" Value="True" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Slider">
-                        <Grid Margin="5,0" SnapsToDevicePixels="True" UseLayoutRounding="True">
+                        <!-- Прозрачный фон делает всю колонку областью нажатия и колеса мыши, а не только кружок. -->
+                        <Grid Margin="5,0" Background="Transparent" SnapsToDevicePixels="True" UseLayoutRounding="True">
                             <Border x:Name="LegacyRail" Width="5" CornerRadius="2.5"
                                     Background="{DynamicResource ControlFillColorTertiaryBrush}"
                                     HorizontalAlignment="Center" VerticalAlignment="Stretch"
@@ -345,10 +347,12 @@
                                             <ControlTemplate TargetType="RepeatButton">
                                                 <!-- Внешнее (нижнее) начало заполнения округлено;
                                                      граница у Thumb прямая и визуально чистая. -->
-                                                <Border Width="5" CornerRadius="0,0,2.5,2.5"
-                                                        Background="{DynamicResource AccentFillColorDefaultBrush}"
-                                                        HorizontalAlignment="Center" VerticalAlignment="Stretch"
-                                                        SnapsToDevicePixels="True" UseLayoutRounding="True" />
+                                                <Grid Background="Transparent">
+                                                    <Border Width="5" CornerRadius="0,0,2.5,2.5"
+                                                            Background="{DynamicResource AccentFillColorDefaultBrush}"
+                                                            HorizontalAlignment="Center" VerticalAlignment="Stretch"
+                                                            SnapsToDevicePixels="True" UseLayoutRounding="True" />
+                                                </Grid>
                                             </ControlTemplate>
                                         </RepeatButton.Template>
                                     </RepeatButton>
