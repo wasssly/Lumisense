@@ -60,12 +60,12 @@ public sealed class LegacyIntegrationRepairServiceTests
     }
 
     [Fact]
-    public void TryClaimLegacyHklmWildcardCleanup_SucceedsOnceAndMarksSettings()
+    public void TryClaimLegacyHklmContextMenuCleanup_SucceedsOnceAndMarksSettings()
     {
         var settings = new AppSettings();
 
-        Assert.True(LegacyIntegrationRepairService.TryClaimLegacyHklmWildcardCleanup(settings));
-        Assert.True(settings.HklmWildcardContextMenuCleanupAttempted);
-        Assert.False(LegacyIntegrationRepairService.TryClaimLegacyHklmWildcardCleanup(settings));
+        Assert.True(LegacyIntegrationRepairService.TryClaimLegacyHklmContextMenuCleanup(settings));
+        Assert.True(settings.HklmContextMenuCleanupAttempted);
+        Assert.False(LegacyIntegrationRepairService.TryClaimLegacyHklmContextMenuCleanup(settings));
     }
 }

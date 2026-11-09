@@ -27,14 +27,14 @@ internal sealed class MainWindowIntegrationController
             HotKeys.NextPressed += virtualKey => window.Dispatcher.BeginInvoke(() => host.HandleHotkeyNext(virtualKey));
             HotKeys.PreviousPressed += virtualKey => window.Dispatcher.BeginInvoke(() => host.HandleHotkeyPrevious(virtualKey));
             HotKeys.StopPressed += () => window.Dispatcher.BeginInvoke(() => host.StopButton_Click(window, new RoutedEventArgs()));
-            HotKeys.VolumeUpPressed += () => window.Dispatcher.BeginInvoke(() => host.ChangeVolumeBy(0.02));
-            HotKeys.VolumeDownPressed += () => window.Dispatcher.BeginInvoke(() => host.ChangeVolumeBy(-0.02));
+            HotKeys.VolumeUpPressed += () => window.Dispatcher.BeginInvoke(() => host.ChangeVolumeBy(PlaybackSteps.Volume));
+            HotKeys.VolumeDownPressed += () => window.Dispatcher.BeginInvoke(() => host.ChangeVolumeBy(-PlaybackSteps.Volume));
             HotKeys.MutePressed += () => window.Dispatcher.BeginInvoke(host.ToggleMute);
             HotKeys.ShufflePressed += () => window.Dispatcher.BeginInvoke(() => host.ShuffleButton_Click(window, new RoutedEventArgs()));
             HotKeys.RepeatPressed += () => window.Dispatcher.BeginInvoke(() => host.RepeatButton_Click(window, new RoutedEventArgs()));
             HotKeys.DeleteTrackPressed += () => window.Dispatcher.BeginInvoke(host.DeleteCurrentTrackFromDiskHotkey);
-            HotKeys.SeekForwardPressed += () => window.Dispatcher.BeginInvoke(() => host.SeekBy(5));
-            HotKeys.SeekBackwardPressed += () => window.Dispatcher.BeginInvoke(() => host.SeekBy(-5));
+            HotKeys.SeekForwardPressed += () => window.Dispatcher.BeginInvoke(() => host.SeekBy(PlaybackSteps.SeekSeconds));
+            HotKeys.SeekBackwardPressed += () => window.Dispatcher.BeginInvoke(() => host.SeekBy(-PlaybackSteps.SeekSeconds));
             HotKeys.ToggleFavoritePressed += () => window.Dispatcher.BeginInvoke(window.ExternalToggleFavoriteCurrentTrack);
             HotKeys.ToggleLyricsPressed += () => window.Dispatcher.BeginInvoke(() => host.LyricsPanelButton_Click(window, new RoutedEventArgs()));
             HotKeys.ToggleMiniPlayerPressed += () => window.Dispatcher.BeginInvoke(host.ToggleMiniPlayerHotkey);
@@ -92,7 +92,6 @@ internal sealed class MainWindowIntegrationController
             window.PlaybackStateChanged += isPlaying => Tray?.SetPlayingState(isPlaying);
             window.TrackInfoChanged += (title, artist, _) => Tray?.SetNowPlaying(title, artist, window.CurrentAlbumArtBytes);
             Tray.SetPlayingState(host.IsPlaying);
-            Tray.ApplyTheme(isLight: window.Settings.IsLightThemeResolved());
         }
         catch (Exception ex)
         {

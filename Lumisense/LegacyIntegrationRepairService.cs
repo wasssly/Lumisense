@@ -7,23 +7,22 @@ using Velopack.Windows;
 
 namespace Lumisense;
 
-/// <summary>Repairs autostart and the "Open in Lumisense" context menu before the legacy Inno Setup uninstaller
+/// <summary>Repairs autostart and the "Open with" registration before the legacy Inno Setup uninstaller
 /// removes the old EXE install and its registry entries; leaves the default file association alone.</summary>
 internal static class LegacyIntegrationRepairService
 {
-    // Same key name the legacy Inno Setup installer used, to avoid a duplicate menu entry.
+    // Имя ключа пункта «Открыть в Lumisense», который регистрировали прежние версии; сейчас он только удаляется.
     private const string ContextMenuKeyName = "LumisenseOpen";
     private const string FileTypeProgId = "Lumisense.AudioFile";
     private const string RunKeyPath = @"Software\Microsoft\Windows\CurrentVersion\Run";
     private const string RunValueName = "Lumisense";
-    private static readonly string[] SupportedAudioExtensions = [".mp3", ".wav", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aiff", ".aif", ".wma"];
+    private static readonly string[] SupportedAudioExtensions = AudioFormats.Extensions;
 
     /// <summary>Выполняется только после подтверждённого удаления legacy-копии; порядок важен: старый uninstaller
     /// может удалить ярлыки и registry values, поэтому восстановление до его завершения недостаточно.</summary>
     public static void RepairAfterLegacyCleanup(string legacyInstallDir)
     {
         RepairAutostartIfPointingToLegacyInstall(legacyInstallDir);
-        RegisterOpenInLumisenseContextMenu();
         RegisterLumisenseAsOpenWithHandler();
         RestoreVelopackShortcuts();
     }
@@ -54,77 +53,36 @@ internal static class LegacyIntegrationRepairService
         }
     }
 
-    /// <summary>Per-user "Open in Lumisense" context menu limited to <see cref="SupportedAudioExtensions"/>; safe to call repeatedly.</summary>
-    public static void RegisterOpenInLumisenseContextMenu()
-    {
-        try
-        {
-            string? currentExePath = Environment.ProcessPath;
-            if (string.IsNullOrEmpty(currentExePath)) return;
-
-            string label = LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupContextMenuLabel);
-
-            foreach (string extension in SupportedAudioExtensions)
-            {
-                using RegistryKey? menuKey = Registry.CurrentUser.CreateSubKey(
-                    $@"Software\Classes\{extension}\shell\{ContextMenuKeyName}", writable: true);
-                menuKey?.SetValue("", label);
-
-                using RegistryKey? commandKey = Registry.CurrentUser.CreateSubKey(
-                    $@"Software\Classes\{extension}\shell\{ContextMenuKeyName}\command", writable: true);
-                commandKey?.SetValue("", $"\"{currentExePath}\" \"%1\"");
-            }
-
-            Logger.Info("Восстановлена команда контекстного меню «Открыть в Lumisense» для MSI-копии (только аудиофайлы).");
-        }
-        catch (Exception ex)
-        {
-            Logger.Warn($"Не удалось зарегистрировать контекстное меню «Открыть в Lumisense»: {ex.Message}");
-        }
-    }
-
-    /// <summary>Self-heal for a past bug that registered the command under Classes\*\shell (every file type);
-    /// safe on every startup, a no-op once fixed.</summary>
-    public static void RepairContextMenuScopeIfBroken()
-    {
-        try
-        {
-            using RegistryKey? wildcardShellKey = Registry.CurrentUser.OpenSubKey(@"Software\Classes\*\shell", writable: true);
-            if (wildcardShellKey?.GetSubKeyNames().Contains(ContextMenuKeyName) != true) return;
-
-            wildcardShellKey.DeleteSubKeyTree(ContextMenuKeyName);
-            Logger.Info("Удалена ошибочная запись «Открыть в Lumisense» для всех типов файлов (Software\\Classes\\*\\shell).");
-
-            RegisterOpenInLumisenseContextMenu();
-        }
-        catch (Exception ex)
-        {
-            Logger.Warn($"Не удалось исправить область действия контекстного меню «Открыть в Lumisense»: {ex.Message}");
-        }
-    }
-
     /// <summary>True only the first time on this machine; the caller must save the settings before running the cleanup.</summary>
-    public static bool TryClaimLegacyHklmWildcardCleanup(AppSettings settings)
+    public static bool TryClaimLegacyHklmContextMenuCleanup(AppSettings settings)
     {
-        if (settings.HklmWildcardContextMenuCleanupAttempted) return false;
+        if (settings.HklmContextMenuCleanupAttempted) return false;
 
         // Флаг ставится в объекте главного окна: отдельная копия настроек затиралась бы его checkpoint-сохранением.
-        settings.HklmWildcardContextMenuCleanupAttempted = true;
+        settings.HklmContextMenuCleanupAttempted = true;
         return true;
     }
 
-    /// <summary>A wildcard leftover under HKLM (pre-dating the installer's fix) needs elevation, so this asks via UAC.</summary>
-    public static void CleanupLegacyHklmWildcardContextMenu()
+    /// <summary>Пункт «Открыть в Lumisense» от прежних установщиков лежит в HKLM (как у wildcard-ключа, так и у
+    /// SystemFileAssociations\{расширение}); удалить его без повышения прав нельзя, поэтому запрашиваем UAC один раз.</summary>
+    public static void CleanupLegacyHklmContextMenu()
     {
         try
         {
-            using RegistryKey? wildcardShellKey = Registry.LocalMachine.OpenSubKey(@"Software\Classes\*\shell");
-            if (wildcardShellKey?.GetSubKeyNames().Contains(ContextMenuKeyName) != true) return;
-
-            Logger.Warn("Найден унаследованный HKLM-ключ Software\\Classes\\*\\shell\\LumisenseOpen — запрашивается повышение прав для удаления.");
-            Process.Start(new ProcessStartInfo("reg.exe")
+            var existing = new List<string>();
+            foreach (string path in LegacyHklmContextMenuKeyPaths())
             {
-                Arguments = $@"delete ""HKLM\Software\Classes\*\shell\{ContextMenuKeyName}"" /f",
+                using RegistryKey? key = Registry.LocalMachine.OpenSubKey(path);
+                if (key is not null) existing.Add(path);
+            }
+
+            if (existing.Count == 0) return;
+
+            Logger.Warn($"Найдены унаследованные HKLM-ключи пункта «Открыть в Lumisense» ({existing.Count}) — запрашивается повышение прав для удаления.");
+            string commands = string.Join(" & ", existing.Select(path => $@"reg delete ""HKLM\{path}"" /f"));
+            Process.Start(new ProcessStartInfo("cmd.exe")
+            {
+                Arguments = $"/c {commands}",
                 UseShellExecute = true,
                 Verb = "runas",
                 WindowStyle = ProcessWindowStyle.Hidden,
@@ -133,7 +91,17 @@ internal static class LegacyIntegrationRepairService
         catch (Exception ex)
         {
             // Пользователь мог отклонить UAC — settings уже помечены, повторов не будет.
-            Logger.Warn($"Не удалось удалить унаследованный HKLM-ключ контекстного меню: {ex.Message}");
+            Logger.Warn($"Не удалось удалить унаследованные HKLM-ключи контекстного меню: {ex.Message}");
+        }
+    }
+
+    private static IEnumerable<string> LegacyHklmContextMenuKeyPaths()
+    {
+        yield return $@"Software\Classes\*\shell\{ContextMenuKeyName}";
+        foreach (string extension in SupportedAudioExtensions)
+        {
+            yield return $@"Software\Classes\SystemFileAssociations\{extension}\shell\{ContextMenuKeyName}";
+            yield return $@"Software\Classes\{extension}\shell\{ContextMenuKeyName}";
         }
     }
 
