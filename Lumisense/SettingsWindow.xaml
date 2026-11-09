@@ -2231,6 +2231,16 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.LimiterEnabled / LimiterSampleProvider. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="LimiterCheckBox" Content="Защита от клиппинга (лимитер)"
+                                          Checked="LimiterCheckBox_Changed" Unchecked="LimiterCheckBox_Changed" />
+                                <TextBlock Text="Прозрачно ослабляет только те пики, что выходят за 0 dBFS, например при подъёмах эквалайзера или громком ReplayGain. На обычный звук не влияет. Добавляет задержку около 2 мс."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.PlaybackSpeedChangesPitch. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>

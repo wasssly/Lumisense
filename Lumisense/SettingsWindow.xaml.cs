@@ -331,6 +331,7 @@ public partial class SettingsWindow : FluentWindow
         SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
         ReplayGainAlbumCheckBox.IsChecked = _settings.ReplayGainAlbumMode;
+        LimiterCheckBox.IsChecked = _settings.LimiterEnabled;
         PlaybackSpeedChangesPitchCheckBox.IsChecked = _settings.PlaybackSpeedChangesPitch;
         ReplayGainPreampSlider.Value = Math.Clamp(_settings.ReplayGainPreampDb, -12, 12);
         UpdateReplayGainPreampText();
@@ -1483,6 +1484,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
         Add("Анимация подключения устройства", "Воспроизведение", "Playback", DeviceConnectStyleCombo, "подключение устройство наушники bluetooth анимация карточка connect device airpods");
         Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output wasapi shared");
+        Add("Защита от клиппинга (лимитер)", "Воспроизведение", "Playback", LimiterCheckBox, "лимитер клиппинг перегрузка искажения limiter clipping громкость пики");
         Add("Скорость меняет тон", "Воспроизведение", "Playback", PlaybackSpeedChangesPitchCheckBox, "скорость тон винил pitch rate speed ускорить замедлить");
         Add("ReplayGain: альбомный режим", "Воспроизведение", "Playback", ReplayGainAlbumCheckBox, "replaygain альбом album режим громкость");
         Add("ReplayGain: предусилитель", "Воспроизведение", "Playback", ReplayGainPreampSlider, "replaygain предусилитель preamp громкость усиление дб");
@@ -4004,6 +4006,15 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.ReplayGainEnabled = ReplayGainCheckBox.IsChecked == true;
         _owner.RefreshReplayGain();
+    }
+
+    private void LimiterCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.LimiterEnabled = LimiterCheckBox.IsChecked == true;
+        _owner.ApplyLimiter();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void PlaybackSpeedChangesPitchCheckBox_Changed(object sender, RoutedEventArgs e)

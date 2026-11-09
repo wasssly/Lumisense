@@ -332,6 +332,9 @@ public class AppSettings
     // Скорость «как на виниле»: ползунок скорости меняет и тон (SoundTouch Rate) вместо растяжения без смены тона (Tempo).
     public bool PlaybackSpeedChangesPitch { get; set; }
 
+    // Лимитер в конце цепочки: пики выше -0,1 dBFS ослабляются вместо клиппинга (см. LimiterSampleProvider).
+    public bool LimiterEnabled { get; set; } = true;
+
     public bool MinimizeToTrayOnClose { get; set; } = true; // Сворачивать в трей вместо закрытия
 
     // Не показывать окно сразу после запуска, только значок в трее; автозапуск с Windows хранится отдельно (StartupManager)

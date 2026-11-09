@@ -54,6 +54,12 @@ public partial class MainWindow
         _tempoProvider.Rate = vinyl ? _runtimePlaybackRate : 1.0;
     }
 
+    public void ApplyLimiter()
+    {
+        if (_limiter != null)
+            _limiter.Enabled = _settings.LimiterEnabled;
+    }
+
     public void RefreshPlaybackRateMode() => ApplyPlaybackRateToCurrentStream();
 
     private void ReapplySavedPlaybackRateAfterTrackReady(int generation)

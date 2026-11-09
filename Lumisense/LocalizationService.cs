@@ -800,6 +800,8 @@ public static class LocalizationService
         ["Наушники (пример)"] = "Headphones (example)",
         ["Показать пример"] = "Show example",
         ["Центр"] = "Center",
+        ["Защита от клиппинга (лимитер)"] = "Clipping protection (limiter)",
+        ["Прозрачно ослабляет только те пики, что выходят за 0 dBFS, например при подъёмах эквалайзера или громком ReplayGain. На обычный звук не влияет. Добавляет задержку около 2 мс."] = "Transparently attenuates only the peaks that go beyond 0 dBFS, for example with equalizer boosts or loud ReplayGain. Normal sound is not affected. Adds about 2 ms of latency.",
         ["Скорость меняет тон (как на виниле)"] = "Speed changes pitch (like vinyl)",
         ["Скорость меняет тон"] = "Speed changes pitch",
         ["Ползунок скорости ускоряет или замедляет звук вместе с тоном, без растяжения и артефактов. По умолчанию тон сохраняется."] = "The speed slider speeds up or slows down the sound together with its pitch, without stretching or artifacts. By default the pitch is preserved.",
