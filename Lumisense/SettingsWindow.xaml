@@ -2916,6 +2916,13 @@
                                 <TextBlock Text="Пропускает сигнал мимо фильтров, не меняя настройки полос. Удобно для быстрого сравнения звука с EQ и без."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
 
+                                <CheckBox x:Name="EqualizerAutoHeadroomCheckBox"
+                                          Content="Авто-преамп (защита от перегрузки)"
+                                          Checked="EqualizerAutoHeadroomCheckBox_Changed"
+                                          Unchecked="EqualizerAutoHeadroomCheckBox_Changed" />
+                                <TextBlock Text="Снижает общую громкость на величину максимального подъёма эквалайзера, чтобы бас и другие подъёмы не приводили к искажениям."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
+
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />

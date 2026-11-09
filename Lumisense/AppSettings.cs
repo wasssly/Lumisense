@@ -617,6 +617,9 @@ public class AppSettings
     // полос или пресеты. После выключения Bypass сохранённая коррекция возвращается сразу.
     public bool EqualizerBypass { get; set; }
 
+    // Авто-преамп: общий звук ослабляется на величину максимального подъёма АЧХ эквалайзера, чтобы подъём не давал клиппинг.
+    public bool EqualizerAutoHeadroom { get; set; } = true;
+
     public double[] EqualizerBandGainsDb { get; set; } = new double[10];
 
     // Шаблон безопасной нормализации имён аудиофайлов, см. FileNameNormalizer. Операция

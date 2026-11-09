@@ -361,6 +361,7 @@ public partial class SettingsWindow : FluentWindow
 
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
         EqualizerBypassCheckBox.IsChecked = _owner.IsEqualizerBypass;
+        EqualizerAutoHeadroomCheckBox.IsChecked = _owner.IsEqualizerAutoHeadroom;
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
         {
             double gain = _owner.GetEqualizerBandGain(band);
@@ -1445,6 +1446,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Приватность Discord: таймлайн", "Интеграции", "Integrations", DiscordRichPresenceShowTimelineCheckBox, "discord приватность время прогресс таймлайн" );
         Add("Приватность Discord: обложка трека", "Интеграции", "Integrations", DiscordRichPresenceShowCoverArtCheckBox, "discord обложка cover art musicbrainz itunes deezer" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
+        Add("Авто-преамп эквалайзера", "Эквалайзер", "Equalizer", EqualizerAutoHeadroomCheckBox, "преамп headroom клиппинг перегрузка громкость эквалайзер eq подъём");
         Add("EQ Bypass", "Эквалайзер", "Equalizer", EqualizerBypassCheckBox, "bypass обход эквалайзер eq временно сравнение фильтры");
         Add("Монитор острова", "Остров", "Island", IslandMonitorCombo, "остров монитор экран дисплей island monitor display");
         Add("Настройки острова", "Остров", "Island", IslandCustomCard, "остров круг капсула вид свёрнутого только обложка размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
@@ -3645,6 +3647,13 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _owner.SetEqualizerEnabled(EqualizerEnabledCheckBox.IsChecked == true);
+    }
+
+    private void EqualizerAutoHeadroomCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _owner.SetEqualizerAutoHeadroom(EqualizerAutoHeadroomCheckBox.IsChecked == true);
     }
 
     private void EqualizerBypassCheckBox_Changed(object sender, RoutedEventArgs e)

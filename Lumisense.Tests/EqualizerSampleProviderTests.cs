@@ -129,6 +129,59 @@ public sealed class EqualizerSampleProviderTests
         Assert.Equal(4.5, provider.GetBandGain(9), 6);
     }
 
+    [Fact]
+    public void GainChangeWhileEnabled_DoesNotDipTheSignalOfOtherFrequencies()
+    {
+        float[] tone = CreateTone(1000, 0.2f, 48000, 48000);
+        var provider = new EqualizerSampleProvider(new TestSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(48000, 1), tone)) { Enabled = true };
+        provider.Read(new float[4800]);
+
+        double minPeak = double.MaxValue;
+        for (int step = 0; step < 20; step++)
+        {
+            provider.SetBandGain(8, step % 2 == 0 ? 9 : -9);
+            var chunk = new float[480];
+            provider.Read(chunk);
+            double peak = chunk.Max(sample => Math.Abs(sample));
+            minPeak = Math.Min(minPeak, peak);
+        }
+
+        Assert.True(minPeak > 0.17, $"Сигнал просел до {minPeak:F3}");
+    }
+
+    [Fact]
+    public void PeakBoostDb_ReflectsPositiveResponseOnly()
+    {
+        var provider = new EqualizerSampleProvider(new TestSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(48000, 1), new float[16]));
+        Assert.Equal(0, provider.PeakBoostDb);
+
+        provider.SetBandGain(3, -8);
+        Assert.Equal(0, provider.PeakBoostDb, 6);
+
+        provider.SetBandGain(5, 12);
+        Assert.InRange(provider.PeakBoostDb, 11.0, 12.5);
+    }
+
+    [Fact]
+    public void AutoHeadroom_KeepsBoostedToneNearOriginalLevel()
+    {
+        float[] tone = CreateTone(1000, 0.2f, 48000, 48000);
+        var provider = new EqualizerSampleProvider(new TestSampleProvider(WaveFormat.CreateIeeeFloatWaveFormat(48000, 1), tone))
+        {
+            Enabled = true,
+            AutoHeadroom = true
+        };
+        provider.SetBandGain(5, 12);
+
+        provider.Read(new float[9600]);
+        var output = new float[4800];
+        provider.Read(output);
+
+        double rms = Math.Sqrt(output.Sum(sample => (double)sample * sample) / output.Length);
+        double ratio = rms / (0.2 / Math.Sqrt(2));
+        Assert.InRange(ratio, 0.9, 1.1);
+    }
+
     private static float[] CreateTone(double frequency, float amplitude, int sampleRate, int count)
     {
         var samples = new float[count];

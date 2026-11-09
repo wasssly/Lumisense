@@ -39,6 +39,7 @@ public partial class MainWindow
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
             _equalizer.SetBandGain(band, band < saved.Length ? saved[band] : 0);
 
+        _equalizer.AutoHeadroom = _settings.EqualizerAutoHeadroom;
         _equalizer.Enabled = _settings.EqualizerEnabled && !_settings.EqualizerBypass;
     }
 
@@ -120,6 +121,15 @@ public partial class MainWindow
     }
 
     public bool IsEqualizerBypass => _settings.EqualizerBypass;
+
+    public bool IsEqualizerAutoHeadroom => _settings.EqualizerAutoHeadroom;
+
+    public void SetEqualizerAutoHeadroom(bool enabled)
+    {
+        _settings.EqualizerAutoHeadroom = enabled;
+        if (_equalizer != null)
+            _equalizer.AutoHeadroom = enabled;
+    }
 
     public void SetEqualizerEnabled(bool enabled)
     {
