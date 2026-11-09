@@ -41,7 +41,9 @@ internal sealed record TrackPreparationOptions(
     double[] EqualizerGains,
     double PlaybackSpeed,
     double PlaybackPitch,
-    bool TraceEnabled);
+    bool TraceEnabled,
+    bool ReplayGainPreferAlbum = false,
+    double ReplayGainPreampDb = 0);
 
 internal sealed class TrackPreparationService
 {
@@ -88,7 +90,7 @@ internal sealed class TrackPreparationService
             if (options.ReplayGainEnabled)
             {
                 var replayGainTimer = Stopwatch.StartNew();
-                replayGain = ReplayGainReader.GetTrackGainLinear(tagFile);
+                replayGain = ReplayGainReader.GetGainLinear(tagFile, options.ReplayGainPreferAlbum, options.ReplayGainPreampDb);
                 replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
             }
             title = tagFile.Title;

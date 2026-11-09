@@ -18,6 +18,35 @@ public sealed class ReplayGainReaderTests
         ReplayGainReader.GetTrackGainLinear(TrackWith(fields));
 
     [Fact]
+    public void AlbumMode_UsesAlbumGainAndFallsBackToTrackGain()
+    {
+        var both = TrackWith(("replaygain_track_gain", "-6 dB"), ("replaygain_album_gain", "-3 dB"));
+        Assert.Equal(System.Math.Pow(10, -3 / 20.0), ReplayGainReader.GetGainLinear(both, true, 0), 6);
+        Assert.Equal(System.Math.Pow(10, -6 / 20.0), ReplayGainReader.GetGainLinear(both, false, 0), 6);
+
+        var trackOnly = TrackWith(("replaygain_track_gain", "-6 dB"));
+        Assert.Equal(System.Math.Pow(10, -6 / 20.0), ReplayGainReader.GetGainLinear(trackOnly, true, 0), 6);
+    }
+
+    [Fact]
+    public void Preamp_IsAddedToFoundTagOnly_AndPeakStillLimits()
+    {
+        var tagged = TrackWith(("replaygain_track_gain", "-6 dB"));
+        Assert.Equal(System.Math.Pow(10, -3 / 20.0), ReplayGainReader.GetGainLinear(tagged, false, 3), 6);
+        Assert.Equal(1.0, ReplayGainReader.GetGainLinear(TrackWith(), false, 6));
+
+        var limited = TrackWith(("replaygain_track_gain", "0 dB"), ("replaygain_track_peak", "0.9"));
+        Assert.Equal(1.0 / 0.9, ReplayGainReader.GetGainLinear(limited, false, 6), 6);
+    }
+
+    [Fact]
+    public void OpusR128Gain_IsConvertedFromQ78()
+    {
+        var opus = TrackWith(("R128_TRACK_GAIN", "-512"));
+        Assert.Equal(System.Math.Pow(10, (-2.0 + 5.0) / 20.0), ReplayGainReader.GetGainLinear(opus, false, 0), 6);
+    }
+
+    [Fact]
     public void TrackWithoutReplayGainTags_UsesUnityGain()
     {
         Assert.Equal(1.0, Gain());

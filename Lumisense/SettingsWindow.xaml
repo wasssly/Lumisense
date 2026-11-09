@@ -2173,6 +2173,28 @@
                                           Checked="ReplayGainCheckBox_Changed" Unchecked="ReplayGainCheckBox_Changed" />
                                 <TextBlock Text="Выравнивает субъективную громкость между треками по тегам REPLAYGAIN_TRACK_GAIN, если они есть в файле — без этого более тихо смастеренные треки в одном плейлисте с громкими звучат заметно тише. У треков без таких тегов ничего не меняется."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <CheckBox x:Name="ReplayGainAlbumCheckBox" Content="Альбомный режим" Margin="0,14,0,0"
+                                          Checked="ReplayGainAlbumCheckBox_Changed" Unchecked="ReplayGainAlbumCheckBox_Changed" />
+                                <TextBlock Text="Берёт громкость альбома, чтобы сохранить разницу между тихими и громкими треками внутри альбома. Если альбомного тега нет, используется трековый."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Предусилитель" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,16,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0" Height="28">
+                                        <Slider x:Name="ReplayGainPreampSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True"
+                                                ValueChanged="ReplayGainPreampSlider_ValueChanged"
+                                                MouseDoubleClick="ReplayGainPreampSlider_MouseDoubleClick" />
+                                    </Grid>
+                                    <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                            Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                        <TextBlock x:Name="ReplayGainPreampValueText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontWeight="SemiBold" TextAlignment="Center" />
+                                    </Border>
+                                </Grid>
                             </StackPanel>
                         </Border>
 

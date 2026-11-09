@@ -275,6 +275,11 @@ public class AppSettings
     // автоматическое изменение громкости без явного выбора пользователя нежелательно.
     public bool ReplayGainEnabled { get; set; }
 
+    // Альбомное усиление вместо трекового (если тега нет, берётся трековое) и предусилитель в дБ (-12..12), см. ReplayGainReader.
+    public bool ReplayGainAlbumMode { get; set; }
+
+    public double ReplayGainPreampDb { get; set; }
+
     // "Stereo" (по умолчанию, звук как в файле) или "Mono" (каналы сводятся в один, см. ChannelModeSampleProvider).
     public string PlaybackChannelMode { get; set; } = "Stereo";
 

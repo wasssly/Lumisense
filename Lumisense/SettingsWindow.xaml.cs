@@ -330,6 +330,9 @@ public partial class SettingsWindow : FluentWindow
         SliderStyleMaterialRadio.IsChecked = _settings.SliderStyle == "Material";
         SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
         ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
+        ReplayGainAlbumCheckBox.IsChecked = _settings.ReplayGainAlbumMode;
+        ReplayGainPreampSlider.Value = Math.Clamp(_settings.ReplayGainPreampDb, -12, 12);
+        UpdateReplayGainPreampText();
         ChannelModeMonoRadio.IsChecked = _settings.PlaybackChannelMode == "Mono";
         ChannelModeStereoRadio.IsChecked = _settings.PlaybackChannelMode != "Mono";
         PlaybackBalanceSlider.Value = Math.Clamp(_settings.PlaybackBalance, -100, 100);
@@ -1479,6 +1482,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
         Add("Анимация подключения устройства", "Воспроизведение", "Playback", DeviceConnectStyleCombo, "подключение устройство наушники bluetooth анимация карточка connect device airpods");
         Add("Устройство вывода", "Воспроизведение", "Playback", OutputDeviceCombo, "звук аудио устройство вывод наушники колонки динамики speakers headphones audio output wasapi shared");
+        Add("ReplayGain: альбомный режим", "Воспроизведение", "Playback", ReplayGainAlbumCheckBox, "replaygain альбом album режим громкость");
+        Add("ReplayGain: предусилитель", "Воспроизведение", "Playback", ReplayGainPreampSlider, "replaygain предусилитель preamp громкость усиление дб");
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
@@ -3997,6 +4002,35 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.ReplayGainEnabled = ReplayGainCheckBox.IsChecked == true;
         _owner.RefreshReplayGain();
+    }
+
+    private void ReplayGainAlbumCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ReplayGainAlbumMode = ReplayGainAlbumCheckBox.IsChecked == true;
+        _owner.RefreshReplayGain();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void ReplayGainPreampSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateReplayGainPreampText();
+        if (_isInitializing) return;
+
+        _settings.ReplayGainPreampDb = Math.Clamp(Math.Round(ReplayGainPreampSlider.Value * 2) / 2, -12, 12);
+        _owner.RefreshReplayGain();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void ReplayGainPreampSlider_MouseDoubleClick(object sender, MouseButtonEventArgs e) => ReplayGainPreampSlider.Value = 0;
+
+    private void UpdateReplayGainPreampText()
+    {
+        if (ReplayGainPreampValueText is null || ReplayGainPreampSlider is null) return;
+
+        double value = Math.Round(ReplayGainPreampSlider.Value * 2) / 2;
+        ReplayGainPreampValueText.Text = string.Create(System.Globalization.CultureInfo.InvariantCulture, $"{(value > 0 ? "+" : "")}{value:0.#} dB");
     }
 
     // См. AppSettings.PlaybackChannelMode / ChannelModeSampleProvider.

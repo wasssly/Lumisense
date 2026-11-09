@@ -168,7 +168,9 @@ public partial class MainWindow
                 equalizerGains,
                 playbackSpeed,
                 playbackPitch,
-                traceTrackPreparation),
+                traceTrackPreparation,
+                _settings.ReplayGainAlbumMode,
+                _settings.ReplayGainPreampDb),
             cancellationToken);
     }
 

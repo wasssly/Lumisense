@@ -336,7 +336,7 @@ public partial class MainWindow
     {
         try
         {
-            double gain = await Task.Run(() => ReplayGainReader.GetTrackGainLinear(path), cts.Token);
+            double gain = await Task.Run(() => ReplayGainReader.GetGainLinear(path, _settings.ReplayGainAlbumMode, _settings.ReplayGainPreampDb), cts.Token);
             cts.Token.ThrowIfCancellationRequested();
             if (_isExiting || generation != _audioPlaybackCoordinator.CurrentGeneration ||
                 !string.Equals(path, _currentTrackPath, StringComparison.Ordinal)) return;
