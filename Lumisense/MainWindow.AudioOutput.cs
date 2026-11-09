@@ -282,8 +282,11 @@ public partial class MainWindow
 
         bool switched = _outputDeviceId is not null && !string.Equals(_outputDeviceId, id, StringComparison.Ordinal);
         bool arrived = DateTime.UtcNow - _lastDeviceArrivalUtc < TimeSpan.FromSeconds(8);
+        string? previousId = _outputDeviceId;
+        string previousName = _outputDeviceName;
         _outputDeviceId = id;
         _outputDeviceName = name;
+        SwitchDeviceSoundProfile(previousId, previousName, id, name);
         _outputDeviceKind = AudioOutputKindClassifier.Classify(name);
         var info = new AudioOutputDeviceInfo(name, _outputDeviceKind, switched, switched && arrived);
         OutputDeviceChanged?.Invoke(info);

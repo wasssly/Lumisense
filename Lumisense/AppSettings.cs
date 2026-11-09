@@ -335,6 +335,11 @@ public class AppSettings
     // Лимитер в конце цепочки: пики выше -0,1 dBFS ослабляются вместо клиппинга (см. LimiterSampleProvider).
     public bool LimiterEnabled { get; set; } = true;
 
+    // Запоминать эквалайзер и баланс отдельно для каждого устройства вывода (см. DeviceSoundProfile).
+    public bool DeviceSoundProfilesEnabled { get; set; }
+
+    public List<DeviceSoundProfile> DeviceSoundProfiles { get; set; } = new();
+
     public bool MinimizeToTrayOnClose { get; set; } = true; // Сворачивать в трей вместо закрытия
 
     // Не показывать окно сразу после запуска, только значок в трее; автозапуск с Windows хранится отдельно (StartupManager)

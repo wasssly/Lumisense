@@ -39,7 +39,8 @@ public sealed class LumiProfileSettingsCoverageTests
         nameof(AppSettings.CommunityDialogDismissed),                    // отметка «Не показывать» обращение на этой установке
         nameof(AppSettings.HklmWildcardContextMenuCleanupAttempted),     // служебная отметка этой машины
         nameof(AppSettings.TrackLoadTraceEnabled),                       // локальная диагностика
-        nameof(AppSettings.EqualizerPresets)                             // у пресетов свой импорт и экспорт (.json)
+        nameof(AppSettings.EqualizerPresets),                            // у пресетов свой импорт и экспорт (.json)
+        nameof(AppSettings.DeviceSoundProfiles)                          // привязаны к устройствам этого компьютера
     };
 
     private static IEnumerable<PropertyInfo> AllSettingsProperties() =>
@@ -108,6 +109,7 @@ public sealed class LumiProfileSettingsCoverageTests
         if (type == typeof(List<string>)) return new List<string> { "different-item" };
         if (type == typeof(List<LyricsPreset>)) return new List<LyricsPreset> { new() { Name = "different", SyncedLyricsFontSize = 17 } };
         if (type == typeof(List<EqualizerPreset>)) return new List<EqualizerPreset> { new() { Name = "different" } };
+        if (type == typeof(List<DeviceSoundProfile>)) return new List<DeviceSoundProfile> { new() { EndpointId = "different", PlaybackBalance = 5 } };
         if (type == typeof(List<SavedPlaylistFolder>))
             return new List<SavedPlaylistFolder> { new() { DisplayName = "different", Tracks = { "different.mp3" } } };
         if (type == typeof(Dictionary<string, int>)) return new Dictionary<string, int> { ["different.mp3"] = 1 };

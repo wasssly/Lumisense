@@ -367,6 +367,7 @@ public partial class SettingsWindow : FluentWindow
         EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
         EqualizerBypassCheckBox.IsChecked = _owner.IsEqualizerBypass;
         EqualizerAutoHeadroomCheckBox.IsChecked = _owner.IsEqualizerAutoHeadroom;
+        DeviceSoundProfilesCheckBox.IsChecked = _owner.IsDeviceSoundProfilesEnabled;
         for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
         {
             double gain = _owner.GetEqualizerBandGain(band);
@@ -1451,6 +1452,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Приватность Discord: таймлайн", "Интеграции", "Integrations", DiscordRichPresenceShowTimelineCheckBox, "discord приватность время прогресс таймлайн" );
         Add("Приватность Discord: обложка трека", "Интеграции", "Integrations", DiscordRichPresenceShowCoverArtCheckBox, "discord обложка cover art musicbrainz itunes deezer" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
+        Add("Звук для каждого устройства", "Эквалайзер", "Equalizer", DeviceSoundProfilesCheckBox, "профиль устройство наушники колонки эквалайзер баланс запоминать device profile");
         Add("Авто-преамп эквалайзера", "Эквалайзер", "Equalizer", EqualizerAutoHeadroomCheckBox, "преамп headroom клиппинг перегрузка громкость эквалайзер eq подъём");
         Add("EQ Bypass", "Эквалайзер", "Equalizer", EqualizerBypassCheckBox, "bypass обход эквалайзер eq временно сравнение фильтры");
         Add("Монитор острова", "Остров", "Island", IslandMonitorCombo, "остров монитор экран дисплей island monitor display");
@@ -3661,6 +3663,31 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _owner.SetEqualizerEnabled(EqualizerEnabledCheckBox.IsChecked == true);
+    }
+
+    private void DeviceSoundProfilesCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _owner.SetDeviceSoundProfilesEnabled(DeviceSoundProfilesCheckBox.IsChecked == true);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // Профиль нового устройства изменил эквалайзер и баланс: обновляем открытые элементы.
+    public void RefreshSoundProfileControls()
+    {
+        Dispatcher.BeginInvoke(() =>
+        {
+            EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
+            for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
+            {
+                double gain = _owner.GetEqualizerBandGain(band);
+                GetEqBandSlider(band).Value = gain;
+                GetEqBandValueText(band).Text = FormatEqGain(gain);
+            }
+
+            PlaybackBalanceSlider.Value = Math.Clamp(_settings.PlaybackBalance, -100, 100);
+        });
     }
 
     private void EqualizerAutoHeadroomCheckBox_Changed(object sender, RoutedEventArgs e)

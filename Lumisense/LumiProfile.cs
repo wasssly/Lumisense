@@ -227,6 +227,7 @@ public static class LumiProfileIO
         target.PlaybackPitchSemitones = source.PlaybackPitchSemitones;
         target.PlaybackSpeedChangesPitch = source.PlaybackSpeedChangesPitch;
         target.LimiterEnabled = source.LimiterEnabled;
+        target.DeviceSoundProfilesEnabled = source.DeviceSoundProfilesEnabled;
         target.MinimizeToTrayOnClose = source.MinimizeToTrayOnClose;
         target.StartHiddenInTray = source.StartHiddenInTray;
         target.NeverAutoPlayLastTrackOnStartup = source.NeverAutoPlayLastTrackOnStartup;

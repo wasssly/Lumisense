@@ -58,6 +58,8 @@ internal interface ISettingsAudioHost
     void RefreshReplayGain();
     void RefreshPlaybackRateMode();
     void ApplyLimiter();
+    bool IsDeviceSoundProfilesEnabled { get; }
+    void SetDeviceSoundProfilesEnabled(bool enabled);
     void ApplyChannelMode();
     void PreviewDeviceConnectOverlay();
     void ApplyOutputDeviceSelection();

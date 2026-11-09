@@ -2960,6 +2960,13 @@
                                 <TextBlock Text="Пропускает сигнал мимо фильтров, не меняя настройки полос. Удобно для быстрого сравнения звука с EQ и без."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
 
+                                <CheckBox x:Name="DeviceSoundProfilesCheckBox"
+                                          Content="Запоминать звук для каждого устройства"
+                                          Checked="DeviceSoundProfilesCheckBox_Changed"
+                                          Unchecked="DeviceSoundProfilesCheckBox_Changed" />
+                                <TextBlock Text="Эквалайзер и баланс сохраняются отдельно для наушников, колонок и других устройств и подставляются при переключении выхода. Новое устройство начинает с текущих значений."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,16" />
+
                                 <CheckBox x:Name="EqualizerAutoHeadroomCheckBox"
                                           Content="Авто-преамп (защита от перегрузки)"
                                           Checked="EqualizerAutoHeadroomCheckBox_Changed"

@@ -157,6 +157,7 @@ public partial class MainWindow
 
         // Сохраняем speed из независимого runtime-state, а не из Popup или временного Slider.
         _settings.PlaybackSpeed = _runtimePlaybackRate;
+        CaptureCurrentDeviceSoundProfile();
 
         if (_settings.RememberVolume)
             _settings.SavedVolume = VolumeSlider.Value;
