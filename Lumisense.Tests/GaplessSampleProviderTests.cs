@@ -83,6 +83,48 @@ public sealed class GaplessSampleProviderTests
         Assert.Null(provider.Disarm());
     }
 
+    [Fact]
+    public void Crossfade_MixesAroundTheEndAndHandsOverToTheNextSource()
+    {
+        var first = new Source(Enumerable.Repeat(1f, 1000).ToArray(), channels: 1);
+        var second = new Source(Enumerable.Repeat(2f, 1000).ToArray(), channels: 1);
+        var provider = new GaplessSampleProvider(first, () => 1000 - first.Position);
+        int switched = 0, finished = 0;
+        provider.Switched += _ => switched++;
+        provider.PreviousFinished += () => finished++;
+        Assert.True(provider.Arm(second, "next", crossfadeFrames: 200, nextRemainingFrames: () => 1000 - second.Position));
+
+        var output = new float[1800];
+        int total = 0;
+        while (total < output.Length)
+        {
+            int read = provider.Read(output.AsSpan(total, Math.Min(100, output.Length - total)));
+            if (read == 0) break;
+            total += read;
+        }
+
+        Assert.Equal(1800, total);
+        Assert.All(output.Take(800), value => Assert.Equal(1f, value));
+        Assert.InRange(output[800], 0.99f, 1.01f);
+        Assert.InRange(output[999], 1.95f, 2.05f);
+        Assert.All(output.Skip(1000), value => Assert.Equal(2f, value));
+        Assert.Equal(1, switched);
+        Assert.Equal(1, finished);
+    }
+
+    [Fact]
+    public void Crossfade_WithoutRemainingFallsBackToPlainSwitchAtTheEnd()
+    {
+        var provider = new GaplessSampleProvider(new Source(Enumerable.Repeat(1f, 100).ToArray(), channels: 1));
+        provider.Arm(new Source(Enumerable.Repeat(2f, 100).ToArray(), channels: 1), "next", crossfadeFrames: 50);
+
+        var buffer = new float[150];
+        provider.Read(buffer);
+
+        Assert.Equal(1f, buffer[99]);
+        Assert.Equal(2f, buffer[100]);
+    }
+
     private sealed class Source : ISampleProvider
     {
         private readonly float[] _samples;
@@ -95,6 +137,8 @@ public sealed class GaplessSampleProviderTests
         }
 
         public WaveFormat WaveFormat { get; }
+
+        public int Position => _position;
 
         public int Read(Span<float> buffer)
         {

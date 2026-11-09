@@ -198,6 +198,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // трека сразу заново вывести исполнителя/название, не перезапуская AudioFileReader.
     private string? _currentTrackTaggedTitle;
     private string? _currentTrackTaggedArtist;
+    private string? _currentTrackAlbum;
 
     private bool _isUserInteractingWithProgress;
     private bool _isSyncingProgressFromPlayback;

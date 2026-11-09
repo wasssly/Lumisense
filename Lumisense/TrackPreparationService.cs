@@ -15,6 +15,7 @@ internal sealed class PreparedTrack : IDisposable
     public int BitrateKbps { get; init; }
     public string? Title { get; init; }
     public string? Artist { get; init; }
+    public string? Album { get; init; }
     public BitmapImage? AlbumArt { get; init; }
     public byte[]? AlbumArtBytes { get; init; }
     public string? AlbumArtMimeType { get; init; }
@@ -74,6 +75,7 @@ internal sealed class TrackPreparationService
 
         string? title = null;
         string? artist = null;
+        string? album = null;
         BitmapImage? albumArt = null;
         byte[]? albumArtBytes = null;
         string? albumArtMimeType = null;
@@ -94,6 +96,7 @@ internal sealed class TrackPreparationService
                 replayGainMilliseconds = replayGainTimer.ElapsedMilliseconds;
             }
             title = tagFile.Title;
+            album = tagFile.Album;
             bitrateKbps = Math.Max(0, tagFile.Bitrate);
             artist = !string.IsNullOrWhiteSpace(tagFile.Artist)
                 ? tagFile.Artist
@@ -170,6 +173,7 @@ internal sealed class TrackPreparationService
                 BitrateKbps = bitrateKbps,
                 Title = title,
                 Artist = artist,
+                Album = album,
                 AlbumArt = albumArt,
                 AlbumArtBytes = albumArtBytes,
                 AlbumArtMimeType = albumArtMimeType,

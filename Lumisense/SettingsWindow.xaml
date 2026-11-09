@@ -2340,6 +2340,28 @@
                         <!-- См. AppSettings.GaplessEnabled / GaplessSampleProvider. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
+                                <TextBlock Text="Кроссфейд при автопереходе" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0" Height="28">
+                                        <Slider x:Name="CrossfadeSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                Minimum="0" Maximum="12" TickFrequency="1" IsSnapToTickEnabled="True"
+                                                ValueChanged="CrossfadeSlider_ValueChanged"
+                                                MouseDoubleClick="CrossfadeSlider_MouseDoubleClick" />
+                                    </Grid>
+                                    <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                            Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                        <TextBlock x:Name="CrossfadeValueText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontWeight="SemiBold" TextAlignment="Center" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="Конец трека плавно уходит, а следующий нарастает поверх (0 — выключено). Только при автопереходе, ручное переключение остаётся как есть. Следующий трек готовится заранее так же, как при переходе без паузы."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <CheckBox x:Name="CrossfadeSkipSameAlbumCheckBox" Content="Не смешивать треки одного альбома" Margin="0,14,0,14"
+                                          Checked="CrossfadeSkipSameAlbumCheckBox_Changed" Unchecked="CrossfadeSkipSameAlbumCheckBox_Changed" />
                                 <CheckBox x:Name="GaplessCheckBox" Content="Переход между треками без паузы (бета)"
                                           Checked="GaplessCheckBox_Changed" Unchecked="GaplessCheckBox_Changed" />
                                 <TextBlock Text="Следующий трек открывается заранее и подхватывается без остановки звука: живые альбомы и сведённые подряд записи идут без провала. Работает при автопереходе, если у треков одинаковая частота дискретизации и число каналов; иначе, при повторе одного трека и после ручного выбора переход обычный."

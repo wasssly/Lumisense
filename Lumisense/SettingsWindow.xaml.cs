@@ -357,6 +357,9 @@ public partial class SettingsWindow : FluentWindow
         LoudnessCompensationSlider.Value = Math.Clamp(_settings.LoudnessCompensationPercent, 0, 100);
         UpdateStereoImageTexts();
         GaplessCheckBox.IsChecked = _settings.GaplessEnabled;
+        CrossfadeSlider.Value = Math.Clamp(_settings.CrossfadeSeconds, 0, 12);
+        CrossfadeSkipSameAlbumCheckBox.IsChecked = _settings.CrossfadeSkipSameAlbum;
+        UpdateCrossfadeText();
         BadgeModeExtensionRadio.IsChecked = _settings.TrackStateBadgeMode == "Extension";
         BadgeModeQualityRadio.IsChecked = _settings.TrackStateBadgeMode == "Quality";
         BadgeModeFileSizeRadio.IsChecked = _settings.TrackStateBadgeMode == "FileSize";
@@ -1524,6 +1527,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
         Add("Измерять громкость файлов без тегов", "Воспроизведение", "Playback", LoudnessScanCheckBox, "громкость измерение анализ replaygain r128 lufs без тегов нормализация");
+        Add("Кроссфейд при автопереходе", "Воспроизведение", "Playback", CrossfadeSlider, "кроссфейд crossfade плавный переход наложение треков");
         Add("Переход между треками без паузы", "Воспроизведение", "Playback", GaplessCheckBox, "гэплесс gapless без паузы переход трек альбом бесшовный");
         Add("Ширина стереобазы", "Воспроизведение", "Playback", StereoWidthSlider, "ширина стерео база stereo width моно шире");
         Add("Кроссфид для наушников", "Воспроизведение", "Playback", CrossfeedSlider, "кроссфид crossfeed наушники стерео голова");
@@ -4236,6 +4240,34 @@ public partial class SettingsWindow : FluentWindow
         _settings.PlaybackBalance = (int)Math.Clamp(Math.Round(PlaybackBalanceSlider.Value), -100, 100);
         _owner.ApplyChannelMode();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // См. AppSettings.CrossfadeSeconds / CrossfadeSkipSameAlbum; MainWindow подхватывает их на ближайшем тике прогресса.
+    private void CrossfadeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateCrossfadeText();
+        if (_isInitializing) return;
+
+        _settings.CrossfadeSeconds = Math.Clamp((int)Math.Round(CrossfadeSlider.Value), 0, 12);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void CrossfadeSlider_MouseDoubleClick(object sender, MouseButtonEventArgs e) => CrossfadeSlider.Value = 0;
+
+    private void CrossfadeSkipSameAlbumCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.CrossfadeSkipSameAlbum = CrossfadeSkipSameAlbumCheckBox.IsChecked == true;
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void UpdateCrossfadeText()
+    {
+        if (CrossfadeValueText is null || CrossfadeSlider is null) return;
+
+        int seconds = (int)Math.Round(CrossfadeSlider.Value);
+        CrossfadeValueText.Text = seconds == 0 ? LocalizationService.Translate("Выкл.") : $"{seconds} {LocalizationService.Translate("с")}";
     }
 
     // См. AppSettings.GaplessEnabled; MainWindow снимает или готовит заготовку на ближайшем тике прогресса.

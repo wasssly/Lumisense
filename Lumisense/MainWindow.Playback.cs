@@ -221,8 +221,9 @@ public partial class MainWindow
     {
         var chain = BuildChain(_equalizer!);
         AssignChain(chain);
-        _gapless = new GaplessSampleProvider(chain.Meter);
+        _gapless = new GaplessSampleProvider(chain.Meter, RemainingFramesOf(_audioFile!));
         _gapless.Switched += OnGaplessSwitched;
+        _gapless.PreviousFinished += OnGaplessPreviousFinished;
         var fadeIn = new FadeInOutSampleProvider(_gapless, initiallySilent: true);
         fadeIn.BeginFadeIn(70);
         _activeFade = fadeIn;
@@ -271,6 +272,7 @@ public partial class MainWindow
         var audioFile = _audioFile!;
         _currentTrackTaggedTitle = loaded.Title;
         _currentTrackTaggedArtist = loaded.Artist;
+        _currentTrackAlbum = loaded.Album;
         var metadata = FileNameNormalizer.ResolveArtistAndTitle(
             filePath, _currentTrackTaggedArtist, _currentTrackTaggedTitle, "—");
         SetTrackInfoText(metadata.Title, metadata.Artist);
@@ -876,6 +878,7 @@ public partial class MainWindow
             _tempoProvider = null;
             _audioFile = null;
         }
+        DisposeGaplessPreviousFile();
         _equalizer = null;
         _audioLevelMeter = null;
         _channelMode = null;

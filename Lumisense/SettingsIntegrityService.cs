@@ -231,6 +231,7 @@ internal static class SettingsIntegrityService
         settings.SliderStyle = Allowed(settings.SliderStyle, defaults.SliderStyle, "Default", "Material");
         settings.PlaybackChannelMode = Allowed(settings.PlaybackChannelMode, defaults.PlaybackChannelMode, "Stereo", "Mono");
         settings.PlaybackBalance = Math.Clamp(settings.PlaybackBalance, -100, 100);
+        settings.CrossfadeSeconds = Math.Clamp(settings.CrossfadeSeconds, 0, 12);
         settings.StereoWidthPercent = Math.Clamp(settings.StereoWidthPercent, 0, 200);
         settings.CrossfeedPercent = Math.Clamp(settings.CrossfeedPercent, 0, 100);
         settings.LoudnessCompensationPercent = Math.Clamp(settings.LoudnessCompensationPercent, 0, 100);

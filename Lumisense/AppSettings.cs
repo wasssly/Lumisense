@@ -357,6 +357,10 @@ public class AppSettings
     // Переход на следующий трек без паузы: следующий готовится заранее и подставляется на конце текущего (GaplessSampleProvider).
     public bool GaplessEnabled { get; set; }
 
+    // Кроссфейд при автопереходе: длительность в секундах (0 — выключен), не применяется к трекам одного альбома. Использует те же заготовки, что и гэплесс.
+    public int CrossfadeSeconds { get; set; }
+    public bool CrossfadeSkipSameAlbum { get; set; } = true;
+
     // Ширина стереобазы в процентах (100 — без изменений), кроссфид для наушников (0 — выключен) и тонкомпенсация на малой громкости (0 — выключена).
     public int StereoWidthPercent { get; set; } = 100;
     public int CrossfeedPercent { get; set; }
