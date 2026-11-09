@@ -37,10 +37,16 @@ public sealed class LumiProfileSettingsCoverageTests
         nameof(AppSettings.UpdateCheckFailingSinceUtc),                  // то же
         nameof(AppSettings.UpdateCheckHintShownUtc),                     // то же
         nameof(AppSettings.CommunityDialogDismissed),                    // отметка «Не показывать» обращение на этой установке
-        nameof(AppSettings.HklmWildcardContextMenuCleanupAttempted),     // служебная отметка этой машины
+        nameof(AppSettings.HklmContextMenuCleanupAttempted),     // служебная отметка этой машины
         nameof(AppSettings.TrackLoadTraceEnabled),                       // локальная диагностика
-        nameof(AppSettings.EqualizerPresets),                            // у пресетов свой импорт и экспорт (.json)
         nameof(AppSettings.DeviceSoundProfiles)                          // привязаны к устройствам этого компьютера
+    };
+
+    // Пользовательские данные, которые импорт не заменяет, а добавляет к своим (LumiProfileIO.MergeEqualizerPresets);
+    // сброс настроек их тоже не трогает. Поэтому у них нет места ни среди «копируемых», ни среди «не переносимых».
+    private static readonly HashSet<string> MergedOnImport = new(StringComparer.Ordinal)
+    {
+        nameof(AppSettings.EqualizerPresets)
     };
 
     private static IEnumerable<PropertyInfo> AllSettingsProperties() =>
@@ -137,8 +143,9 @@ public sealed class LumiProfileSettingsCoverageTests
     {
         var names = AllSettingsProperties().Select(property => property.Name).ToHashSet(StringComparer.Ordinal);
 
-        Assert.Equal(new List<string>(), UserDataAndRuntimeState.Concat(NotTransferable).Where(name => !names.Contains(name)).ToList());
+        Assert.Equal(new List<string>(), UserDataAndRuntimeState.Concat(NotTransferable).Concat(MergedOnImport).Where(name => !names.Contains(name)).ToList());
         Assert.Equal(new List<string>(), UserDataAndRuntimeState.Intersect(NotTransferable).ToList());
+        Assert.Equal(new List<string>(), MergedOnImport.Intersect(UserDataAndRuntimeState.Concat(NotTransferable)).ToList());
     }
 
     [Fact]
@@ -150,7 +157,7 @@ public sealed class LumiProfileSettingsCoverageTests
 
         foreach (PropertyInfo property in AllSettingsProperties())
         {
-            if (property.Name == nameof(AppSettings.ForwardCompatibleProperties))
+            if (property.Name == nameof(AppSettings.ForwardCompatibleProperties) || MergedOnImport.Contains(property.Name))
                 continue;
 
             var defaults = new AppSettings();
@@ -174,7 +181,7 @@ public sealed class LumiProfileSettingsCoverageTests
     [Fact]
     public void ResetToDefaultsRestoresEverySettingThatImportCopies()
     {
-        var excluded = UserDataAndRuntimeState.Concat(NotTransferable).ToHashSet(StringComparer.Ordinal);
+        var excluded = UserDataAndRuntimeState.Concat(NotTransferable).Concat(MergedOnImport).ToHashSet(StringComparer.Ordinal);
         var notReset = new List<string>();
 
         foreach (PropertyInfo property in AllSettingsProperties().Where(property => !excluded.Contains(property.Name)))

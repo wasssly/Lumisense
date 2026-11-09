@@ -71,6 +71,17 @@ public partial class MainWindow
         _settings.ShuffleBag = new List<string>();
         _settings.EqualizerPresets.Clear();
 
+        // Кэш обложек — производные данные в Roaming: после «полного» сброса на диске ничего от прежних треков остаться не должно.
+        // Журналы не трогаем: файл занят текущим сеансом, а записи пригодятся, если сброс пройдёт не так, как ожидалось.
+        try
+        {
+            CoverArtSearchWindow.ClearArtworkCache();
+        }
+        catch (Exception ex)
+        {
+            Logger.Warn($"Не удалось очистить кэш обложек при полном сбросе: {ex.Message}");
+        }
+
         _currentTrackPath = null;
         ResetShuffleState();
         _replayGainFactor = 1.0;

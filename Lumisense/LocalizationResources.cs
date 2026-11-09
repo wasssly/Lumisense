@@ -46,7 +46,6 @@ public static class LocalizationKey
     public const string UpdateLegacyCleanupStartingTitle = "update.legacyCleanup.startingTitle";
     public const string UpdateLegacyCleanupStartingMessage = "update.legacyCleanup.startingMessage";
     public const string UpdateLegacyCleanupFailed = "update.legacyCleanup.failed";
-    public const string UpdateLegacyCleanupContextMenuLabel = "update.legacyCleanup.contextMenuLabel";
     public const string UpdateLegacyCleanupSettingsHint = "update.legacyCleanup.settingsHint";
     public const string UpdateLegacyCleanupCardTitle = "update.legacyCleanup.cardTitle";
     public const string UpdateLegacyCleanupCardDescription = "update.legacyCleanup.cardDescription";
@@ -196,7 +195,6 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateLegacyCleanupStartingTitle] = "Удаление старой EXE-копии",
         [LocalizationKey.UpdateLegacyCleanupStartingMessage] = "Откроется стандартный мастер удаления старой EXE-копии Lumisense. В его вопросе об удалении настроек и пользовательских данных выберите «Нет», чтобы сохранить данные для MSI-версии.",
         [LocalizationKey.UpdateLegacyCleanupFailed] = "Не удалось открыть мастер удаления старой EXE-копии. Старая программа не удалена; при необходимости удалите её позже через «Установленные приложения» Windows.",
-        [LocalizationKey.UpdateLegacyCleanupContextMenuLabel] = "Открыть в Lumisense",
         [LocalizationKey.UpdateLegacyCleanupSettingsHint] = "Старая EXE-копия найдена. Когда убедитесь, что новая MSI-копия работает корректно, её можно удалить в разделе «Настройки → Обновления».",
         [LocalizationKey.UpdateLegacyCleanupCardTitle] = "Удалить старую EXE-копию",
         [LocalizationKey.UpdateLegacyCleanupCardDescription] = "Удалите прежнюю Inno Setup-установку после перехода на MSI. Будет открыт стандартный мастер Windows; в его вопросе об удалении данных выберите «Нет», чтобы сохранить настройки, плейлист, избранное и статистику.",
@@ -345,7 +343,6 @@ internal static class LocalizationResources
         [LocalizationKey.UpdateLegacyCleanupStartingTitle] = "Removing the old EXE copy",
         [LocalizationKey.UpdateLegacyCleanupStartingMessage] = "The standard uninstall wizard for the old EXE copy of Lumisense will open. In its question about settings and user data, choose “No” to keep them for the MSI version.",
         [LocalizationKey.UpdateLegacyCleanupFailed] = "The uninstall wizard for the old EXE copy could not be opened. The old program was not removed; if needed, remove it later from Windows Installed apps.",
-        [LocalizationKey.UpdateLegacyCleanupContextMenuLabel] = "Open in Lumisense",
         [LocalizationKey.UpdateLegacyCleanupSettingsHint] = "A legacy EXE copy was found. Once you have confirmed that the new MSI copy works correctly, you can remove it from Settings → Updates.",
         [LocalizationKey.UpdateLegacyCleanupCardTitle] = "Remove the old EXE copy",
         [LocalizationKey.UpdateLegacyCleanupCardDescription] = "Remove the previous Inno Setup installation after moving to MSI. Windows will open its standard uninstall wizard; choose No when it asks about user data to keep settings, playlists, favorites, and listening statistics.",

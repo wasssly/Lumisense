@@ -114,7 +114,7 @@ public class AppSettings
     public string AccentColorMode { get; set; } = "System";
     public string AccentColorHex { get; set; } = "#0078D4";
 
-    // Доступность интерфейса. Масштаб влияет на базовый размер шрифта окон, а режим
+    // Доступность интерфейса. Масштаб применяется как LayoutTransform ко всему содержимому окна (размеры, отступы, иконки и шрифты), а режим
     // снижения движения отключает необязательные декоративные переходы.
     public double InterfaceScale { get; set; } = 1.0;
     public bool ReduceMotion { get; set; }
@@ -180,6 +180,13 @@ public class AppSettings
 
     // Дополнительный источник текстов песен (NetEase через Lyricify.Lyrics.Helper); по умолчанию выключен.
     public bool UseExtraLyricsSource { get; set; }
+
+    // Какие из дополнительных сервисов опрашиваются, когда UseExtraLyricsSource включён. По умолчанию все, как было до того,
+    // как их можно было выбирать по отдельности: включившие источники раньше не теряют ни один из них.
+    public bool UseNetEaseLyrics { get; set; } = true;
+    public bool UseQqMusicLyrics { get; set; } = true;
+    public bool UseKugouLyrics { get; set; } = true;
+    public bool UsePaxsenixLyrics { get; set; } = true;
 
     // Источник в ручном поиске текста (Now Playing): "All" — все, иначе "LRCLIB", "NetEase", "QQ Music", "Kugou" или "Paxsenix".
     public string LyricsManualSearchSource { get; set; } = "All";
@@ -322,6 +329,11 @@ public class AppSettings
     // Только вместе с DiscordRichPresenceShowTrackInfo (обложка выдаёт трек не хуже текста); ищется по артисту/названию
     // через открытые API (DiscordCoverArtLookupService), а не берётся из локального файла.
     public bool DiscordRichPresenceShowCoverArt { get; set; } = true;
+    // Кнопки «GitHub» и «Скачать Lumisense» под статусом: видны зрителям профиля, поэтому их можно отключить.
+    public bool DiscordRichPresenceShowButtons { get; set; } = true;
+
+    // Фоновое наблюдение за ресурсами (ResourceWatchdog): одно измерение в минуту, предупреждение в журнал при подозрении на утечку.
+    public bool ResourceWatchdogEnabled { get; set; } = true;
 
     // Темп воспроизведения без изменения высоты тона. 1.0 — обычная скорость.
     public double PlaybackSpeed { get; set; } = 1.0;
@@ -474,8 +486,8 @@ public class AppSettings
     public bool RaisePlaybackPriority { get; set; } = true;
 
     // Однократная попытка удалить унаследованный HKLM-ключ контекстного меню уже была — не
-    // повторять, даже если пользователь отклонил UAC (см. TryCleanupLegacyHklmWildcardContextMenu).
-    public bool HklmWildcardContextMenuCleanupAttempted { get; set; }
+    // повторять, даже если пользователь отклонил UAC (см. CleanupLegacyHklmContextMenu).
+    public bool HklmContextMenuCleanupAttempted { get; set; }
 
     // Подробный технический trace этапов загрузки трека выключен по умолчанию. Он не содержит
     // пути или метаданные, но помогает измерять редкое замедление Next/Previous локально.
@@ -597,12 +609,6 @@ public class AppSettings
     // Как выбирается следующий трек при включённом шаффле (ShuffleModes): "Deck" — колода без повторов (по умолчанию),
     // "Random", "Favorites", "Rare", "Folders". Старое булево UseImprovedShuffle убрано: оно не влияло на выбор трека.
     public string ShuffleMode { get; set; } = ShuffleModes.Deck;
-
-    // Экспериментальные функции — выключены по умолчанию: выбор пользователя, а не смена поведения без согласия.
-
-    // Убирает фон у кнопок управления главного окна (MainWindow.ApplyPlaybackButtonsVisibility): они остаются
-    // видимыми и кликабельными, виден только значок.
-    public bool HidePlaybackButtons { get; set; }
 
     // Версия, отклонённая кнопкой "Позже": диалог не всплывает снова для неё, но появится с более новой версией.
     // Ручная проверка в настройках показывает результат всегда (см. UpdateChecker).

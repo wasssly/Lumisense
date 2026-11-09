@@ -241,7 +241,7 @@ public partial class MainWindow
         var metadata = FileNameNormalizer.ResolveArtistAndTitle(
             filePath, _currentTrackTaggedArtist, _currentTrackTaggedTitle, "—");
         SetTrackInfoText(metadata.Title, metadata.Artist);
-        TotalTimeText.Text = audioFile.TotalTime.ToString(@"mm\:ss");
+        TotalTimeText.Text = PlaybackTimeFormat.Format(audioFile.TotalTime);
         ProgressSlider.Maximum = Math.Max(audioFile.TotalTime.TotalSeconds, 0.01);
         _currentTrackPath = filePath;
         CacheTrackBadgeInfo(filePath, audioFile.WaveFormat.SampleRate, loaded.BitrateKbps);
@@ -272,7 +272,7 @@ public partial class MainWindow
             : TimeSpan.Zero;
         audioFile.CurrentTime = position;
         ProgressSlider.Value = position.TotalSeconds;
-        CurrentTimeText.Text = position.ToString(@"mm\:ss");
+        CurrentTimeText.Text = PlaybackTimeFormat.Format(position);
         ProgressWaveform.Progress = audioFile.TotalTime.TotalSeconds > 0
             ? position.TotalSeconds / audioFile.TotalTime.TotalSeconds
             : 0;

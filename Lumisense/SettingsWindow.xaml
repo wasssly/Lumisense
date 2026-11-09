@@ -1249,7 +1249,7 @@
                                             MouseLeftButtonDown="AccentSwatch_MouseLeftButtonDown" />
 
                                     <ui:Button x:Name="AccentCustomButton" Width="26" Height="26" Padding="0"
-                                               Margin="0,0,8,8" Appearance="Secondary" ToolTip="Свой цвет через палитру"
+                                               Margin="0,0,8,8" Appearance="Secondary" ToolTip="Свой цвет через палитру" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                                                Click="AccentCustomButton_Click">
                                         <ui:Button.Icon>
                                             <local:SvgPathIcon Icon="IconEdit" Size="12" />
@@ -1616,8 +1616,19 @@
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Дополнительный источник текстов" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <CheckBox x:Name="UseExtraLyricsSourceCheckBox" Content="NetEase Cloud Music, QQ Music, Kugou и Paxsenix"
+                                <CheckBox x:Name="UseExtraLyricsSourceCheckBox" Content="Искать тексты в дополнительных сервисах"
                                           Checked="UseExtraLyricsSourceCheckBox_Changed" Unchecked="UseExtraLyricsSourceCheckBox_Changed" />
+                                <!-- Каждый сервис включается отдельно: название и исполнитель уходят только на отмеченные. -->
+                                <StackPanel x:Name="ExtraLyricsSourcesPanel" Margin="24,6,0,0">
+                                    <CheckBox x:Name="UseNetEaseLyricsCheckBox" Content="NetEase Cloud Music"
+                                              Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                                    <CheckBox x:Name="UseQqMusicLyricsCheckBox" Content="QQ Music"
+                                              Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                                    <CheckBox x:Name="UseKugouLyricsCheckBox" Content="Kugou"
+                                              Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                                    <CheckBox x:Name="UsePaxsenixLyricsCheckBox" Content="Paxsenix (Apple Music)"
+                                              Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                                </StackPanel>
                                 <TextBlock Text="Помогает найти тексты русских и других исполнителей, которых нет в LRCLIB. При онлайн-поиске название и исполнитель трека отправляются на серверы NetEase, QQ Music, Kugou и Paxsenix (для текстов Apple Music трек ещё ищется в каталоге iTunes). Результаты идут после LRCLIB и помечены источником; сбой одного источника не прерывает поиск в остальных."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
@@ -2727,8 +2738,13 @@
                                           Content="Показывать обложку трека"
                                           Checked="DiscordRichPresencePrivacyCheckBox_Changed"
                                           Unchecked="DiscordRichPresencePrivacyCheckBox_Changed" />
-                                <TextBlock Text="Обложка ищется автоматически по названию и исполнителю через открытые каталоги (iTunes, Deezer, MusicBrainz) и показывается только по прямой HTTPS-ссылке — сам файл с диска в Discord не загружается. Действует только вместе с «Показывать название и исполнителя»."
+                                <TextBlock Text="Обложка ищется автоматически по названию и исполнителю через открытые каталоги (iTunes, Deezer): берётся только обложка того же исполнителя, а показывается она по прямой HTTPS-ссылке — сам файл с диска в Discord не загружается. Действует только вместе с «Показывать название и исполнителя»."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <CheckBox x:Name="DiscordRichPresenceShowButtonsCheckBox"
+                                          Content="Показывать кнопки «GitHub» и «Скачать Lumisense»"
+                                          Checked="DiscordRichPresencePrivacyCheckBox_Changed"
+                                          Unchecked="DiscordRichPresencePrivacyCheckBox_Changed"
+                                          Margin="0,12,0,0" />
                             </StackPanel>
                         </Border>
 
@@ -3480,7 +3496,7 @@
                                             MouseLeftButtonDown="MiniArtworkProgressColorSwatch_MouseLeftButtonDown" />
 
                                     <ui:Button x:Name="MiniArtworkProgressColorCustomButton" Width="26" Height="26" Padding="0"
-                                               Margin="0,0,8,8" Appearance="Secondary" ToolTip="Свой цвет через палитру"
+                                               Margin="0,0,8,8" Appearance="Secondary" ToolTip="Свой цвет через палитру" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}"
                                                Click="MiniArtworkProgressColorCustomButton_Click">
                                         <ui:Button.Icon>
                                             <local:SvgPathIcon Icon="IconEdit" Size="12" />
@@ -3815,7 +3831,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyPlayPauseButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyPlayPauseButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyPlayPauseClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyPlayPauseClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3832,7 +3848,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyNextButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyNextButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyNextClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyNextClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3849,7 +3865,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyPreviousButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyPreviousButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyPreviousClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyPreviousClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3866,7 +3882,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyStopButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyStopButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyStopClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyStopClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3883,7 +3899,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyVolumeUpButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyVolumeUpButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyVolumeUpClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyVolumeUpClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3900,7 +3916,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyVolumeDownButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyVolumeDownButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyVolumeDownClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyVolumeDownClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3917,7 +3933,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyMuteButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyMuteButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyMuteClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyMuteClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3934,7 +3950,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyShuffleButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyShuffleButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyShuffleClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyShuffleClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3951,7 +3967,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyRepeatButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyRepeatButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyRepeatClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyRepeatClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3968,7 +3984,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyToggleFavoriteButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleFavoriteButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyToggleFavoriteClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyToggleFavoriteClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -3985,7 +4001,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyToggleLyricsButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleLyricsButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyToggleLyricsClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyToggleLyricsClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -4002,7 +4018,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyToggleMiniPlayerButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleMiniPlayerButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyToggleMiniPlayerClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyToggleMiniPlayerClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -4019,7 +4035,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeySeekForwardButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeySeekForwardButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeySeekForwardClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeySeekForwardClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -4036,7 +4052,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeySeekBackwardButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeySeekBackwardButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeySeekBackwardClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeySeekBackwardClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -4053,7 +4069,7 @@
                                     <ui:Button Grid.Column="1" x:Name="HotkeyDeleteTrackButton" Appearance="Secondary"
                                                MinWidth="140" Margin="8,0,4,0" Click="HotkeyDeleteTrackButton_Click" />
                                     <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
-                                               Click="HotkeyDeleteTrackClearButton_Click" ToolTip="Очистить">
+                                               Click="HotkeyDeleteTrackClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                                <ui:Button.Icon>
                                                    <local:SvgPathIcon Icon="IconDismiss" />
                                                </ui:Button.Icon>
@@ -4267,7 +4283,9 @@
                             <Expander.Header>
                                 <TextBlock Text="Источник загрузки обновлений" Style="{StaticResource SettingsSectionTitleStyle}" Margin="0" />
                             </Expander.Header>
-                            <StackPanel>
+                            <StackPanel x:Name="UpdateSourceContentPanel">
+                                <TextBlock x:Name="UpdateSourceVelopackHint" Visibility="Collapsed" TextWrapping="Wrap" FontSize="12"
+                                           FontWeight="SemiBold" Margin="0,0,0,12" />
                                 <TextBlock Text="Откуда скачивать обновление. По умолчанию — напрямую с GitHub; если он у вас недоступен или скачивается очень медленно, можно выбрать одно из перечисленных зеркал. На саму проверку версии эта настройка не влияет."
                                            TextWrapping="Wrap" FontSize="12" Opacity="0.6" Margin="0,0,0,12" />
 
@@ -4424,7 +4442,7 @@
                                 <TextBlock Text="Lumisense — настраиваемый аудиоплеер для Windows 11 в стиле Fluent Design. Он помогает удобно управлять музыкальной библиотекой, настраивать звучание и адаптировать интерфейс под себя — от мини-плеера и горячих клавиш до темы, зависящей от текущей обложки."
                                            TextWrapping="Wrap" Opacity="0.85" Margin="0,12,0,12" />
 
-                                <TextBlock Text="Собрано на .NET 10, WPF-UI и NAudio." TextWrapping="Wrap"
+                                <TextBlock Text="Собрано на .NET 10, WPF-UI и NAudio. Лицензия Lumisense — GNU GPL v3.0; лицензии остальных компонентов лежат в папке licenses и в файле THIRD-PARTY-NOTICES.md рядом с программой." TextWrapping="Wrap"
                                            FontSize="12" Opacity="0.6" />
                             </StackPanel>
                         </Border>
@@ -4457,14 +4475,14 @@
                                          тот же приём у TrackFavoriteButton/TrackPinButton в MainWindow.xaml. -->
                                     <ui:Button x:Name="DeveloperGitHubButton" Appearance="Secondary"
                                                Width="40" Height="40" Padding="0" Margin="0,0,8,0"
-                                               Click="DeveloperGitHubButton_Click" ToolTip="github.com/wasssly">
+                                               Click="DeveloperGitHubButton_Click" ToolTip="github.com/wasssly" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                         <ui:Button.Icon>
                                             <local:SvgPathIcon Icon="IconGitHub" Size="21" />
                                         </ui:Button.Icon>
                                     </ui:Button>
                                     <ui:Button x:Name="DeveloperTelegramButton" Appearance="Secondary"
                                                Width="40" Height="40" Padding="0"
-                                               Click="DeveloperTelegramButton_Click" ToolTip="t.me/dontwritetoblame">
+                                               Click="DeveloperTelegramButton_Click" ToolTip="t.me/dontwritetoblame" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
                                         <ui:Button.Icon>
                                             <local:SvgPathIcon Icon="IconTelegram" Size="21" />
                                         </ui:Button.Icon>
@@ -4521,6 +4539,10 @@
                                 </StackPanel>
                             </Grid>
                         </ui:Button>
+
+                        <CheckBox x:Name="ResourceWatchdogCheckBox" Margin="0,10,0,0"
+                                  Content="Фоновое наблюдение за ресурсами (раз в минуту, без сети)"
+                                  Checked="ResourceWatchdogCheckBox_Changed" Unchecked="ResourceWatchdogCheckBox_Changed" />
 
                         <ui:Button x:Name="OpenRepositoryButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"

@@ -249,11 +249,11 @@ internal static class SettingsIntegrityService
         settings.ProgressAppearanceNowPlaying.Normalize();
         settings.ProgressAppearanceMini.Normalize();
         settings.SyncedLyricsHighlightEffect = Allowed(settings.SyncedLyricsHighlightEffect, defaults.SyncedLyricsHighlightEffect, "None", "Glow", "GlowPill", "Pill", "Bar");
-        settings.SyncedLyricsFontSize = ClampFinite(settings.SyncedLyricsFontSize, 11, 28, defaults.SyncedLyricsFontSize);
+        settings.SyncedLyricsFontSize = ClampFinite(settings.SyncedLyricsFontSize, LyricsHighlightStyle.MinSyncedFontSize, LyricsHighlightStyle.MaxSyncedFontSize, defaults.SyncedLyricsFontSize);
         settings.SyncedLyricsFadeStrength = Math.Clamp(settings.SyncedLyricsFadeStrength, 0, 100);
         settings.SyncedLyricsScalePercent = Math.Clamp(settings.SyncedLyricsScalePercent, LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
         settings.SyncedLyricsVisibleLines = LyricsHighlightStyle.NormalizeVisibleLines(settings.SyncedLyricsVisibleLines);
-        settings.SyncedLyricsGlowStrength = Math.Clamp(settings.SyncedLyricsGlowStrength, 0, 100);
+        settings.SyncedLyricsGlowStrength = Math.Clamp(settings.SyncedLyricsGlowStrength, LyricsHighlightStyle.MinGlowStrength, LyricsHighlightStyle.MaxGlowStrength);
         settings.SyncedLyricsBlurStrength = Math.Clamp(settings.SyncedLyricsBlurStrength,
             LyricsHighlightStyle.MinBlurStrength, LyricsHighlightStyle.MaxBlurStrength);
         settings.NowPlayingLyricsFontSize = Math.Clamp(settings.NowPlayingLyricsFontSize,

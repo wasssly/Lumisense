@@ -36,7 +36,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private enum PlayerViewMode { Square, Rectangular, Mini }
 
     // Поддерживаемые расширения — используются при сканировании папок
-    private static readonly string[] SupportedExtensions = { ".mp3", ".wav", ".wma", ".flac", ".m4a", ".aac", ".ogg", ".opus", ".aiff", ".aif" };
+    private static readonly string[] SupportedExtensions = AudioFormats.Extensions;
 
     // AudioFileReader умеет читать mp3/wav/wma и сразу даёт регулировку громкости
     private AudioFileReader? _audioFile;
@@ -384,8 +384,12 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         FireAndForget(SettingsManager.SaveIfChangedAsync(_settings), "SaveSettingsCheckpointAsync");
     }
 
-    public MainWindow()
+    // Запуск с файлом из Проводника: восстановление плейлиста идёт в конструкторе и не должно загружать последний трек.
+    private readonly bool _skipLastTrackRestore;
+
+    public MainWindow(bool skipLastTrackRestore = false)
     {
+        _skipLastTrackRestore = skipLastTrackRestore;
         // Field-инициализатор не может ссылаться на _random (CS0236 — нестатическое поле), поэтому здесь, а не в объявлении поля.
         _shuffleSession = new ShuffleSession(_random)
         {
@@ -400,7 +404,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
         // То же самое для Icon окна (см. AppIconContext, на который биндится Icon в XAML).
         AppIcons.Initialize(_settings);
-        LyricsService.ExtraSourceEnabled = _settings.UseExtraLyricsSource;
+        LyricsService.ApplyExtraSourceSettings(_settings);
 
         // Установщик и обновление пересоздают ярлыки со значком по умолчанию (Spotlight) — возвращаем выбранный пользователем.
         if (AppIcons.Current != AppIcons.Default)
@@ -409,6 +413,11 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         _audioOutputRecoveryService = new(
             _audioOutputRecoveryCoordinator, TimeSpan.FromMilliseconds(OutputRecoveryCooldownMilliseconds));
         InitializeComponent();
+        AutomationNames.Set(ProgressSlider, "Позиция воспроизведения");
+        AutomationNames.Set(VolumeSlider, "Громкость");
+        AutomationNames.Set(PlaybackRateSlider, "Скорость воспроизведения");
+        AutomationNames.Set(PlaybackPitchSlider, "Тональность");
+        AutomationNames.Set(QueueSortCombo, "Сортировка очереди");
         AccessibilityPreferences.ApplyToWindow(this, _settings);
         ApplyLyricsTextAlignment();
         LyricsPanelSyncedList.ItemsSource = _mainWindowSyncedLyrics;
@@ -475,7 +484,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         ApplySettingsOnStartup();
         _playbackRatePersistenceTimer.Start();
         _settingsCheckpointTimer.Start();
-        ResourceWatchdog.Start();
+        if (_settings.ResourceWatchdogEnabled) ResourceWatchdog.Start();
 
         // Намеренно без await: проверка файлов и загрузка последнего трека идут в фоне, окно показывается сразу
         // (см. комментарий над RestoreSavedPlaylistAsync).
@@ -869,6 +878,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
             if (_folders.Count == 0) return System.Threading.Tasks.Task.CompletedTask;
             if (string.IsNullOrEmpty(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
+            // Запуск с файлом из Проводника: последний трек не загружаем, иначе он конкурировал бы с открываемым файлом.
+            if (_skipLastTrackRestore) return System.Threading.Tasks.Task.CompletedTask;
 
             var all = FlattenAll();
             if (!all.Contains(_settings.LastTrackPath)) return System.Threading.Tasks.Task.CompletedTask;
@@ -905,8 +916,11 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             var tracksSnapshot = folder.Tracks.ToList();
             if (tracksSnapshot.Count == 0) continue;
 
+            // Файл в недоступной папке (отключённый диск или сетевой ресурс) не удаляем: запись остаётся с пометкой «Файл недоступен».
             var missing = await System.Threading.Tasks.Task.Run(() =>
-                tracksSnapshot.AsParallel().Where(f => !File.Exists(f)).ToList(), _lifetimeCts.Token);
+                tracksSnapshot.AsParallel()
+                    .Where(f => !File.Exists(f) && Directory.Exists(Path.GetDirectoryName(f)))
+                    .ToList(), _lifetimeCts.Token);
 
             _lifetimeCts.Token.ThrowIfCancellationRequested();
             if (missing.Count == 0 || !_folders.Contains(folder) || _isExiting) continue;
@@ -938,40 +952,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         _integrations.InitializeMediaHotKeys(this);
         _integrations.InitializeNowPlayingIntegration(this);
         _integrations.InitializeTrayIcon(this);
-
-        ApplyPlaybackButtonsVisibility();
     }
-
-    // Кнопки остаются видимыми и кликабельными, но без фона — виден только значок; ховер/нажатие у ui:Button — отдельный
-    // слой поверх Background, поэтому подсветка работает и с прозрачным фоном.
-    public void ApplyPlaybackButtonsVisibility()
-    {
-        if (_settings.HidePlaybackButtons)
-        {
-            ShuffleButton.Background = System.Windows.Media.Brushes.Transparent;
-            RepeatButton.Background = System.Windows.Media.Brushes.Transparent;
-            PrevButton.Background = System.Windows.Media.Brushes.Transparent;
-            PlayPauseButton.Background = System.Windows.Media.Brushes.Transparent;
-            NextButton.Background = System.Windows.Media.Brushes.Transparent;
-            StopButton.Background = System.Windows.Media.Brushes.Transparent;
-            MiniModeButton.Background = System.Windows.Media.Brushes.Transparent;
-        }
-        else
-        {
-            // ClearValue, а не присваивание конкретного цвета — возвращает управление фоном
-            // стилю WPF-UI, не дублируя и не угадывая его цвет по умолчанию.
-            ShuffleButton.ClearValue(Button.BackgroundProperty);
-            RepeatButton.ClearValue(Button.BackgroundProperty);
-            PrevButton.ClearValue(Button.BackgroundProperty);
-            PlayPauseButton.ClearValue(Button.BackgroundProperty);
-            NextButton.ClearValue(Button.BackgroundProperty);
-            StopButton.ClearValue(Button.BackgroundProperty);
-            MiniModeButton.ClearValue(Button.BackgroundProperty);
-        }
-    }
-
-    // WinForms-меню трея живёт в отдельном UI-стеке и не подхватывает тему WPF-UI: без явного вызова оставалось бы в прежней палитре.
-    public void ApplyTrayTheme(bool isLight) => _integrations.Tray?.ApplyTheme(isLight);
 
     // WPF-UI отдаёт клик по кнопке сворачивания в MinimizeActionOverride; не полагаемся на поведение TitleBar: «Свернуть» уводит главное
     // окно только в панель задач, а в мини-плеер — лишь отдельная кнопка/пункт вида или повторная активация ярлыка.
@@ -1497,7 +1478,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         if (_settings.IslandHideSystemToast && _isMiniMode && UsesIslandStyle) return;
 
         _trackChangeToastController.Show(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
-            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, ResolveToastTint());
+            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, EffectiveGameOverlayCompatibilityEnabled, ResolveToastTint());
     }
 
     // Монитор окна плеера для автоматического выбора: главное окно, пока оно на экране, иначе мини-плеер, иначе главное окно,
@@ -1556,7 +1537,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         var screen = ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen);
         _trackChangeToastController.PickPosition(
             LocalizationService.Translate("Перетащите карточку"), LocalizationService.Translate("Двойной клик — сохранить"),
-            CurrentArtBrush, _settings.IsLightThemeResolved(), screen, _settings, ResolveToastTint(), result =>
+            CurrentArtBrush, _settings.IsLightThemeResolved(), screen, _settings, EffectiveGameOverlayCompatibilityEnabled, ResolveToastTint(), result =>
             {
                 if (result is { } picked && picked.MonitorDeviceName != screen.DeviceName)
                     _settings.TrackChangeToastMonitor = picked.MonitorDeviceName;
@@ -1573,7 +1554,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             hasTrack ? TrackTitleText.Text : LocalizationService.Translate("Название трека"),
             hasTrack ? TrackArtistText.Text : LocalizationService.Translate("Исполнитель"),
             hasTrack ? CurrentArtBrush : null,
-            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, ResolveToastTint());
+            _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, EffectiveGameOverlayCompatibilityEnabled, ResolveToastTint());
     }
 
     private bool ShouldShowTrackChangeToast(TrackChangeOrigin origin, bool autoPlay) =>
@@ -1668,6 +1649,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // мини-плеер) читается при старте подсистем, поэтому SettingsWindow предлагает перезапуск.
     public void ApplyImportedSettingsLive()
     {
+        LyricsService.ApplyExtraSourceSettings(_settings);
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         ApplyAccentColor();
         ApplyWindowBackdrop();

@@ -434,6 +434,13 @@ internal sealed class ResourceWatchdog : IDisposable
         Current._timer.Start();
     }
 
+    // Остановка по выключенной настройке: наблюдение и накопленные замеры сбрасываются, окно диагностики это учитывает (Current == null).
+    public static void Stop()
+    {
+        Current?.Dispose();
+        Current = null;
+    }
+
     private ResourceWatchdog()
     {
         _timer.Tick += (_, _) => Tick();

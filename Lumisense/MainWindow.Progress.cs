@@ -66,7 +66,7 @@ public partial class MainWindow
         var newTime = TimeSpan.FromSeconds(_audioFile.TotalTime.TotalSeconds * Math.Clamp(ratio, 0.0, 1.0));
         SeekCurrentAudioFile(newTime);
         ProgressSlider.Value = newTime.TotalSeconds;
-        CurrentTimeText.Text = newTime.ToString(@"mm\:ss");
+        CurrentTimeText.Text = PlaybackTimeFormat.Format(newTime);
     }
 
     private void ProgressOverlay_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -122,7 +122,7 @@ public partial class MainWindow
             Focusable = false
         };
         _progressHoverTip.PlacementTarget = overlay;
-        _progressHoverTip.Content = time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss") : time.ToString(@"mm\:ss");
+        _progressHoverTip.Content = PlaybackTimeFormat.Format(time);
         _progressHoverTip.HorizontalOffset = x + 12;
         _progressHoverTip.VerticalOffset = -34;
         _progressHoverTip.IsOpen = true;
@@ -156,7 +156,7 @@ public partial class MainWindow
 
         SeekCurrentAudioFile(newTime);
         ProgressSlider.Value = newTime.TotalSeconds;
-        CurrentTimeText.Text = newTime.ToString(@"mm\:ss");
+        CurrentTimeText.Text = PlaybackTimeFormat.Format(newTime);
         RaiseProgressChanged(newTime.TotalSeconds, _audioFile.TotalTime.TotalSeconds);
     }
 
@@ -165,7 +165,7 @@ public partial class MainWindow
     {
         if (_audioFile == null) return;
 
-        SeekBy(Math.Sign(e.Delta) * 5);
+        SeekBy(Math.Sign(e.Delta) * PlaybackSteps.SeekSeconds);
         e.Handled = true;
     }
 
@@ -256,7 +256,7 @@ public partial class MainWindow
 
     private void ProgressSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        CurrentTimeText.Text = TimeSpan.FromSeconds(e.NewValue).ToString(@"mm\:ss");
+        CurrentTimeText.Text = PlaybackTimeFormat.Format(TimeSpan.FromSeconds(e.NewValue));
 
         // Общая точка любого изменения позиции (перемотка, таймер, SeekBy): проще синхронизировать waveform здесь, чем дублировать.
         double progressRatio = ProgressSlider.Maximum > 0 ? e.NewValue / ProgressSlider.Maximum : 0;

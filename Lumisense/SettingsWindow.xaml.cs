@@ -201,6 +201,11 @@ public partial class SettingsWindow : FluentWindow
         NowPlayingBackgroundColorPanel.IsEnabled = _settings.NowPlayingBackground == "Solid";
         RefreshNowPlayingBackgroundColorSwatch();
         UseExtraLyricsSourceCheckBox.IsChecked = _settings.UseExtraLyricsSource;
+        UseNetEaseLyricsCheckBox.IsChecked = _settings.UseNetEaseLyrics;
+        UseQqMusicLyricsCheckBox.IsChecked = _settings.UseQqMusicLyrics;
+        UseKugouLyricsCheckBox.IsChecked = _settings.UseKugouLyrics;
+        UsePaxsenixLyricsCheckBox.IsChecked = _settings.UsePaxsenixLyrics;
+        ExtraLyricsSourcesPanel.IsEnabled = _settings.UseExtraLyricsSource;
         HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
         FavoriteHeartSparksRadio.IsChecked = _settings.FavoriteHeartAnimation == "Sparks";
         FavoriteHeartRingRadio.IsChecked = _settings.FavoriteHeartAnimation == "Ring";
@@ -357,6 +362,8 @@ public partial class SettingsWindow : FluentWindow
         DiscordRichPresenceShowTrackInfoCheckBox.IsChecked = _settings.DiscordRichPresenceShowTrackInfo;
         DiscordRichPresenceShowTimelineCheckBox.IsChecked = _settings.DiscordRichPresenceShowTimeline;
         DiscordRichPresenceShowCoverArtCheckBox.IsChecked = _settings.DiscordRichPresenceShowCoverArt;
+        DiscordRichPresenceShowButtonsCheckBox.IsChecked = _settings.DiscordRichPresenceShowButtons;
+        ResourceWatchdogCheckBox.IsChecked = _settings.ResourceWatchdogEnabled;
         UpdateDiscordRichPresenceConnectionStatus();
         bool carousel = _owner.IsAlbumArtTransitionEnabled && _settings.AlbumArtTransitionStyle == "Carousel";
         AlbumArtTransitionStyleCarouselRadio.IsChecked = carousel;
@@ -375,6 +382,14 @@ public partial class SettingsWindow : FluentWindow
             GetEqBandValueText(band).Text = FormatEqGain(gain);
         }
         RefreshEqualizerPresetsList();
+
+        // Velopack берёт пакеты из своего feed на GitHub и зеркала не использует: выбор источника там ни на что не влиял бы.
+        if (UpdateMigrationGuard.IsVelopackManagedInstall())
+        {
+            UpdateSourceContentPanel.IsEnabled = false;
+            UpdateSourceVelopackHint.Text = LocalizationService.Translate("В этой установке обновления загружаются напрямую с GitHub; зеркала действуют только для установщика EXE/MSI.");
+            UpdateSourceVelopackHint.Visibility = Visibility.Visible;
+        }
 
         (_settings.UpdateDownloadSource switch
         {
@@ -1357,6 +1372,7 @@ public partial class SettingsWindow : FluentWindow
     private void RenderAllVersions(IReadOnlyList<ReleaseListItem> releases)
     {
         string currentVersion = UpdateChecker.GetCurrentVersion();
+        bool velopackInstall = UpdateMigrationGuard.IsVelopackManagedInstall();
 
         AllVersionsList.ItemsSource = releases
             // GitHub отдаёт релизы уже в порядке "сначала новые", но не гарантирует это явно —
@@ -1374,13 +1390,17 @@ public partial class SettingsWindow : FluentWindow
                         LocalizationService.IsEnglish ? "en-US" : "ru-RU"))
                     : LocalizationService.Translate("Дата публикации неизвестна");
 
-                bool canInstall = !string.IsNullOrEmpty(r.ExeDownloadUrl) && !string.IsNullOrEmpty(r.ExeSha256);
-                if (string.IsNullOrEmpty(r.ExeDownloadUrl))
+                // Inno EXE поверх Velopack-установки создал бы вторую копию, поэтому там кнопка только открывает релиз.
+                bool canInstall = velopackInstall
+                    ? !string.IsNullOrEmpty(r.ReleaseNotesUrl)
+                    : !string.IsNullOrEmpty(r.ExeDownloadUrl) && !string.IsNullOrEmpty(r.ExeSha256);
+                if (!velopackInstall && string.IsNullOrEmpty(r.ExeDownloadUrl))
                     subtitle += $" · {LocalizationService.Translate("В релизе нет .exe-установщика")}";
-                else if (string.IsNullOrEmpty(r.ExeSha256))
+                else if (!velopackInstall && string.IsNullOrEmpty(r.ExeSha256))
                     subtitle += $" · {LocalizationService.Translate("В релизе отсутствует SHA-256 установщика")}";
 
-                string action = LocalizationService.Translate(isCurrent ? "Переустановить" : "Установить");
+                string action = LocalizationService.Translate(velopackInstall ? "Открыть релиз"
+                    : isCurrent ? "Переустановить" : "Установить");
 
                 return new VersionListItemViewModel(title, subtitle, action, canInstall, r);
             })
@@ -1392,6 +1412,12 @@ public partial class SettingsWindow : FluentWindow
     private void VersionListItem_Click(object sender, RoutedEventArgs e)
     {
         if (sender is not FrameworkElement { DataContext: VersionListItemViewModel item }) return;
+
+        if (UpdateMigrationGuard.IsVelopackManagedInstall())
+        {
+            if (!string.IsNullOrEmpty(item.Release.ReleaseNotesUrl)) OpenUrl(item.Release.ReleaseNotesUrl);
+            return;
+        }
 
         var result = new UpdateCheckResult
         {
@@ -1450,6 +1476,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Открыть журнал Discord", "Интеграции", "Integrations", OpenDiscordDiagnosticsLogButton, "discord журнал лог диагностика ошибка rich presence" );
         Add("Приватность Discord: название и исполнитель", "Интеграции", "Integrations", DiscordRichPresenceShowTrackInfoCheckBox, "discord приватность название исполнитель трек" );
         Add("Приватность Discord: таймлайн", "Интеграции", "Integrations", DiscordRichPresenceShowTimelineCheckBox, "discord приватность время прогресс таймлайн" );
+        Add("Приватность Discord: кнопки GitHub и Скачать", "Интеграции", "Integrations", DiscordRichPresenceShowButtonsCheckBox, "discord кнопки github скачать ссылки статус buttons");
         Add("Приватность Discord: обложка трека", "Интеграции", "Integrations", DiscordRichPresenceShowCoverArtCheckBox, "discord обложка cover art musicbrainz itunes deezer" );
         Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
         Add("Звук для каждого устройства", "Эквалайзер", "Equalizer", DeviceSoundProfilesCheckBox, "профиль устройство наушники колонки эквалайзер баланс запоминать device profile");
@@ -1482,6 +1509,8 @@ public partial class SettingsWindow : FluentWindow
         Add("Показать / скрыть текст", "Горячие клавиши", "Hotkeys", HotkeyToggleLyricsButton, "текст lyrics панель показать скрыть переключить горячая клавиша");
         Add("Переключить мини-плеер", "Горячие клавиши", "Hotkeys", HotkeyToggleMiniPlayerButton, "мини плеер mini player переключить показать скрыть горячая клавиша");
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
+        Add("Перемотка вперёд", "Горячие клавиши", "Hotkeys", HotkeySeekForwardButton, "seek forward вперёд перемотка 5 секунд горячая клавиша");
+        Add("Перемотка назад", "Горячие клавиши", "Hotkeys", HotkeySeekBackwardButton, "seek backward назад перемотка 5 секунд горячая клавиша");
         Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
         Add("Анимация подключения устройства", "Воспроизведение", "Playback", DeviceConnectStyleCombo, "подключение устройство наушники bluetooth анимация карточка connect device airpods");
@@ -1516,10 +1545,13 @@ public partial class SettingsWindow : FluentWindow
         Add("Кэш текстов песен", "Тексты песен", "Lyrics", ClearLyricsCacheButton, "текст lyrics кэш очистить память локальный cache lyrics clear");
         Add("Сбросить плеер к исходному состоянию", "Профиль", "Profile", ResetPlayerButton, "сброс сбросить умолчание reset default настройки factory");
         Add("Вернуть состояние до последнего сброса", "Профиль", "Profile", RestoreResetSnapshotButton, "восстановить вернуть точка сброса backup restore reset recovery");
+        Add("Полный сброс данных", "Профиль", "Profile", ResetAllDataButton, "сброс удалить очистить стереть настройки плейлисты избранное история пресеты wipe erase all data reset");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "Обновления", "Updates", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
         Add("Все версии", "Обновления", "Updates", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
         Add("Проверить обновления", "Обновления", "Updates", CheckUpdatesButton, "обновление update github версия проверить");
+        Add("Проверить зеркала", "Обновления", "Updates", ProbeUpdateSourcesButton, "зеркало скорость проверка источник mirror speed probe gh-proxy ghfast");
+        Add("Скачать базовый пакет", "Обновления", "Updates", PrepareVelopackBasePackageButton, "velopack базовый пакет полный пакет компактные обновления delta base package");
         Add("Удалить старую EXE-копию", "Обновления", "Updates", RemoveLegacyInnoButton, "удалить uninstall деинсталлятор старая exe msi migration cleanup compact updates");
         Add("История изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
         Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты аватар");
@@ -1630,7 +1662,6 @@ public partial class SettingsWindow : FluentWindow
         ApplicationThemeManager.Apply(_settings.IsLightThemeResolved() ? ApplicationTheme.Light : ApplicationTheme.Dark);
         _owner.ApplyAccentColor(); // акцент пересчитывает светлые/тёмные варианты под новую тему
         ReapplyWindowBackdropsAfterThemeChange();
-        _owner.ApplyTrayTheme(_settings.IsLightThemeResolved());
         _owner.ApplyMiniPlayerThemeLive();
     }
 
@@ -2353,7 +2384,20 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.UseExtraLyricsSource = UseExtraLyricsSourceCheckBox.IsChecked == true;
-        LyricsService.ExtraSourceEnabled = _settings.UseExtraLyricsSource;
+        ExtraLyricsSourcesPanel.IsEnabled = _settings.UseExtraLyricsSource;
+        LyricsService.ApplyExtraSourceSettings(_settings);
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void ExtraLyricsServiceCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.UseNetEaseLyrics = UseNetEaseLyricsCheckBox.IsChecked == true;
+        _settings.UseQqMusicLyrics = UseQqMusicLyricsCheckBox.IsChecked == true;
+        _settings.UseKugouLyrics = UseKugouLyricsCheckBox.IsChecked == true;
+        _settings.UsePaxsenixLyrics = UsePaxsenixLyricsCheckBox.IsChecked == true;
+        LyricsService.ApplyExtraSourceSettings(_settings);
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
@@ -2673,6 +2717,16 @@ public partial class SettingsWindow : FluentWindow
             : "Нажмите «Подключить Discord», чтобы включить Rich Presence с официальным приложением Lumisense.");
     }
 
+    private void ResourceWatchdogCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ResourceWatchdogEnabled = ResourceWatchdogCheckBox.IsChecked == true;
+        if (_settings.ResourceWatchdogEnabled) ResourceWatchdog.Start();
+        else ResourceWatchdog.Stop();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
     private void DiscordRichPresencePrivacyCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -2680,6 +2734,7 @@ public partial class SettingsWindow : FluentWindow
         _settings.DiscordRichPresenceShowTrackInfo = DiscordRichPresenceShowTrackInfoCheckBox.IsChecked == true;
         _settings.DiscordRichPresenceShowTimeline = DiscordRichPresenceShowTimelineCheckBox.IsChecked == true;
         _settings.DiscordRichPresenceShowCoverArt = DiscordRichPresenceShowCoverArtCheckBox.IsChecked == true;
+        _settings.DiscordRichPresenceShowButtons = DiscordRichPresenceShowButtonsCheckBox.IsChecked == true;
         _owner.ApplyDiscordRichPresenceSettingsLive();
     }
 
@@ -5112,7 +5167,7 @@ public partial class SettingsWindow : FluentWindow
     // в UpdateAvailableWindow); try/catch на случай отсутствия браузера по умолчанию.
     private void DeveloperGitHubButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly");
 
-    private void OpenRepositoryButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://github.com/wasssly/Lumisense");
+    private void OpenRepositoryButton_Click(object sender, RoutedEventArgs e) => OpenUrl(DiscordRichPresenceDefaults.GitHubRepositoryUrl);
 
     private void DeveloperTelegramButton_Click(object sender, RoutedEventArgs e) => OpenUrl("https://t.me/dontwritetoblame");
 

@@ -243,8 +243,13 @@ public partial class MainWindow
 
         if (preset == null || string.IsNullOrWhiteSpace(preset.Name) || preset.Name.Length > 200 ||
             preset.GainsDb is null || preset.GainsDb.Length == 0 || preset.GainsDb.Length > 32 ||
-            preset.GainsDb.Any(g => !double.IsFinite(g) || g < -100 || g > 100))
+            preset.GainsDb.Any(g => !double.IsFinite(g)))
             return null;
+
+        // Фильтр режет усиление до ±12 дБ: без этого слайдер показывал бы значение, которого в звуке нет.
+        preset.GainsDb = preset.GainsDb
+            .Select(g => Math.Clamp(g, EqualizerSampleProvider.MinGainDb, EqualizerSampleProvider.MaxGainDb))
+            .ToArray();
 
         string baseName = preset.Name.Trim();
         string name = baseName;
@@ -371,10 +376,10 @@ public partial class MainWindow
     }
 
 
-    // Одно деление колеса = 5%, как и хоткеи громкости. e.Delta положителен при прокрутке "от себя".
+    // Одно деление колеса = 2%, как и хоткеи громкости (жест на обложке — 4%). e.Delta положителен при прокрутке "от себя".
     private void VolumeRow_MouseWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
     {
-        ChangeVolumeBy(Math.Sign(e.Delta) * 0.02);
+        ChangeVolumeBy(Math.Sign(e.Delta) * PlaybackSteps.Volume);
         e.Handled = true;
     }
 

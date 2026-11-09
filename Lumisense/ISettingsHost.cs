@@ -36,7 +36,6 @@ internal interface ISettingsAppearanceHost
     void ApplyAccentColor();
     void ApplyAccessibilityPreferences();
     void ApplyCoverBaseTheme();
-    void ApplyTrayTheme(bool isLight);
     void ApplyMiniPlayerThemeLive();
     void ApplyWindowBackdrop(bool forceReapply = false);
     void ApplySyncedLyricsAppearance();

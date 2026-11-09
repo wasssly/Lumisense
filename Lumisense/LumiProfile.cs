@@ -159,6 +159,37 @@ public static class LumiProfileIO
     public static void Apply(AppSettings imported, AppSettings live)
     {
         CopyTransferableSettings(imported, live);
+        MergeEqualizerPresets(imported, live);
+    }
+
+    // Пресеты эквалайзера — пользовательские данные, а не настройки поведения: они не заменяются, а добавляются к своим.
+    // Совпадающая по имени и значениям запись пропускается (повторный импорт не плодит копии), одноимённая с другими
+    // значениями получает суффикс — как при импорте одиночного пресета из файла.
+    private static void MergeEqualizerPresets(AppSettings imported, AppSettings live)
+    {
+        const int MaxPresets = 100;
+
+        foreach (EqualizerPreset preset in imported.EqualizerPresets ?? new List<EqualizerPreset>())
+        {
+            if (live.EqualizerPresets.Count >= MaxPresets) break;
+            if (preset is null || string.IsNullOrWhiteSpace(preset.Name) || preset.GainsDb is null || preset.GainsDb.Length == 0) continue;
+
+            // Фильтр режет усиление до ±12 дБ (см. импорт одиночного пресета), поэтому значения приводим к этому диапазону.
+            double[] gains = preset.GainsDb
+                .Select(gain => Math.Clamp(gain, EqualizerSampleProvider.MinGainDb, EqualizerSampleProvider.MaxGainDb))
+                .ToArray();
+
+            string baseName = preset.Name.Trim();
+            if (live.EqualizerPresets.Any(existing => existing.Name == baseName && existing.GainsDb.SequenceEqual(gains)))
+                continue;
+
+            string name = baseName;
+            int suffix = 2;
+            while (live.EqualizerPresets.Any(existing => existing.Name == name))
+                name = $"{baseName} ({suffix++})";
+
+            live.EqualizerPresets.Add(new EqualizerPreset { Name = name, GainsDb = gains });
+        }
     }
 
     // Сбрасывает только настройки поведения и интерфейса, сохраняя пользовательские данные,
@@ -178,7 +209,8 @@ public static class LumiProfileIO
         target.ReduceMotion = source.ReduceMotion;
         target.DisabledAnimationAreas = AnimationAreas.Normalize(source.DisabledAnimationAreas);
         target.ContextMenuOrder = ContextMenuOrdering.Normalize(source.ContextMenuOrder);
-        target.SyncedLyricsFontSize = source.SyncedLyricsFontSize;
+        // Профиль мог быть сохранён с более широкими допусками: приводим к диапазону слайдера, а не отклоняем весь файл.
+        target.SyncedLyricsFontSize = Math.Clamp(source.SyncedLyricsFontSize, LyricsHighlightStyle.MinSyncedFontSize, LyricsHighlightStyle.MaxSyncedFontSize);
         target.SyncedLyricsHighlightEffect = source.SyncedLyricsHighlightEffect;
         target.SyncedLyricsScaleActiveLine = source.SyncedLyricsScaleActiveLine;
         target.SyncedLyricsFadeDistantLines = source.SyncedLyricsFadeDistantLines;
@@ -187,7 +219,7 @@ public static class LumiProfileIO
         target.SyncedLyricsVisibleLines = source.SyncedLyricsVisibleLines;
         target.NowPlayingLyricsFontSize = source.NowPlayingLyricsFontSize;
         target.SyncedLyricsBlurInactive = source.SyncedLyricsBlurInactive;
-        target.SyncedLyricsGlowStrength = source.SyncedLyricsGlowStrength;
+        target.SyncedLyricsGlowStrength = Math.Clamp(source.SyncedLyricsGlowStrength, LyricsHighlightStyle.MinGlowStrength, LyricsHighlightStyle.MaxGlowStrength);
         target.SyncedLyricsBlurStrength = source.SyncedLyricsBlurStrength;
         target.SyncedLyricsTransition = LyricsTransitionStyle.Normalize(source.SyncedLyricsTransition);
         target.CustomLyricsPresets = (source.CustomLyricsPresets ?? new List<LyricsPreset>())
@@ -291,13 +323,14 @@ public static class LumiProfileIO
         target.HotkeySeekBackward = source.HotkeySeekBackward;
         target.HotkeyDeleteTrack = source.HotkeyDeleteTrack;
         target.ShuffleMode = source.ShuffleMode;
-        target.HidePlaybackButtons = source.HidePlaybackButtons;
         target.UpdateDownloadSource = source.UpdateDownloadSource;
         target.EqualizerEnabled = source.EqualizerEnabled;
         target.EqualizerBypass = source.EqualizerBypass;
         target.EqualizerAutoHeadroom = source.EqualizerAutoHeadroom;
         target.EqualizerBandGainsDb = source.EqualizerBandGainsDb.ToArray();
         target.DiscordRichPresenceShowCoverArt = source.DiscordRichPresenceShowCoverArt;
+        target.DiscordRichPresenceShowButtons = source.DiscordRichPresenceShowButtons;
+        target.ResourceWatchdogEnabled = source.ResourceWatchdogEnabled;
         target.AutoRefreshPlaylistFolders = source.AutoRefreshPlaylistFolders;
         target.GameOverlayCompatibilityMode = source.GameOverlayCompatibilityMode;
         target.GameOverlayCompatibilityAutoDetect = source.GameOverlayCompatibilityAutoDetect;
@@ -321,6 +354,10 @@ public static class LumiProfileIO
             target.FavoriteHeartAnimation = source.FavoriteHeartAnimation;
         target.HideCoverInLyricsPanel = source.HideCoverInLyricsPanel;
         target.UseExtraLyricsSource = source.UseExtraLyricsSource;
+        target.UseNetEaseLyrics = source.UseNetEaseLyrics;
+        target.UseQqMusicLyrics = source.UseQqMusicLyrics;
+        target.UseKugouLyrics = source.UseKugouLyrics;
+        target.UsePaxsenixLyrics = source.UsePaxsenixLyrics;
         if (source.LyricsManualSearchSource is "All" or "LRCLIB" or "NetEase" or "QQ Music" or "Kugou" or "Paxsenix")
             target.LyricsManualSearchSource = source.LyricsManualSearchSource;
         if (source.NowPlayingBackground is "Clouds" or "Orbs" or "Waves" or "Cover" or "Solid" or "None")

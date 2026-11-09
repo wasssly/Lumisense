@@ -24,6 +24,25 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
         return SettingsIntegrityService.TryLoad(_tempPath, out settings, out failure);
     }
 
+    [Theory]
+    [InlineData(11, 12)]
+    [InlineData(26, 20)]
+    [InlineData(16, 16)]
+    public void TryLoad_ClampsLyricsFontSizeToSliderRange(double stored, double expected)
+    {
+        Assert.True(TryLoad($"{{\"SyncedLyricsFontSize\": {stored.ToString(System.Globalization.CultureInfo.InvariantCulture)}}}", out var settings, out _));
+        Assert.Equal(expected, settings!.SyncedLyricsFontSize);
+    }
+
+    [Theory]
+    [InlineData(0, 10)]
+    [InlineData(55, 55)]
+    public void TryLoad_ClampsLyricsGlowStrengthToSliderRange(int stored, int expected)
+    {
+        Assert.True(TryLoad($"{{\"SyncedLyricsGlowStrength\": {stored}}}", out var settings, out _));
+        Assert.Equal(expected, settings!.SyncedLyricsGlowStrength);
+    }
+
     [Fact]
     public void TryLoad_MissingFile_ReturnsFalse()
     {
