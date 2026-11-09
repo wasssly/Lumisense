@@ -187,7 +187,9 @@ public partial class MainWindow
     private void StartOutputChain(int generation, TrackLoadPerformanceMeasurement performance)
     {
         _channelMode = new ChannelModeSampleProvider(_equalizer!) { MonoEnabled = _settings.PlaybackChannelMode == "Mono", Balance = _settings.PlaybackBalance };
-        _masterVolume = new MasterVolumeSampleProvider(_channelMode, ComputeAudioFileVolume(VolumeSlider.Value, 1.0));
+        _stereoImage = new StereoImageSampleProvider(_channelMode) { WidthPercent = _settings.StereoWidthPercent, CrossfeedPercent = _settings.CrossfeedPercent };
+        _loudness = new LoudnessSampleProvider(_stereoImage) { StrengthPercent = _settings.LoudnessCompensationPercent, VolumeGain = ComputeAudioFileVolume(VolumeSlider.Value, 1.0) };
+        _masterVolume = new MasterVolumeSampleProvider(_loudness, ComputeAudioFileVolume(VolumeSlider.Value, 1.0));
         _limiter = new LimiterSampleProvider(_masterVolume) { Enabled = _settings.LimiterEnabled };
         _audioLevelMeter = new AudioLevelSampleProvider(_limiter) { Enabled = AudioLevelMeterWanted };
         var fadeIn = new FadeInOutSampleProvider(_audioLevelMeter, initiallySilent: true);
@@ -844,6 +846,8 @@ public partial class MainWindow
         _equalizer = null;
         _audioLevelMeter = null;
         _channelMode = null;
+        _stereoImage = null;
+        _loudness = null;
         _masterVolume = null;
         _limiter = null;
         _activeFade = null;

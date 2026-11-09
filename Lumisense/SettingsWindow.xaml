@@ -2266,6 +2266,73 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.StereoWidthPercent / CrossfeedPercent / LoudnessCompensationPercent. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Пространство и громкость" Style="{StaticResource SettingsSectionTitleStyle}" />
+                                <TextBlock Text="Ширина стереобазы" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,16,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0" Height="28">
+                                        <Slider x:Name="StereoWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" Tag="StereoWidth"
+                                                ValueChanged="StereoImageSlider_ValueChanged"
+                                                MouseDoubleClick="StereoImageSlider_MouseDoubleClick" />
+                                    </Grid>
+                                    <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                            Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                        <TextBlock x:Name="StereoWidthValueText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontWeight="SemiBold" TextAlignment="Center" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="100% — без изменений, 0% — моно, больше 100% — шире. Двойной щелчок возвращает 100%."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Кроссфид для наушников" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,16,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0" Height="28">
+                                        <Slider x:Name="CrossfeedSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Tag="Crossfeed"
+                                                ValueChanged="StereoImageSlider_ValueChanged"
+                                                MouseDoubleClick="StereoImageSlider_MouseDoubleClick" />
+                                    </Grid>
+                                    <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                            Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                        <TextBlock x:Name="CrossfeedValueText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontWeight="SemiBold" TextAlignment="Center" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="Подмешивает к каждому уху приглушённый низкочастотный сигнал другого канала, как это слышно с колонок: звук меньше ощущается «внутри головы» на записях с резко разведёнными каналами. 0% — выключен."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                                <TextBlock Text="Тонкомпенсация громкости" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,16,0,6" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid Grid.Column="0" Height="28">
+                                        <Slider x:Name="LoudnessCompensationSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Tag="LoudnessCompensation"
+                                                ValueChanged="StereoImageSlider_ValueChanged"
+                                                MouseDoubleClick="StereoImageSlider_MouseDoubleClick" />
+                                    </Grid>
+                                    <Border Grid.Column="1" MinWidth="64" Margin="14,0,0,0" Padding="10,5" CornerRadius="8"
+                                            Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                        <TextBlock x:Name="LoudnessCompensationValueText" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   FontWeight="SemiBold" TextAlignment="Center" />
+                                    </Border>
+                                </Grid>
+                                <TextBlock Text="На малой громкости слух хуже слышит низы и верха, поэтому плеер поднимает их тем сильнее, чем тише ползунок громкости. Выше примерно −6 дБ ничего не меняется. 0% — выключена."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.LimiterEnabled / LimiterSampleProvider. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>

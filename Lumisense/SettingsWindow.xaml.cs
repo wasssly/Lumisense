@@ -351,6 +351,10 @@ public partial class SettingsWindow : FluentWindow
             ?? DeviceCardAnimationCombo.Items[0];
         RefreshDeviceKindControls();
         UpdatePlaybackBalanceText();
+        StereoWidthSlider.Value = Math.Clamp(_settings.StereoWidthPercent, 0, 200);
+        CrossfeedSlider.Value = Math.Clamp(_settings.CrossfeedPercent, 0, 100);
+        LoudnessCompensationSlider.Value = Math.Clamp(_settings.LoudnessCompensationPercent, 0, 100);
+        UpdateStereoImageTexts();
         BadgeModeExtensionRadio.IsChecked = _settings.TrackStateBadgeMode == "Extension";
         BadgeModeQualityRadio.IsChecked = _settings.TrackStateBadgeMode == "Quality";
         BadgeModeFileSizeRadio.IsChecked = _settings.TrackStateBadgeMode == "FileSize";
@@ -1517,6 +1521,9 @@ public partial class SettingsWindow : FluentWindow
         Add("Перемотка назад", "Горячие клавиши", "Hotkeys", HotkeySeekBackwardButton, "seek backward назад перемотка 5 секунд горячая клавиша");
         Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
+        Add("Ширина стереобазы", "Воспроизведение", "Playback", StereoWidthSlider, "ширина стерео база stereo width моно шире");
+        Add("Кроссфид для наушников", "Воспроизведение", "Playback", CrossfeedSlider, "кроссфид crossfeed наушники стерео голова");
+        Add("Тонкомпенсация громкости", "Воспроизведение", "Playback", LoudnessCompensationSlider, "тонкомпенсация loudness громкость низы тихо");
         Add("Анимация подключения устройства", "Воспроизведение", "Playback", DeviceConnectStyleCombo, "подключение устройство наушники bluetooth анимация карточка connect device airpods");
         Add("Анимация карточки устройства", "Воспроизведение", "Playback", DeviceCardAnimationCombo, "анимация карточка устройство волна орбита свечение раскрытие wave orbit glow animation");
         Add("Значок устройства", "Воспроизведение", "Playback", DeviceKindCombo, "значок иконка устройство наушники колонки вручную icon headphones speakers override");
@@ -4217,6 +4224,47 @@ public partial class SettingsWindow : FluentWindow
         _settings.PlaybackBalance = (int)Math.Clamp(Math.Round(PlaybackBalanceSlider.Value), -100, 100);
         _owner.ApplyChannelMode();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    // См. AppSettings.StereoWidthPercent, CrossfeedPercent и LoudnessCompensationPercent; Tag слайдера — его имя без «Slider».
+    private void StereoImageSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+    {
+        UpdateStereoImageTexts();
+        if (_isInitializing || sender is not System.Windows.Controls.Slider { Tag: string tag } slider) return;
+
+        int value = (int)Math.Round(slider.Value);
+        switch (tag)
+        {
+            case "StereoWidth":
+                _settings.StereoWidthPercent = Math.Clamp(value, 0, 200);
+                _owner.ApplyStereoImage();
+                break;
+            case "Crossfeed":
+                _settings.CrossfeedPercent = Math.Clamp(value, 0, 100);
+                _owner.ApplyStereoImage();
+                break;
+            default:
+                _settings.LoudnessCompensationPercent = Math.Clamp(value, 0, 100);
+                _owner.ApplyLoudnessCompensation();
+                break;
+        }
+
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void StereoImageSlider_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is System.Windows.Controls.Slider { Tag: string tag } slider) slider.Value = tag == "StereoWidth" ? 100 : 0;
+    }
+
+    private void UpdateStereoImageTexts()
+    {
+        if (StereoWidthValueText is null || StereoWidthSlider is null || CrossfeedValueText is null || CrossfeedSlider is null
+            || LoudnessCompensationValueText is null || LoudnessCompensationSlider is null) return;
+
+        StereoWidthValueText.Text = $"{(int)Math.Round(StereoWidthSlider.Value)}%";
+        CrossfeedValueText.Text = CrossfeedSlider.Value < 1 ? LocalizationService.Translate("Выкл.") : $"{(int)Math.Round(CrossfeedSlider.Value)}%";
+        LoudnessCompensationValueText.Text = LoudnessCompensationSlider.Value < 1 ? LocalizationService.Translate("Выкл.") : $"{(int)Math.Round(LoudnessCompensationSlider.Value)}%";
     }
 
     private void PlaybackBalanceSlider_MouseDoubleClick(object sender, MouseButtonEventArgs e) => PlaybackBalanceSlider.Value = 0;

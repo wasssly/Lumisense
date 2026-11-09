@@ -198,7 +198,9 @@ public partial class MainWindow
             _settings.PlaybackChannelMode == "Mono",
             _settings.PlaybackBalance != 0,
             _masterVolume is not null && Math.Abs(_masterVolume.Gain - 1f) > 1e-6f,
-            _settings.LimiterEnabled);
+            _settings.LimiterEnabled,
+            _settings.StereoWidthPercent != 100 || _settings.CrossfeedPercent > 0,
+            _settings.LoudnessCompensationPercent > 0);
         return SignalPathDescriber.Describe(state, localized: true);
     }
 

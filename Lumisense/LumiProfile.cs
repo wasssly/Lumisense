@@ -387,6 +387,9 @@ public static class LumiProfileIO
         target.IslandCompactShowDevice = source.IslandCompactShowDevice;
         target.DeviceConnectStyle = source.DeviceConnectStyle;
         target.DeviceCardAnimation = source.DeviceCardAnimation;
+        target.StereoWidthPercent = source.StereoWidthPercent;
+        target.CrossfeedPercent = source.CrossfeedPercent;
+        target.LoudnessCompensationPercent = source.LoudnessCompensationPercent;
         target.IslandAccentRim = source.IslandAccentRim;
         target.IslandProgressRim = source.IslandProgressRim;
         target.IslandBlurTransitions = source.IslandBlurTransitions;

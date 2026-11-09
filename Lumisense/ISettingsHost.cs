@@ -60,6 +60,8 @@ internal interface ISettingsAudioHost
     bool IsDeviceSoundProfilesEnabled { get; }
     void SetDeviceSoundProfilesEnabled(bool enabled);
     void ApplyChannelMode();
+    void ApplyStereoImage();
+    void ApplyLoudnessCompensation();
     void PreviewDeviceConnectOverlay();
     bool HasOutputDevice { get; }
     string GetOutputKindOverride();

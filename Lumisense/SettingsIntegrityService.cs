@@ -231,6 +231,9 @@ internal static class SettingsIntegrityService
         settings.SliderStyle = Allowed(settings.SliderStyle, defaults.SliderStyle, "Default", "Material");
         settings.PlaybackChannelMode = Allowed(settings.PlaybackChannelMode, defaults.PlaybackChannelMode, "Stereo", "Mono");
         settings.PlaybackBalance = Math.Clamp(settings.PlaybackBalance, -100, 100);
+        settings.StereoWidthPercent = Math.Clamp(settings.StereoWidthPercent, 0, 200);
+        settings.CrossfeedPercent = Math.Clamp(settings.CrossfeedPercent, 0, 100);
+        settings.LoudnessCompensationPercent = Math.Clamp(settings.LoudnessCompensationPercent, 0, 100);
         settings.ReplayGainPreampDb = double.IsFinite(settings.ReplayGainPreampDb) ? Math.Clamp(settings.ReplayGainPreampDb, -ReplayGainReader.MaxPreampDb, ReplayGainReader.MaxPreampDb) : 0;
         settings.DeviceConnectStyle = Allowed(settings.DeviceConnectStyle, defaults.DeviceConnectStyle, "Island", "Off");
         settings.DeviceCardAnimation = Allowed(settings.DeviceCardAnimation, defaults.DeviceCardAnimation, "Orbit", "Glow");

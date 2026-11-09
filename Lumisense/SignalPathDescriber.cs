@@ -14,7 +14,9 @@ internal sealed record SignalPathState(
     bool Mono,
     bool Balance,
     bool VolumeScaled,
-    bool Limiter);
+    bool Limiter,
+    bool StereoImage = false,
+    bool Loudness = false);
 
 internal sealed record SignalPathDescription(string Text, bool IsBitPerfect);
 
@@ -37,13 +39,15 @@ internal static class SignalPathDescriber
         if (state.Equalizer) stages.Add(T("Эквалайзер", "Equalizer"));
         if (state.Mono) stages.Add(T("Моно", "Mono"));
         if (state.Balance) stages.Add(T("Баланс", "Balance"));
+        if (state.StereoImage) stages.Add(T("Стереобаза", "Stereo image"));
+        if (state.Loudness) stages.Add(T("Тонкомпенсация", "Loudness"));
         if (state.VolumeScaled) stages.Add(T("Громкость", "Volume"));
         if (state.Limiter) stages.Add(T("Лимитер (без вмешательства, пока нет пиков)", "Limiter (idle unless peaks)"));
 
         string mode = state.Exclusive ? "WASAPI Exclusive" : "WASAPI Shared";
         stages.Add(string.IsNullOrEmpty(state.OutputFormat) ? mode : $"{mode} {state.OutputFormat}");
 
-        bool neutral = !state.TempoOrPitch && !state.ReplayGain && !state.Equalizer && !state.Mono && !state.Balance && !state.VolumeScaled;
+        bool neutral = !state.TempoOrPitch && !state.ReplayGain && !state.Equalizer && !state.Mono && !state.Balance && !state.VolumeScaled && !state.StereoImage && !state.Loudness;
         bool sameRate = state.SourceSampleRate is int sourceRate
             && state.OutputFormat is { Length: > 0 } format
             && format.StartsWith(FormatRate(sourceRate), System.StringComparison.Ordinal);

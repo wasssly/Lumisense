@@ -65,6 +65,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private ChannelModeSampleProvider? _channelMode;
     private MasterVolumeSampleProvider? _masterVolume;
     private LimiterSampleProvider? _limiter;
+    private StereoImageSampleProvider? _stereoImage;
+    private LoudnessSampleProvider? _loudness;
     // Данные для режимов подписи состояния трека (TrackStateBadgeMode), считаются один раз при загрузке трека.
     private string? _currentTrackExtensionText;
     private string? _currentTrackQualityText;

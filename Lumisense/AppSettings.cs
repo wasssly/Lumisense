@@ -351,6 +351,11 @@ public class AppSettings
     // Лимитер в конце цепочки: пики выше -0,1 dBFS ослабляются вместо клиппинга (см. LimiterSampleProvider).
     public bool LimiterEnabled { get; set; } = true;
 
+    // Ширина стереобазы в процентах (100 — без изменений), кроссфид для наушников (0 — выключен) и тонкомпенсация на малой громкости (0 — выключена).
+    public int StereoWidthPercent { get; set; } = 100;
+    public int CrossfeedPercent { get; set; }
+    public int LoudnessCompensationPercent { get; set; }
+
     // Запоминать эквалайзер и баланс отдельно для каждого устройства вывода (см. DeviceSoundProfile).
     public bool DeviceSoundProfilesEnabled { get; set; }
 

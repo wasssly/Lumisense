@@ -312,8 +312,11 @@ public partial class MainWindow
     {
         if (_audioFile != null)
             _audioFile.Volume = (float)_replayGainFactor;
+        float gain = ComputeAudioFileVolume(sliderValue, 1.0);
         if (_masterVolume != null)
-            _masterVolume.Gain = ComputeAudioFileVolume(sliderValue, 1.0);
+            _masterVolume.Gain = gain;
+        if (_loudness != null)
+            _loudness.VolumeGain = gain;
     }
 
     private float ComputeAudioFileVolume(double sliderValue, double replayGainFactor) =>
@@ -325,6 +328,19 @@ public partial class MainWindow
 
         _channelMode.MonoEnabled = _settings.PlaybackChannelMode == "Mono";
         _channelMode.Balance = _settings.PlaybackBalance;
+    }
+
+    public void ApplyStereoImage()
+    {
+        if (_stereoImage == null) return;
+
+        _stereoImage.WidthPercent = _settings.StereoWidthPercent;
+        _stereoImage.CrossfeedPercent = _settings.CrossfeedPercent;
+    }
+
+    public void ApplyLoudnessCompensation()
+    {
+        if (_loudness != null) _loudness.StrengthPercent = _settings.LoudnessCompensationPercent;
     }
 
     public void ApplyTrackStateBadgeMode() => UpdateTrackUserStatePresentation();
