@@ -121,6 +121,7 @@ public static class FileNameNormalizer
 
                 File.Move(item.SourcePath, targetPath, overwrite: false);
                 renamed[item.SourcePath] = targetPath;
+                MoveSidecarLyrics(item.SourcePath, targetPath);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
             {
@@ -130,6 +131,36 @@ public static class FileNameNormalizer
         }
 
         return new RenameResult(renamed.Count, skipped, failed, renamed, errors);
+    }
+
+    private static readonly string[] LyricsSidecarExtensions = { ".lrc", ".txt" };
+
+    // Текст рядом с треком (.lrc или .txt с тем же именем) принадлежит ему: без переноса после переименования Lumisense его
+    // больше не находил бы. Если рядом лежит другой аудиофайл с тем же именем (song.mp3 и song.flac), текст общий и остаётся.
+    // Сбой переноса не отменяет уже выполненное переименование трека: текст — необязательное дополнение.
+    private static void MoveSidecarLyrics(string sourceAudioPath, string targetAudioPath)
+    {
+        try
+        {
+            string sourceExtension = Path.GetExtension(sourceAudioPath);
+            bool sharedWithAnotherAudioFile = AudioFormats.Extensions.Any(extension =>
+                !string.Equals(extension, sourceExtension, StringComparison.OrdinalIgnoreCase) &&
+                File.Exists(Path.ChangeExtension(sourceAudioPath, extension)));
+            if (sharedWithAnotherAudioFile) return;
+
+            foreach (string extension in LyricsSidecarExtensions)
+            {
+                string sourceSidecar = Path.ChangeExtension(sourceAudioPath, extension);
+                string targetSidecar = Path.ChangeExtension(targetAudioPath, extension);
+                if (!File.Exists(sourceSidecar) || File.Exists(targetSidecar)) continue;
+
+                File.Move(sourceSidecar, targetSidecar, overwrite: false);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            Logger.Warn($"Не удалось перенести текст песни рядом с файлом при переименовании: {ex.Message}");
+        }
     }
 
     public static string NormalizeTemplate(string? template)

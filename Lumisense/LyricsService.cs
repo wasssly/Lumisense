@@ -855,6 +855,33 @@ public static class LyricsService
         await WriteManagedSourceAsync(audioPath, result.Source, cancellationToken).ConfigureAwait(false);
     }
 
+    // После переименования аудиофайла (нормализация имён) переносит сохранённые Lumisense тексты на ключ нового пути: имя
+    // записи — хеш пути, и без переноса вставленный пользователем или найденный текст остался бы под старым ключом, недоступным
+    // треку. Запись, уже существующая под новым ключом, не перезаписывается.
+    internal static void MoveManagedLyrics(string oldAudioPath, string newAudioPath)
+    {
+        lock (CacheMaintenanceGate)
+        {
+            MoveFileIfDestinationFree(GetManagedTextPath(oldAudioPath), GetManagedTextPath(newAudioPath));
+            MoveFileIfDestinationFree(GetManagedLrcPath(oldAudioPath), GetManagedLrcPath(newAudioPath));
+            MoveFileIfDestinationFree(GetManagedSourcePath(oldAudioPath), GetManagedSourcePath(newAudioPath));
+            MoveFileIfDestinationFree(GetLegacyPastedLyricsCachePath(oldAudioPath), GetLegacyPastedLyricsCachePath(newAudioPath));
+        }
+    }
+
+    private static void MoveFileIfDestinationFree(string source, string destination)
+    {
+        try
+        {
+            if (!File.Exists(source) || File.Exists(destination)) return;
+            File.Move(source, destination, overwrite: false);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            Logger.Warn($"Не удалось перенести сохранённый текст песни при переименовании файла: {ex.Message}");
+        }
+    }
+
     internal static string GetManagedSourcePath(string audioPath) =>
         Path.Combine(ManagedSourceDirectory, GetAudioPathCacheKey(audioPath) + ".source");
 

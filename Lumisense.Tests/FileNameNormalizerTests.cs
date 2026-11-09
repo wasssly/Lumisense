@@ -292,4 +292,51 @@ public sealed class FileNameNormalizerTests : IDisposable
         Assert.Equal(1, result.FailedCount);
         Assert.False(File.Exists(Path.Combine(_directory, "Artist - Title.mp3")));
     }
+
+    [Fact]
+    public void Execute_MovesLyricsSidecarsWithTheRenamedTrack()
+    {
+        string source = CreateFile("01 - Artist - Title.mp3", "audio");
+        CreateFile("01 - Artist - Title.lrc", "synced");
+        CreateFile("01 - Artist - Title.txt", "plain");
+        var preview = FileNameNormalizer.BuildPreview(new[] { source }, null);
+
+        var result = FileNameNormalizer.Execute(preview);
+
+        Assert.Equal(1, result.RenamedCount);
+        Assert.Equal("synced", File.ReadAllText(Path.Combine(_directory, "Artist - Title.lrc")));
+        Assert.Equal("plain", File.ReadAllText(Path.Combine(_directory, "Artist - Title.txt")));
+        Assert.False(File.Exists(Path.Combine(_directory, "01 - Artist - Title.lrc")));
+        Assert.False(File.Exists(Path.Combine(_directory, "01 - Artist - Title.txt")));
+    }
+
+    [Fact]
+    public void Execute_KeepsLyricsSidecarSharedWithAnotherAudioFileOfTheSameName()
+    {
+        string source = CreateFile("01 - Artist - Title.mp3", "audio");
+        CreateFile("01 - Artist - Title.flac", "lossless");
+        CreateFile("01 - Artist - Title.lrc", "synced");
+        var preview = FileNameNormalizer.BuildPreview(new[] { source }, null);
+
+        var result = FileNameNormalizer.Execute(preview);
+
+        Assert.Equal(1, result.RenamedCount);
+        Assert.True(File.Exists(Path.Combine(_directory, "01 - Artist - Title.lrc")));
+        Assert.False(File.Exists(Path.Combine(_directory, "Artist - Title.lrc")));
+    }
+
+    [Fact]
+    public void Execute_DoesNotOverwriteAnExistingLyricsSidecarAtTheNewName()
+    {
+        string source = CreateFile("01 - Artist - Title.mp3", "audio");
+        CreateFile("01 - Artist - Title.lrc", "old name");
+        CreateFile("Artist - Title.lrc", "already there");
+        var preview = FileNameNormalizer.BuildPreview(new[] { source }, null);
+
+        var result = FileNameNormalizer.Execute(preview);
+
+        Assert.Equal(1, result.RenamedCount);
+        Assert.Equal("already there", File.ReadAllText(Path.Combine(_directory, "Artist - Title.lrc")));
+        Assert.Equal("old name", File.ReadAllText(Path.Combine(_directory, "01 - Artist - Title.lrc")));
+    }
 }

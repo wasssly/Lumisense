@@ -705,7 +705,14 @@ public partial class MainWindow
         FileNameNormalizer.RenameResult result;
         try
         {
-            result = await Task.Run(() => FileNameNormalizer.Execute(preview), _lifetimeCts.Token);
+            result = await Task.Run(() =>
+            {
+                FileNameNormalizer.RenameResult renameResult = FileNameNormalizer.Execute(preview);
+                // Сохранённые Lumisense тексты привязаны к пути файла: переносим их на новое имя, пока список ещё не обновлён.
+                foreach (var (oldPath, newPath) in renameResult.RenamedPaths)
+                    LyricsService.MoveManagedLyrics(oldPath, newPath);
+                return renameResult;
+            }, _lifetimeCts.Token);
         }
         catch (OperationCanceledException)
         {
