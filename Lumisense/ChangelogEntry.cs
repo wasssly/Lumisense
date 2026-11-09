@@ -1,7 +1,6 @@
 namespace Lumisense;
 
-// Version и IsCurrent в JSON не хранятся, их выставляет ChangelogLoader.AssignComputedFields
-// (Version — semver по смыслу изменений, IsCurrent — у записи с самой свежей датой)
+// Version и IsCurrent выставляет ChangelogLoader; необязательное "version" в JSON задаёт номер явно.
 public class ChangelogEntry
 {
     public string Version { get; set; } = "";

@@ -678,7 +678,7 @@
                                 <local:SvgPathIcon Icon="IconPictureInPicture" Size="14" />
                             </MenuItem.Icon>
                         </MenuItem>
-                        <MenuItem x:Name="NowPlayingMenuItem" Header="Now Playing (полный экран)" Click="ShowNowPlayingMenuItem_Click">
+                        <MenuItem Header="Now Playing (полный экран)" Click="ShowNowPlayingMenuItem_Click">
                             <MenuItem.Icon>
                                 <local:SvgPathIcon Icon="IconExpand" Size="14" />
                             </MenuItem.Icon>

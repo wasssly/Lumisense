@@ -777,7 +777,7 @@
                                  GroupName="SettingsNav" Tag="Cover" Checked="NavItem_Checked">
                         <StackPanel Orientation="Horizontal">
                             <local:SvgPathIcon Icon="IconMusicNote" Size="18" VerticalAlignment="Center" />
-                            <TextBlock x:Name="NavCoverText" Text="Обложка и Now Playing" Margin="10,0,0,0" VerticalAlignment="Center" />
+                            <TextBlock Text="Обложка и Now Playing" Margin="10,0,0,0" VerticalAlignment="Center" />
                         </StackPanel>
                     </RadioButton>
 
@@ -1305,11 +1305,11 @@
                                                       Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
                                             <CheckBox Tag="Progress" Content="Полоса воспроизведения" Margin="0,0,0,8"
                                                       Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
-                                            <CheckBox x:Name="AnimationNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing: фон и переходы" Margin="0,0,0,8"
+                                            <CheckBox Tag="NowPlaying" Content="Now Playing: фон и переходы" Margin="0,0,0,8"
                                                       Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
                                             <CheckBox Tag="MiniPlayer" Content="Мини-плеер: бегущая строка" Margin="0,0,0,8"
                                                       Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
-                                            <CheckBox x:Name="AnimationIslandCheckBox" Tag="Island" Content="Остров" Margin="0,0,0,8"
+                                            <CheckBox Tag="Island" Content="Остров" Margin="0,0,0,8"
                                                       Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
                                             <CheckBox Tag="Tray" Content="Меню трея" Margin="0,0,0,8"
                                                       Checked="AnimationAreaCheckBox_Changed" Unchecked="AnimationAreaCheckBox_Changed" />
@@ -1335,7 +1335,7 @@
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" Margin="0,0,0,12" />
                                 <RadioButton x:Name="BackdropBlurRadio" Content="Размытие"
                                              GroupName="Backdrop" Checked="WindowBackdropRadio_Changed" />
-                                <TextBlock x:Name="BackdropBaseHelpText" Text="Основа применяется к главному окну, окну настроек и статистике."
+                                <TextBlock Text="Основа применяется к главному окну, окну настроек и статистике."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,16" />
                                 <CheckBox x:Name="CoverBaseFromCoverCheckBox" Content="Цвет основы от текущей обложки"
                                           Checked="CoverBaseFromCoverCheckBox_Changed"
@@ -1548,7 +1548,7 @@
                                                            FontWeight="SemiBold" TextAlignment="Center" />
                                             </Border>
                                         </Grid>
-                                        <TextBlock x:Name="LyricsEffectHelpText" Text="Активная строка остаётся белой, неактивные — приглушённо-серыми. Свечение применяется в панели текста главного окна и в Now Playing; подложка, полоска, увеличение, приглушение, размытие и число видимых строк — только в Now Playing."
+                                        <TextBlock Text="Активная строка остаётся белой, неактивные — приглушённо-серыми. Свечение применяется в панели текста главного окна и в Now Playing; подложка, полоска, увеличение, приглушение, размытие и число видимых строк — только в Now Playing."
                                                    Style="{StaticResource SettingsHelperTextStyle}" Margin="0,10,0,0" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
@@ -1557,7 +1557,7 @@
                                         Background="{DynamicResource ControlFillColorSecondaryBrush}">
                                     <StackPanel>
                                         <TextBlock Text="Выравнивание текста песни" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                        <TextBlock x:Name="LyricsAlignmentHelpText" Text="Относится к тексту песни в панели главного окна и в режиме Now Playing, и к синхронному, и к обычному."
+                                        <TextBlock Text="Относится к тексту песни в панели главного окна и в режиме Now Playing, и к синхронному, и к обычному."
                                                    Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" TextWrapping="Wrap" />
                                         <WrapPanel>
                                             <RadioButton x:Name="LyricsAlignLeftRadio" Content="Слева"
@@ -1648,11 +1648,11 @@
                     </StackPanel>
 
                     <StackPanel x:Name="PageCover" Visibility="Collapsed">
-                        <TextBlock x:Name="CoverPageTitle" Text="Обложка и Now Playing" Style="{StaticResource PageTitleStyle}" />
-                        <TextBlock x:Name="CoverPageDescription" Text="Фон Now Playing, обложка, избранное и подпись под названием трека." Style="{StaticResource PageDescriptionStyle}" />
+                        <TextBlock Text="Обложка и Now Playing" Style="{StaticResource PageTitleStyle}" />
+                        <TextBlock Text="Фон Now Playing, обложка, избранное и подпись под названием трека." Style="{StaticResource PageDescriptionStyle}" />
 
                         <!-- См. AppSettings.NowPlayingBackground и NowPlayingWindow.Backdrop.cs. -->
-                        <Border x:Name="NowPlayingBackgroundCard" Style="{StaticResource SettingsCardStyle}">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Фон Now Playing" Style="{StaticResource SettingsSectionTitleStyle}" />
                                 <RadioButton x:Name="NowPlayingBackgroundCloudsRadio" Content="Облака из цветов обложки"
@@ -2615,7 +2615,7 @@
                         <TextBlock Text="Внешние сервисы, приватность и диагностика подключений." Style="{StaticResource PageDescriptionStyle}" />
 
                         <!-- Discord Rich Presence — локальный Discord IPC, см. DiscordRichPresenceManager. -->
-                        <Border x:Name="DiscordCard" Style="{StaticResource SettingsCardStyle}">
+                        <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <CheckBox x:Name="DiscordRichPresenceEnabledCheckBox" Content="Discord Rich Presence"
                                           Checked="DiscordRichPresenceEnabledCheckBox_Changed"

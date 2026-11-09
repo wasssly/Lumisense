@@ -27,7 +27,7 @@ public partial class MainWindow
         var used = new HashSet<string>(StringComparer.Ordinal);
         foreach (string? slot in (slots ?? []).Take(ModernSlotCount))
         {
-            string value = slot is not null && ModernSlotActions.Contains(slot) && !(AppEdition.IsLite && slot == "Statistics") && used.Add(slot) ? slot : string.Empty;
+            string value = slot is not null && ModernSlotActions.Contains(slot) && used.Add(slot) ? slot : string.Empty;
             result.Add(value);
         }
 

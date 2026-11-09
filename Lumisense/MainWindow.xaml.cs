@@ -58,8 +58,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private const int OutputRecoveryCooldownMilliseconds = 1500;
     private const int SystemDefaultEndpointDebounceMilliseconds = 180;
 
-    // Сидит между _audioFile и _outputDevice в цепочке ISampleProvider (см. LoadAndPlay) —
-    // громкость (AudioFileReader.Volume) применяется ДО эквалайзера, он только красит частоты.
+    // ReplayGain применяется до эквалайзера, громкость ползунка — после него (_masterVolume).
     private EqualizerSampleProvider? _equalizer;
     // Измеряет уже обработанный эквалайзером сигнал для визуальной реакции Now Playing.
     private AudioLevelSampleProvider? _audioLevelMeter;
@@ -104,8 +103,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private int _playlistSearchGeneration;
     private readonly Stopwatch _playbackClock = new();
 
-    // Множитель громкости из ReplayGain-тегов трека (ReplayGainReader), 1.0 при выключенной настройке/нет тегов; домножается
-    // на громкость в ComputeAudioFileVolume (AudioFileReader.Volume, до эквалайзера) — отдельный ISampleProvider не нужен.
+    // Множитель из ReplayGain-тегов трека (1.0 без тегов); применяется на AudioFileReader.Volume.
     private double _replayGainFactor = 1.0;
     private Color? _coverAccentColor;
     // Waveform-полоса (AppSettings.ProgressBarStyle): кэш пиков по пути — пересчитывать волну при повторной загрузке трека
@@ -408,11 +406,6 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         _audioOutputRecoveryService = new(
             _audioOutputRecoveryCoordinator, TimeSpan.FromMilliseconds(OutputRecoveryCooldownMilliseconds));
         InitializeComponent();
-        if (AppEdition.IsLite)
-        {
-            StatisticsButton.Visibility = Visibility.Collapsed;
-            NowPlayingMenuItem.Visibility = Visibility.Collapsed;
-        }
         AccessibilityPreferences.ApplyToWindow(this, _settings);
         ApplyLyricsTextAlignment();
         LyricsPanelSyncedList.ItemsSource = _mainWindowSyncedLyrics;
@@ -1229,7 +1222,6 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // (чтение тегов, StatisticsWindow.LoadAsync) и логически не относятся к настройкам.
     public void ShowStatisticsWindow()
     {
-        if (AppEdition.IsLite) return;
         if (_statisticsWindow == null)
         {
             _statisticsWindow = new StatisticsWindow(_settings);
@@ -1294,7 +1286,6 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
     public void ShowNowPlayingWindow()
     {
-        if (AppEdition.IsLite) return;
         if (_nowPlayingWindow is null)
         {
             if (IsVisible && !_isMiniMode && WindowState != WindowState.Minimized)
@@ -1500,7 +1491,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     {
         if (!_settings.ShowTrackChangeToast || !ShouldShowTrackChangeToast(origin, autoPlay)) return;
         // В мини-плеере «Остров» карточку о смене трека показывает сам остров: системное уведомление по желанию скрывается.
-        if (_settings.IslandHideSystemToast && _isMiniMode && UsesIslandStyle) return;
+        if (_settings.IslandHideSystemToast && _isMiniMode && _settings.MiniPlayerStyle == "Island") return;
 
         _trackChangeToastController.Show(TrackTitleText.Text, TrackArtistText.Text, CurrentArtBrush,
             _settings.IsLightThemeResolved(), ToastMonitorResolver.Resolve(_settings, GetPlayerWindowScreen), _settings, ResolveToastTint());
@@ -1625,7 +1616,6 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // поэтому Discord не зависит от текстовых полей UI.
     private void UpdateDiscordRichPresence(bool force)
     {
-        if (AppEdition.IsLite) return;
         if (_discordTrackChangePending) return;
 
         var audioFile = _audioFile;
