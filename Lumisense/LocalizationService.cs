@@ -3,6 +3,7 @@ using System.IO;
 using System.Reflection;
 using System.Text.RegularExpressions;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
@@ -147,6 +148,44 @@ public static class LocalizationService
         ["Ещё"] = "More",
         ["Сохранять очередь «Играть следующим» между запусками"] = "Keep the Up next queue between launches",
         ["По умолчанию очередь не переживает перезапуск приложения. Если включить — она сохранится и восстановится при следующем запуске (пропавшие с диска файлы будут тихо убраны)."] = "By default, the queue is cleared when the app restarts. When enabled, it is saved and restored on the next launch; files missing from disk are removed automatically.",
+        ["Автоматически обновлять папки плейлиста"] = "Automatically refresh playlist folders",
+        ["Новые аудиофайлы, появившиеся в добавленных папках, сами попадают в плейлист (и при запуске, и пока плеер открыт). Если выключить, плейлист меняется только когда вы добавляете файлы и папки вручную."] = "New audio files that appear in added folders are added to the playlist automatically, both at startup and while the player is open. When turned off, the playlist changes only when you add files and folders yourself.",
+        ["Пресет оформления текста"] = "Lyrics style preset",
+        ["Размер шрифта текста песни"] = "Lyrics font size",
+        ["Кнопка слева, дальняя"] = "Left button, outer",
+        ["Кнопка слева, ближняя"] = "Left button, inner",
+        ["Кнопка справа, ближняя"] = "Right button, inner",
+        ["Кнопка справа, дальняя"] = "Right button, outer",
+        ["Выравнивание обложки в виде «Компакт»"] = "Cover alignment in Compact view",
+        ["Анимация карточки устройства"] = "Device card animation",
+        ["Размер буфера WASAPI"] = "WASAPI buffer size",
+        ["Предусилитель ReplayGain"] = "ReplayGain preamp",
+        ["Баланс каналов"] = "Channel balance",
+        ["Толщина дорожки прогресса"] = "Progress track thickness",
+        ["Размер ручки прогресса"] = "Progress thumb size",
+        ["Высота волны прогресса"] = "Progress wave height",
+        ["Длина волны прогресса"] = "Progress wave length",
+        ["Скорость волны прогресса"] = "Progress wave speed",
+        ["Зазор между столбиками прогресса"] = "Progress bar gap",
+        ["Ширина уведомления о смене трека"] = "Track change toast width",
+        ["Прозрачность фона уведомления"] = "Toast background opacity",
+        ["Монитор уведомления"] = "Toast monitor",
+        ["Сила окрашивания уведомления"] = "Toast tint strength",
+        ["Пресеты эквалайзера"] = "Equalizer presets",
+        ["Толщина контура вокруг обложки"] = "Cover outline thickness",
+        ["Отступ острова от верхнего края"] = "Island gap from top edge",
+        ["Скрытие острова по средней кнопке мыши"] = "Hide island with middle mouse button",
+        ["Сворачивание острова после ухода курсора"] = "Collapse island after the cursor leaves",
+        ["Эквалайзер, 31 Гц"] = "Equalizer, 31 Hz",
+        ["Эквалайзер, 62 Гц"] = "Equalizer, 62 Hz",
+        ["Эквалайзер, 125 Гц"] = "Equalizer, 125 Hz",
+        ["Эквалайзер, 250 Гц"] = "Equalizer, 250 Hz",
+        ["Эквалайзер, 500 Гц"] = "Equalizer, 500 Hz",
+        ["Эквалайзер, 1 кГц"] = "Equalizer, 1 kHz",
+        ["Эквалайзер, 2 кГц"] = "Equalizer, 2 kHz",
+        ["Эквалайзер, 4 кГц"] = "Equalizer, 4 kHz",
+        ["Эквалайзер, 8 кГц"] = "Equalizer, 8 kHz",
+        ["Эквалайзер, 16 кГц"] = "Equalizer, 16 kHz",
         ["Добавить/убрать из избранного"] = "Add/remove from favorites",
         ["Закрепить/открепить в избранном"] = "Pin/unpin in favorites",
         ["Показать в проводнике"] = "Show in Explorer",
@@ -736,7 +775,7 @@ public static class LocalizationService
         ["Перемотка вперёд (5 сек)"] = "Skip forward (5 sec)",
         ["Перемотка назад (5 сек)"] = "Skip backward (5 sec)",
         ["Удалить трек с диска"] = "Delete track from disk",
-        ["Перенос настроек плеера на другой компьютер одним файлом — тема, акцентный цвет, эквалайзер, горячие клавиши и остальные переключатели на этих страницах. Плейлист, избранное и история прослушиваний сюда не входят."] = "Transfer player settings to another computer in a single file — theme, accent color, equalizer, hotkeys, and other switches from these pages. Playlists, favorites, and listening history are not included.",
+        ["Перенос настроек плеера на другой компьютер одним файлом — тема, акцентный цвет, эквалайзер, горячие клавиши и остальные переключатели на этих страницах. Плейлист, избранное и история прослушиваний сюда не входят, как и настройки конкретного компьютера: положение окон, устройство вывода и режим WASAPI."] = "Transfer player settings to another computer in a single file — theme, accent color, equalizer, hotkeys, and other switches from these pages. Playlists, favorites, listening history, and settings specific to a computer (window positions, output device, WASAPI mode) are not included.",
         ["Экспортировать настройки…"] = "Export settings…",
         ["Сохранить в один .lumi-файл"] = "Save to a single .lumi file",
         ["Импортировать настройки…"] = "Import settings…",
@@ -1724,6 +1763,19 @@ public static class LocalizationService
 
         if (element is FrameworkElement frameworkElement && frameworkElement.ToolTip is string toolTip)
             frameworkElement.ToolTip = Translate(toolTip);
+
+        // Имя элемента для программ чтения с экрана (AutomationProperties.Name) задаётся в XAML по-русски литералом и
+        // переводится по тому же словарю; имена, привязанные к ToolTip или данным, уже локализованы и пропускаются.
+        if (!BindingOperations.IsDataBound(element, AutomationProperties.NameProperty))
+        {
+            string automationName = AutomationProperties.GetName(element);
+            if (!string.IsNullOrEmpty(automationName))
+            {
+                string translatedName = Translate(automationName);
+                if (!string.Equals(translatedName, automationName, StringComparison.Ordinal))
+                    AutomationProperties.SetName(element, translatedName);
+            }
+        }
 
         // У WPF-UI свои строковые DependencyProperty (Title у TitleBar, PlaceholderText у TextBox): обрабатываем через reflection
         // без жёсткой привязки к версии библиотеки и без правок XAML.

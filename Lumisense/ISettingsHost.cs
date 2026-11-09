@@ -127,6 +127,7 @@ internal interface ISettingsPlaylistHost
     void SetTrackContextMenuActionDisabled(string actionId, bool disabled);
     void ResetShuffleState();
     void SetSaveQueueBetweenRestarts(bool enabled);
+    void SetAutoRefreshPlaylistFolders(bool enabled);
     Task<FileNameNormalizer.RenameResult?> NormalizePlaylistFileNamesAsync(Window dialogOwner);
 }
 

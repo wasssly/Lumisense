@@ -154,6 +154,15 @@ public partial class MainWindow
         _settings.SavedQueue = enabled ? _playbackQueue.Items.ToList() : new List<string>();
     }
 
+    // Включение сразу запускает слежение за папками и один отложенный скан (изменения, пока слежение было выключено,
+    // иначе не подтянулись бы до перезапуска); выключение останавливает все FileSystemWatcher.
+    public void SetAutoRefreshPlaylistFolders(bool enabled)
+    {
+        _settings.AutoRefreshPlaylistFolders = enabled;
+        StartFolderWatchers();
+        if (enabled) QueueAllFolderRefreshes();
+    }
+
     // Раньше вызывалась только из OnClosed, а при MinimizeToTrayOnClose (по умолчанию) окно прячется в трей и до "Выход"
     // могло не доходить месяцами; теперь вызывается ещё при сворачивании в трей, на паузе и периодически.
     private void PersistPlaybackAndPlaylistState(bool asyncSave = false)

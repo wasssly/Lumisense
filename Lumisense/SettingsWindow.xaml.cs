@@ -329,6 +329,7 @@ public partial class SettingsWindow : FluentWindow
         InitializeMiniPlayerContextMenuActionCheckBoxes();
         LoadShuffleModeControls();
         SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
+        AutoRefreshPlaylistFoldersCheckBox.IsChecked = _settings.AutoRefreshPlaylistFolders;
         MiniArtworkProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "Material";
         MiniArtworkProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "MaterialSlider";
         MiniArtworkProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle is not ("Material" or "MaterialSlider");
@@ -1480,6 +1481,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
         Add("Не запускать трек при старте", "Воспроизведение", "Playback", NeverAutoPlayLastTrackOnStartupCheckBox, "старт запуск продолжить воспроизведение последний трек пауза resume autoplay");
+        Add("Автоматически обновлять папки плейлиста", "Воспроизведение", "Playback", AutoRefreshPlaylistFoldersCheckBox, "папки плейлист новые файлы автообновление слежение watcher refresh auto folders");
         Add("Очистить кэш интернет-обложек", "Библиотека и файлы", "Library", ClearArtworkCacheButton, "кэш обложка интернет очистить удалить cover cache artwork image");
         Add("Нормализация имён файлов", "Библиотека и файлы", "Library", NormalizePlaylistFileNamesButton, "нормализация имя файл шаблон переименование artist title album track extension rename");
         Add("Действия контекстного меню трека", "Библиотека и файлы", "Library", TrackContextFavoriteCheckBox, "контекстное меню правый клик пкм трек плейлист скрыть отключить действия проводник копировать теги свойства удалить найти файл замена недоступный locate relink missing");
@@ -4097,6 +4099,12 @@ public partial class SettingsWindow : FluentWindow
     {
         if (_isInitializing) return;
         _owner.SetSaveQueueBetweenRestarts(SaveQueueBetweenRestartsCheckBox.IsChecked == true);
+    }
+
+    private void AutoRefreshPlaylistFoldersCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+        _owner.SetAutoRefreshPlaylistFolders(AutoRefreshPlaylistFoldersCheckBox.IsChecked == true);
     }
 
     // См. AppSettings.SliderStyle: переключение применяется ко всем окнам сразу через SliderAppearance.

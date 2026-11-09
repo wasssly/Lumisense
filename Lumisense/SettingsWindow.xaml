@@ -1273,7 +1273,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="InterfaceScaleSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="85" Maximum="135"
+                                        <Slider x:Name="InterfaceScaleSlider" AutomationProperties.Name="Масштаб интерфейса" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="85" Maximum="135"
                                                 TickFrequency="5" local:SliderMilestoneMarkers.IsEnabled="True"
                                                 IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                                 PreviewMouseLeftButtonDown="InterfaceScaleSlider_PreviewMouseLeftButtonDown"
@@ -1374,7 +1374,7 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="LyricsPresetCombo" Grid.Column="0" HorizontalAlignment="Stretch"
+                                    <ComboBox x:Name="LyricsPresetCombo" AutomationProperties.Name="Пресет оформления текста" Grid.Column="0" HorizontalAlignment="Stretch"
                                               SelectionChanged="LyricsPresetCombo_SelectionChanged" />
                                     <ui:Button x:Name="LyricsPresetSaveButton" Grid.Column="1" Content="Сохранить как…" Appearance="Secondary"
                                                Margin="8,0,0,0" Click="LyricsPresetSaveButton_Click" />
@@ -1385,7 +1385,7 @@
                                 <TextBlock Text="Переход между строками" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,20,0,4" />
                                 <TextBlock Text="Как строки меняются при смене активной: прокрутка, длительность и волна по строкам ниже. «Как в Apple Music» ставит активную строку выше центра и пускает волну по строкам ниже."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,10" TextWrapping="Wrap" />
-                                <ComboBox x:Name="LyricsTransitionCombo" HorizontalAlignment="Left" MinWidth="260"
+                                <ComboBox x:Name="LyricsTransitionCombo" AutomationProperties.Name="Переход между строками" HorizontalAlignment="Left" MinWidth="260"
                                           SelectionChanged="LyricsTransitionCombo_SelectionChanged">
                                     <ComboBoxItem Tag="Smooth" Content="Плавный (по умолчанию)" />
                                     <ComboBoxItem Tag="AppleMusic" Content="Как в Apple Music" />
@@ -1401,7 +1401,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="SyncedLyricsFontSizeSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        <Slider x:Name="SyncedLyricsFontSizeSlider" AutomationProperties.Name="Размер шрифта текста песни" Style="{StaticResource SettingsAccentSliderStyle}"
                                                 Minimum="12" Maximum="20" TickFrequency="1"
                                                 local:SliderMilestoneMarkers.IsEnabled="True"
                                                 IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
@@ -1422,7 +1422,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="NowPlayingLyricsFontSizeSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        <Slider x:Name="NowPlayingLyricsFontSizeSlider" AutomationProperties.Name="Размер текста в Now Playing" Style="{StaticResource SettingsAccentSliderStyle}"
                                                 Minimum="14" Maximum="32" TickFrequency="1"
                                                 IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                                 ValueChanged="NowPlayingLyricsFontSizeSlider_ValueChanged" />
@@ -1460,7 +1460,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <Grid Grid.Column="0" Height="28">
-                                                <Slider x:Name="SyncedLyricsGlowStrengthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                <Slider x:Name="SyncedLyricsGlowStrengthSlider" AutomationProperties.Name="Сила свечения активной строки" Style="{StaticResource SettingsAccentSliderStyle}"
                                                         Minimum="10" Maximum="100" TickFrequency="10"
                                                         IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                                         ValueChanged="SyncedLyricsHighlightSlider_ValueChanged" />
@@ -1484,7 +1484,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <Grid Grid.Column="0" Height="28">
-                                                <Slider x:Name="SyncedLyricsFadeStrengthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                <Slider x:Name="SyncedLyricsFadeStrengthSlider" AutomationProperties.Name="Степень приглушения дальних строк" Style="{StaticResource SettingsAccentSliderStyle}"
                                                         Minimum="0" Maximum="100" TickFrequency="10"
                                                         IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                                         ValueChanged="SyncedLyricsHighlightSlider_ValueChanged" />
@@ -1502,7 +1502,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <Grid Grid.Column="0" Height="28">
-                                                <Slider x:Name="SyncedLyricsScalePercentSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                <Slider x:Name="SyncedLyricsScalePercentSlider" AutomationProperties.Name="Степень увеличения активной строки" Style="{StaticResource SettingsAccentSliderStyle}"
                                                         Minimum="2" Maximum="15" TickFrequency="1"
                                                         IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                                         ValueChanged="SyncedLyricsHighlightSlider_ValueChanged" />
@@ -1520,7 +1520,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <Grid Grid.Column="0" Height="28">
-                                                <Slider x:Name="SyncedLyricsVisibleLinesSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                <Slider x:Name="SyncedLyricsVisibleLinesSlider" AutomationProperties.Name="Видимых строк в Now Playing" Style="{StaticResource SettingsAccentSliderStyle}"
                                                         Minimum="3" Maximum="17" TickFrequency="2"
                                                         IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                                         ValueChanged="SyncedLyricsHighlightSlider_ValueChanged" />
@@ -1541,7 +1541,7 @@
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
                                             <Grid Grid.Column="0" Height="28">
-                                                <Slider x:Name="SyncedLyricsBlurStrengthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                                <Slider x:Name="SyncedLyricsBlurStrengthSlider" AutomationProperties.Name="Сила размытия неактивных строк" Style="{StaticResource SettingsAccentSliderStyle}"
                                                         Minimum="1" Maximum="12" TickFrequency="1"
                                                         IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                                         ValueChanged="SyncedLyricsHighlightSlider_ValueChanged" />
@@ -1820,7 +1820,7 @@
                                         </Grid.RowDefinitions>
                                         <TextBlock Grid.Row="0" Grid.Column="0" Text="Слева, дальняя" Style="{StaticResource SettingsHelperTextStyle}"
                                                    VerticalAlignment="Center" Margin="0,0,16,8" />
-                                        <ComboBox x:Name="ModernSlot0Combo" Grid.Row="0" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
+                                        <ComboBox x:Name="ModernSlot0Combo" AutomationProperties.Name="Кнопка слева, дальняя" Grid.Row="0" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
                                                   HorizontalAlignment="Left" SelectionChanged="ModernLayoutOptions_Changed">
                                             <ComboBoxItem Tag="" Content="Нет" />
                                             <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
@@ -1839,7 +1839,7 @@
                                         </ComboBox>
                                         <TextBlock Grid.Row="1" Grid.Column="0" Text="Слева, ближняя" Style="{StaticResource SettingsHelperTextStyle}"
                                                    VerticalAlignment="Center" Margin="0,0,16,8" />
-                                        <ComboBox x:Name="ModernSlot1Combo" Grid.Row="1" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
+                                        <ComboBox x:Name="ModernSlot1Combo" AutomationProperties.Name="Кнопка слева, ближняя" Grid.Row="1" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
                                                   HorizontalAlignment="Left" SelectionChanged="ModernLayoutOptions_Changed">
                                             <ComboBoxItem Tag="" Content="Нет" />
                                             <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
@@ -1858,7 +1858,7 @@
                                         </ComboBox>
                                         <TextBlock Grid.Row="2" Grid.Column="0" Text="Справа, ближняя" Style="{StaticResource SettingsHelperTextStyle}"
                                                    VerticalAlignment="Center" Margin="0,0,16,8" />
-                                        <ComboBox x:Name="ModernSlot2Combo" Grid.Row="2" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
+                                        <ComboBox x:Name="ModernSlot2Combo" AutomationProperties.Name="Кнопка справа, ближняя" Grid.Row="2" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
                                                   HorizontalAlignment="Left" SelectionChanged="ModernLayoutOptions_Changed">
                                             <ComboBoxItem Tag="" Content="Нет" />
                                             <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
@@ -1877,7 +1877,7 @@
                                         </ComboBox>
                                         <TextBlock Grid.Row="3" Grid.Column="0" Text="Справа, дальняя" Style="{StaticResource SettingsHelperTextStyle}"
                                                    VerticalAlignment="Center" Margin="0,0,16,8" />
-                                        <ComboBox x:Name="ModernSlot3Combo" Grid.Row="3" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
+                                        <ComboBox x:Name="ModernSlot3Combo" AutomationProperties.Name="Кнопка справа, дальняя" Grid.Row="3" Grid.Column="1" MinWidth="170" Margin="0,0,0,8"
                                                   HorizontalAlignment="Left" SelectionChanged="ModernLayoutOptions_Changed">
                                             <ComboBoxItem Tag="" Content="Нет" />
                                             <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
@@ -1903,7 +1903,7 @@
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Обложка в виде «Компакт»" Style="{StaticResource SettingsHelperTextStyle}"
                                                    VerticalAlignment="Center" Margin="0,0,16,0" />
-                                        <ComboBox x:Name="CompactCoverAlignmentCombo" MinWidth="170" SelectionChanged="CompactCoverAlignment_Changed">
+                                        <ComboBox x:Name="CompactCoverAlignmentCombo" AutomationProperties.Name="Выравнивание обложки в виде «Компакт»" MinWidth="170" SelectionChanged="CompactCoverAlignment_Changed">
                                             <ComboBoxItem Tag="Left" Content="Слева" />
                                             <ComboBoxItem Tag="Center" Content="По центру" />
                                         </ComboBox>
@@ -2070,16 +2070,16 @@
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Устройство вывода" Style="{StaticResource SettingsSectionTitleStyle}" />
-                                <ComboBox x:Name="OutputDeviceCombo" SelectionChanged="OutputDeviceCombo_SelectionChanged"
+                                <ComboBox x:Name="OutputDeviceCombo" AutomationProperties.Name="Устройство вывода" SelectionChanged="OutputDeviceCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,2,0,8" />
                                 <TextBlock Text="Подключение и смена устройства" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
-                                <ComboBox x:Name="DeviceConnectStyleCombo" SelectionChanged="DeviceConnectStyleCombo_SelectionChanged"
+                                <ComboBox x:Name="DeviceConnectStyleCombo" AutomationProperties.Name="Подключение и смена устройства" SelectionChanged="DeviceConnectStyleCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,8">
                                     <ComboBoxItem Content="Карточка в острове" Tag="Island" />
                                     <ComboBoxItem Content="Не показывать карточку" Tag="Off" />
                                 </ComboBox>
                                 <TextBlock Text="Анимация карточки" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
-                                <ComboBox x:Name="DeviceCardAnimationCombo" SelectionChanged="DeviceCardAnimationCombo_SelectionChanged"
+                                <ComboBox x:Name="DeviceCardAnimationCombo" AutomationProperties.Name="Анимация карточки устройства" SelectionChanged="DeviceCardAnimationCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,8">
                                     <ComboBoxItem Content="Орбита — дуга обегает значок, затем текст всплывает" Tag="Orbit" />
                                     <ComboBoxItem Content="Свечение — вспышка цвета акцента за значком" Tag="Glow" />
@@ -2087,7 +2087,7 @@
                                 <Button x:Name="DeviceConnectPreviewButton" Content="Показать пример" HorizontalAlignment="Left" Margin="0,0,0,12"
                                         Click="DeviceConnectPreviewButton_Click" />
                                 <TextBlock Text="Значок устройства" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
-                                <ComboBox x:Name="DeviceKindCombo" SelectionChanged="DeviceKindCombo_SelectionChanged"
+                                <ComboBox x:Name="DeviceKindCombo" AutomationProperties.Name="Значок устройства" SelectionChanged="DeviceKindCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,8">
                                     <ComboBoxItem Content="Определять автоматически" Tag="" />
                                     <ComboBoxItem Content="Наушники" Tag="Headphones" />
@@ -2102,7 +2102,7 @@
                                            Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" />
 
                                 <TextBlock Text="Режим WASAPI" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,16,0,8" />
-                                <ComboBox x:Name="WasapiModeCombo" SelectionChanged="WasapiModeCombo_SelectionChanged"
+                                <ComboBox x:Name="WasapiModeCombo" AutomationProperties.Name="Режим WASAPI" SelectionChanged="WasapiModeCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,8">
                                     <ComboBoxItem Content="Общий (Shared)" Tag="Shared" />
                                     <ComboBoxItem Content="Монопольный (Exclusive)" Tag="Exclusive" />
@@ -2112,7 +2112,7 @@
 
                                 <!-- Буфер вывода и приоритет: AppSettings.WasapiLatencyMilliseconds / RaisePlaybackPriority (щелчки при загрузке процессора). -->
                                 <TextBlock Text="Размер буфера" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,16,0,8" />
-                                <ComboBox x:Name="WasapiLatencyCombo" SelectionChanged="WasapiLatencyCombo_SelectionChanged"
+                                <ComboBox x:Name="WasapiLatencyCombo" AutomationProperties.Name="Размер буфера WASAPI" SelectionChanged="WasapiLatencyCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,8">
                                     <ComboBoxItem Content="Малая задержка (60 мс)" Tag="60" />
                                     <ComboBoxItem Content="Стандартный (100 мс, по умолчанию)" Tag="100" />
@@ -2201,6 +2201,16 @@
                             </StackPanel>
                         </Border>
 
+                        <!-- См. AppSettings.AutoRefreshPlaylistFolders / MainWindow.StartFolderWatchers. -->
+                        <Border Style="{StaticResource SettingsCardStyle}">
+                            <StackPanel>
+                                <CheckBox x:Name="AutoRefreshPlaylistFoldersCheckBox" Content="Автоматически обновлять папки плейлиста"
+                                          Checked="AutoRefreshPlaylistFoldersCheckBox_Changed" Unchecked="AutoRefreshPlaylistFoldersCheckBox_Changed" />
+                                <TextBlock Text="Новые аудиофайлы, появившиеся в добавленных папках, сами попадают в плейлист (и при запуске, и пока плеер открыт). Если выключить, плейлист меняется только когда вы добавляете файлы и папки вручную."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,8,0,0" />
+                            </StackPanel>
+                        </Border>
+
                         <!-- См. AppSettings.ReplayGainEnabled / ReplayGainReader. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
@@ -2223,7 +2233,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="ReplayGainPreampSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        <Slider x:Name="ReplayGainPreampSlider" AutomationProperties.Name="Предусилитель ReplayGain" Style="{StaticResource SettingsAccentSliderStyle}"
                                                 Minimum="-12" Maximum="12" TickFrequency="0.5" IsSnapToTickEnabled="True"
                                                 ValueChanged="ReplayGainPreampSlider_ValueChanged"
                                                 MouseDoubleClick="ReplayGainPreampSlider_MouseDoubleClick" />
@@ -2252,7 +2262,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="PlaybackBalanceSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        <Slider x:Name="PlaybackBalanceSlider" AutomationProperties.Name="Баланс каналов" Style="{StaticResource SettingsAccentSliderStyle}"
                                                 Minimum="-100" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
                                                 ValueChanged="PlaybackBalanceSlider_ValueChanged"
                                                 MouseDoubleClick="PlaybackBalanceSlider_MouseDoubleClick" />
@@ -2485,7 +2495,7 @@
                                     <TextBlock Text="Толщина дорожки" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressThicknessValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ProgressThicknessSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ProgressThicknessSlider" AutomationProperties.Name="Толщина дорожки прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="50" Maximum="200" Value="50" TickFrequency="5" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
                                 <Grid Margin="0,16,0,6">
@@ -2496,7 +2506,7 @@
                                     <TextBlock Text="Размер ручки" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressThumbValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ProgressThumbSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ProgressThumbSlider" AutomationProperties.Name="Размер ручки прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="60" Maximum="150" Value="60" TickFrequency="5" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
 
@@ -2518,7 +2528,7 @@
                                     <TextBlock Text="Высота волны" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveAmplitudeValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ProgressWaveAmplitudeSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ProgressWaveAmplitudeSlider" AutomationProperties.Name="Высота волны прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="0" Maximum="200" Value="0" TickFrequency="10" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
                                 <Grid Margin="0,16,0,6">
@@ -2529,7 +2539,7 @@
                                     <TextBlock Text="Длина волны" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveLengthValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ProgressWaveLengthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ProgressWaveLengthSlider" AutomationProperties.Name="Длина волны прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="50" Maximum="200" Value="50" TickFrequency="10" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
                                 <Grid Margin="0,16,0,6">
@@ -2540,7 +2550,7 @@
                                     <TextBlock Text="Скорость волны" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveSpeedValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ProgressWaveSpeedSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ProgressWaveSpeedSlider" AutomationProperties.Name="Скорость волны прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="0" Maximum="200" Value="0" TickFrequency="10" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
 
@@ -2573,7 +2583,7 @@
                                     <TextBlock Text="Зазор между столбиками" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveformGapValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ProgressWaveformGapSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ProgressWaveformGapSlider" AutomationProperties.Name="Зазор между столбиками прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="10" Maximum="70" Value="10" TickFrequency="5" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
                                 <Grid Margin="0,16,0,6">
@@ -2584,7 +2594,7 @@
                                     <TextBlock Text="Прозрачность непроигранной части" Style="{StaticResource SettingsFieldLabelStyle}" />
                                     <TextBlock Grid.Column="1" x:Name="ProgressWaveformOpacityValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ProgressWaveformOpacitySlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ProgressWaveformOpacitySlider" AutomationProperties.Name="Прозрачность непроигранной части" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="30" Maximum="100" Value="30" TickFrequency="5" IsSnapToTickEnabled="True"
                                         ValueChanged="ProgressAppearanceSlider_ValueChanged" />
 
@@ -3000,7 +3010,7 @@
                                     <TextBlock Grid.Column="1" x:Name="ToastWidthValueText" Text="300 px"
                                                Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ToastWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ToastWidthSlider" AutomationProperties.Name="Ширина уведомления о смене трека" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="220" Maximum="420" Value="300"
                                         TickFrequency="10" local:SliderMilestoneMarkers.IsEnabled="True"
                                         local:SliderMilestoneMarkers.MarkerFrequency="50"
@@ -3017,13 +3027,13 @@
                                     <TextBlock Grid.Column="1" x:Name="ToastOpacityValueText" Text="100%"
                                                Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                 </Grid>
-                                <Slider x:Name="ToastOpacitySlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                <Slider x:Name="ToastOpacitySlider" AutomationProperties.Name="Прозрачность фона уведомления" Style="{StaticResource SettingsAccentSliderStyle}"
                                         Minimum="30" Maximum="100" Value="100" TickFrequency="5"
                                         IsSnapToTickEnabled="True"
                                         ValueChanged="ToastOpacitySlider_ValueChanged" Margin="0,0,0,16" />
 
                                 <TextBlock Text="Монитор" Style="{StaticResource SettingsFieldLabelStyle}" />
-                                <ComboBox x:Name="ToastMonitorCombo" SelectionChanged="ToastMonitorCombo_SelectionChanged"
+                                <ComboBox x:Name="ToastMonitorCombo" AutomationProperties.Name="Монитор уведомления" SelectionChanged="ToastMonitorCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="220" />
                                 <TextBlock Text="Автоматический выбор использует экран, на котором находится окно плеера."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" />
@@ -3060,7 +3070,7 @@
                                         <TextBlock Grid.Column="1" x:Name="ToastColorStrengthValueText" Text="70%"
                                                    Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
                                     </Grid>
-                                    <Slider x:Name="ToastColorStrengthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                    <Slider x:Name="ToastColorStrengthSlider" AutomationProperties.Name="Сила окрашивания уведомления" Style="{StaticResource SettingsAccentSliderStyle}"
                                             Minimum="20" Maximum="100" Value="70" TickFrequency="5" IsSnapToTickEnabled="True"
                                             ValueChanged="ToastColorStrengthSlider_ValueChanged" />
                                 </StackPanel>
@@ -3135,7 +3145,7 @@
                                          разной длины ("0 дБ", "-3.5 дБ"), и слайдер дёргался бы вбок во время перетаскивания. -->
                                     <StackPanel Grid.Column="0" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand0ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand0Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="0" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand0Slider" AutomationProperties.Name="Эквалайзер, 31 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="0" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3143,7 +3153,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="1" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand1ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand1Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="1" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand1Slider" AutomationProperties.Name="Эквалайзер, 62 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="1" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3151,7 +3161,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="2" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand2ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand2Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="2" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand2Slider" AutomationProperties.Name="Эквалайзер, 125 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="2" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3159,7 +3169,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="3" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand3ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand3Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="3" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand3Slider" AutomationProperties.Name="Эквалайзер, 250 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="3" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3167,7 +3177,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="4" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand4ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand4Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="4" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand4Slider" AutomationProperties.Name="Эквалайзер, 500 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="4" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3175,7 +3185,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="5" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand5ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand5Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="5" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand5Slider" AutomationProperties.Name="Эквалайзер, 1 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="5" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3183,7 +3193,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="6" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand6ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand6Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="6" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand6Slider" AutomationProperties.Name="Эквалайзер, 2 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="6" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3191,7 +3201,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="7" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand7ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand7Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="7" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand7Slider" AutomationProperties.Name="Эквалайзер, 4 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="7" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3199,7 +3209,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="8" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand8ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand8Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="8" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand8Slider" AutomationProperties.Name="Эквалайзер, 8 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="8" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3207,7 +3217,7 @@
                                     </StackPanel>
                                     <StackPanel Grid.Column="9" HorizontalAlignment="Center">
                                         <TextBlock x:Name="EqBand9ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
-                                        <Slider x:Name="EqBand9Slider" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="9" Orientation="Vertical" Height="140"
+                                        <Slider x:Name="EqBand9Slider" AutomationProperties.Name="Эквалайзер, 16 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="9" Orientation="Vertical" Height="140"
                                                 Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
                                                 ValueChanged="EqualizerBandSlider_ValueChanged"
                                                 MouseWheel="EqualizerBandSlider_MouseWheel" />
@@ -3231,7 +3241,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <ComboBox x:Name="EqualizerPresetComboBox" Grid.Column="0"
+                                    <ComboBox x:Name="EqualizerPresetComboBox" AutomationProperties.Name="Пресеты эквалайзера" Grid.Column="0"
                                               DisplayMemberPath="Name" Margin="0,0,8,0"
                                               SelectionChanged="EqualizerPresetComboBox_SelectionChanged" />
                                     <Button x:Name="EqualizerApplyPresetButton" Grid.Column="1" Content="Применить"
@@ -3283,7 +3293,7 @@
 
                                 <!-- Как у громкости в главном окне: Slider не ловит мышь, клик/перетаскивание по всей полосе обрабатывает прозрачный Border поверх него. -->
                                 <Grid Margin="0,0,0,16">
-                                    <Slider x:Name="MiniOpacitySlider" Style="{StaticResource SettingsAccentSliderStyle}" IsHitTestVisible="False"
+                                    <Slider x:Name="MiniOpacitySlider" AutomationProperties.Name="Прозрачность окна мини-плеера" Style="{StaticResource SettingsAccentSliderStyle}" IsHitTestVisible="False"
                                             Minimum="0.3" Maximum="1.0" Value="1.0"
                                             ValueChanged="MiniOpacitySlider_ValueChanged" VerticalAlignment="Center" />
 
@@ -3568,7 +3578,7 @@
                                 <!-- Точечный overlay читает фактический Track и Thumb этого Slider,
                                      поэтому отметки совпадают с достижимыми позициями по всему диапазону. -->
                                 <Grid Height="28" Margin="0,0,0,0">
-                                    <Slider x:Name="MiniArtworkProgressThicknessSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                    <Slider x:Name="MiniArtworkProgressThicknessSlider" AutomationProperties.Name="Толщина контура вокруг обложки" Style="{StaticResource SettingsAccentSliderStyle}"
                                             Minimum="2" Maximum="4" TickFrequency="0.5" SmallChange="0.5" LargeChange="0.5"
                                             local:SliderMilestoneMarkers.IsEnabled="True"
                                             IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
@@ -3678,7 +3688,7 @@
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel x:Name="IslandMonitorPanel">
                                 <TextBlock Text="Монитор острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,10" />
-                                <ComboBox x:Name="IslandMonitorCombo" SelectionChanged="IslandMonitorCombo_SelectionChanged"
+                                <ComboBox x:Name="IslandMonitorCombo" AutomationProperties.Name="Монитор острова" SelectionChanged="IslandMonitorCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="220" />
                                 <TextBlock Text="Остров остаётся по центру верхнего края выбранного монитора; если монитор отключён, он переезжает на основной."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
@@ -3694,7 +3704,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandScaleSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="120"
+                                    <Slider x:Name="IslandScaleSlider" AutomationProperties.Name="Размер острова" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="120"
                                             TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                             ValueChanged="IslandScaleSlider_ValueChanged" />
                                     <TextBlock x:Name="IslandScaleValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
@@ -3706,7 +3716,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="130"
+                                    <Slider x:Name="IslandWidthSlider" AutomationProperties.Name="Ширина острова" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="130"
                                             TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                             ValueChanged="IslandWidthSlider_ValueChanged" />
                                     <TextBlock x:Name="IslandWidthValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
@@ -3718,7 +3728,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandTopGapSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="0" Maximum="40"
+                                    <Slider x:Name="IslandTopGapSlider" AutomationProperties.Name="Отступ острова от верхнего края" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="0" Maximum="40"
                                             TickFrequency="2" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                             ValueChanged="IslandTopGapSlider_ValueChanged" />
                                     <TextBlock x:Name="IslandTopGapValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
@@ -3730,7 +3740,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandHideSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="3" Maximum="60"
+                                    <Slider x:Name="IslandHideSlider" AutomationProperties.Name="Скрытие острова по средней кнопке мыши" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="3" Maximum="60"
                                             TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                             ValueChanged="IslandHideSlider_ValueChanged" />
                                     <TextBlock x:Name="IslandHideValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
@@ -3742,7 +3752,7 @@
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Slider x:Name="IslandCollapseSlider" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="1" Maximum="15"
+                                    <Slider x:Name="IslandCollapseSlider" AutomationProperties.Name="Сворачивание острова после ухода курсора" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="1" Maximum="15"
                                             TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
                                             ValueChanged="IslandCollapseSlider_ValueChanged" />
                                     <TextBlock x:Name="IslandCollapseValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
@@ -3777,40 +3787,40 @@
                                 <CheckBox x:Name="IslandAcceptDropsCheckBox" Content="Принимать перетаскиваемые файлы и папки" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <TextBlock Text="Левая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
-                                <ComboBox x:Name="IslandLeftButtonCombo" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
+                                <ComboBox x:Name="IslandLeftButtonCombo" AutomationProperties.Name="Левая кнопка раскрытого острова" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
                                     <ComboBoxItem Content="Избранное" Tag="Favorite" />
                                     <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
                                     <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
                                 </ComboBox>
                                 <TextBlock Text="Правая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandRightButtonCombo" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
+                                <ComboBox x:Name="IslandRightButtonCombo" AutomationProperties.Name="Правая кнопка раскрытого острова" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
                                     <ComboBoxItem Content="Избранное" Tag="Favorite" />
                                     <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
                                     <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
                                 </ComboBox>
                                 <TextBlock Text="Вид свёрнутого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandShapeCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                <ComboBox x:Name="IslandShapeCombo" AutomationProperties.Name="Вид свёрнутого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
                                     <ComboBoxItem Content="Капсула" Tag="Capsule" />
                                     <ComboBoxItem Content="Круг (только обложка)" Tag="Circle" />
                                 </ComboBox>
                                 <TextBlock Text="Эквалайзер свёрнутого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandEqualizerStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                <ComboBox x:Name="IslandEqualizerStyleCombo" AutomationProperties.Name="Эквалайзер свёрнутого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
                                     <ComboBoxItem Content="Полоски" Tag="Bars" />
                                     <ComboBoxItem Content="Точки" Tag="Dots" />
                                 </ComboBox>
                                 <TextBlock Text="Фон раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandBackdropCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                <ComboBox x:Name="IslandBackdropCombo" AutomationProperties.Name="Фон раскрытого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
                                     <ComboBoxItem Content="Без фона" Tag="None" />
                                     <ComboBoxItem Content="Свечение" Tag="Glow" />
                                     <ComboBoxItem Content="Матрица из точек" Tag="Matrix" />
                                 </ComboBox>
                                 <TextBlock Text="Полоса перемотки раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
-                                <ComboBox x:Name="IslandSeekStyleCombo" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                <ComboBox x:Name="IslandSeekStyleCombo" AutomationProperties.Name="Полоса перемотки раскрытого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
                                     <ComboBoxItem Content="Сплошная" Tag="Plain" />
                                     <ComboBoxItem Content="Сегменты" Tag="Segments" />
@@ -4208,7 +4218,7 @@
                     <StackPanel x:Name="PageProfile" Visibility="Collapsed">
                         <TextBlock Text="Профиль" Style="{StaticResource PageTitleStyle}" />
                         <TextBlock Text="Перенос параметров и безопасный сброс настроек." Style="{StaticResource PageDescriptionStyle}" />
-                        <TextBlock Text="Перенос настроек плеера на другой компьютер одним файлом — тема, акцентный цвет, эквалайзер, горячие клавиши и остальные переключатели на этих страницах. Плейлист, избранное и история прослушиваний сюда не входят."
+                        <TextBlock Text="Перенос настроек плеера на другой компьютер одним файлом — тема, акцентный цвет, эквалайзер, горячие клавиши и остальные переключатели на этих страницах. Плейлист, избранное и история прослушиваний сюда не входят, как и настройки конкретного компьютера: положение окон, устройство вывода и режим WASAPI."
                                    Opacity="0.6" FontSize="12" Margin="0,0,0,16" TextWrapping="Wrap" />
 
                         <ui:Button x:Name="ExportProfileButton" Appearance="Secondary"
