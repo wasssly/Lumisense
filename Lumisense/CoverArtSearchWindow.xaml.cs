@@ -431,7 +431,7 @@ public partial class CoverArtSearchWindow : FluentWindow
         }
     }
 
-    // Вызывается только по явному действию пользователя из SettingsWindow. Удаляет файлы
+    // Вызывается только по явному действию пользователя (очистка кэша в SettingsWindow и полный сброс данных). Удаляет файлы
     // напрямую в известной папке кэша, не по пути/маске из UI, без вложенных каталогов.
     public static ArtworkCacheClearResult ClearArtworkCache()
     {

@@ -13,11 +13,37 @@ public static class CoverArtProviders
 {
     public const int MaxApiJsonBytes = 2 * 1024 * 1024;
 
-    // MusicBrainz требует описательный User-Agent с контактом — без него сервис вправе замедлять
-    // или блокировать запросы. См. https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting.
-    private static string MusicBrainzUserAgent => LyricsNetworkIdentity.UserAgentValue;
+    // Единый User-Agent для всех источников. MusicBrainz требует описательный User-Agent с контактом — без него сервис
+    // вправе замедлять или блокировать запросы. См. https://musicbrainz.org/doc/MusicBrainz_API/Rate_Limiting.
+    public static readonly HttpClient Http = CreateHttpClient();
 
-    public static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(15) };
+    private static HttpClient CreateHttpClient()
+    {
+        var client = new HttpClient { Timeout = TimeSpan.FromSeconds(15) };
+        LyricsNetworkIdentity.Apply(client);
+        return client;
+    }
+
+    // MusicBrainz разрешает не больше одного запроса в секунду на клиента; у всех копий плеера общий User-Agent, поэтому
+    // превышение грозит блокировкой для всех. Ограничитель общий для ручного поиска обложки и автоматического Discord-поиска.
+    private static readonly SemaphoreSlim MusicBrainzGate = new(1, 1);
+    private static readonly TimeSpan MusicBrainzMinInterval = TimeSpan.FromSeconds(1);
+    private static DateTime _musicBrainzLastRequestUtc = DateTime.MinValue;
+
+    private static async Task WaitForMusicBrainzSlotAsync(CancellationToken token)
+    {
+        await MusicBrainzGate.WaitAsync(token);
+        try
+        {
+            TimeSpan wait = _musicBrainzLastRequestUtc + MusicBrainzMinInterval - DateTime.UtcNow;
+            if (wait > TimeSpan.Zero) await Task.Delay(wait, token);
+            _musicBrainzLastRequestUtc = DateTime.UtcNow;
+        }
+        finally
+        {
+            MusicBrainzGate.Release();
+        }
+    }
 
     public static readonly HashSet<string> TrustedImageHosts = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -149,7 +175,6 @@ public static class CoverArtProviders
         {
             var url = $"https://api.music.yandex.net/search?text={Uri.EscapeDataString(query)}&type=track&page=0&pageSize=16";
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.TryAddWithoutValidation("User-Agent", MusicBrainzUserAgent);
             using var response = await Http.SendAsync(request, token);
             response.EnsureSuccessStatusCode();
             var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
@@ -231,9 +256,9 @@ public static class CoverArtProviders
 
             var url = $"https://genius.com/api/search/song?q={Uri.EscapeDataString(query)}&per_page=10";
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.UserAgent.ParseAdd(MusicBrainzUserAgent);
             using var response = await Http.SendAsync(request, token);
             response.EnsureSuccessStatusCode();
+            if (!ResponseStayedOnGenius(response)) return new List<ArtResult>();
             var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));
             return ParseGeniusSearchResults(json);
         }
@@ -250,12 +275,16 @@ public static class CoverArtProviders
     private static async Task<List<ArtResult>> ReadGeniusPageAsync(string url, CancellationToken token)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
-        request.Headers.UserAgent.ParseAdd(MusicBrainzUserAgent);
         using var response = await Http.SendAsync(request, token);
         response.EnsureSuccessStatusCode();
+        if (!ResponseStayedOnGenius(response)) return new List<ArtResult>();
         var html = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes * 2, token));
         return ParseGeniusPage(html);
     }
+
+    // HttpClient сам идёт по редиректам: ответ с чужого хоста (после перенаправления с Genius) не разбираем.
+    private static bool ResponseStayedOnGenius(HttpResponseMessage response) =>
+        response.RequestMessage?.RequestUri is { } finalUri && IsGeniusLink(finalUri.AbsoluteUri);
 
     // SoundCloud не даёт поиска по названию без ключа клиента, поэтому работает только вставленная ссылка на трек.
     public static async Task<List<ArtResult>> SearchSoundCloudAsync(string query, CancellationToken token)
@@ -375,7 +404,7 @@ public static class CoverArtProviders
         {
             var url = $"https://musicbrainz.org/ws/2/recording/?query={Uri.EscapeDataString(query)}&fmt=json&limit=8";
             using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.UserAgent.ParseAdd(MusicBrainzUserAgent);
+            await WaitForMusicBrainzSlotAsync(token);
             using var response = await Http.SendAsync(request, token);
             response.EnsureSuccessStatusCode();
             var json = Encoding.UTF8.GetString(await ReadBytesWithLimitAsync(response.Content, MaxApiJsonBytes, token));

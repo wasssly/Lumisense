@@ -236,12 +236,15 @@ public sealed class DiscordRichPresenceManager : IDisposable
                 ? FormatArtistState(artist, isPlaying)
                 : activityState,
             Type = ActivityType.Listening,
-            // Две пользовательские кнопки (репозиторий и актуальный релиз) уходят вместе с Presence и видны зрителям.
-            Buttons = new[]
-            {
-                new Button { Label = "GitHub", Url = DiscordRichPresenceDefaults.GitHubRepositoryUrl },
-                new Button { Label = "Скачать Lumisense", Url = DiscordRichPresenceDefaults.DownloadUrl }
-            }
+            // Две пользовательские кнопки (репозиторий и актуальный релиз) уходят вместе с Presence и видны зрителям;
+            // без галочки в настройках не отправляются.
+            Buttons = settings.DiscordRichPresenceShowButtons
+                ? new[]
+                {
+                    new Button { Label = "GitHub", Url = DiscordRichPresenceDefaults.GitHubRepositoryUrl },
+                    new Button { Label = "Скачать Lumisense", Url = DiscordRichPresenceDefaults.DownloadUrl }
+                }
+                : null
         };
 
         // LargeImageText дублировал бы Details/State при наведении на обложку, поэтому пустой,

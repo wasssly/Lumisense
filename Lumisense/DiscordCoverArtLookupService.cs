@@ -9,6 +9,9 @@ public static class DiscordCoverArtLookupService
     private const int CacheCapacity = 300;
     private static readonly TimeSpan CacheTtl = TimeSpan.FromHours(12);
     private static readonly TimeSpan LookupTimeout = TimeSpan.FromSeconds(8);
+    // Пустой результат поиска и сорванный по таймауту поиск живут в кэше недолго: сетевой сбой не должен лишать трек обложки на часы.
+    private static readonly TimeSpan NotFoundCacheTtl = TimeSpan.FromMinutes(30);
+    private static readonly TimeSpan FailureCacheTtl = TimeSpan.FromMinutes(2);
 
     private sealed record CacheEntry(string? Url, DateTime ExpiresAtUtc);
 
@@ -26,34 +29,32 @@ public static class DiscordCoverArtLookupService
             return cached.Url;
 
         string? url = null;
+        bool lookupCompleted = false;
         try
         {
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeoutCts.CancelAfter(LookupTimeout);
 
-            // iTunes — самый широкий охват и быстрее всех; Deezer — второй; MusicBrainz —
-            // минимум два запроса на кандидата, поэтому только если первые два ничего не нашли.
+            // iTunes — самый широкий охват и быстрее всех; Deezer — второй. MusicBrainz в автоматический поиск не входит:
+            // это два и больше запросов на кандидата, а лимит сервиса — один запрос в секунду; он остаётся в ручном поиске обложки.
+            // Берётся первый результат того же исполнителя: поиск нечёткий, и первым нередко приходит чужой трек.
             var itunesResults = await CoverArtProviders.SearchItunesAsync(query, timeoutCts.Token);
-            var found = itunesResults.Count > 0 ? itunesResults[0] : (CoverArtProviders.ArtResult?)null;
+            CoverArtProviders.ArtResult? found = FirstByArtist(itunesResults, artist);
 
             if (found is null)
             {
                 var deezerResults = await CoverArtProviders.SearchDeezerAsync(query, timeoutCts.Token);
-                if (deezerResults.Count > 0) found = deezerResults[0];
-            }
-
-            if (found is null)
-            {
-                var musicBrainzResults = await CoverArtProviders.SearchMusicBrainzAsync(query, timeoutCts.Token);
-                if (musicBrainzResults.Count > 0) found = musicBrainzResults[0];
+                found = FirstByArtist(deezerResults, artist);
             }
 
             url = found?.FullUrl;
+            lookupCompleted = true;
         }
         catch (OperationCanceledException)
         {
-            // Таймаут лукапа или отмена (например, трек сменился до завершения поиска) — Rich
-            // Presence обновится без обложки, не критично для остальной функциональности.
+            // Трек сменился до завершения поиска: результата нет, и запоминать «нет обложки» нельзя — при возврате к треку поиск нужен снова.
+            if (token.IsCancellationRequested) return null;
+            // Иначе это таймаут лукапа — Rich Presence обновится без обложки, не критично для остальной функциональности.
         }
         catch
         {
@@ -61,8 +62,31 @@ public static class DiscordCoverArtLookupService
         }
 
         TrimExpiredEntries();
-        Cache[cacheKey] = new CacheEntry(url, DateTime.UtcNow.Add(CacheTtl));
+        TimeSpan ttl = url is not null ? CacheTtl : lookupCompleted ? NotFoundCacheTtl : FailureCacheTtl;
+        Cache[cacheKey] = new CacheEntry(url, DateTime.UtcNow.Add(ttl));
         return url;
+    }
+
+    private static CoverArtProviders.ArtResult? FirstByArtist(IReadOnlyList<CoverArtProviders.ArtResult> results, string requestedArtist)
+    {
+        foreach (var result in results)
+        {
+            if (ArtistMatches(requestedArtist, result.Label)) return result;
+        }
+
+        return null;
+    }
+
+    // Label у iTunes и Deezer — «исполнитель — альбом». Исполнитель считается совпавшим, если один ключ содержит другой
+    // (учитывает «A & B» и «A feat. B»); если исполнитель трека неизвестен, сверять не с чем.
+    internal static bool ArtistMatches(string requestedArtist, string label)
+    {
+        string wanted = LyricsMatcher.NormalizeKey(requestedArtist);
+        if (wanted.Length == 0) return true;
+
+        int separator = label.IndexOf(" — ", StringComparison.Ordinal);
+        string found = LyricsMatcher.NormalizeKey(separator >= 0 ? label[..separator] : label);
+        return found.Length > 0 && (found.Contains(wanted, StringComparison.Ordinal) || wanted.Contains(found, StringComparison.Ordinal));
     }
 
     private static void TrimExpiredEntries()
@@ -75,5 +99,10 @@ public static class DiscordCoverArtLookupService
             if (pair.Value.ExpiresAtUtc <= now)
                 Cache.TryRemove(pair.Key, out _);
         }
+
+        // Если истёкших нет, кэш рос бы без предела: освобождаем место, убирая записи с ближайшим сроком.
+        if (Cache.Count < CacheCapacity) return;
+        foreach (var pair in Cache.OrderBy(p => p.Value.ExpiresAtUtc).Take(Cache.Count - CacheCapacity + 1).ToList())
+            Cache.TryRemove(pair.Key, out _);
     }
 }
