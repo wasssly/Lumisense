@@ -76,7 +76,9 @@ public static class ChangelogLoader
         {
             var entry = ordered[i];
 
-            if (i > 0)
+            if (TryParseDeclaredVersion(entry.DeclaredVersion, out var declared))
+                (major, minor, patch) = declared;
+            else if (i > 0)
                 (major, minor, patch) = BumpForChanges(major, minor, patch, entry.Changes);
 
             entry.Version = $"{major}.{minor}.{patch}";
@@ -87,6 +89,21 @@ public static class ChangelogLoader
 
         if (ordered.Count > 0)
             ordered[^1].IsCurrent = true; // последняя запись в общем порядке — датированные по возрастанию, затем недатированные по файлу
+    }
+
+    // Явный номер записи: строго X.Y.Z; всё остальное считается как отсутствие номера.
+    private static bool TryParseDeclaredVersion(string? text, out (int major, int minor, int patch) version)
+    {
+        version = default;
+        var parts = text?.Trim().Split('.');
+        if (parts is not { Length: 3 }
+            || !int.TryParse(parts[0], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int major)
+            || !int.TryParse(parts[1], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int minor)
+            || !int.TryParse(parts[2], System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out int patch))
+            return false;
+
+        version = (major, minor, patch);
+        return true;
     }
 
     // Уровень — по смыслу текста (ChangeLevelClassifier), не по type: берём максимальный среди изменений записи,

@@ -243,6 +243,38 @@ public sealed class ChangeTypeCatalogTests
     }
 }
 
+public sealed class ChangelogDeclaredVersionTests
+{
+    [Fact]
+    public void DeclaredVersion_OverridesComputedAndContinuesTheChain()
+    {
+        var entries = new List<ChangelogEntry>
+        {
+            new() { Changes = [new() { Type = "fixed", Text = "Исправлена мелочь" }] },
+            new() { DeclaredVersion = "2.5.0", Changes = [new() { Type = "fixed", Text = "Исправлена мелочь" }] },
+            new() { Changes = [new() { Type = "fixed", Text = "Исправлена мелочь" }] },
+        };
+
+        ChangelogLoader.CalculateVersions(entries);
+
+        Assert.Equal(["1.0.0", "2.5.0", "2.5.1"], entries.Select(entry => entry.Version));
+    }
+
+    [Fact]
+    public void BrokenDeclaredVersion_IsIgnored()
+    {
+        var entries = new List<ChangelogEntry>
+        {
+            new() { Changes = [new() { Type = "fixed", Text = "Исправлена мелочь" }] },
+            new() { DeclaredVersion = "abc", Changes = [new() { Type = "fixed", Text = "Исправлена мелочь" }] },
+        };
+
+        ChangelogLoader.CalculateVersions(entries);
+
+        Assert.Equal("1.0.1", entries[1].Version);
+    }
+}
+
 public sealed class ChangelogMatchesProjectVersionTests
 {
     // Версии в changelog.json не хранятся, а считаются по тексту записей: правка старой записи сдвинула бы все следующие.

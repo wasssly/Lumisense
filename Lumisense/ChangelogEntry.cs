@@ -1,9 +1,15 @@
+using System.Text.Json.Serialization;
+
 namespace Lumisense;
 
 // Version и IsCurrent выставляет ChangelogLoader; необязательное "version" в JSON задаёт номер явно.
 public class ChangelogEntry
 {
+    [JsonIgnore]
     public string Version { get; set; } = "";
+
+    [JsonPropertyName("version")]
+    public string? DeclaredVersion { get; set; }
     public string Date { get; set; } = "";
     public List<ChangeItem> Changes { get; set; } = new();
     public string? Image { get; set; }
