@@ -120,7 +120,9 @@ Do not comment every step of a method.
 
 Prefer one short sentence.
 
-A comment must not exceed 1-2 short lines. If it needs more than that to explain, the explanation belongs in a commit message or design note, not inline in the source file.
+A comment is normally 1-2 short lines. A third line is allowed only when the reason is not obvious from the code (a threading race, a rendering quirk, a constraint of an external service), never to describe what the code does.
+
+A comment must never exceed 3 lines, and no line should be longer than about 120 characters. If it needs more than that to explain, the explanation belongs in a commit message or design note, not inline in the source file.
 
 Avoid large explanatory paragraphs inside source files.
 
