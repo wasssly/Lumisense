@@ -2302,7 +2302,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="StereoWidthSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        <Slider x:Name="StereoWidthSlider" AutomationProperties.Name="Ширина стереобазы" Style="{StaticResource SettingsAccentSliderStyle}"
                                                 Minimum="0" Maximum="200" TickFrequency="5" IsSnapToTickEnabled="True" Tag="StereoWidth"
                                                 ValueChanged="StereoImageSlider_ValueChanged"
                                                 MouseDoubleClick="StereoImageSlider_MouseDoubleClick" />
@@ -2322,7 +2322,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="CrossfeedSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        <Slider x:Name="CrossfeedSlider" AutomationProperties.Name="Кроссфид для наушников" Style="{StaticResource SettingsAccentSliderStyle}"
                                                 Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Tag="Crossfeed"
                                                 ValueChanged="StereoImageSlider_ValueChanged"
                                                 MouseDoubleClick="StereoImageSlider_MouseDoubleClick" />
@@ -2342,7 +2342,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="LoudnessCompensationSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        <Slider x:Name="LoudnessCompensationSlider" AutomationProperties.Name="Тонкомпенсация громкости" Style="{StaticResource SettingsAccentSliderStyle}"
                                                 Minimum="0" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True" Tag="LoudnessCompensation"
                                                 ValueChanged="StereoImageSlider_ValueChanged"
                                                 MouseDoubleClick="StereoImageSlider_MouseDoubleClick" />
@@ -2368,7 +2368,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <Grid Grid.Column="0" Height="28">
-                                        <Slider x:Name="CrossfadeSlider" Style="{StaticResource SettingsAccentSliderStyle}"
+                                        <Slider x:Name="CrossfadeSlider" AutomationProperties.Name="Кроссфейд при автопереходе" Style="{StaticResource SettingsAccentSliderStyle}"
                                                 Minimum="0" Maximum="12" TickFrequency="1" IsSnapToTickEnabled="True"
                                                 ValueChanged="CrossfadeSlider_ValueChanged"
                                                 MouseDoubleClick="CrossfadeSlider_MouseDoubleClick" />
