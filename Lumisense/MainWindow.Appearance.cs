@@ -180,17 +180,7 @@ public partial class MainWindow
 
         // Если обе кнопки ушли из меню «Ещё» в ряд управления, открывать там нечего: кнопка «Ещё» скрывается.
         MoreActionsButton.Visibility = MoreActionsItemsPanel.Children.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
-
-        // Запись в журнал только при изменении набора кнопок: метод вызывается и при каждом изменении размеров окна.
-        string summary = $"слоты [{string.Join(", ", slots.Select(slot => slot.Length == 0 ? "-" : slot))}], по бокам {(sides ? "включены" : "выключены")}";
-        if (summary != _lastControlsLayoutSummary)
-        {
-            _lastControlsLayoutSummary = summary;
-            Logger.Info($"Ряд кнопок управления: {summary}.");
-        }
     }
-
-    private string? _lastControlsLayoutSummary;
 
     private string SlotActionOf(Wpf.Ui.Controls.Button button) =>
         ModernSlotActions.FirstOrDefault(action => ReferenceEquals(ModernSlotButton(action), button)) ?? string.Empty;

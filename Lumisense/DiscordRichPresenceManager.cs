@@ -23,6 +23,8 @@ public sealed class DiscordRichPresenceManager : IDisposable
     private DateTime _lastPublishedAtUtc;
     private DateTime _nextConnectionAttemptUtc;
     private bool _disposed;
+    // Строка «Presence отправлен» пишется только при смене состава данных, а не при каждой отправке (смена трека, пауза, перемотка).
+    private string? _lastPresenceLogSummary;
     // Тот же AppSettings, что MainWindow передаёт в Update — нужен только RefreshCoverArtAsync,
     // чтобы переотправить presence с актуальными флагами приватности.
     private AppSettings? _lastSettings;
@@ -107,7 +109,12 @@ public sealed class DiscordRichPresenceManager : IDisposable
             var presence = BuildPresence(settings, normalizedTitle, normalizedArtist, isPlaying, currentSeconds, totalSeconds,
                 wantsCoverArt ? _currentCoverUrl : null);
             client.SetPresence(presence);
-            DiscordRichPresenceLogger.Info($"Presence отправлен: playing={isPlaying}, timeline={settings.DiscordRichPresenceShowTimeline && isPlaying && totalSeconds > 0}, trackInfo={settings.DiscordRichPresenceShowTrackInfo}, cover={presence.Assets != null}, buttons={presence.Buttons?.Length ?? 0}.");
+            string presenceSummary = $"playing={isPlaying}, timeline={settings.DiscordRichPresenceShowTimeline && isPlaying && totalSeconds > 0}, trackInfo={settings.DiscordRichPresenceShowTrackInfo}, cover={presence.Assets != null}, buttons={presence.Buttons?.Length ?? 0}";
+            if (presenceSummary != _lastPresenceLogSummary)
+            {
+                _lastPresenceLogSummary = presenceSummary;
+                DiscordRichPresenceLogger.Info($"Presence отправлен: {presenceSummary}.");
+            }
 
             _lastTitle = normalizedTitle;
             _lastArtist = normalizedArtist;
@@ -203,7 +210,14 @@ public sealed class DiscordRichPresenceManager : IDisposable
     {
         client.OnConnectionEstablished += (_, message) => DiscordRichPresenceLogger.Info($"Discord IPC-соединение установлено: {message}.");
         client.OnReady += (_, message) => DiscordRichPresenceLogger.Info($"Discord подтвердил READY для Rich Presence: {message}.");
-        client.OnPresenceUpdate += (_, message) => DiscordRichPresenceLogger.Info($"Discord подтвердил обновление Rich Presence: {message}.");
+        // Подтверждение приходит на каждое обновление: в журнал попадает только первое после подключения.
+        bool presenceConfirmed = false;
+        client.OnPresenceUpdate += (_, message) =>
+        {
+            if (presenceConfirmed) return;
+            presenceConfirmed = true;
+            DiscordRichPresenceLogger.Info($"Discord подтвердил обновление Rich Presence: {message}; следующие подтверждения не логируются.");
+        };
         client.OnConnectionFailed += (_, message) => DiscordRichPresenceLogger.Warn($"Discord IPC не смог установить соединение: {message}.");
         client.OnClose += (_, message) => DiscordRichPresenceLogger.Warn($"Discord IPC-соединение закрыто клиентом Discord: {message}.");
         client.OnError += (_, message) => DiscordRichPresenceLogger.Warn($"Discord вернул ошибку для Rich Presence: {message}.");

@@ -30,7 +30,6 @@ public partial class MainWindow
 
         // У мини-плеера ShowInTaskbar="False" (MiniPlayerWindow.xaml): иконку в трее показываем здесь, а не только в OnClosing, иначе
         // до него не добраться; делаем до показа окна, чтобы значок не отставал от видимого мини-плеера (ForceForeground небыстр).
-        Logger.Info($"EnterMiniMode: вызываю _integrations.Tray.Show() (стартовый вызов={_isApplyingStartupSettings}).");
         _integrations.Tray?.Show("Lumisense");
 
         if (UsesIslandStyle)

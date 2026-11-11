@@ -27,6 +27,22 @@ public static class Logger
     // -1 — ещё не измерен (первая запись сеанса).
     private static long _currentLogBytes = -1;
 
+    // Строки копятся в памяти и пишутся на диск пачкой: раньше каждая стоила отдельного открытия файла (File.AppendAllText).
+    // Ошибки и выход из приложения сбрасывают очередь сразу, остальное уходит на диск не позже чем через FlushDelayMilliseconds.
+    // При аварийном завершении без ProcessExit (fail-fast) теряются только последние INFO/WARN этого окна.
+    private const int FlushDelayMilliseconds = 400;
+    private const int MaxPendingLines = 500;
+    private static readonly List<string> Pending = new();
+    private static System.Threading.Timer? _flushTimer;
+    private static bool _flushScheduled;
+
+    // Подряд идущие одинаковые сообщения (цикл, который каждый тик падает с одной и той же ошибкой) схлопываются в одну строку
+    // и пометку «повторилось ещё N раз». Сообщение считается повтором, если с предыдущего такого же прошло меньше RepeatWindowMilliseconds.
+    private const long RepeatWindowMilliseconds = 60_000;
+    private static string? _lastMessageKey;
+    private static long _lastMessageTick;
+    private static int _repeatCount;
+
     private const int MaxLogFiles = 50;
     private const long MaxSingleLogBytes = 1L * 1024 * 1024;
     private const long MaxTotalLogBytes = 16L * 1024 * 1024;
@@ -50,6 +66,7 @@ public static class Logger
             Directory.CreateDirectory(LogsDir);
             PruneOldLogs();
             _initialized = true;
+            AppDomain.CurrentDomain.ProcessExit += (_, _) => Flush();
         }
         catch
         {
@@ -112,18 +129,119 @@ public static class Logger
 
         lock (Lock)
         {
+            string key = level + "|" + safeMessage;
+            long now = System.Environment.TickCount64;
+            if (key == _lastMessageKey && now - _lastMessageTick < RepeatWindowMilliseconds)
+            {
+                _repeatCount++;
+                _lastMessageTick = now;
+                return;
+            }
+
+            AddRepeatNoteLocked();
+            _lastMessageKey = key;
+            _lastMessageTick = now;
+
+            Pending.Add(line);
+            if (level == "ERROR" || Pending.Count >= MaxPendingLines)
+            {
+                FlushLocked();
+                return;
+            }
+
+            if (_flushScheduled) return;
+
+            _flushScheduled = true;
             try
             {
-                int byteCount = Encoding.UTF8.GetByteCount(line + System.Environment.NewLine);
-                RotateIfRequired(byteCount);
-                File.AppendAllText(_logFilePath, line + System.Environment.NewLine, Encoding.UTF8);
-                _currentLogBytes += byteCount;
+                _flushTimer ??= new System.Threading.Timer(_ => FlushPending(), null, System.Threading.Timeout.Infinite, System.Threading.Timeout.Infinite);
+                _flushTimer.Change(FlushDelayMilliseconds, System.Threading.Timeout.Infinite);
             }
             catch
             {
-                // Проблемы самого журнала не должны ронять приложение.
+                // Без таймера строки всё равно не потеряются: их заберёт следующий сброс.
+                _flushScheduled = false;
+                FlushLocked();
             }
         }
+    }
+
+    // Записывает накопленные строки на диск; безопасно вызывать из любого потока и сколько угодно раз.
+    public static void Flush()
+    {
+        lock (Lock)
+        {
+            // Явный сброс (выход, открытие папки журналов) закрывает серию повторов, чтобы пометка не потерялась.
+            AddRepeatNoteLocked();
+            _lastMessageKey = null;
+            FlushLocked();
+        }
+    }
+
+    private static void AddRepeatNoteLocked()
+    {
+        if (_repeatCount <= 0) return;
+
+        Pending.Add($"{System.DateTime.Now:HH:mm:ss.fff} [INFO] Предыдущее сообщение повторилось ещё {_repeatCount} раз(а), повторы не записываются.");
+        _repeatCount = 0;
+    }
+
+    // Сброс по таймеру: серию повторов не закрывает, иначе окно схлопывания не превышало бы задержки таймера.
+    private static void FlushPending()
+    {
+        lock (Lock) FlushLocked();
+    }
+
+    private static void FlushLocked()
+    {
+        _flushScheduled = false;
+        if (Pending.Count == 0) return;
+
+        try
+        {
+            var chunk = new StringBuilder();
+            foreach (string line in Pending)
+            {
+                string text = line + System.Environment.NewLine;
+                int bytes = Encoding.UTF8.GetByteCount(text);
+                // _currentLogBytes уже включает строки ещё не записанной пачки: при переполнении она уходит в старый файл,
+                // а текущая строка начинает новый.
+                if (NeedsRotation(bytes))
+                {
+                    AppendChunk(chunk);
+                    Rotate();
+                }
+
+                chunk.Append(text);
+                _currentLogBytes += bytes;
+            }
+
+            AppendChunk(chunk);
+        }
+        catch
+        {
+            // Проблемы самого журнала не должны ронять приложение.
+        }
+        finally
+        {
+            Pending.Clear();
+        }
+    }
+
+    private static void AppendChunk(StringBuilder chunk)
+    {
+        if (chunk.Length == 0) return;
+
+        try
+        {
+            File.AppendAllText(_logFilePath, chunk.ToString(), Encoding.UTF8);
+        }
+        catch
+        {
+            // Занятый или недоступный файл: пачка теряется, как раньше терялась бы одна строка.
+        }
+
+        chunk.Clear();
     }
 
     // Сохраняет диагностическую ценность имени файла/ошибки, но скрывает имя профиля Windows
@@ -139,24 +257,34 @@ public static class Logger
         return result;
     }
 
-    private static void RotateIfRequired(int pendingBytes)
+    private static bool NeedsRotation(int pendingBytes)
     {
         try
         {
             if (_currentLogBytes < 0)
                 _currentLogBytes = File.Exists(_logFilePath) ? new FileInfo(_logFilePath).Length : 0;
 
-            if (_currentLogBytes > 0 && _currentLogBytes + pendingBytes > MaxSingleLogBytes)
-            {
-                _currentLogPart++;
-                _logFilePath = BuildLogFilePath(_currentLogPart);
-                _currentLogBytes = 0;
-                PruneOldLogs();
-            }
+            return _currentLogBytes > 0 && _currentLogBytes + pendingBytes > MaxSingleLogBytes;
         }
         catch
         {
-            // Если размер проверить нельзя, AppendAllText ниже остаётся безопасной последней попыткой.
+            // Если размер проверить нельзя, AppendAllText остаётся безопасной последней попыткой.
+            return false;
+        }
+    }
+
+    private static void Rotate()
+    {
+        try
+        {
+            _currentLogPart++;
+            _logFilePath = BuildLogFilePath(_currentLogPart);
+            _currentLogBytes = 0;
+            PruneOldLogs();
+        }
+        catch
+        {
+            // Следующая строка попробует ещё раз.
         }
     }
 
@@ -166,6 +294,7 @@ public static class Logger
     {
         try
         {
+            Flush();
             Directory.CreateDirectory(LogsDir);
             Process.Start(new ProcessStartInfo(LogsDir) { UseShellExecute = true });
         }

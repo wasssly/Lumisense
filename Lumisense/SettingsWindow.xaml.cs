@@ -2730,7 +2730,6 @@ public partial class SettingsWindow : FluentWindow
     {
         try
         {
-            DiscordRichPresenceLogger.Info("Пользователь открыл журнал диагностики Discord из настроек.");
             System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
             {
                 FileName = DiscordRichPresenceLogger.LogFilePath,

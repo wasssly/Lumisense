@@ -77,8 +77,8 @@ internal static class ShortcutIconSync
             }
             catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or COMException)
             {
-                // Ярлыки общего рабочего стола и меню «Пуск» без прав администратора не записываются.
-                Logger.Info($"ShortcutIconSync: ярлык пропущен ({Path.GetFileName(shortcut)}): {ex.Message}");
+                // Ярлыки общего рабочего стола и меню «Пуск» без прав администратора не записываются: это обычная ситуация,
+                // в журнал она не попадает, чтобы не повторяться при каждом запуске.
             }
         }
 
@@ -145,7 +145,7 @@ internal static class ShortcutIconSync
         }
         catch (Exception ex) when (ex is UnauthorizedAccessException or IOException)
         {
-            Logger.Info($"ShortcutIconSync: папка недоступна ({directory}): {ex.Message}");
+            // Недоступная папка с ярлыками — обычная ситуация без прав администратора, в журнал не пишется.
         }
         return result;
     }

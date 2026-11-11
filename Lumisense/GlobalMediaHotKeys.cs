@@ -65,6 +65,8 @@ public sealed class GlobalMediaHotKeys : IDisposable
     private readonly List<PolledHotkey> _polled = [];
     private readonly Dictionary<int, bool> _polledDown = [];
     private readonly Dictionary<int, long> _polledEdge = [];
+    // Срабатывание через опрос пишется в журнал один раз на хоткей: иначе каждое нажатие давало бы строку.
+    private readonly HashSet<int> _polledFallbackLogged = [];
     private readonly Dictionary<int, long> _lastSystemHotkey = [];
 
     private int _disposed;
@@ -246,7 +248,8 @@ public sealed class GlobalMediaHotKeys : IDisposable
                                        && systemTick >= edge - SystemHotkeyToleranceMilliseconds;
                 if (handledBySystem) continue;
 
-                Logger.Info($"Хоткей {hotkey.Id:X} сработал через опрос клавиш: WM_HOTKEY не пришёл (в фокусе другое приложение).");
+                if (_polledFallbackLogged.Add(hotkey.Id))
+                    Logger.Info($"Хоткей {hotkey.Id:X} сработал через опрос клавиш: WM_HOTKEY не пришёл (в фокусе другое приложение); дальнейшие срабатывания не логируются.");
                 DispatchHotkey(hotkey.Id, hotkey.VirtualKey);
             }
         }

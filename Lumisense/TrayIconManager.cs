@@ -144,28 +144,20 @@ public sealed class TrayIconManager : NotifyIconService, IDisposable
         if (tooltipText != null)
             TooltipText = Truncate(tooltipText, 63); // тот же лимит, что был у Win32 NOTIFYICONDATA.szTip
 
-        if (IsRegistered)
-        {
-            Logger.Info("TrayIconManager.Show: уже зарегистрирован, Register() не вызывается.");
-            return;
-        }
+        if (IsRegistered) return;
 
-        bool ok = Register();
-        Logger.Info($"TrayIconManager.Show: Register() вернул {ok}, IsRegistered={IsRegistered}, " +
-                    $"ParentWindow.IsLoaded={ParentWindow?.IsLoaded}, " +
-                    $"Handle={(ParentWindow is null ? "null" : new System.Windows.Interop.WindowInteropHelper(ParentWindow).Handle)}.");
+        // Показ и скрытие значка — обычные действия пользователя, в журнал попадает только неудача.
+        if (!Register())
+            Logger.Warn($"TrayIconManager.Show: Register() не удался, ParentWindow.IsLoaded={ParentWindow?.IsLoaded}, " +
+                        $"Handle={(ParentWindow is null ? "null" : new System.Windows.Interop.WindowInteropHelper(ParentWindow).Handle)}.");
     }
 
     public void Hide()
     {
-        if (!IsRegistered)
-        {
-            Logger.Info("TrayIconManager.Hide: уже не зарегистрирован, Unregister() не вызывается.");
-            return;
-        }
+        if (!IsRegistered) return;
 
-        bool ok = Unregister();
-        Logger.Info($"TrayIconManager.Hide: Unregister() вернул {ok}, IsRegistered={IsRegistered}.");
+        if (!Unregister())
+            Logger.Warn($"TrayIconManager.Hide: Unregister() не удался, IsRegistered={IsRegistered}.");
     }
 
     private static string Truncate(string value, int maxLength) =>

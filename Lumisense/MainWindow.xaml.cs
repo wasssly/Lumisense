@@ -1019,7 +1019,6 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             Show();
             WindowState = WindowState.Normal;
             CenterOnFirstShowIfNeeded();
-            Logger.Info($"RestoreFromTray: окно было скрыто, развёрнуто синхронно (State={WindowState}, Left={Left:0}, Top={Top:0}, Mini={_isMiniMode}).");
         }
 
         Dispatcher.BeginInvoke(() =>
