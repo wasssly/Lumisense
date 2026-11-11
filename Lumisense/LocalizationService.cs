@@ -433,6 +433,8 @@ public static class LocalizationService
         ["Отключает декоративные анимации: бегущую волну полосы прогресса, смену обложки и её сворачивание при показе текста, бегущую строку исполнителя в мини-плеере, анимации острова и меню трея, движение фона Now Playing. Воспроизведение и управление не меняются."] = "Turns off decorative animations: the moving wave of the progress bar, the artwork transition and its collapse when lyrics are shown, the artist marquee in the mini player, island and tray menu animations, and the Now Playing background motion. Playback and controls do not change.",
         ["Вид свёрнутого острова"] = "Collapsed island shape",
         ["Капсула"] = "Capsule",
+        ["Notch Nook (у верхнего края экрана)"] = "Notch Nook (attached to the top screen edge)",
+        ["Notch Nook: раскрывать при наведении курсора"] = "Notch Nook: expand when the cursor hovers over it",
         ["Круг (только обложка)"] = "Circle (cover only)",
         ["Порядок по умолчанию"] = "Default order",
         ["Анимации"] = "Animations",

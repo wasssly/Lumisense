@@ -254,8 +254,11 @@ public class AppSettings
     // Вид эквалайзера свёрнутого острова: "Bars" (полоски) | "Dots" (точки).
     public string IslandEqualizerStyle { get; set; } = "Bars";
 
-    // Вид свёрнутого острова: "Capsule" — капсула с названием трека, "Circle" — круг, в котором видна только обложка.
+    // Вид свёрнутого острова: "Capsule" — капсула с названием трека, "Circle" — круг, в котором видна только обложка,
+    // "Notch" (Notch Nook) — форма, свисающая с верхнего края экрана, как вырез ноутбука; отступ сверху в ней не применяется.
     public string IslandShape { get; set; } = "Capsule";
+    // Для вида "Notch": раскрывать остров при наведении курсора (иначе — по клику, как у остальных видов).
+    public bool IslandNotchHoverOpen { get; set; } = true;
     // Фон раскрытого острова: "None" | "Glow" | "Matrix" | "Wave".
     public string IslandBackdrop { get; set; } = "Glow";
     // Полоса перемотки раскрытого острова: "Plain" (сплошная) | "Segments" (сегменты).

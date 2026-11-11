@@ -25,6 +25,16 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     }
 
     [Theory]
+    [InlineData("Notch", "Notch")]
+    [InlineData("Circle", "Circle")]
+    [InlineData("Hexagon", "Capsule")]
+    public void TryLoad_KeepsKnownIslandShapesAndResetsUnknownOnes(string stored, string expected)
+    {
+        Assert.True(TryLoad($"{{\"IslandShape\": \"{stored}\"}}", out var settings, out _));
+        Assert.Equal(expected, settings!.IslandShape);
+    }
+
+    [Theory]
     [InlineData("Better Lyrics")]
     [InlineData("Binimum")]
     [InlineData("LyricsPlus")]

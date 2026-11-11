@@ -424,7 +424,8 @@ public static class LumiProfileIO
         target.IslandRoundCover = source.IslandRoundCover;
         target.IslandAcceptDrops = source.IslandAcceptDrops;
         if (source.IslandEqualizerStyle is "Bars" or "Dots") target.IslandEqualizerStyle = source.IslandEqualizerStyle;
-        if (source.IslandShape is "Capsule" or "Circle") target.IslandShape = source.IslandShape;
+        if (source.IslandShape is "Capsule" or "Circle" or "Notch") target.IslandShape = source.IslandShape;
+        target.IslandNotchHoverOpen = source.IslandNotchHoverOpen;
         if (source.IslandBackdrop is "None" or "Glow" or "Matrix" or "Wave") target.IslandBackdrop = source.IslandBackdrop;
         if (source.IslandSeekStyle is "Plain" or "Segments") target.IslandSeekStyle = source.IslandSeekStyle;
         target.IslandLyricsShimmer = source.IslandLyricsShimmer;

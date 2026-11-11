@@ -271,6 +271,7 @@ public partial class SettingsWindow : FluentWindow
         IslandQuietInGamesCheckBox.IsChecked = _settings.IslandQuietInGames;
         IslandSwipeInvertedCheckBox.IsChecked = _settings.IslandSwipeInverted;
         IslandRoundCoverCheckBox.IsChecked = _settings.IslandRoundCover;
+        IslandNotchHoverOpenCheckBox.IsChecked = _settings.IslandNotchHoverOpen;
         IslandAcceptDropsCheckBox.IsChecked = _settings.IslandAcceptDrops;
         SelectComboByTag(IslandLeftButtonCombo, _settings.IslandLeftButton);
         SelectComboByTag(IslandRightButtonCombo, _settings.IslandRightButton);
@@ -3648,6 +3649,7 @@ public partial class SettingsWindow : FluentWindow
         _settings.IslandQuietInGames = IslandQuietInGamesCheckBox.IsChecked == true;
         _settings.IslandSwipeInverted = IslandSwipeInvertedCheckBox.IsChecked == true;
         _settings.IslandRoundCover = IslandRoundCoverCheckBox.IsChecked == true;
+        _settings.IslandNotchHoverOpen = IslandNotchHoverOpenCheckBox.IsChecked == true;
         _settings.IslandAcceptDrops = IslandAcceptDropsCheckBox.IsChecked == true;
         _settings.IslandLyricsShimmer = IslandLyricsShimmerCheckBox.IsChecked == true;
         _settings.IslandHideSystemToast = IslandHideSystemToastCheckBox.IsChecked == true;

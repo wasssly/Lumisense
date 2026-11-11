@@ -3787,6 +3787,8 @@
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <CheckBox x:Name="IslandRoundCoverCheckBox" Content="Круглая обложка" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                <CheckBox x:Name="IslandNotchHoverOpenCheckBox" Content="Notch Nook: раскрывать при наведении курсора" Margin="0,0,0,8"
+                                          Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <CheckBox x:Name="IslandAcceptDropsCheckBox" Content="Принимать перетаскиваемые файлы и папки" Margin="0,0,0,8"
                                           Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                 <TextBlock Text="Левая кнопка раскрытого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,8,0,8" />
@@ -3808,6 +3810,7 @@
                                           HorizontalAlignment="Left" MinWidth="300" Margin="0,0,0,12">
                                     <ComboBoxItem Content="Капсула" Tag="Capsule" />
                                     <ComboBoxItem Content="Круг (только обложка)" Tag="Circle" />
+                                    <ComboBoxItem Content="Notch Nook (у верхнего края экрана)" Tag="Notch" />
                                 </ComboBox>
                                 <TextBlock Text="Эквалайзер свёрнутого острова" Style="{StaticResource SettingsFieldLabelStyle}" Margin="0,0,0,8" />
                                 <ComboBox x:Name="IslandEqualizerStyleCombo" AutomationProperties.Name="Эквалайзер свёрнутого острова" SelectionChanged="IslandLookCombo_SelectionChanged"

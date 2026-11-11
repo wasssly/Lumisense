@@ -337,7 +337,7 @@ internal static class SettingsIntegrityService
             "Favorite", "Repeat", "Lyrics");
         settings.IslandEqualizerStyle = Allowed(settings.IslandEqualizerStyle, defaults.IslandEqualizerStyle, "Bars", "Dots");
         settings.IslandBackdrop = Allowed(settings.IslandBackdrop, defaults.IslandBackdrop, "None", "Glow", "Matrix", "Wave");
-        settings.IslandShape = Allowed(settings.IslandShape, defaults.IslandShape, "Capsule", "Circle");
+        settings.IslandShape = Allowed(settings.IslandShape, defaults.IslandShape, "Capsule", "Circle", "Notch");
         settings.IslandSeekStyle = Allowed(settings.IslandSeekStyle, defaults.IslandSeekStyle, "Plain", "Segments");
         if (settings.IslandLeftButton == settings.IslandRightButton)
             settings.IslandRightButton = settings.IslandLeftButton == defaults.IslandRightButton ? defaults.IslandLeftButton : defaults.IslandRightButton;

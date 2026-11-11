@@ -24,6 +24,7 @@ internal partial class IslandPlayerWindow : Window
 
     private const double HostWidth = 640;
     private const double MinPill = 24, MinScale = 0.01;
+    private const double BodyStrokeThickness = 1.5;
     private const double CompactMaxHeight = 40;
     private const double ShadowFadeHeight = 50;
     private const double HoverScale = 1.07, PressedScale = 0.93, PressedOpenScale = 0.975;
@@ -45,6 +46,10 @@ internal partial class IslandPlayerWindow : Window
     private static readonly Shape CompactShape = new(210, 34, 17);
     // Круглый вид свёрнутого острова: той же высоты, что капсула, но без текста, только обложка.
     private static readonly Shape CircleShape = new(34, 34, 17);
+    // Notch Nook: свёрнутая форма висит на верхнем краю экрана; радиус относится только к нижним углам.
+    private static readonly Shape NotchShape = new(200, 34, 14);
+    private const double NotchEar = 12;
+    private static readonly TimeSpan NotchHoverDelay = TimeSpan.FromMilliseconds(280);
     private static readonly Shape ToastShape = new(340, 68, 30);
     private static readonly Shape OpenShape = new(400, 176, 40);
     private static readonly Shape OpenLyricsShape = new(440, 412, 40);
@@ -82,6 +87,7 @@ internal partial class IslandPlayerWindow : Window
     private readonly TextBlock[] _lyricLines;
     private readonly TranslateTransform _lyricsShift = new();
     private readonly DispatcherTimer _collapseTimer = new();
+    private readonly DispatcherTimer _hoverOpenTimer = new() { Interval = NotchHoverDelay };
     private readonly DispatcherTimer _toastTimer = new() { Interval = ToastDuration };
     private readonly DispatcherTimer _volumeTimer = new() { Interval = VolumeDuration };
     private readonly DispatcherTimer _awayTimer = new();
@@ -166,6 +172,11 @@ internal partial class IslandPlayerWindow : Window
         }
 
         MenuView.MouseLeave += (_, _) => HideMenuHighlight();
+        _hoverOpenTimer.Tick += (_, _) =>
+        {
+            _hoverOpenTimer.Stop();
+            if (_hovered && _state == State.Compact && _grab == Grab.None && NotchHoverOpens) SetState(State.Open);
+        };
         _collapseTimer.Tick += (_, _) =>
         {
             _collapseTimer.Stop();
@@ -260,6 +271,7 @@ internal partial class IslandPlayerWindow : Window
         CancelLyricsLoad();
         _host.SetIslandAudioLevelWanted(false);
         _collapseTimer.Stop();
+        _hoverOpenTimer.Stop();
         _toastTimer.Stop();
         _volumeTimer.Stop();
         _awayTimer.Stop();
@@ -327,14 +339,13 @@ internal partial class IslandPlayerWindow : Window
     // Применяет настройки острова на лету: масштаб, отступ, полоски, обводку и режим эффектов.
     public void ApplySettingsLive()
     {
-        IslandOffset.Y = Math.Clamp(Settings.IslandTopGap, 0, 40) + _away.Value;
+        IslandOffset.Y = TopGap + _away.Value;
         UpdateAway(true);
         CompactView.Width = ShapeOf(State.Compact).Width;
         ToastView.Width = ShapeOf(State.Toast).Width;
         OpenView.Width = ShapeOf(State.Open).Width;
         OpenBars.Visibility = Settings.IslandShowEqualizer ? Visibility.Visible : Visibility.Collapsed;
-        // В круге нет места ни для названия, ни для эквалайзера.
-        IslandBars.Visibility = Settings.IslandShowEqualizer && !ShowDeviceInCompact ? Visibility.Visible : Visibility.Collapsed;
+        IslandBars.Visibility = ShowBarsInCompact ? Visibility.Visible : Visibility.Collapsed;
         DeviceIcon.Visibility = ShowDeviceInCompact ? Visibility.Visible : Visibility.Collapsed;
         CompactTitle.Visibility = IsCircle ? Visibility.Collapsed : Visibility.Visible;
         IslandBars.Dots = OpenBars.Dots = Settings.IslandEqualizerStyle == "Dots";
@@ -362,7 +373,8 @@ internal partial class IslandPlayerWindow : Window
 
     // Полоса показывается только у свёрнутого острова в покое: во время роста формы контур меняется каждый кадр,
     // а у раскрытого острова прогресс уже виден на полосе перемотки.
-    private bool ProgressRimActive => Settings.IslandProgressRim && _state == State.Compact && !_morphing;
+    // В Notch Nook полоса не рисуется: верхняя сторона контура лежит на краю экрана.
+    private bool ProgressRimActive => Settings.IslandProgressRim && !IsNotch && _state == State.Compact && !_morphing;
 
     private void UpdateProgressRimShape()
     {
@@ -440,6 +452,14 @@ internal partial class IslandPlayerWindow : Window
 
     private bool IsCircle => Settings.IslandShape == "Circle";
 
+    private bool IsNotch => Settings.IslandShape == "Notch";
+
+    // Раскрытие по наведению — часть вида Notch Nook; отдельная настройка позволяет оставить раскрытие по клику.
+    private bool NotchHoverOpens => IsNotch && Settings.IslandNotchHoverOpen;
+
+    // Notch Nook прижат к верхнему краю экрана, поэтому отступ сверху в нём не применяется.
+    private double TopGap => IsNotch ? 0 : Math.Clamp(Settings.IslandTopGap, 0, 40);
+
 
     private Shape ShapeOf(State state)
     {
@@ -460,7 +480,7 @@ internal partial class IslandPlayerWindow : Window
         State.Volume => VolumeShape,
         State.Drop => DropShape,
         State.Menu => new Shape(270, VisibleMenuRows * MenuRowHeight + MenuPadding, 32),
-        _ => CompactShape
+        _ => IsNotch ? NotchShape : CompactShape
     };
 
     private CoverSpot SpotOf(State state) => state switch
@@ -561,7 +581,7 @@ internal partial class IslandPlayerWindow : Window
         _coverSize.Target = spot.Size;
         if (dragging) TuneForDrag(true);
 
-        _scale.Target = dragging || ReduceMotion ? 1 : _pressed ? (compact ? PressedScale : PressedOpenScale) : _hovered && compact ? HoverScale : 1;
+        _scale.Target = dragging || ReduceMotion ? 1 : _pressed ? (compact ? PressedScale : PressedOpenScale) : _hovered && compact && !IsNotch ? HoverScale : 1;
 
         if (ReduceMotion) SnapToTargets();
         else StartLoop();
@@ -666,9 +686,12 @@ internal partial class IslandPlayerWindow : Window
         double r = Math.Clamp(_radius.Value, 0, Math.Min(w, h) / 2);
         var pill = new Rect((HostWidth - w) / 2, 0, w, h);
 
-        var outline = IslandOutline.Create(pill, r);
+        var outline = IsNotch ? IslandOutline.CreateNotch(pill, r, NotchEar) : IslandOutline.Create(pill, r);
         Body.Data = outline;
         Host.Clip = outline;
+        // Обводка шла бы светлой линией по верхнему краю экрана, поэтому в Notch Nook её нет.
+        double stroke = IsNotch ? 0 : BodyStrokeThickness;
+        if (Body.StrokeThickness != stroke) Body.StrokeThickness = stroke;
         _pillRect = pill;
         _pillRadius = r;
         UpdateProgressRimShape();
@@ -685,7 +708,7 @@ internal partial class IslandPlayerWindow : Window
         IslandScale.ScaleX = IslandScale.ScaleY = scale;
         // Остаток пружины в доли пикселя сдвигал бы текст на полпикселя и размывал его.
         IslandLean.X = Math.Abs(_lean.Value) < 0.05 ? 0 : _lean.Value;
-        IslandOffset.Y = Math.Clamp(Settings.IslandTopGap, 0, 40) + _away.Value;
+        IslandOffset.Y = TopGap + _away.Value;
         UpdateDeviceIconCounterScale(CurrentViewScale());
 
         double size = Math.Max(_coverSize.Value, 1);
@@ -970,14 +993,17 @@ internal partial class IslandPlayerWindow : Window
     {
         _hovered = true;
         _collapseTimer.Stop();
+        if (NotchHoverOpens && _state == State.Compact && _grab == Grab.None) _hoverOpenTimer.Start();
         UpdateTargets();
     }
 
     private void Island_MouseLeave(object sender, MouseEventArgs e)
     {
         _hovered = _pressed = false;
+        _hoverOpenTimer.Stop();
         UpdateTargets();
-        if (IsCardOpen && Settings.IslandAutoCollapse && !_lyricsShown) StartCollapseTimer();
+        // Раскрытое наведением Notch Nook сворачивается само, даже если автосворачивание выключено.
+        if (IsCardOpen && (Settings.IslandAutoCollapse || NotchHoverOpens) && !_lyricsShown) StartCollapseTimer();
     }
 
     private void Island_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
@@ -1358,7 +1384,7 @@ internal partial class IslandPlayerWindow : Window
     // Остров уезжает за верхний край, если его спрятали вручную или поверх развёрнуто чужое полноэкранное окно, и возвращается пружиной.
     private void UpdateAway(bool force = false)
     {
-        double gap = Math.Clamp(Settings.IslandTopGap, 0, 40);
+        double gap = TopGap;
         double target = IsAway ? -(OpenLyricsShape.Height * UserScale + gap + AwayMargin) : 0;
         if (!force && target == _away.Target) return;
 
@@ -2126,6 +2152,9 @@ internal partial class IslandPlayerWindow : Window
     // В круге места нет ни для эквалайзера, ни для значка устройства.
     private bool ShowDeviceInCompact => Settings.IslandCompactShowDevice && !IsCircle;
 
+    // Полоски в свёрнутом виде: на месте значка устройства их нет, а в круге (34 px) они легли бы поверх обложки.
+    private bool ShowBarsInCompact => Settings.IslandShowEqualizer && !IsCircle && !ShowDeviceInCompact;
+
     private void OnOutputDeviceChanged(AudioOutputDeviceInfo info)
     {
         if (!Dispatcher.CheckAccess())
@@ -2147,7 +2176,7 @@ internal partial class IslandPlayerWindow : Window
     // Полоски движутся только пока остров свёрнут и трек играет; в других видах их не видно.
     private void UpdateEqualizerState()
     {
-        IslandBars.Active = _isPlaying && _state == State.Compact && Settings.IslandShowEqualizer && !ShowDeviceInCompact && !ReduceMotion;
+        IslandBars.Active = _isPlaying && _state == State.Compact && ShowBarsInCompact && !ReduceMotion;
         OpenBars.Active = _isPlaying && _state == State.Open && Settings.IslandShowEqualizer && !ReduceMotion;
         if (ReduceMotion)
         {
