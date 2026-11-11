@@ -1753,8 +1753,7 @@ public partial class NowPlayingWindow : Window
         foreach (var radio in LyricsSearchSourceRadios()) radio.IsChecked = (string)radio.Tag == wanted;
     }
 
-    // Дополнительные источники (NetEase, QQ Music, Kugou, Paxsenix, Better Lyrics, Binimum, LyricsPlus) показываются только при включённой настройке «Дополнительный
-    // источник текстов» и отметке самого сервиса; если выбранный источник из их числа выключен, выбор возвращается на «Все».
+    // Дополнительные источники видны только при включённых настройке и самом сервисе; выключенный выбранный источник сбрасывается на «Все».
     private void UpdateLyricsSearchSourceChips()
     {
         foreach (var radio in LyricsSearchSourceRadios())

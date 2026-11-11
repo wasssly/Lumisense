@@ -1,8 +1,6 @@
 namespace Lumisense;
 
-// Перевод пунктов журнала изменений на английский. Источник русский; готовых переводов в приложении нет: если пользователь включил
-// автоперевод (AppSettings.ChangelogAutoTranslate), пункты переводит ChangelogMachineTranslator и сохраняет результат в локальный
-// кэш. Для пункта, которого в кэше ещё нет, показывается русский оригинал.
+// Английский текст пунктов журнала: готовых переводов нет, берётся кэш ChangelogMachineTranslator, иначе показывается русский оригинал.
 internal static class ChangelogTranslationCatalog
 {
     public static string Translate(string source, bool isEnglish)

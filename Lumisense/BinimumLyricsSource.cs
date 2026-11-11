@@ -4,10 +4,8 @@ using System.Text.Json;
 
 namespace Lumisense;
 
-// Binimum (lyrics-api.binimum.org, «BiniLyrics»): каталог, который по названию и исполнителю отдаёт ссылки на TTML-файлы.
-// Сначала запрашивается список совпадений, затем загружаются тексты нескольких лучших; принимаются только https-ссылки.
-// Работает только при включённых дополнительных источниках (AppSettings.UseExtraLyricsSource и UseBinimumLyrics):
-// название и исполнитель трека уходят на lyrics-api.binimum.org, а загрузка TTML идёт на адрес, который вернул сервис.
+// Binimum (lyrics-api.binimum.org): по названию и исполнителю отдаёт https-ссылки на TTML, которые затем загружаются.
+// Работает только при включённых UseExtraLyricsSource и UseBinimumLyrics: данные уходят и на сервис, и на адрес из его ответа.
 internal static class BinimumLyricsSource
 {
     public const string SourceName = "Binimum";

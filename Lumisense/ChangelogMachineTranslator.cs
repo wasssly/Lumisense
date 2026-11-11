@@ -6,13 +6,8 @@ using System.Text.Json;
 
 namespace Lumisense;
 
-// Автоматический перевод журнала изменений на английский (см. ChangelogTranslationCatalog). Используется неофициальный интерфейс Google Translate без ключа (translate.googleapis.com,
-// client=gtx): он бывает недоступен и ограничивает частоту запросов, поэтому любой сбой оставляет русский текст, а при отказе
-// сервиса запросы приостанавливаются на BlockDuration.
-//
-// Работает только при включённой настройке AppSettings.ChangelogAutoTranslate (по умолчанию выключена). Наружу уходит только текст
-// пункта журнала изменений: это публичный текст, данных пользователя в нём нет. Результаты хранятся в
-// %AppData%\Lumisense\changelog-translations.json и повторно не запрашиваются.
+// Автоперевод журнала через неофициальный Google Translate без ключа: он бывает недоступен, поэтому сбой оставляет русский текст.
+// Включается ChangelogAutoTranslate; уходит только публичный текст пунктов, результаты кэшируются в %AppData%\Lumisense.
 internal sealed class ChangelogMachineTranslator
 {
     internal const string Endpoint = "https://translate.googleapis.com/translate_a/single";
@@ -69,9 +64,7 @@ internal sealed class ChangelogMachineTranslator
         }
     }
 
-    // Переводит пункты, которых ещё нет в кэше, в порядке списка (в несколько потоков, поэтому порядок готовых результатов
-    // приблизительный). onProgress вызывается каждые ProgressEvery переводов и в конце, если что-то перевелось (из любого
-    // потока). Возвращает число новых переводов. Одновременно идёт только один прогон: новый ждёт завершения отменённого предыдущего.
+    // Переводит пункты, которых нет в кэше; одновременно идёт один прогон, onProgress вызывается из любого потока.
     public async Task<int> TranslateAsync(IEnumerable<string> sources, Action? onProgress, CancellationToken token)
     {
         if (DateTime.UtcNow < _blockedUntilUtc) return 0;

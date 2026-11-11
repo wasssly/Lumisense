@@ -6,12 +6,8 @@ using Lyricify.Lyrics.Searchers;
 
 namespace Lumisense;
 
-// Дополнительные источники текстов песен: NetEase Cloud Music и QQ Music через библиотеку Lyricify.Lyrics.Helper (Apache-2.0);
-// Kugou, Paxsenix, Better Lyrics, Binimum и LyricsPlus подключены напрямую (KugouLyricsSource, PaxsenixLyricsSource, BetterLyricsSource,
-// BinimumLyricsSource, LyricsPlusSource) и опрашиваются здесь же.
-// Включается отдельной настройкой (AppSettings.UseExtraLyricsSource, по умолчанию выключена); запрос с названием и
-// исполнителем трека уходит на серверы NetEase, QQ Music, Kugou, Paxsenix и Apple (поиск в iTunes), а также на серверы Better Lyrics, Binimum и LyricsPlus, если они включены. Библиотека сама подписывает запросы и разбирает ответы; сбой источника
-// не должен мешать основному поиску по LRCLIB, поэтому любые ошибки превращаются в пустой список.
+// Дополнительные источники текстов: NetEase и QQ Music через Lyricify.Lyrics.Helper (Apache-2.0), остальные подключены напрямую.
+// Включается UseExtraLyricsSource (по умолчанию выключена), название и исполнитель уходят на серверы источников; сбой даёт пустой список.
 internal static class LyricifyLyricsSource
 {
     public const string SourceName = "NetEase";

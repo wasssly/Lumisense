@@ -27,9 +27,8 @@ public static class Logger
     // -1 — ещё не измерен (первая запись сеанса).
     private static long _currentLogBytes = -1;
 
-    // Строки копятся в памяти и пишутся на диск пачкой: раньше каждая стоила отдельного открытия файла (File.AppendAllText).
-    // Ошибки и выход из приложения сбрасывают очередь сразу, остальное уходит на диск не позже чем через FlushDelayMilliseconds.
-    // При аварийном завершении без ProcessExit (fail-fast) теряются только последние INFO/WARN этого окна.
+    // Строки пишутся на диск пачкой: ошибки и выход сбрасывают очередь сразу, остальное не позже FlushDelayMilliseconds.
+    // При аварийном завершении без ProcessExit теряются только последние INFO/WARN.
     private const int FlushDelayMilliseconds = 400;
     private const int MaxPendingLines = 500;
     private static readonly List<string> Pending = new();

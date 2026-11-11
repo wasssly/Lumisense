@@ -49,9 +49,7 @@ public partial class ChangelogWindow : FluentWindow
         StartMachineTranslation();
     }
 
-    // Автоперевод пунктов журнала (только английский интерфейс и включённая настройка).
-    // Идёт в фоне, сначала для выбранной версии, затем для остальных от новых к старым. Готовые переводы подставляются в
-    // пункты на месте (ChangeItemViewModel.RefreshTranslation), список и выбор не пересоздаются.
+    // Автоперевод идёт в фоне (сначала выбранная версия) и подставляет результат в пункты на месте, не сбрасывая прокрутку.
     private void StartMachineTranslation()
     {
         if (_isClosed || !_settings.ChangelogAutoTranslate || !LocalizationService.IsEnglish) return;

@@ -1621,7 +1621,7 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.UseExtraLyricsSource, LyricifyLyricsSource.cs, KugouLyricsSource.cs, PaxsenixLyricsSource.cs, BetterLyricsSource.cs, BinimumLyricsSource.cs и LyricsPlusSource.cs. -->
+                        <!-- См. AppSettings.UseExtraLyricsSource и *LyricsSource.cs. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Дополнительный источник текстов" Style="{StaticResource SettingsSectionTitleStyle}" />

@@ -4,11 +4,8 @@ using System.Text.Json;
 
 namespace Lumisense;
 
-// Better Lyrics (api.betterlyrics.org): общий кэш синхронных текстов расширения Better Lyrics, ответ — TTML.
-// Сервис отдаёт текст без ключа только для треков, которые уже лежат в его кэше; для остальных нужен личный ключ проекта
-// (он не выдаётся сторонним приложениям), и такой запрос заканчивается кодом 401. Поэтому пустой ответ здесь — норма.
-// Работает только при включённых дополнительных источниках (AppSettings.UseExtraLyricsSource и UseBetterLyrics):
-// название и исполнитель трека уходят на api.betterlyrics.org. Любой сбой превращается в пустой список.
+// Better Lyrics (api.betterlyrics.org): TTML из общего кэша; для треков вне кэша сервис отвечает 401, пустой ответ — норма.
+// Работает только при включённых UseExtraLyricsSource и UseBetterLyrics: название и исполнитель уходят на сервер.
 internal static class BetterLyricsSource
 {
     public const string SourceName = "Better Lyrics";

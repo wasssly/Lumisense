@@ -84,9 +84,7 @@ public class AppSettings
     // передать свой выбор через одноразовый marker-файл в папке данных приложения.
     public string Language { get; set; } = "ru";
 
-    // Автоматически переводить журнал изменений на английский: текст пунктов (публичный текст журнала, без данных пользователя)
-    // отправляется на translate.googleapis.com. Готовых английских переводов в приложении нет, при выключенной настройке журнал
-    // остаётся на русском. По умолчанию выключено.
+    // Переводить журнал изменений на английский через translate.googleapis.com (уходит только публичный текст пунктов).
     public bool ChangelogAutoTranslate { get; set; }
 
     // Разрешает Theme в светлую/тёмную; если в settings.json остался устаревший "System", не считаем его тёмной,
@@ -198,7 +196,7 @@ public class AppSettings
     public bool UseBinimumLyrics { get; set; }
     public bool UseLyricsPlusLyrics { get; set; }
 
-    // Источник в ручном поиске текста (Now Playing): "All" — все, иначе "LRCLIB", "NetEase", "QQ Music", "Kugou", "Paxsenix", "Better Lyrics", "Binimum" или "LyricsPlus".
+    // Источник в ручном поиске текста (Now Playing): "All" или имя одного сервиса.
     public string LyricsManualSearchSource { get; set; } = "All";
 
     // Размер мини-плеера: "Compact" | "Current" | "Classic" (по умолчанию размер версии 1.21.0).

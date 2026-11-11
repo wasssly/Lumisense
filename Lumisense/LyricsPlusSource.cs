@@ -4,10 +4,8 @@ using System.Text.Json;
 
 namespace Lumisense;
 
-// LyricsPlus (KPoe, сервер lyricsplus.binimum.org и запасной): сводный сервис, который сам перебирает Apple Music, Musixmatch и другие
-// каталоги и отдаёт JSON со строками и слогами. Плееру нужны только строки с временем, поэтому из ответа собирается LRC.
-// Работает только при включённых дополнительных источниках (AppSettings.UseExtraLyricsSource и UseLyricsPlusLyrics):
-// название и исполнитель трека уходят на выбранный сервер; запасной опрашивается, только если основной не дал ответа.
+// LyricsPlus (KPoe, lyricsplus.binimum.org и запасной): сводный сервис, из его JSON собирается LRC по строкам.
+// Работает только при включённых UseExtraLyricsSource и UseLyricsPlusLyrics; запасной сервер опрашивается, если основной не ответил.
 internal static class LyricsPlusSource
 {
     public const string SourceName = "LyricsPlus";

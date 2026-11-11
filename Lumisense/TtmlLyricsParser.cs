@@ -6,9 +6,7 @@ using System.Xml.Linq;
 
 namespace Lumisense;
 
-// Разбор TTML (формат Apple Music), который отдают Better Lyrics и Binimum. Из построчных меток времени собирается обычный LRC:
-// пословная разметка плееру не нужна, а построчной достаточно для подсветки. Фоновые голоса (x-bg), переводы и транслитерации
-// пропускаются, чтобы строки не удваивались. Внешние сущности и DTD запрещены: ответ приходит с чужого сервера.
+// Разбор TTML (Better Lyrics, Binimum) в LRC по строкам; фоновые голоса и переводы пропускаются, DTD и внешние сущности запрещены.
 internal static class TtmlLyricsParser
 {
     private const int MaxCharacters = 2_000_000;
