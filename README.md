@@ -51,7 +51,7 @@
 - Сохранение истории и очереди сыгранных треков при активном шаффле.
 - Логарифмическая и нелогарифмическая регулировка громкости с более плавной квадратичной аудиокривой в нелогарифмическом режиме.
 - Десятиполосный эквалайзер с пресетами и пользовательскими настройками.
-- Режим EQ Bypass для быстрого сравнения обработанного и исходного сигнала.
+- Эквалайзер включается и выключается без щелчков; при выключенном звук идёт без обработки.
 - Изменение скорости воспроизведения и тона без изменения исходного файла.
 - ReplayGain.
 - Выбор устройства вывода Windows и отображение фактически используемого устройства.
@@ -77,7 +77,7 @@
 - Обработка недоступных файлов без удаления исходного файла с диска: можно найти замену или удалить только запись из плейлиста.
 - Редактирование тегов, свойств и обложки трека.
 - Настраиваемое контекстное меню трека: ненужные действия можно скрыть в настройках.
-- Поиск обложек в интернете (iTunes, Deezer и MusicBrainz — источники выбираются в окне поиска; неофициальный источник Yandex Music по умолчанию выключен и включается галочкой) и локальное кэширование найденных изображений.
+- Поиск обложек в интернете (iTunes, Deezer и MusicBrainz — источники выбираются в окне поиска; неофициальные Yandex Music, Genius и SoundCloud по умолчанию выключены и включаются галочками) и локальное кэширование найденных изображений.
 - Нормализация имён аудиофайлов по настраиваемому шаблону.
 
 ### Мини-плеер и внешний вид
@@ -95,10 +95,12 @@
 - Фон мини-плеера, адаптирующийся к цвету текущей обложки.
 - Режим совместимости с играми и оверлеями: включается вручную или автоматически, когда обнаружена игра на весь экран либо известный оверлей (RTSS, Xbox Game Bar, Steam, NVIDIA, AMD).
 - Жесты на обложке.
+- Остров — компактная плавающая панель с обложкой и управлением: виды «Капсула», «Круг» (только обложка) и «Notch Nook» (свисает с верхнего края экрана и раскрывается при наведении курсора); контур прогресса вокруг острова, приём файлов перетаскиванием.
+- Виды главного окна: «Новый» (крупная обложка), «Стекло», «Винил», «Компакт» и «Постер».
 - Полноэкранный режим Now Playing с крупной обложкой, управлением и текстом песни; фон на выбор: «Облака из цветов обложки», «Цветные шары» или «Волны».
 - Вид навигации в настройках: боковая панель, таблетки сверху или плавающая нижняя панель (у неё подписи пунктов можно скрыть, показывать под иконками или только у выбранного пункта).
 - Виды полосы прогресса, включая «Material» и «Material Slider», и вид ползунков «Material»; анимация смены обложки «Слайд» или «Карусель».
-- Шесть наборов иконок (Duotone, Outline, Bold, Fill, Thin, Font Awesome) с предпросмотром в настройках; переключаются без перезапуска. Иконки: Phosphor (MIT) и Font Awesome Free 7 (иконки под CC BY 4.0, https://fontawesome.com); тексты лицензий в `Lumisense/Icons/`. Тексты песен: LRCLIB и опциональные источники NetEase и QQ Music через Lyricify.Lyrics.Helper (Apache-2.0, текст лицензии в `docs/`).
+- Шесть наборов иконок (Duotone, Outline, Bold, Fill, Thin, Font Awesome) с предпросмотром в настройках; переключаются без перезапуска. Иконки: Phosphor (MIT) и Font Awesome Free 7 (иконки под CC BY 4.0, https://fontawesome.com); тексты лицензий в `Lumisense/Icons/`.
 - Пять значков приложения (Glass, Spotlight, Backlit, Stripes, Beam) для окон, значка в трее и ярлыков на рабочем столе и в меню «Пуск»; значок самого файла `.exe` и установщика — Spotlight.
 - Светлая и тёмная темы.
 - Системный или пользовательский акцентный цвет.
@@ -112,11 +114,11 @@
 - Live Lyrics из `.lrc`.
 - Обычные тексты из `.txt` и тега Comment.
 - Поиск текстов и ручная загрузка; автоматический выбор учитывает название, исполнителя и длительность трека.
-- Дополнительный источник текстов NetEase Cloud Music и QQ Music (через Lyricify) по умолчанию выключен: при включении название и исполнитель трека отправляются в эти сервисы.
+- Дополнительные источники текстов по умолчанию выключены общим переключателем; при включении название и исполнитель трека отправляются только в отмеченные сервисы: NetEase Cloud Music и QQ Music (через Lyricify.Lyrics.Helper, Apache-2.0, текст лицензии в `docs/`), Kugou, Paxsenix (тексты Apple Music), Better Lyrics, Binimum и LyricsPlus. Better Lyrics, Binimum и LyricsPlus отмечаются отдельно и по умолчанию не отмечены; Better Lyrics без ключа находит только треки из своего кэша. Подробности: [docs/NETWORK_AND_PRIVACY.md](docs/NETWORK_AND_PRIVACY.md).
 - Настройки текста песни: выравнивание (слева, по центру, справа) и скрытие обложки при открытом тексте в главном окне. В Now Playing клик по строке перематывает трек, а при нескольких найденных вариантах текста можно переключаться между ними.
 - Настройка политики поиска: локальные источники, автоматический точный поиск или ручной поиск.
 - Управляемое локальное хранение кэша текстов и обложек.
-- Discord Rich Presence с настройками приватности; обложку трека можно показывать в статусе (ищется по названию и исполнителю через iTunes, Deezer и MusicBrainz).
+- Discord Rich Presence с настройками приватности; обложку трека можно показывать в статусе (ищется по названию и исполнителю через iTunes, при неудаче через Deezer; берётся только результат того же исполнителя).
 - Windows media keys.
 - Пользовательские глобальные горячие клавиши.
 - System Media Transport Controls.
@@ -137,6 +139,7 @@
 - Локальные точки восстановления перед сбросом настроек или данных.
 - Ограничение размера логов.
 - Диагностика аудиовывода и фоновых операций.
+- Встроенная диагностика производительности (нагрузка процессора, память, дескрипторы, проверка утечек) и фоновое наблюдение за ресурсами; данные не отправляются в сеть.
 - Встроенный список изменений с категориями, поиском и сортировкой.
 - Проверка обновлений через GitHub Releases.
 - Проверка SHA-256 установщиков перед запуском; для установщиков в GitHub Release публикуется аттестация происхождения сборки.
@@ -207,7 +210,7 @@ Lumisense может проверять наличие новых версий �
 - **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** — отображение SVG.
 - **[Velopack](https://github.com/velopack/velopack)** — компактные обновления.
 - **DiscordRichPresence** — интеграция с Discord.
-- **Lyricify.Lyrics.Helper** — дополнительные источники текстов (по желанию пользователя).
+- **Lyricify.Lyrics.Helper** — источники текстов NetEase Cloud Music и QQ Music (по желанию пользователя).
 - **xUnit v3** и Microsoft Testing Platform — автоматические тесты.
 
 ### Структура репозитория
@@ -225,7 +228,7 @@ Lumisense/
 ├── docs/NETWORK_AND_PRIVACY.md         — сетевые запросы и приватность
 ├── docs/PERFORMANCE_BASELINE.md        — замеры производительности
 ├── docs/VELOPACK_*.md                  — миграция на Velopack и локальная проверка обновлений
-├── tools/                              — скрипты подготовки релиза
+├── tools/                              — скрипты подготовки релиза и замеров производительности
 ├── Lumisense.Tests/                    — unit-тесты
 └── Lumisense/                          — исходный код плеера
     ├── Lumisense.csproj
@@ -294,7 +297,7 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 - MP3, WAV, WMA, FLAC, M4A, AAC, OGG, OPUS, AIFF, and other formats supported by NAudio.
 - Play, pause, stop, track navigation, seeking, repeat modes, and history-aware shuffle across all active playlist folders.
 - Persisted shuffle history and queue state between launches.
-- Ten-band equalizer, presets, EQ Bypass, ReplayGain, playback speed, and pitch controls.
+- Ten-band equalizer with presets that switches on and off without clicks, ReplayGain, playback speed, and pitch controls.
 - Windows output-device selection with safe fallback and audio recovery when a saved endpoint becomes unavailable.
 - WASAPI output mode: Shared (default) or Exclusive, with an automatic fallback to Shared if the device cannot be opened exclusively.
 - Processed MP3 export using the current speed and pitch without overwriting the original file; a new filename can be selected before saving. MP3 is encoded by the bundled LAME encoder (libmp3lame), so export does not depend on Windows codecs.
@@ -302,7 +305,7 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 #### Playlist and library
 
 - Files, folders, nested folders, empty folders, grouping, search, Favorites, Play Next, Drag & Drop, and a virtualized list for large collections.
-- Unavailable-file recovery, tag and artwork editing, online artwork search (iTunes, Deezer, and MusicBrainz, selectable in the search window; an unofficial Yandex Music source is off by default and enabled with a checkbox), local artwork caching, and filename normalization.
+- Unavailable-file recovery, tag and artwork editing, online artwork search (iTunes, Deezer, and MusicBrainz, selectable in the search window; the unofficial Yandex Music, Genius, and SoundCloud sources are off by default and enabled with checkboxes), local artwork caching, and filename normalization.
 - Configurable track context menu: actions you do not need can be hidden in Settings.
 - Favorites heart animation can be chosen (Fill, Sparks, Ring) or turned off; selecting or dropping a file already in the playlist expands its folder and highlights the track.
 
@@ -310,13 +313,15 @@ The project is designed primarily for Windows 11 and uses Mica/Acrylic, rounded 
 
 - Standard, square, and compact mini-player modes with adjustable opacity, edge snapping, artwork gestures, progress outline, standard artwork, rotating vinyl, and static circular artwork.
 - Configurable mini-player context menu; opacity can be changed with a slider, the mouse wheel, or by typing a value; progress-outline thickness from 2 to 4; size presets (Classic by default, Current, Compact) and an optional marquee for long artist names.
+- Island: a compact floating panel with the cover and controls, in Capsule, Circle (cover only), or Notch Nook (hangs from the top screen edge and expands on hover) shapes, with a progress outline and file drop support.
+- Main window layouts: Modern (large cover), Glass, Vinyl, Compact, and Poster.
 - Game and overlay compatibility mode, enabled manually or automatically when a full-screen game or a known overlay (RTSS, Xbox Game Bar, Steam, NVIDIA, AMD) is detected.
 - Six icon packs (Duotone, Outline, Bold, Fill, Thin, Font Awesome) with a preview gallery in Settings, switchable without a restart; five application icons (Glass, Spotlight, Backlit, Stripes, Beam) for windows, the tray, and desktop and Start Menu shortcuts (the `.exe` and installer use Spotlight). Icons: Phosphor (MIT) and Font Awesome Free 7 (icons under CC BY 4.0, https://fontawesome.com); license texts are in `Lumisense/Icons/`. Lyrics: LRCLIB, plus an optional NetEase and QQ Music sources via Lyricify.Lyrics.Helper (Apache-2.0, license text in `docs/`).
 - Full-screen Now Playing with lyrics and a selectable background (cover-colour clouds, colour orbs, or waves); clicking a synced lyric line seeks to it, and you can switch between lyric variants when several are found.
 - Settings navigation style: sidebar, top pills, or a floating bottom bar (item labels can be hidden, shown under icons, or shown only for the selected item); Material progress bar and slider styles; Slide or Carousel artwork transition.
-- Lyrics options: text alignment (left, centre, right), hiding the cover while lyrics are open in the main window, automatic lyric selection by title, artist, and duration, and an optional NetEase and QQ Music source that is off by default and sends the track title and artist to those services when enabled.
+- Lyrics options: text alignment (left, centre, right), hiding the cover while lyrics are open in the main window, automatic lyric selection by title, artist, and duration, and optional extra lyrics sources (NetEase, QQ Music, Kugou, Paxsenix for Apple Music lyrics, Better Lyrics, Binimum, and LyricsPlus). They are off by default behind one master switch and send the track title and artist only to the services you tick; Better Lyrics, Binimum, and LyricsPlus are unticked by default, and Better Lyrics finds only tracks from its own cache without a key. See [docs/NETWORK_AND_PRIVACY.md](docs/NETWORK_AND_PRIVACY.md).
 - Dark and light themes, Mica/Acrylic, custom accents, interface scaling, reduced motion, system tray, media keys, global hotkeys, Discord Rich Presence, and System Media Transport Controls.
-- Discord Rich Presence can show the current track's cover art (looked up by title and artist via iTunes, Deezer, and MusicBrainz).
+- Discord Rich Presence can show the current track's cover art (looked up by title and artist via iTunes, falling back to Deezer; only a result by the same artist is used).
 - System tray icon with its own menu (playback controls and a Settings item); a single click opens the player. Desktop and Start Menu shortcuts (separate options in the installer).
 - Auto-scroll in Settings toggled by clicking the middle mouse button once to enable it and again to disable it; the pointer indicates the active direction.
 - Track-change notification settings (position, monitor, size, width, artwork side, and text alignment); the notification can be dismissed immediately by clicking its card; background opacity and an option to pull the artwork next to centred text are configurable.
@@ -357,7 +362,7 @@ Ready-to-use builds are published on [GitHub Releases](https://github.com/wasssl
 - **[SharpVectors](https://github.com/ElinamLLC/SharpVectors)** for SVG icons.
 - **[Velopack](https://github.com/velopack/velopack)** for compact updates.
 - **DiscordRichPresence** for Discord integration.
-- **Lyricify.Lyrics.Helper** for optional extra lyrics sources.
+- **Lyricify.Lyrics.Helper** for the optional NetEase and QQ Music lyrics sources.
 - **xUnit v3** and Microsoft Testing Platform for automated tests.
 
 Key internal components include `AudioPlaybackCoordinator`, `TrackPreparationService`, and `TrackExportService`.
@@ -377,7 +382,7 @@ Lumisense/
 ├── docs/NETWORK_AND_PRIVACY.md         — network requests and privacy
 ├── docs/PERFORMANCE_BASELINE.md        — performance measurements
 ├── docs/VELOPACK_*.md                  — Velopack migration and local update testing
-├── tools/                              — release preparation scripts
+├── tools/                              — release preparation and performance measurement scripts
 ├── Lumisense.Tests/                    — unit tests
 └── Lumisense/                          — player source code
     ├── Lumisense.csproj
