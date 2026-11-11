@@ -133,6 +133,39 @@ public sealed class SoundTouchSampleProviderTests
             Assert.Equal(source[index], output[index]);
     }
 
+    // Rate меняет скорость вместе с тоном (виниловый режим), поэтому длина трека меняется обратно пропорционально.
+    [Theory]
+    [InlineData(2.0, 0.5)]
+    [InlineData(0.5, 2.0)]
+    public void Rate_ScalesTheLengthOfTheOutputInverselyToTheRate(double rate, double lengthFactor)
+    {
+        float[] source = CreateStereoSine(44100);
+        var provider = new SoundTouchSampleProvider(new TestSampleProvider(source, channels: 2)) { Rate = rate };
+
+        List<float> output = Drain(provider, chunkSize: 2880);
+
+        double expected = source.Length * lengthFactor;
+        Assert.InRange((double)output.Count, expected * 0.9, expected * 1.1);
+        Assert.All(output, sample => Assert.True(float.IsFinite(sample)));
+    }
+
+    [Fact]
+    public void RateReturnedToOne_CountsAsNeutral()
+    {
+        float[] source = CreateStereoSine(8000);
+        var provider = new SoundTouchSampleProvider(new TestSampleProvider(source, channels: 2));
+        provider.Rate = 1.4;
+        provider.Rate = 1.0;
+        provider.Clear();
+
+        var output = new float[1000];
+        int read = provider.Read(output);
+
+        Assert.Equal(1000, read);
+        for (int index = 0; index < read; index++)
+            Assert.Equal(source[index], output[index]);
+    }
+
     [Fact]
     public void TempoChangedMidTrack_KeepsProducingFiniteAudio()
     {
