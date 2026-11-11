@@ -1,3 +1,4 @@
+using System.Net.Http;
 using System.Text.Json;
 using Xunit;
 
@@ -171,5 +172,21 @@ public sealed class LyricsNewSourcesTests
         Assert.Equal(1.5, LyricsPlusSource.ReadSeconds(document.RootElement, "a")!.Value, 3);
         Assert.Equal(1.5, LyricsPlusSource.ReadSeconds(document.RootElement, "b")!.Value, 3);
         Assert.Null(LyricsPlusSource.ReadSeconds(document.RootElement, "missing"));
+    }
+
+    [Fact]
+    public async Task GetTextAsync_ReturnsNullForAResponseOverTheLimit_AndTheTextOtherwise()
+    {
+        using var small = new HttpClient(new FixedBodyHandler("hello"));
+        using var large = new HttpClient(new FixedBodyHandler(new string('a', ExtraLyricsHttp.MaxResponseCharacters + 1)));
+
+        Assert.Equal("hello", await ExtraLyricsHttp.GetTextAsync(small, "https://example.test/", "test", TestContext.Current.CancellationToken));
+        Assert.Null(await ExtraLyricsHttp.GetTextAsync(large, "https://example.test/", "test", TestContext.Current.CancellationToken));
+    }
+
+    private sealed class FixedBodyHandler(string body) : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(body) });
     }
 }

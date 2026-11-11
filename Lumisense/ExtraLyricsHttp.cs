@@ -1,4 +1,6 @@
+using System.IO;
 using System.Net.Http;
+using System.Text;
 
 namespace Lumisense;
 
@@ -57,8 +59,21 @@ internal static class ExtraLyricsHttp
             return null;
         }
 
-        string body = await response.Content.ReadAsStringAsync(token).ConfigureAwait(false);
-        return body.Length > MaxResponseCharacters ? null : body;
+        // Лимит проверяется до чтения всего ответа: иначе огромное тело сначала целиком попало бы в память.
+        if (response.Content.Headers.ContentLength > MaxResponseCharacters * 4L) return null;
+
+        await using Stream stream = await response.Content.ReadAsStreamAsync(token).ConfigureAwait(false);
+        using var reader = new StreamReader(stream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true);
+        var body = new StringBuilder();
+        var buffer = new char[8192];
+        int read;
+        while ((read = await reader.ReadAsync(buffer.AsMemory(), token).ConfigureAwait(false)) > 0)
+        {
+            body.Append(buffer, 0, read);
+            if (body.Length > MaxResponseCharacters) return null;
+        }
+
+        return body.ToString();
     }
 
     public static string BuildTitleQuery(string title, string artist) =>
