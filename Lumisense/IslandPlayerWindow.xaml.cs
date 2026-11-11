@@ -686,6 +686,7 @@ internal partial class IslandPlayerWindow : Window
         // Остаток пружины в доли пикселя сдвигал бы текст на полпикселя и размывал его.
         IslandLean.X = Math.Abs(_lean.Value) < 0.05 ? 0 : _lean.Value;
         IslandOffset.Y = Math.Clamp(Settings.IslandTopGap, 0, 40) + _away.Value;
+        UpdateDeviceIconCounterScale(CurrentViewScale());
 
         double size = Math.Max(_coverSize.Value, 1);
         double radiusRatio = Settings.IslandRoundCover ? RoundCoverRadiusRatio : CoverRadiusRatio;
@@ -778,26 +779,70 @@ internal partial class IslandPlayerWindow : Window
         foreach (var view in _views)
             if (view != next && view.Visibility == Visibility.Visible) FadeOut(view);
         FadeIn(next);
-        TrackDeviceIconScale(next);
+        TrackDeviceIconScale();
     }
 
-    // Масштаб вида меняет размер значка на каждом кадре и он дрожит, поэтому значку задаётся обратный масштаб.
+    // Значок устройства должен оставаться неподвижным по размеру. Его увеличивают и уменьшают два масштаба: масштаб самого острова
+    // (наведение 1,07 и нажатие 0,93; пользовательский масштаб острова не в счёт) и масштаб вида (появление и подгонка под форму).
+    // Поэтому значку задаётся обратный масштаб, который пересчитывается на каждом кадре обоих. Положение значка меняется вместе
+    // с островом, но выравнивается по физическому пикселю (см. SnapDeviceIconToPixels).
     private bool _deviceIconTracking;
 
-    private void TrackDeviceIconScale(FrameworkElement next)
+    // Отслеживание нужно и когда свёрнутый вид появляется, и когда он уходит (остров раскрывается): в обоих случаях его масштаб
+    // меняется на каждом кадре.
+    private void TrackDeviceIconScale()
     {
-        if (next != CompactView || DeviceIcon.Visibility != Visibility.Visible || _deviceIconTracking) return;
+        if (DeviceIcon.Visibility != Visibility.Visible || CompactView.Visibility != Visibility.Visible || _deviceIconTracking) return;
 
         _deviceIconTracking = true;
         CompositionTarget.Rendering += OnDeviceIconRendering;
     }
 
+    // Масштаб вида, пока идёт его появление или подгонка; когда вид устоялся (и не отслеживается), он равен 1.
+    private double CurrentViewScale() =>
+        _deviceIconTracking ? FadeScaleOf(CompactView).ScaleX * FitScaleOf(CompactView).ScaleX : 1;
+
+    private void UpdateDeviceIconCounterScale(double viewScale)
+    {
+        double hover = Math.Max(_scale.Value, MinScale);
+        double total = hover * viewScale;
+        // Остаток пружины в доли процента не компенсируется: иначе значок размывался бы дробным масштабом.
+        DeviceIconCounterScale.ScaleX = DeviceIconCounterScale.ScaleY = Math.Abs(total - 1) < 0.002 ? 1 : 1 / Math.Max(total, 0.05);
+        SnapDeviceIconToPixels(total * UserScale);
+    }
+
+    // Размер значка постоянен, а положение вместе с островом меняется дробно на каждом кадре. Тонкие линии 16-пиксельной иконки при
+    // дробном положении растеризуются по-разному от кадра к кадру и мерцают, на экранах с масштабом 100 % особенно заметно.
+    // Поэтому левый верхний угол значка выравнивается по физическому пикселю: значок двигается вместе с островом, но его линии
+    // остаются стабильными. Вызывается после записи всех трансформаций острова (масштаб, сдвиг, наклон), иначе измерение
+    // использовало бы значения прошлого кадра и добавляло бы шум в 1 пиксель. Измерение идёт без прежней поправки, а новая
+    // записывается в координатах значка, поэтому делится на масштаб предков.
+    private void SnapDeviceIconToPixels(double ancestorScale)
+    {
+        DeviceIconSnap.X = DeviceIconSnap.Y = 0;
+        if (!DeviceIcon.IsVisible || ancestorScale < 0.05) return;
+
+        try
+        {
+            Point origin = DeviceIcon.TransformToAncestor(this).Transform(new Point(0, 0));
+            DpiScale dpi = VisualTreeHelper.GetDpi(this);
+            double shiftX = Math.Round(origin.X * dpi.DpiScaleX) / dpi.DpiScaleX - origin.X;
+            double shiftY = Math.Round(origin.Y * dpi.DpiScaleY) / dpi.DpiScaleY - origin.Y;
+            DeviceIconSnap.X = shiftX / ancestorScale;
+            DeviceIconSnap.Y = shiftY / ancestorScale;
+        }
+        catch (InvalidOperationException)
+        {
+            // Значок ещё не в визуальном дереве окна: поправка не нужна.
+        }
+    }
+
     private void OnDeviceIconRendering(object? sender, EventArgs e)
     {
-        double total = FadeScaleOf(CompactView).ScaleX * FitScaleOf(CompactView).ScaleX;
+        double view = FadeScaleOf(CompactView).ScaleX * FitScaleOf(CompactView).ScaleX;
         bool settled = DeviceIcon.Visibility != Visibility.Visible || CompactView.Visibility != Visibility.Visible
-            || (!_morphing && Math.Abs(total - 1) < 0.002);
-        DeviceIconCounterScale.ScaleX = DeviceIconCounterScale.ScaleY = settled ? 1 : 1 / Math.Max(total, 0.05);
+            || (!_morphing && Math.Abs(view - 1) < 0.002);
+        UpdateDeviceIconCounterScale(settled ? 1 : view);
         if (!settled) return;
 
         CompositionTarget.Rendering -= OnDeviceIconRendering;
@@ -1570,15 +1615,33 @@ internal partial class IslandPlayerWindow : Window
     {
         SetState(State.Compact);
 
-        // Окно настроек создаётся долго и рвало бы анимацию сворачивания: открываем его, когда остров уже свернулся.
+        // Окно настроек создаётся долго и останавливает поток интерфейса. Если остров к этому времени ещё анимируется, анимации
+        // продолжают идти без этого потока, а обратный масштаб значка устройства (он считается покадрово в нём) отстаёт, и значок
+        // дёргается. Поэтому окно открывается, когда остров полностью устоялся, но не позже SettingsSettleLimit.
+        long deadline = Environment.TickCount64 + (long)SettingsSettleLimit.TotalMilliseconds;
         var timer = new DispatcherTimer { Interval = ReduceMotion ? TimeSpan.Zero : SettingsOpenDelay };
         timer.Tick += (_, _) =>
         {
+            if (IsLoaded && !ReduceMotion && !IsCompactSettled() && Environment.TickCount64 < deadline)
+            {
+                timer.Interval = SettingsSettlePoll;
+                return;
+            }
+
             timer.Stop();
             if (IsLoaded) _host.ShowSettingsWindow("Island");
         };
         timer.Start();
     }
+
+    private static readonly TimeSpan SettingsSettleLimit = TimeSpan.FromMilliseconds(1200), SettingsSettlePoll = TimeSpan.FromMilliseconds(40);
+
+    // Остров закончил и изменение формы, и подстройку значка устройства; свёрнутый вид ещё и появление (масштаб и прозрачность).
+    // Если остров успел раскрыться снова (например, наведением в Notch Nook), ждать появления свёрнутого вида не нужно.
+    private bool IsCompactSettled() =>
+        !_morphing && !_deviceIconTracking
+        && (_state != State.Compact
+            || (CompactView.Visibility == Visibility.Visible && CompactView.Opacity > 0.99 && Math.Abs(FadeScaleOf(CompactView).ScaleX - 1) < 0.005));
 
     // ----- Боковые кнопки: избранное, повтор, текст песни -----
 
