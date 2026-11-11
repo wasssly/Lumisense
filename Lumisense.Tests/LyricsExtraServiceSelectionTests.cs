@@ -14,12 +14,15 @@ public sealed class LyricsExtraServiceSelectionTests : IDisposable
         UseQqMusicLyrics = LyricsService.IsExtraSourceEnabled("QQ Music"),
         UseKugouLyrics = LyricsService.IsExtraSourceEnabled("Kugou"),
         UsePaxsenixLyrics = LyricsService.IsExtraSourceEnabled("Paxsenix"),
+        UseBetterLyrics = LyricsService.IsExtraSourceEnabled("Better Lyrics"),
+        UseBinimumLyrics = LyricsService.IsExtraSourceEnabled("Binimum"),
+        UseLyricsPlusLyrics = LyricsService.IsExtraSourceEnabled("LyricsPlus"),
     };
 
     public void Dispose() => LyricsService.ApplyExtraSourceSettings(_original);
 
     [Fact]
-    public void ExtraServices_AreAllEnabledByDefault()
+    public void ExtraServices_OldServicesAreEnabledByDefault_NewOnesNeedExplicitConsent()
     {
         var settings = new AppSettings();
 
@@ -27,6 +30,9 @@ public sealed class LyricsExtraServiceSelectionTests : IDisposable
         Assert.True(settings.UseQqMusicLyrics);
         Assert.True(settings.UseKugouLyrics);
         Assert.True(settings.UsePaxsenixLyrics);
+        Assert.False(settings.UseBetterLyrics);
+        Assert.False(settings.UseBinimumLyrics);
+        Assert.False(settings.UseLyricsPlusLyrics);
     }
 
     [Fact]
@@ -47,5 +53,18 @@ public sealed class LyricsExtraServiceSelectionTests : IDisposable
 
         Assert.False(LyricsService.IsExtraSourceEnabled("NetEase"));
         Assert.False(LyricsService.IsExtraSourceEnabled("Paxsenix"));
+    }
+
+    [Fact]
+    public void IsExtraSourceEnabled_ReflectsNewServiceCheckboxes()
+    {
+        LyricsService.ApplyExtraSourceSettings(new AppSettings
+        {
+            UseExtraLyricsSource = true, UseBetterLyrics = true, UseBinimumLyrics = false, UseLyricsPlusLyrics = true
+        });
+
+        Assert.True(LyricsService.IsExtraSourceEnabled("Better Lyrics"));
+        Assert.False(LyricsService.IsExtraSourceEnabled("Binimum"));
+        Assert.True(LyricsService.IsExtraSourceEnabled("LyricsPlus"));
     }
 }

@@ -25,6 +25,16 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     }
 
     [Theory]
+    [InlineData("Better Lyrics")]
+    [InlineData("Binimum")]
+    [InlineData("LyricsPlus")]
+    public void TryLoad_KeepsNewLyricsSearchSources(string source)
+    {
+        Assert.True(TryLoad($"{{\"LyricsManualSearchSource\": \"{source}\"}}", out var settings, out _));
+        Assert.Equal(source, settings!.LyricsManualSearchSource);
+    }
+
+    [Theory]
     [InlineData(11, 12)]
     [InlineData(26, 20)]
     [InlineData(16, 16)]

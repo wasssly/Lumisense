@@ -432,7 +432,7 @@ public static class LyricsService
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonicalPath))).ToLowerInvariant();
     }
 
-    // Включает дополнительные источники текстов (NetEase, QQ Music, Kugou, Paxsenix); выставляется из настроек.
+    // Включает дополнительные источники текстов (NetEase, QQ Music, Kugou, Paxsenix, Better Lyrics, Binimum, LyricsPlus); выставляется из настроек.
     public static bool ExtraSourceEnabled { get; set; }
 
     // Какие именно дополнительные источники включены (имена как в OnlineLyricsResult.Source). Набор подменяется целиком,
@@ -451,6 +451,9 @@ public static class LyricsService
         if (settings.UseQqMusicLyrics) enabled.Add(LyricifyLyricsSource.QqSourceName);
         if (settings.UseKugouLyrics) enabled.Add(KugouLyricsSource.SourceName);
         if (settings.UsePaxsenixLyrics) enabled.Add(PaxsenixLyricsSource.SourceName);
+        if (settings.UseBetterLyrics) enabled.Add(BetterLyricsSource.SourceName);
+        if (settings.UseBinimumLyrics) enabled.Add(BinimumLyricsSource.SourceName);
+        if (settings.UseLyricsPlusLyrics) enabled.Add(LyricsPlusSource.SourceName);
 
         _enabledExtraSources = enabled;
         ExtraSourceEnabled = settings.UseExtraLyricsSource;
@@ -569,7 +572,7 @@ public static class LyricsService
     public const string LrcLibSourceName = "LRCLIB";
 
     // sourceFilter — выбор источника в окне поиска: null — все (дополнительные по настройке), "LRCLIB" — только LRCLIB,
-    // иное имя (NetEase, QQ Music, Kugou, Paxsenix) — только он, если дополнительные источники включены в настройках.
+    // иное имя (NetEase, QQ Music, Kugou, Paxsenix, Better Lyrics, Binimum, LyricsPlus) — только он, если дополнительные источники включены в настройках.
     public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineVariantsAsync(
         string trackName,
         string artistName,

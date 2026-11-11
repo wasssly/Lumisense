@@ -288,7 +288,7 @@ internal static class SettingsIntegrityService
 
         settings.PlayerViewMode = AllowedOrNull(settings.PlayerViewMode, "Square", "Rectangular", "Mini");
         settings.LyricsManualSearchSource = Allowed(settings.LyricsManualSearchSource, defaults.LyricsManualSearchSource,
-            "All", "LRCLIB", "NetEase", "QQ Music", "Kugou", "Paxsenix");
+            "All", "LRCLIB", "NetEase", "QQ Music", "Kugou", "Paxsenix", "Better Lyrics", "Binimum", "LyricsPlus");
         settings.ModernControlSlots = MainWindow.NormalizeModernSlots(settings.ModernControlSlots);
         settings.MainWindowLayout = Allowed(settings.MainWindowLayout, defaults.MainWindowLayout, "Modern", "Glass", "Vinyl", "Compact", "Poster");
         settings.CompactCoverAlignment = Allowed(settings.CompactCoverAlignment, defaults.CompactCoverAlignment, "Left", "Center");

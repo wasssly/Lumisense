@@ -7,9 +7,10 @@ using Lyricify.Lyrics.Searchers;
 namespace Lumisense;
 
 // Дополнительные источники текстов песен: NetEase Cloud Music и QQ Music через библиотеку Lyricify.Lyrics.Helper (Apache-2.0);
-// Kugou и Paxsenix подключены напрямую (KugouLyricsSource, PaxsenixLyricsSource) и опрашиваются здесь же.
+// Kugou, Paxsenix, Better Lyrics, Binimum и LyricsPlus подключены напрямую (KugouLyricsSource, PaxsenixLyricsSource, BetterLyricsSource,
+// BinimumLyricsSource, LyricsPlusSource) и опрашиваются здесь же.
 // Включается отдельной настройкой (AppSettings.UseExtraLyricsSource, по умолчанию выключена); запрос с названием и
-// исполнителем трека уходит на серверы NetEase, QQ Music, Kugou, Paxsenix и Apple (поиск в iTunes). Библиотека сама подписывает запросы и разбирает ответы; сбой источника
+// исполнителем трека уходит на серверы NetEase, QQ Music, Kugou, Paxsenix и Apple (поиск в iTunes), а также на серверы Better Lyrics, Binimum и LyricsPlus, если они включены. Библиотека сама подписывает запросы и разбирает ответы; сбой источника
 // не должен мешать основному поиску по LRCLIB, поэтому любые ошибки превращаются в пустой список.
 internal static class LyricifyLyricsSource
 {
@@ -64,7 +65,16 @@ internal static class LyricifyLyricsSource
         Task<IReadOnlyList<OnlineLyricsResult>> paxsenixSearch = Wants(PaxsenixLyricsSource.SourceName)
             ? PaxsenixLyricsSource.SearchAsync(title, artist, token) : NoResults;
 
-        IReadOnlyList<OnlineLyricsResult>[] groups = await Task.WhenAll(neteaseSearch, qqSearch, kugouSearch, paxsenixSearch).ConfigureAwait(false);
+        // Better Lyrics, Binimum и LyricsPlus тоже обрабатывают сбои сами; их результаты идут последними.
+        Task<IReadOnlyList<OnlineLyricsResult>> betterSearch = Wants(BetterLyricsSource.SourceName)
+            ? BetterLyricsSource.SearchAsync(title, artist, token) : NoResults;
+        Task<IReadOnlyList<OnlineLyricsResult>> binimumSearch = Wants(BinimumLyricsSource.SourceName)
+            ? BinimumLyricsSource.SearchAsync(title, artist, token) : NoResults;
+        Task<IReadOnlyList<OnlineLyricsResult>> lyricsPlusSearch = Wants(LyricsPlusSource.SourceName)
+            ? LyricsPlusSource.SearchAsync(title, artist, token) : NoResults;
+
+        IReadOnlyList<OnlineLyricsResult>[] groups = await Task.WhenAll(
+            neteaseSearch, qqSearch, kugouSearch, paxsenixSearch, betterSearch, binimumSearch, lyricsPlusSearch).ConfigureAwait(false);
         return groups.SelectMany(group => group).ToList();
     }
 

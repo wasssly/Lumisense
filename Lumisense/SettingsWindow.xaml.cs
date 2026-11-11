@@ -206,6 +206,9 @@ public partial class SettingsWindow : FluentWindow
         UseQqMusicLyricsCheckBox.IsChecked = _settings.UseQqMusicLyrics;
         UseKugouLyricsCheckBox.IsChecked = _settings.UseKugouLyrics;
         UsePaxsenixLyricsCheckBox.IsChecked = _settings.UsePaxsenixLyrics;
+        UseBetterLyricsCheckBox.IsChecked = _settings.UseBetterLyrics;
+        UseBinimumLyricsCheckBox.IsChecked = _settings.UseBinimumLyrics;
+        UseLyricsPlusLyricsCheckBox.IsChecked = _settings.UseLyricsPlusLyrics;
         ExtraLyricsSourcesPanel.IsEnabled = _settings.UseExtraLyricsSource;
         HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
         FavoriteHeartSparksRadio.IsChecked = _settings.FavoriteHeartAnimation == "Sparks";
@@ -2427,6 +2430,9 @@ public partial class SettingsWindow : FluentWindow
         _settings.UseQqMusicLyrics = UseQqMusicLyricsCheckBox.IsChecked == true;
         _settings.UseKugouLyrics = UseKugouLyricsCheckBox.IsChecked == true;
         _settings.UsePaxsenixLyrics = UsePaxsenixLyricsCheckBox.IsChecked == true;
+        _settings.UseBetterLyrics = UseBetterLyricsCheckBox.IsChecked == true;
+        _settings.UseBinimumLyrics = UseBinimumLyricsCheckBox.IsChecked == true;
+        _settings.UseLyricsPlusLyrics = UseLyricsPlusLyricsCheckBox.IsChecked == true;
         LyricsService.ApplyExtraSourceSettings(_settings);
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }

@@ -192,8 +192,13 @@ public class AppSettings
     public bool UseQqMusicLyrics { get; set; } = true;
     public bool UseKugouLyrics { get; set; } = true;
     public bool UsePaxsenixLyrics { get; set; } = true;
+    // Новые сервисы (Better Lyrics, Binimum, LyricsPlus) по умолчанию выключены: включившие дополнительные источники раньше
+    // не соглашались отправлять название и исполнителя трека на эти серверы, поэтому включаются они только вручную.
+    public bool UseBetterLyrics { get; set; }
+    public bool UseBinimumLyrics { get; set; }
+    public bool UseLyricsPlusLyrics { get; set; }
 
-    // Источник в ручном поиске текста (Now Playing): "All" — все, иначе "LRCLIB", "NetEase", "QQ Music", "Kugou" или "Paxsenix".
+    // Источник в ручном поиске текста (Now Playing): "All" — все, иначе "LRCLIB", "NetEase", "QQ Music", "Kugou", "Paxsenix", "Better Lyrics", "Binimum" или "LyricsPlus".
     public string LyricsManualSearchSource { get; set; } = "All";
 
     // Размер мини-плеера: "Compact" | "Current" | "Classic" (по умолчанию размер версии 1.21.0).

@@ -1621,7 +1621,7 @@
                             </StackPanel>
                         </Border>
 
-                        <!-- См. AppSettings.UseExtraLyricsSource, LyricifyLyricsSource.cs, KugouLyricsSource.cs и PaxsenixLyricsSource.cs. -->
+                        <!-- См. AppSettings.UseExtraLyricsSource, LyricifyLyricsSource.cs, KugouLyricsSource.cs, PaxsenixLyricsSource.cs, BetterLyricsSource.cs, BinimumLyricsSource.cs и LyricsPlusSource.cs. -->
                         <Border Style="{StaticResource SettingsCardStyle}">
                             <StackPanel>
                                 <TextBlock Text="Дополнительный источник текстов" Style="{StaticResource SettingsSectionTitleStyle}" />
@@ -1637,8 +1637,14 @@
                                               Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
                                     <CheckBox x:Name="UsePaxsenixLyricsCheckBox" Content="Paxsenix (Apple Music)"
                                               Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                                    <CheckBox x:Name="UseBetterLyricsCheckBox" Content="Better Lyrics"
+                                              Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                                    <CheckBox x:Name="UseBinimumLyricsCheckBox" Content="Binimum"
+                                              Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                                    <CheckBox x:Name="UseLyricsPlusLyricsCheckBox" Content="LyricsPlus"
+                                              Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
                                 </StackPanel>
-                                <TextBlock Text="Помогает найти тексты русских и других исполнителей, которых нет в LRCLIB. При онлайн-поиске название и исполнитель трека отправляются на серверы NetEase, QQ Music, Kugou и Paxsenix (для текстов Apple Music трек ещё ищется в каталоге iTunes). Результаты идут после LRCLIB и помечены источником; сбой одного источника не прерывает поиск в остальных."
+                                <TextBlock Text="Помогает найти тексты русских и других исполнителей, которых нет в LRCLIB. При онлайн-поиске название и исполнитель трека отправляются на серверы отмеченных сервисов: NetEase, QQ Music, Kugou, Paxsenix (для текстов Apple Music трек ещё ищется в каталоге iTunes), а также Better Lyrics, Binimum и LyricsPlus. Эти три сервиса по умолчанию не отмечены; Better Lyrics отдаёт текст только для треков из своего кэша. Результаты идут после LRCLIB и помечены источником; сбой одного источника не прерывает поиск в остальных."
                                            Style="{StaticResource SettingsHelperTextStyle}" Margin="0,8,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>

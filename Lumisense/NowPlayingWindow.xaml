@@ -416,6 +416,12 @@
                                                              Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
                                                 <RadioButton Tag="Paxsenix" Content="Paxsenix" GroupName="LyricsSearchSource"
                                                              Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                                <RadioButton Tag="Better Lyrics" Content="Better Lyrics" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                                <RadioButton Tag="Binimum" Content="Binimum" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
+                                                <RadioButton Tag="LyricsPlus" Content="LyricsPlus" GroupName="LyricsSearchSource"
+                                                             Style="{StaticResource LyricsSourceChipStyle}" Checked="LyricsSearchSourceRadio_Checked" />
                                         </WrapPanel>
                                         <TextBlock x:Name="OnlineLyricsSearchStatusText" Grid.Row="3" Foreground="#A8FFFFFF" FontSize="12"
                                                    TextWrapping="Wrap" Margin="0,2,0,0" MaxHeight="36" />
