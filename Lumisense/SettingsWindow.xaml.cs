@@ -135,6 +135,7 @@ public partial class SettingsWindow : FluentWindow
 
         LanguageEnglishRadio.IsChecked = string.Equals(_settings.Language, LocalizationService.English, StringComparison.OrdinalIgnoreCase);
         LanguageRussianRadio.IsChecked = !LanguageEnglishRadio.IsChecked.GetValueOrDefault();
+        ChangelogAutoTranslateCheckBox.IsChecked = _settings.ChangelogAutoTranslate;
 
         ThemeLightRadio.IsChecked = _settings.Theme == "Light";
         ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault();
@@ -1672,6 +1673,14 @@ public partial class SettingsWindow : FluentWindow
 
         LocalizationService.ChangeLanguage(_settings,
             LanguageEnglishRadio.IsChecked == true ? LocalizationService.English : LocalizationService.Russian);
+    }
+
+    private void ChangelogAutoTranslateCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ChangelogAutoTranslate = ChangelogAutoTranslateCheckBox.IsChecked == true;
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void ThemeRadio_Changed(object sender, RoutedEventArgs e)

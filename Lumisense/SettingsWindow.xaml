@@ -955,6 +955,11 @@
                                              Checked="LanguageRadio_Changed" />
                                 <TextBlock Text="Выберите язык Lumisense. Изменение применяется сразу ко всем открытым окнам."
                                            FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,10,0,0" />
+                                <CheckBox x:Name="ChangelogAutoTranslateCheckBox"
+                                          Content="Автоматически переводить журнал изменений на английский" Margin="0,14,0,0"
+                                          Checked="ChangelogAutoTranslateCheckBox_Changed" Unchecked="ChangelogAutoTranslateCheckBox_Changed" />
+                                <TextBlock Text="В английском интерфейсе текст пунктов журнала изменений отправляется на translate.googleapis.com (неофициальный интерфейс Google Translate), а результат сохраняется на этом компьютере. Переведённые пункты помечаются подсказкой «Machine translation». Если выключено, журнал изменений показывается на русском. По умолчанию выключено."
+                                           FontSize="12" Opacity="0.6" TextWrapping="Wrap" Margin="0,6,0,0" />
                             </StackPanel>
                         </Border>
 

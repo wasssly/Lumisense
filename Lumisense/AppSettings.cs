@@ -84,6 +84,11 @@ public class AppSettings
     // передать свой выбор через одноразовый marker-файл в папке данных приложения.
     public string Language { get; set; } = "ru";
 
+    // Автоматически переводить журнал изменений на английский: текст пунктов (публичный текст журнала, без данных пользователя)
+    // отправляется на translate.googleapis.com. Готовых английских переводов в приложении нет, при выключенной настройке журнал
+    // остаётся на русском. По умолчанию выключено.
+    public bool ChangelogAutoTranslate { get; set; }
+
     // Разрешает Theme в светлую/тёмную; если в settings.json остался устаревший "System", не считаем его тёмной,
     // а смотрим реестр Windows (AppsUseLightTheme).
     public bool IsLightThemeResolved() => Theme switch

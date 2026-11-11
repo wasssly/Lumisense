@@ -133,6 +133,7 @@ public static class LocalizationKey
 
     public const string ChangelogOpenReleaseOnGitHub = "changelog.openReleaseOnGitHub";
     public const string ChangelogNoDescription = "changelog.noDescription";
+    public const string ChangelogMachineTranslated = "changelog.machineTranslated";
     public const string ChangelogChanges = "changelog.changes";
 
     public const string TrackStateNoTrack = "track.state.noTrack";
@@ -281,6 +282,7 @@ internal static class LocalizationResources
         [LocalizationKey.MiniArtworkProgressThicknessDescription] = "Меняет толщину фоновой и акцентной линий вокруг обложки. Значение применяется сразу к открытому мини-плееру.",
 
         [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Открыть релиз на GitHub",
+        [LocalizationKey.ChangelogMachineTranslated] = "Автоматический перевод",
         [LocalizationKey.ChangelogNoDescription] = "Нет описания",
         [LocalizationKey.ChangelogChanges + ".one"] = "{0} изменение",
         [LocalizationKey.ChangelogChanges + ".few"] = "{0} изменения",
@@ -429,6 +431,7 @@ internal static class LocalizationResources
         [LocalizationKey.MiniArtworkProgressThicknessDescription] = "Changes the thickness of the background and accent lines around the artwork. The value applies immediately to an open mini player.",
 
         [LocalizationKey.ChangelogOpenReleaseOnGitHub] = "Open release on GitHub",
+        [LocalizationKey.ChangelogMachineTranslated] = "Machine translation",
         [LocalizationKey.ChangelogNoDescription] = "No description",
         [LocalizationKey.ChangelogChanges + ".one"] = "{0} change",
         [LocalizationKey.ChangelogChanges + ".other"] = "{0} changes",

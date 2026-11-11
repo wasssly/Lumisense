@@ -19,6 +19,7 @@ public partial class ChangelogWindow : FluentWindow
     private IReadOnlyDictionary<string, string> _githubReleaseUrls = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
     private System.Threading.CancellationTokenSource? _releaseAvailabilityCts;
     private bool _isClosed;
+    private System.Threading.CancellationTokenSource? _translationCts;
 
     private bool _sortDescending = true;
     private System.Windows.Threading.DispatcherTimer? _detailsScrollAnimationTimer;
@@ -45,6 +46,59 @@ public partial class ChangelogWindow : FluentWindow
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
         ReloadEntries(string.Empty);
         Loaded += ChangelogWindow_Loaded;
+        StartMachineTranslation();
+    }
+
+    // Автоперевод пунктов журнала (только английский интерфейс и включённая настройка).
+    // Идёт в фоне, сначала для выбранной версии, затем для остальных от новых к старым. Готовые переводы подставляются в
+    // пункты на месте (ChangeItemViewModel.RefreshTranslation), список и выбор не пересоздаются.
+    private void StartMachineTranslation()
+    {
+        if (_isClosed || !_settings.ChangelogAutoTranslate || !LocalizationService.IsEnglish) return;
+
+        ChangelogEntryViewModel? selected = VersionsListBox.SelectedItem as ChangelogEntryViewModel;
+        List<string> pending = _allEntries
+            .OrderByDescending(entry => ReferenceEquals(entry, selected) || (selected is not null && entry.Version == selected.Version))
+            .ThenByDescending(entry => entry.ParsedVersion)
+            .SelectMany(entry => entry.Items)
+            .Select(item => item.SourceText)
+            .Where(ChangelogTranslationCatalog.NeedsMachineTranslation)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (pending.Count == 0) return;
+
+        _translationCts?.Cancel();
+        _translationCts?.Dispose();
+        _translationCts = new System.Threading.CancellationTokenSource();
+        System.Threading.CancellationToken token = _translationCts.Token;
+        BackgroundTask.FireAndForget(TranslatePendingAsync(pending, token), nameof(StartMachineTranslation));
+    }
+
+    private async Task TranslatePendingAsync(List<string> pending, System.Threading.CancellationToken token)
+    {
+        try
+        {
+            await ChangelogMachineTranslator.Shared.TranslateAsync(
+                pending,
+                () => Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(RefreshAfterTranslation)),
+                token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Окно закрыто, язык сменили или выбрана другая версия: переведённое останется в кэше.
+        }
+    }
+
+    private void RefreshAfterTranslation()
+    {
+        if (_isClosed || !LocalizationService.IsEnglish) return;
+
+        foreach (ChangelogEntryViewModel entry in _allEntries)
+            foreach (ChangeItemViewModel item in entry.Items)
+                item.RefreshTranslation();
+
+        // Поиск идёт по тексту пунктов: при активном запросе список мог измениться. Без запроса его не трогаем, чтобы не сбить прокрутку.
+        if (!string.IsNullOrWhiteSpace(SearchBox.Text)) RefreshVisible(SearchBox.Text);
     }
 
     private void ReloadEntries(string? query)
@@ -93,6 +147,10 @@ public partial class ChangelogWindow : FluentWindow
 
         if (selectedVersion is not null)
             VersionsListBox.SelectedItem = _visibleEntries.FirstOrDefault(entry => entry.Version == selectedVersion);
+
+        // Язык сменили: прежний прогон отменяется, а при переходе на английский начинается новый.
+        _translationCts?.Cancel();
+        StartMachineTranslation();
     }
 
     private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => RefreshVisible(SearchBox.Text);
@@ -170,6 +228,9 @@ public partial class ChangelogWindow : FluentWindow
         // Сбрасываем скролл наверх при смене выбора: иначе правая панель сохраняла позицию прошлой версии.
         if (hasSelection)
             DetailsScroll.ScrollToHome();
+
+        // Выбранную версию переводят первой: прогон перезапускается с новым порядком (готовое остаётся в кэше).
+        if (hasSelection && !_isInitializing) StartMachineTranslation();
     }
 
     private void VersionRelease_MouseLeftButtonUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
@@ -284,6 +345,9 @@ public partial class ChangelogWindow : FluentWindow
         _releaseAvailabilityCts?.Cancel();
         _releaseAvailabilityCts?.Dispose();
         _releaseAvailabilityCts = null;
+        _translationCts?.Cancel();
+        _translationCts?.Dispose();
+        _translationCts = null;
         _detailsScrollAnimationTimer?.Stop();
         _detailsScrollAnimationTimer = null;
         LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
@@ -406,39 +470,5 @@ public partial class ChangelogWindow : FluentWindow
             current = System.Windows.Media.VisualTreeHelper.GetParent(current);
         }
         return false;
-    }
-
-    // Крупный просмотр картинки в CoverArtWindow, как у обложки трека в главном окне (зум, панорама, сброс).
-    // Source берём из кликнутого Image: WPF уже сконвертировал путь при биндинге, перезагружать не нужно.
-    private CoverArtWindow? _coverArtWindow;
-
-    private void ChangelogImage_MouseLeftButtonDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        // ImageSourceConverter отдаёт BitmapFrame, а не BitmapImage — проверка на BitmapImage не срабатывала;
-        // BitmapSource — общий базовый класс, его и принимает CoverArtWindow.
-        if (sender is not System.Windows.Controls.Image { Source: System.Windows.Media.Imaging.BitmapSource bitmap }) return;
-
-        if (_coverArtWindow == null)
-        {
-            _coverArtWindow = new CoverArtWindow(bitmap, Title, _settings) { Owner = this };
-
-            // Как в MainWindow.AlbumArtBorder_MouseLeftButtonDown: явные координаты рабочей области вместо Maximized —
-            // у окон с Mica и ExtendsContentIntoTitleBar нативный Maximize нередко даёт лишние отступы.
-            var screen = System.Windows.Forms.Screen.FromHandle(new System.Windows.Interop.WindowInteropHelper(this).Handle);
-            var workArea = screen.WorkingArea;
-
-            _coverArtWindow.WindowStartupLocation = WindowStartupLocation.Manual;
-            _coverArtWindow.Left = workArea.Left;
-            _coverArtWindow.Top = workArea.Top;
-            _coverArtWindow.Width = workArea.Width;
-            _coverArtWindow.Height = workArea.Height;
-
-            _coverArtWindow.Closed += (_, _) => _coverArtWindow = null;
-            _coverArtWindow.Show();
-        }
-        else
-        {
-            _coverArtWindow.Activate();
-        }
     }
 }

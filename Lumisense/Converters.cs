@@ -92,18 +92,3 @@ public class ExpandChevronConverter : IValueConverter
     public object ConvertBack(object? value, Type targetType, object parameter, CultureInfo culture)
         => throw new NotSupportedException();
 }
-
-// Ширина/высота в Rect(0,0,w,h) — для скругления углов у Image: Border с ClipToBounds
-// игнорирует CornerRadius. RelativeSource в Geometry не работает, размер идёт по ElementName.
-public class SizeToRectConverter : IMultiValueConverter
-{
-    public object Convert(object?[] values, Type targetType, object parameter, CultureInfo culture)
-    {
-        double width = values.Length > 0 && values[0] is double w ? Math.Max(w, 0) : 0;
-        double height = values.Length > 1 && values[1] is double h ? Math.Max(h, 0) : 0;
-        return new System.Windows.Rect(0, 0, width, height);
-    }
-
-    public object?[] ConvertBack(object? value, Type[] targetTypes, object parameter, CultureInfo culture)
-        => throw new NotSupportedException();
-}

@@ -220,6 +220,7 @@ public static class LumiProfileIO
     {
         target.Theme = source.Theme;
         target.Language = source.Language;
+        target.ChangelogAutoTranslate = source.ChangelogAutoTranslate;
         target.AccentColorMode = source.AccentColorMode;
         target.AccentColorHex = source.AccentColorHex;
         target.InterfaceScale = source.InterfaceScale;

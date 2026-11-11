@@ -23,6 +23,8 @@ public static class LocalizationService
     {
         ["Язык интерфейса"] = "Interface language",
         ["Выберите язык Lumisense. Изменение применяется сразу ко всем открытым окнам."] = "Choose the language for Lumisense. The change is applied immediately to all open windows.",
+        ["Автоматически переводить журнал изменений на английский"] = "Automatically translate the changelog into English",
+        ["В английском интерфейсе текст пунктов журнала изменений отправляется на translate.googleapis.com (неофициальный интерфейс Google Translate), а результат сохраняется на этом компьютере. Переведённые пункты помечаются подсказкой «Machine translation». Если выключено, журнал изменений показывается на русском. По умолчанию выключено."] = "In the English interface the text of changelog entries is sent to translate.googleapis.com (the unofficial Google Translate interface) and the result is stored on this computer. Translated entries show a \"Machine translation\" tooltip. When off, the changelog is shown in Russian. Off by default.",
         ["Найдено: {0} из {1}"] = "Found: {0} of {1}",
         ["Зеркало увидит ваш IP-адрес и факт скачивания обновления, но не может подменить файл: SHA-256 установщика сверяется с данными GitHub до запуска. Вернуться на GitHub можно в любой момент в этом же разделе."] = "The mirror will see your IP address and the fact that the update is being downloaded, but it cannot swap the file: the installer's SHA-256 is checked against GitHub data before launch. You can switch back to GitHub at any time in this section.",
         ["Больше не спрашивать"] = "Don't ask again",

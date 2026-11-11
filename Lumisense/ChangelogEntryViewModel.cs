@@ -35,12 +35,6 @@ public sealed class ChangelogEntryViewModel
     // изменения, сгруппированные по типу — то, что показывается в панели деталей справа
     public IReadOnlyList<ChangeGroupViewModel> Groups { get; }
 
-    // готово для Image.Source: либо http/https-ссылка, либо разрешённый локальный путь,
-    // null если поле "image" пустое
-    public string? ImageSource { get; }
-
-    public bool HasImage => !string.IsNullOrWhiteSpace(ImageSource);
-
     // Подпись под версией в списке слева должна обновляться вместе с языком интерфейса.
     public string ChangesCountLabel => Items.Count == 0
         ? LocalizationService.Get(LocalizationKey.ChangelogNoDescription)
@@ -53,7 +47,6 @@ public sealed class ChangelogEntryViewModel
         IsCurrent = source.IsCurrent;
         GitHubReleaseUrl = gitHubReleaseUrl;
         Items = source.Changes.Select(c => new ChangeItemViewModel(c)).ToList();
-        ImageSource = ChangelogImageResolver.Resolve(source.Image);
 
         SortDate = ChangelogDateParser.Parse(source.Date);
         System.Version.TryParse(source.Version, out var parsedVersion);

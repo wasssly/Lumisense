@@ -12,7 +12,6 @@ public class ChangelogEntry
     public string? DeclaredVersion { get; set; }
     public string Date { get; set; } = "";
     public List<ChangeItem> Changes { get; set; } = new();
-    public string? Image { get; set; }
     public bool IsCurrent { get; set; }
 }
 
@@ -21,5 +20,4 @@ public class ChangeItem
 {
     public string Type { get; set; } = "changed";
     public string Text { get; set; } = "";
-    public string? Image { get; set; }
 }

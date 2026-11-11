@@ -75,14 +75,6 @@ public sealed class ChangeLevelClassifierTests
 public sealed class ChangelogTranslationCatalogTests
 {
     [Fact]
-    public void Translate_UsesLocalEnglishTranslationForKnownHistoricalEntry()
-    {
-        const string source = "Автопереход к следующему треку";
-
-        Assert.Equal("Auto-advance to next track", ChangelogTranslationCatalog.Translate(source, isEnglish: true));
-    }
-
-    [Fact]
     public void Translate_PreservesRussianAndUnknownEntriesAsSafeFallback()
     {
         const string unknown = "Будущее изменение";
