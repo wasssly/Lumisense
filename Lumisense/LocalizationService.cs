@@ -1105,6 +1105,13 @@ public static class LocalizationService
         ["Приватность Discord: название и исполнитель"] = "Discord privacy: track title and artist",
         ["discord приватность название исполнитель трек"] = "Discord privacy: track title and artist",
         ["Приватность Discord: таймлайн"] = "Discord privacy: timeline",
+        ["Приватность Discord: обложка трека"] = "Discord privacy: track cover",
+        ["Анимация подключения устройства"] = "Device connection animation",
+        ["Баланс левого и правого канала"] = "Left and right channel balance",
+        ["Переход между треками без паузы"] = "Gapless track transitions",
+        ["Прозрачность уведомления"] = "Toast opacity",
+        ["Скрывать обложку при тексте песни"] = "Hide the cover while lyrics are shown",
+        ["Удалить старую EXE-копию"] = "Remove the old EXE copy",
         ["Фон у кнопок управления"] = "Control buttons background",
         ["Плашка и контур вокруг каждой кнопки ряда управления главного окна, во всех видах. Включённые Шаффл и Повтор остаются акцентными."] = "The backing plate and outline around each button in the main window's control row, in every layout. Enabled Shuffle and Repeat stay accented.",
         ["Кнопка «Пуск/Пауза»"] = "Play/Pause button",
@@ -1115,6 +1122,26 @@ public static class LocalizationService
         ["Круглый"] = "Round",
         ["Форма кнопки Пуск/Пауза"] = "Play/Pause button shape",
         ["Вид кнопки Пуск/Пауза"] = "Play/Pause button style",
+        ["Сохранить пресет текста песни"] = "Save lyrics preset",
+        ["Откуда брать тексты"] = "Where lyrics come from",
+        ["Состав подписи под названием трека"] = "Track label contents",
+        ["Область настройки полосы прогресса"] = "Progress bar settings scope",
+        ["Окно, для которого настраивается полоса"] = "Window the progress bar is configured for",
+        ["Цвет полосы прогресса"] = "Progress bar color",
+        ["Форма концов полосы прогресса"] = "Progress bar end shape",
+        ["Вид столбиков прогресса"] = "Waveform bar style",
+        ["Стиль ползунков"] = "Slider style",
+        ["Шаблон нормализации имён файлов"] = "File name normalization template",
+        ["Положение обложки в уведомлении"] = "Cover position in the toast",
+        ["Выравнивание текста в уведомлении"] = "Text alignment in the toast",
+        ["Полосы эквалайзера"] = "Equalizer bands",
+        ["Сбросить настройки эквалайзера"] = "Reset equalizer settings",
+        ["Держать режим совместимости с играми включённым всегда"] = "Keep game compatibility mode always on",
+        ["Действия контекстного меню мини-плеера"] = "Mini-player context menu actions",
+        ["Расположение кнопок (мини-плеер)"] = "Button layout (mini-player)",
+        ["Стиль контура прогресса вокруг обложки"] = "Artwork progress outline style",
+        ["Что показывать под названием (мини-плеер)"] = "Info shown under the title (mini-player)",
+        ["Действия контекстного меню острова"] = "Island context menu actions",
         ["discord приватность время прогресс таймлайн"] = "Discord privacy: time/progress timeline",
         ["equalizer эквалайзер частоты полосы бас звук eq"] = "Equalizer (EQ): frequency bands (bass)",
         ["Прозрачность окна мини-плеера"] = "Mini-player window transparency",
@@ -1622,6 +1649,11 @@ public static class LocalizationService
         if (lastDigit is >= 2 and <= 4 && (lastTwoDigits < 12 || lastTwoDigits > 14)) return "few";
         return "many";
     }
+
+    // Английский перевод фразы независимо от языка интерфейса: поиск по настройкам работает на обоих языках.
+    internal static string ToEnglish(string russian) =>
+        string.IsNullOrWhiteSpace(russian) ? russian
+        : EnglishByRussian.TryGetValue(russian, out var english) ? english : TranslateTemplate(russian, EnglishTemplates);
 
     // Нужен тестам: есть ли у русской фразы английский перевод (точная запись или шаблон с подстановками).
     internal static bool HasEnglishTranslation(string russian) =>

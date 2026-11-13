@@ -915,8 +915,8 @@
                                         <DataTemplate>
                                             <Button Style="{StaticResource SearchResultItemStyle}" Click="SearchResultItem_Click">
                                                 <StackPanel>
-                                                    <TextBlock Text="{Binding Label}" FontSize="13" TextWrapping="Wrap" />
-                                                    <TextBlock Text="{Binding PageTitle}" FontSize="11" Opacity="0.55" Margin="0,2,0,0" />
+                                                    <TextBlock Text="{Binding DisplayLabel, Mode=OneWay}" FontSize="13" TextWrapping="Wrap" />
+                                                    <TextBlock Text="{Binding DisplayPageTitle, Mode=OneWay}" FontSize="11" Opacity="0.55" Margin="0,2,0,0" />
                                                 </StackPanel>
                                             </Button>
                                         </DataTemplate>

@@ -48,7 +48,12 @@ public partial class SettingsWindow : FluentWindow
 
     // Индекс поиска — ручной перечень опций: подпись, страница, ссылка на элемент (для прокрутки и подсветки)
     // и ключевые слова; разметка не читается.
-    private sealed record SettingsSearchEntry(string Label, string PageTitle, string PageKey, string Keywords, FrameworkElement Target);
+    private sealed record SettingsSearchEntry(string Label, string PageTitle, string PageKey, string Keywords, FrameworkElement Target)
+    {
+        // Результаты строятся при вводе запроса, уже после прохода локализации, поэтому подписи переводятся здесь.
+        public string DisplayLabel => LocalizationService.Translate(Label);
+        public string DisplayPageTitle => LocalizationService.Translate(PageTitle);
+    }
 
     private readonly List<SettingsSearchEntry> _searchIndex = new();
     private readonly ObservableCollection<SettingsSearchEntry> _searchResults = new();
@@ -1496,17 +1501,18 @@ public partial class SettingsWindow : FluentWindow
     private void BuildSearchIndex()
     {
         void Add(string label, string pageTitle, string pageKey, FrameworkElement target, string extraKeywords = "")
-            => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey, $"{label} {extraKeywords}".ToLowerInvariant(), target));
+            => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey,
+                $"{label} {LocalizationService.ToEnglish(label)} {extraKeywords}".ToLowerInvariant(), target));
 
         Add("Язык интерфейса", "Оформление", "Appearance", LanguageRussianRadio, "язык русский english language locale локализация");
         Add("Тема", "Оформление", "Appearance", ThemeDarkRadio, "тёмная светлая цвет тема оформление dark light");
         Add("Навигация в настройках", "Оформление", "Appearance", NavigationStyleCard, "навигация меню таблетки панель боковая плавающая нижняя разделы названия подписи текст pills sidebar floating navigation labels");
         Add("Акцентный цвет", "Оформление", "Appearance", AccentSystemRadio, "акцент цвет палитра accent color");
-        Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica alt acrylic blur акрил размытие блюр подложка фон backdrop");
+        Add("Основа окна", "Оформление", "Appearance", BackdropMicaRadio, "mica alt acrylic blur акрил размытие блюр подложка фон backdrop более плотная и контрастная основа windows 11 22h2 сильнее прозрачность");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация анимации по разделам слайдеры accessibility scale motion animations sliders");
         Add("Анимация смены обложки", "Обложка и Now Playing", "Cover", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
-        Add("Подпись под названием трека", "Обложка и Now Playing", "Cover", BadgeModeStateRadio, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size");
+        Add("Подпись под названием трека", "Обложка и Now Playing", "Cover", BadgeModeStateRadio, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size flac mp3 и частота свой набор отметить что показывать");
         Add("Жесты на обложке", "Обложка и Now Playing", "Cover", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
         Add("Вид главного окна", "Окно и запуск", "Window", MainWindowLayoutCard, "оформление новый классический крупная обложка кнопки управление layout modern classic");
         Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
@@ -1541,7 +1547,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Прилипание к краям экрана (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniSnapToEdgesCheckBox, "прилипание магнит края экран snap edge мини плеер");
         Add("Вторая кнопка в мини-плеере", "Мини-плеер", "MiniPlayer", MiniSecondaryRepeatRadio, "вторая кнопка повтор перемешать избранное сердечко favorite shuffle repeat мини плеер");
         Add("Прокручивать длинного исполнителя", "Мини-плеер", "MiniPlayer", MiniArtistMarqueeCheckBox, "исполнитель артист прокрутка бегущая строка marquee мини плеер");
-        Add("Отображение обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkVinylRadio, "обложка винил пластинка вращение круглая artwork vinyl rotate мини плеер");
+        Add("Отображение обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkVinylRadio, "обложка винил пластинка вращение круглая artwork vinyl rotate мини плеер по умолчанию без вращения");
         Add("Показывать полосу прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowProgressCheckBox, "полоса прогресс progress bar скрыть мини плеер");
         Add("Прогресс вокруг обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowArtworkProgressCheckBox, "контур скруглённый квадрат прогресс обложка арт мини плеер artwork outline");
         Add("Толщина контура вокруг обложки", "Мини-плеер", "MiniPlayer", MiniArtworkProgressThicknessSlider, "толщина линия контур прогресс обложка мини плеер artwork outline thickness");
@@ -1561,7 +1567,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
         Add("Перемотка вперёд", "Горячие клавиши", "Hotkeys", HotkeySeekForwardButton, "seek forward вперёд перемотка 5 секунд горячая клавиша");
         Add("Перемотка назад", "Горячие клавиши", "Hotkeys", HotkeySeekBackwardButton, "seek backward назад перемотка 5 секунд горячая клавиша");
-        Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы");
+        Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeDeckRadio, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы чаще по папкам");
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
         Add("Измерять громкость файлов без тегов", "Воспроизведение", "Playback", LoudnessScanCheckBox, "громкость измерение анализ replaygain r128 lufs без тегов нормализация");
         Add("Кроссфейд при автопереходе", "Воспроизведение", "Playback", CrossfadeSlider, "кроссфейд crossfade плавный переход наложение треков");
@@ -1578,24 +1584,24 @@ public partial class SettingsWindow : FluentWindow
         Add("ReplayGain: альбомный режим", "Воспроизведение", "Playback", ReplayGainAlbumCheckBox, "replaygain альбом album режим громкость");
         Add("ReplayGain: предусилитель", "Воспроизведение", "Playback", ReplayGainPreampSlider, "replaygain предусилитель preamp громкость усиление дб");
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
-        Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels");
+        Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeMonoRadio, "каналы стерео моно mono stereo downmix один наушник channels по умолчанию");
         Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
-        Add("Полоса воспроизведения", "Полоса и ползунки", "Progress", ProgressStyleWaveformRadio, "полоса воспроизведения прогресс seek слайдер waveform форма звука soundcloud material волна цвет толщина ручка форма концов предпросмотр для каждого окна progress bar color thickness wave thumb per window");
-        Add("Режим текста песни", "Тексты песен", "Lyrics", LyricsDisplayPlainRadio, "текст песни синхронный обычный lrc txt переключить режим synced plain lyrics");
+        Add("Полоса воспроизведения", "Полоса и ползунки", "Progress", ProgressStyleWaveformRadio, "полоса воспроизведения прогресс seek слайдер waveform форма звука soundcloud material волна цвет толщина ручка форма концов предпросмотр для каждого окна progress bar color thickness wave thumb per window как в главном окне по умолчанию обычная волнистая линия android slider ползунок с зазором");
+        Add("Режим текста песни", "Тексты песен", "Lyrics", LyricsDisplayPlainRadio, "текст песни синхронный обычный lrc txt переключить режим synced plain lyrics если он есть по умолчанию");
         Add("Показать пример уведомления", "Уведомления", "Notifications", ToastPreviewButton, "уведомление пример предпросмотр показать toast preview");
-        Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size");
+        Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size сверху по центру справа снизу слева");
         Add("Своё положение уведомления", "Уведомления", "Notifications", ToastPickPositionButton, "уведомление перенести перетащить положение позиция свой custom drag move position toast notification");
-        Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual");
+        Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual только при начале воспроизведения моём выборе");
         Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
         Add("Выравнивание текста песни", "Тексты песен", "Lyrics", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
         Add("Дополнительный источник текстов", "Тексты песен", "Lyrics", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease qq kugou paxsenix lyricify русские исполнители extra source");
-        Add("Фон Now Playing", "Обложка и Now Playing", "Cover", NowPlayingBackgroundCloudsRadio, "фон now playing размытая обложка один цвет без фона облака цветные шары волны background orbs clouds waves");
+        Add("Фон Now Playing", "Обложка и Now Playing", "Cover", NowPlayingBackgroundCloudsRadio, "фон now playing размытая обложка один цвет без фона облака цветные шары волны background orbs clouds waves простой тёмный");
         Add("Пресет оформления текста песни", "Тексты песен", "Lyrics", LyricsPresetCombo, "пресет оформление текст песни караоке apple music классика минимализм сохранить свой preset lyrics style");
         Add("Переход между строками текста", "Тексты песен", "Lyrics", LyricsTransitionCombo, "переход анимация строк текст песни apple music плавный быстрый волна прокрутка lyrics transition animation");
         Add("Скрывать обложку при тексте песни", "Тексты песен", "Lyrics", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
         Add("Анимация избранного", "Обложка и Now Playing", "Cover", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
         Add("Размер мини-плеера", "Мини-плеер", "MiniPlayer", MiniSizeClassicRadio, "размер мини плеер компактный классический текущий 1.21 size preset");
-        Add("Цвет уведомления", "Уведомления", "Notifications", ToastColorCoverRadio, "цвет уведомления обложка акцент свой окрашивание фон toast color cover accent tint");
+        Add("Цвет уведомления", "Уведомления", "Notifications", ToastColorCoverRadio, "цвет уведомления обложка акцент свой окрашивание фон toast color cover accent tint стандартный по теме умолчанию акцентный приложения");
         Add("Прозрачность уведомления", "Уведомления", "Notifications", ToastOpacitySlider, "прозрачность фона уведомление тост opacity transparency toast");
         Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
         Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
@@ -1605,7 +1611,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Вернуть состояние до последнего сброса", "Профиль", "Profile", RestoreResetSnapshotButton, "восстановить вернуть точка сброса backup restore reset recovery");
         Add("Полный сброс данных", "Профиль", "Profile", ResetAllDataButton, "сброс удалить очистить стереть настройки плейлисты избранное история пресеты wipe erase all data reset");
         Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
-        Add("Источник загрузки обновлений", "Обновления", "Updates", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник");
+        Add("Источник загрузки обновлений", "Обновления", "Updates", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник v4.gh proxy.org только ipv4 v6.gh ipv6 cdn.gh через cdn");
         Add("Все версии", "Обновления", "Updates", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
         Add("Проверить обновления", "Обновления", "Updates", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Проверить зеркала", "Обновления", "Updates", ProbeUpdateSourcesButton, "зеркало скорость проверка источник mirror speed probe gh-proxy ghfast");
@@ -1618,9 +1624,123 @@ public partial class SettingsWindow : FluentWindow
         Add("Вид кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonAccentRadio, "акцентный фон как у остальных кнопок play pause accent");
         Add("Форма кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonSquareRadio, "квадратный круглый круг квадрат по умолчанию форма кнопки play pause square round circle shape");
         Add("Диагностика производительности", "О плеере", "About", DiagnosticsButton, "проверка нагрузка процессор память утечки тест diagnostics performance cpu memory leak");
+        Add("Автоматически переводить журнал изменений на английский", "Оформление", "Appearance", ChangelogAutoTranslateCheckBox, "чейнджлог changelog перевод английский google translate история изменений патчноуты");
+        Add("Показывать названия рядом с иконками", "Оформление", "Appearance", NavShowLabelsCheckBox, "подписи названия иконки навигация labels icons");
+        Add("Сохранить пресет текста песни", "Тексты песен", "Lyrics", LyricsPresetSaveButton, "пресет сохранить удалить preset save delete lyrics style");
+        Add("Размер шрифта текста песни", "Тексты песен", "Lyrics", SyncedLyricsFontSizeSlider, "шрифт размер текст font size lyrics");
+        Add("Размер текста в Now Playing", "Тексты песен", "Lyrics", NowPlayingLyricsFontSizeSlider, "шрифт размер текст песни font size lyrics");
+        Add("Эффект активной строки", "Тексты песен", "Lyrics", SyncedLyricsEffectGlowRadio, "свечение подсветка активная строка glow highlight effect и подложка только полоска слева без эффекта");
+        Add("Сила свечения активной строки", "Тексты песен", "Lyrics", SyncedLyricsGlowStrengthSlider, "свечение glow");
+        Add("Увеличивать активную строку", "Тексты песен", "Lyrics", SyncedLyricsScaleCheckBox, "масштаб увеличение scale zoom");
+        Add("Степень увеличения активной строки", "Тексты песен", "Lyrics", SyncedLyricsScalePercentSlider, "масштаб процент scale zoom");
+        Add("Приглушать дальние строки", "Тексты песен", "Lyrics", SyncedLyricsFadeCheckBox, "прозрачность затемнение dim fade");
+        Add("Степень приглушения дальних строк", "Тексты песен", "Lyrics", SyncedLyricsFadeStrengthSlider, "прозрачность затемнение dim fade");
+        Add("Размывать неактивные строки", "Тексты песен", "Lyrics", SyncedLyricsBlurCheckBox, "размытие blur");
+        Add("Сила размытия неактивных строк", "Тексты песен", "Lyrics", SyncedLyricsBlurStrengthSlider, "размытие blur");
+        Add("Видимых строк в Now Playing", "Тексты песен", "Lyrics", SyncedLyricsVisibleLinesSlider, "количество строк lines count");
+        Add("Откуда брать тексты", "Тексты песен", "Lyrics", LyricsPolicyLocalOnlyRadio, "только локальные lrclib интернет автоматически источник local online policy искать точное совпадение по моему запросу");
+        Add("NetEase Cloud Music", "Тексты песен", "Lyrics", UseNetEaseLyricsCheckBox, "тексты источник дополнительный lyrics source netease");
+        Add("QQ Music", "Тексты песен", "Lyrics", UseQqMusicLyricsCheckBox, "тексты источник дополнительный lyrics source qq");
+        Add("Kugou", "Тексты песен", "Lyrics", UseKugouLyricsCheckBox, "тексты источник дополнительный lyrics source");
+        Add("Paxsenix (Apple Music)", "Тексты песен", "Lyrics", UsePaxsenixLyricsCheckBox, "тексты источник дополнительный lyrics source apple music");
+        Add("Better Lyrics", "Тексты песен", "Lyrics", UseBetterLyricsCheckBox, "тексты источник дополнительный lyrics source");
+        Add("Binimum", "Тексты песен", "Lyrics", UseBinimumLyricsCheckBox, "тексты источник дополнительный lyrics source");
+        Add("LyricsPlus", "Тексты песен", "Lyrics", UseLyricsPlusLyricsCheckBox, "тексты источник дополнительный lyrics source");
+        Add("Состав подписи под названием трека", "Обложка и Now Playing", "Cover", BadgePartStateCheckBox, "состояние расширение битрейт частота дискретизации размер файла badge bitrate sample rate extension file size");
+        Add("Режим WASAPI", "Воспроизведение", "Playback", WasapiModeCombo, "wasapi exclusive shared эксклюзивный общий");
+        Add("Размер буфера WASAPI", "Воспроизведение", "Playback", WasapiLatencyCombo, "задержка latency buffer wasapi");
+        Add("Повышенный приоритет плеера", "Воспроизведение", "Playback", RaisePlaybackPriorityCheckBox, "priority процесс приоритет");
+        Add("Копировать аудиодиагностику", "Воспроизведение", "Playback", CopyAudioDiagnosticsButton, "диагностика устройство audio diagnostics");
+        Add("Подробный trace подготовки трека", "Воспроизведение", "Playback", TrackLoadTraceCheckBox, "trace журнал отладка логи");
+        Add("Сохранять очередь «Играть следующим» между запусками", "Воспроизведение", "Playback", SaveQueueBetweenRestartsCheckBox, "очередь queue play next");
+        Add("Не смешивать треки одного альбома", "Воспроизведение", "Playback", CrossfadeSkipSameAlbumCheckBox, "кроссфейд crossfade album альбом");
+        Add("Область настройки полосы прогресса", "Полоса и ползунки", "Progress", ProgressScopeSharedRadio, "одинаковая для всех окон отдельная для каждого scope shared per window своя окна по умолчанию");
+        Add("Окно, для которого настраивается полоса", "Полоса и ползунки", "Progress", ProgressSurfaceMainRadio, "главное окно мини-плеер now playing window surface");
+        Add("Цвет полосы прогресса", "Полоса и ползунки", "Progress", ProgressColorAccentRadio, "акцент обложка свой цвет accent cover custom color от обложки текущего трека");
+        Add("Толщина дорожки прогресса", "Полоса и ползунки", "Progress", ProgressThicknessSlider, "толщина thickness");
+        Add("Размер ручки прогресса", "Полоса и ползунки", "Progress", ProgressThumbSlider, "ручка thumb handle size");
+        Add("Форма концов полосы прогресса", "Полоса и ползунки", "Progress", ProgressShapeRoundRadio, "скруглённые прямые round square");
+        Add("Высота волны прогресса", "Полоса и ползунки", "Progress", ProgressWaveAmplitudeSlider, "волна wave amplitude");
+        Add("Длина волны прогресса", "Полоса и ползунки", "Progress", ProgressWaveLengthSlider, "волна wave length");
+        Add("Скорость волны прогресса", "Полоса и ползунки", "Progress", ProgressWaveSpeedSlider, "волна wave speed");
+        Add("Волна бежит и на паузе", "Полоса и ползунки", "Progress", ProgressWaveAlwaysCheckBox, "волна пауза wave pause");
+        Add("Ручка на волне", "Полоса и ползунки", "Progress", ProgressWaveHandleCheckBox, "волна ручка wave handle");
+        Add("Сделать контур волнистым", "Полоса и ползунки", "Progress", ProgressRingMakeWavyButton, "волна контур ring wavy");
+        Add("Вид столбиков прогресса", "Полоса и ползунки", "Progress", ProgressWaveformWaveRadio, "тонкие толстые столбики waveform bars скруглённые");
+        Add("Зазор между столбиками прогресса", "Полоса и ползунки", "Progress", ProgressWaveformGapSlider, "столбики waveform gap");
+        Add("Прозрачность непроигранной части", "Полоса и ползунки", "Progress", ProgressWaveformOpacitySlider, "прозрачность opacity waveform");
+        Add("Показывать время в точке под курсором", "Полоса и ползунки", "Progress", ProgressHoverTimeCheckBox, "наведение время hover time");
+        Add("Подсвечивать участок до курсора", "Полоса и ползунки", "Progress", ProgressHoverHighlightCheckBox, "наведение подсветка hover highlight");
+        Add("Сбросить вид полосы", "Полоса и ползунки", "Progress", ProgressAppearanceResetButton, "сброс reset");
+        Add("Стиль ползунков", "Полоса и ползунки", "Progress", SliderStyleDefaultRadio, "ползунок слайдер громкость обычный material slider volume тонкая ручка с зазором как в android");
+        Add("Играть следующим", "Библиотека и файлы", "Library", TrackContextPlayNextCheckBox, "контекстное меню трека context menu очередь queue play next");
+        Add("Добавить в очередь", "Библиотека и файлы", "Library", TrackContextAddToQueueCheckBox, "контекстное меню трека context menu очередь queue");
+        Add("Показать в проводнике", "Библиотека и файлы", "Library", TrackContextShowInExplorerCheckBox, "контекстное меню трека context menu explorer папка файл show in explorer");
+        Add("Копировать имя трека", "Библиотека и файлы", "Library", TrackContextCopyNameCheckBox, "контекстное меню трека context menu copy name");
+        Add("Копировать путь к файлу", "Библиотека и файлы", "Library", TrackContextCopyPathCheckBox, "контекстное меню трека context menu copy path");
+        Add("Копировать файл", "Библиотека и файлы", "Library", TrackContextCopyFileCheckBox, "контекстное меню трека context menu copy file");
+        Add("Сохранить обработанную копию", "Библиотека и файлы", "Library", TrackContextExportProcessedCopyCheckBox, "контекстное меню трека context menu export processed copy экспорт эквалайзер");
+        Add("Свойства", "Библиотека и файлы", "Library", TrackContextPropertiesCheckBox, "контекстное меню трека context menu properties информация");
+        Add("Изменить теги", "Библиотека и файлы", "Library", TrackContextEditTagsCheckBox, "контекстное меню трека context menu теги tags редактор tag editor");
+        Add("Нормализовать имя файла", "Библиотека и файлы", "Library", TrackContextNormalizeFileNameCheckBox, "контекстное меню трека context menu имена файлов normalize file name");
+        Add("Убрать из плейлиста", "Библиотека и файлы", "Library", TrackContextRemoveFromPlaylistCheckBox, "контекстное меню трека context menu remove from playlist");
+        Add("Удалить с диска", "Библиотека и файлы", "Library", TrackContextDeleteFromDiskCheckBox, "контекстное меню трека context menu delete from disk корзина");
+        Add("Шаблон нормализации имён файлов", "Библиотека и файлы", "Library", FileNameNormalizationTemplateTextBox, "шаблон template исполнитель название имена файлов");
+        Add("Положение обложки в уведомлении", "Уведомления", "Notifications", ToastArtLeftRadio, "слева справа cover position left right");
+        Add("Выравнивание текста в уведомлении", "Уведомления", "Notifications", ToastTextLeftRadio, "слева по центру справа text alignment");
+        Add("Прижать обложку к тексту", "Уведомления", "Notifications", ToastArtNextToTextCheckBox, "обложка текст cover text");
+        Add("Монитор уведомления", "Уведомления", "Notifications", ToastMonitorCombo, "монитор экран monitor screen");
+        Add("Сила окрашивания уведомления", "Уведомления", "Notifications", ToastColorStrengthSlider, "цвет окрашивание color tint");
+        Add("Полосы эквалайзера", "Эквалайзер", "Equalizer", EqBand0Slider, "31 62 125 250 500 1k 2k 4k 8k 16k гц hz частоты усиление bands gain");
+        Add("Пресеты эквалайзера", "Эквалайзер", "Equalizer", EqualizerPresetComboBox, "применить сохранить удалить поделиться импортировать экспорт preset apply save delete share import export");
+        Add("Сбросить настройки эквалайзера", "Эквалайзер", "Equalizer", EqualizerResetButton, "сбросить всё reset flat");
+        Add("Включать автоматически при обнаружении игры или оверлея", "Мини-плеер", "MiniPlayer", GameOverlayAutoDetectCheckBox, "игра оверлей совместимость game overlay compatibility");
+        Add("Держать режим совместимости с играми включённым всегда", "Мини-плеер", "MiniPlayer", GameOverlayCompatibilityCheckBox, "игра оверлей совместимость game overlay compatibility always");
+        Add("Действия контекстного меню мини-плеера", "Мини-плеер", "MiniPlayer", MiniContextSettingsCheckBox, "контекстное меню настройки now playing закрепить поверх окон совместимость вторая кнопка скорость тон прозрачность прилипание полоса прогресса расположение кнопок context menu actions полный экран с играми и оверлеем выбор второй кнопки");
+        Add("Расположение кнопок (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniButtonsBelowRadio, "снизу сбоку кнопки управление buttons below на месте обложки и названия размер окна не меняется");
+        Add("Стиль контура прогресса вокруг обложки", "Мини-плеер", "MiniPlayer", MiniArtworkProgressStyleDefaultRadio, "обычный волнистый wavy outline material волнистая линия как в android slider ползунок с зазором");
+        Add("Что показывать под названием (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniInfoArtistRadio, "исполнитель альбом artist album ничего только название трека оставшееся время");
+        Add("Вид свёрнутого острова", "Остров", "Island", IslandShapeCombo, "капсула круг notch nook вырез capsule circle shape");
+        Add("Notch Nook: раскрывать при наведении курсора", "Остров", "Island", IslandNotchHoverOpenCheckBox, "вырез наведение hover notch");
+        Add("Размер острова", "Остров", "Island", IslandScaleSlider, "масштаб scale size");
+        Add("Ширина острова", "Остров", "Island", IslandWidthSlider, "width");
+        Add("Отступ острова от верхнего края", "Остров", "Island", IslandTopGapSlider, "отступ сверху gap top");
+        Add("Скрытие острова по средней кнопке мыши", "Остров", "Island", IslandHideSlider, "скрыть средняя кнопка колесо hide middle click");
+        Add("Сворачивание острова после ухода курсора", "Остров", "Island", IslandCollapseSlider, "таймер задержка collapse delay");
+        Add("Раскрываться при смене трека", "Остров", "Island", IslandTrackToastCheckBox, "смена трека уведомление track change");
+        Add("Не показывать уведомление о смене трека в виде «Остров»", "Остров", "Island", IslandHideSystemToastCheckBox, "уведомление toast");
+        Add("Сворачиваться, когда курсор ушёл", "Остров", "Island", IslandAutoCollapseCheckBox, "collapse cursor");
+        Add("Эквалайзер в свёрнутом виде", "Остров", "Island", IslandEqualizerCheckBox, "полоски equalizer bars");
+        Add("Вместо эквалайзера показывать устройство вывода", "Остров", "Island", IslandCompactDeviceCheckBox, "устройство значок device icon");
+        Add("Обводка цветом акцента во время игры", "Остров", "Island", IslandAccentRimCheckBox, "акцент обводка игра accent rim");
+        Add("Полоса прогресса трека вокруг свёрнутого острова", "Остров", "Island", IslandProgressRimCheckBox, "контур прогресс ring progress");
+        Add("Размытие при смене вида", "Остров", "Island", IslandBlurTransitionsCheckBox, "blur transitions анимация");
+        Add("Клик по обложке открывает её крупно", "Остров", "Island", IslandCoverPreviewCheckBox, "обложка просмотр cover preview");
+        Add("Показывать громкость, когда её меняют не на острове", "Остров", "Island", IslandExternalVolumeCheckBox, "громкость volume");
+        Add("Не раскрываться при смене трека в играх", "Остров", "Island", IslandQuietInGamesCheckBox, "игры games quiet");
+        Add("Перетягивание острова: влево — назад, вправо — вперёд", "Остров", "Island", IslandSwipeInvertedCheckBox, "свайп swipe перетягивание");
+        Add("Круглая обложка", "Остров", "Island", IslandRoundCoverCheckBox, "round cover");
+        Add("Принимать перетаскиваемые файлы и папки", "Остров", "Island", IslandAcceptDropsCheckBox, "drag drop перетаскивание файлы");
+        Add("Левая кнопка раскрытого острова", "Остров", "Island", IslandLeftButtonCombo, "кнопка button left");
+        Add("Правая кнопка раскрытого острова", "Остров", "Island", IslandRightButtonCombo, "кнопка button right");
+        Add("Эквалайзер свёрнутого острова", "Остров", "Island", IslandEqualizerStyleCombo, "полоски equalizer style");
+        Add("Фон раскрытого острова", "Остров", "Island", IslandBackdropCombo, "фон backdrop background");
+        Add("Полоса перемотки раскрытого острова", "Остров", "Island", IslandSeekStyleCombo, "перемотка seek bar");
+        Add("Мерцание, пока ищется текст песни", "Остров", "Island", IslandLyricsShimmerCheckBox, "текст песни поиск lyrics shimmer");
+        Add("Размытие движения при растяжении", "Остров", "Island", IslandMotionBlurCheckBox, "motion blur растяжение");
+        Add("Действия контекстного меню острова", "Остров", "Island", IslandMenuPlayPauseCheckBox, "контекстное меню пауза следующий предыдущий скрыть развернуть now playing скорость тон совместимость настройки context menu actions");
+        Add("Масштаб интерфейса", "Оформление", "Appearance", InterfaceScaleSlider, "размер текст scale interface size");
+        Add("Все анимации", "Оформление", "Appearance", AnimationsMasterCheckBox, "движение анимация слайдеры переходы обложка текст песни полоса мини-плеер бегущая строка остров меню трея сердечко индикаторы загрузки motion animations reduce");
+        Add("Now Playing: фон и переходы", "Оформление", "Appearance", AnimationNowPlayingCheckBox, "анимация фон now playing animation background");
+        Add("Показывать дополнительные кнопки по бокам от кнопок управления", "Окно и запуск", "Window", ModernShowSideButtonsCheckBox, "кнопки слоты управление extra buttons slots");
+        Add("Подложка у кнопок управления (вид «Стекло»)", "Окно и запуск", "Window", GlassControlsBackgroundCheckBox, "стекло glass подложка controls background");
+        Add("Выравнивание обложки в виде «Компакт»", "Окно и запуск", "Window", CompactCoverAlignmentCombo, "компакт обложка выравнивание compact cover alignment");
+        Add("Фоновое наблюдение за ресурсами (раз в минуту, без сети)", "О плеере", "About", ResourceWatchdogCheckBox, "утечки память процессор watchdog resource monitoring leak");
     }
 
-    private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
+    private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => RefreshSearchResults();
+
+    private void RefreshSearchResults()
     {
         string query = SettingsSearchBox.Text.Trim();
 
@@ -1690,10 +1810,25 @@ public partial class SettingsWindow : FluentWindow
             // по устаревшим координатам.
             Dispatcher.InvokeAsync(() =>
             {
-                entry.Target.BringIntoView();
-                SearchHighlightAdorner.Flash(entry.Target);
+                FrameworkElement shown = NearestVisible(entry.Target);
+                shown.BringIntoView();
+                SearchHighlightAdorner.Flash(shown);
             }, DispatcherPriority.Loaded);
         }, DispatcherPriority.Loaded);
+    }
+
+    // Часть настроек видна только при определённом выборе (параметры волны при стиле «Волна»): у скрытого элемента
+    // подсветка ничего не покажет, поэтому берётся ближайший видимый предок, то есть карточка с переключателем.
+    private static FrameworkElement NearestVisible(FrameworkElement target)
+    {
+        DependencyObject? current = target;
+        while (current is not null)
+        {
+            if (current is FrameworkElement { IsVisible: true } visible) return visible;
+            current = System.Windows.Media.VisualTreeHelper.GetParent(current);
+        }
+
+        return target;
     }
 
     private static void ExpandAncestorExpanders(DependencyObject element)
@@ -2722,6 +2857,9 @@ public partial class SettingsWindow : FluentWindow
 
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
     {
+        // Показанные результаты поиска хранят уже выведенные подписи: пересобираем их на новом языке.
+        if (SettingsSearchBox.Text.Trim().Length > 0) RefreshSearchResults();
+
         RefreshAppVersionText();
         InitializeOutputDeviceCombo();
         InitializeToastMonitorCombo();
