@@ -8,6 +8,10 @@ namespace Lumisense;
 public sealed class ChangelogEntryViewModel
 {
     public string Version { get; }
+
+    // Подпись собирается здесь, а не Run-литералом в шаблоне: литералы переводит общий проход только по уже созданным
+    // элементам, а пересозданные позже (поиск, ссылки на релизы, смена языка) оставались русскими.
+    public string VersionLabel => LocalizationService.Format("Версия {0}", Version);
     public string Date { get; }
     public bool IsCurrent { get; }
     public string? GitHubReleaseUrl { get; }

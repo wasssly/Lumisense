@@ -104,6 +104,7 @@ public static class LocalizationService
         ["Кол-во"] = "Count",
         ["Направление сортировки"] = "Sort direction",
         ["Версия "] = "Version ",
+        ["Версия {0}"] = "Version {0}",
         ["Ничего не найдено"] = "No results found",
         ["Текущая версия"] = "Current version",
         ["Перейти к этому типу изменений"] = "Go to this change type",
