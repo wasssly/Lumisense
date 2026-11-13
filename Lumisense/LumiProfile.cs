@@ -287,6 +287,9 @@ public static class LumiProfileIO
         if (source.MainWindowLayout is "Modern" or "Glass" or "Vinyl" or "Compact" or "Poster") target.MainWindowLayout = source.MainWindowLayout;
         if (source.CompactCoverAlignment is "Left" or "Center") target.CompactCoverAlignment = source.CompactCoverAlignment;
         target.GlassControlsBackground = source.GlassControlsBackground;
+        target.ControlButtonsBackground = source.ControlButtonsBackground;
+        target.PlayButtonAccentBackground = source.PlayButtonAccentBackground;
+        target.PlayButtonRound = source.PlayButtonRound;
         target.ModernShowSideButtons = source.ModernShowSideButtons;
         target.ModernControlSlots = MainWindow.NormalizeModernSlots(source.ModernControlSlots);
         target.IsShuffleEnabled = source.IsShuffleEnabled;

@@ -1911,6 +1911,21 @@
                                     <CheckBox x:Name="GlassControlsBackgroundCheckBox" Margin="0,14,0,10"
                                               Content="Подложка у кнопок управления (вид «Стекло»)"
                                               Checked="GlassControlsBackground_Changed" Unchecked="GlassControlsBackground_Changed" />
+                                    <CheckBox x:Name="ControlButtonsBackgroundCheckBox" Margin="0,0,0,4"
+                                              Content="Фон у кнопок управления"
+                                              Checked="ControlButtonsBackground_Changed" Unchecked="ControlButtonsBackground_Changed" />
+                                    <TextBlock Text="Плашка и контур вокруг каждой кнопки ряда управления главного окна, во всех видах. Включённые Шаффл и Повтор остаются акцентными."
+                                               Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,10" TextWrapping="Wrap" />
+                                    <TextBlock Text="Кнопка «Пуск/Пауза»" Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,4" />
+                                    <RadioButton x:Name="PlayButtonAccentRadio" GroupName="PlayButtonStyle" Content="Акцентный фон"
+                                                 Checked="PlayButtonStyle_Changed" />
+                                    <RadioButton x:Name="PlayButtonPlainRadio" GroupName="PlayButtonStyle" Content="Как у остальных кнопок"
+                                                 Margin="0,4,0,10" Checked="PlayButtonStyle_Changed" />
+                                    <TextBlock Text="Форма кнопки «Пуск/Пауза»" Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,4" />
+                                    <RadioButton x:Name="PlayButtonSquareRadio" GroupName="PlayButtonShape" Content="Квадратный (по умолчанию)"
+                                                 Checked="PlayButtonShape_Changed" />
+                                    <RadioButton x:Name="PlayButtonRoundRadio" GroupName="PlayButtonShape" Content="Круглый"
+                                                 Margin="0,4,0,10" Checked="PlayButtonShape_Changed" />
                                     <StackPanel Orientation="Horizontal">
                                         <TextBlock Text="Обложка в виде «Компакт»" Style="{StaticResource SettingsHelperTextStyle}"
                                                    VerticalAlignment="Center" Margin="0,0,16,0" />

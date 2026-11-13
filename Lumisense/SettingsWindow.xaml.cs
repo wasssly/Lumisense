@@ -428,6 +428,11 @@ public partial class SettingsWindow : FluentWindow
         MainWindowLayoutPosterRadio.IsChecked = _settings.MainWindowLayout == "Poster";
         ModernShowSideButtonsCheckBox.IsChecked = _settings.ModernShowSideButtons;
         GlassControlsBackgroundCheckBox.IsChecked = _settings.GlassControlsBackground;
+        ControlButtonsBackgroundCheckBox.IsChecked = _settings.ControlButtonsBackground;
+        PlayButtonAccentRadio.IsChecked = _settings.PlayButtonAccentBackground;
+        PlayButtonPlainRadio.IsChecked = !_settings.PlayButtonAccentBackground;
+        PlayButtonSquareRadio.IsChecked = !_settings.PlayButtonRound;
+        PlayButtonRoundRadio.IsChecked = _settings.PlayButtonRound;
         SelectComboByTag(CompactCoverAlignmentCombo, _settings.CompactCoverAlignment);
         ModernSlotsGrid.IsEnabled = _settings.ModernShowSideButtons;
         SelectModernSlotCombos(MainWindow.NormalizeModernSlots(_settings.ModernControlSlots));
@@ -712,6 +717,33 @@ public partial class SettingsWindow : FluentWindow
         if (_isInitializing) return;
 
         _settings.GlassControlsBackground = GlassControlsBackgroundCheckBox.IsChecked == true;
+        _owner.ApplyMainWindowLayoutLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void ControlButtonsBackground_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ControlButtonsBackground = ControlButtonsBackgroundCheckBox.IsChecked == true;
+        _owner.ApplyMainWindowLayoutLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void PlayButtonStyle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.PlayButtonAccentBackground = PlayButtonAccentRadio.IsChecked == true;
+        _owner.ApplyMainWindowLayoutLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void PlayButtonShape_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.PlayButtonRound = PlayButtonRoundRadio.IsChecked == true;
         _owner.ApplyMainWindowLayoutLive();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
@@ -1582,6 +1614,9 @@ public partial class SettingsWindow : FluentWindow
         Add("История изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
         Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты аватар");
         Add("Открыть папку с логами", "О плеере", "About", OpenLogsButton, "логи log ошибка краш crash диагностика");
+        Add("Фон у кнопок управления", "Окно и запуск", "Window", ControlButtonsBackgroundCheckBox, "кнопки плашка подложка прозрачные без фона buttons background plate transparent");
+        Add("Вид кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonAccentRadio, "акцентный фон как у остальных кнопок play pause accent");
+        Add("Форма кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonSquareRadio, "квадратный круглый круг квадрат по умолчанию форма кнопки play pause square round circle shape");
         Add("Диагностика производительности", "О плеере", "About", DiagnosticsButton, "проверка нагрузка процессор память утечки тест diagnostics performance cpu memory leak");
     }
 

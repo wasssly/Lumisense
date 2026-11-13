@@ -109,6 +109,7 @@ public partial class MainWindow
         StopButton.Width = StopButton.Height = 40 * controlsScale;
         MiniModeButton.Width = MiniModeButton.Height = 40 * controlsScale;
         PlayPauseButton.Width = PlayPauseButton.Height = playButton * controlsScale;
+        ApplyPlayButtonShape();
 
         ControlsCapsule.Margin = modern
             ? (big ? new Thickness(0, 20, 0, 12) : new Thickness(0, 12, 0, 8))
@@ -166,7 +167,7 @@ public partial class MainWindow
                 button.Width = button.Height = sideSize;
                 button.Margin = new Thickness(4, 0, 4, 0);
                 button.Padding = new Thickness(0);
-                button.Appearance = Wpf.Ui.Controls.ControlAppearance.Secondary;
+                button.Appearance = RestingButtonAppearance;
                 // Кнопки из меню «Ещё» там с подписью; в ряду управления, как и остальные боковые, они только со значком.
                 button.Content = null;
             }
@@ -180,6 +181,7 @@ public partial class MainWindow
 
         // Если обе кнопки ушли из меню «Ещё» в ряд управления, открывать там нечего: кнопка «Ещё» скрывается.
         MoreActionsButton.Visibility = MoreActionsItemsPanel.Children.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
+        ApplyControlButtonsStyle();
     }
 
     private string SlotActionOf(Wpf.Ui.Controls.Button button) =>
@@ -193,6 +195,35 @@ public partial class MainWindow
         button.Padding = home.Padding;
         button.Appearance = home.Appearance;
         button.Content = home.Content;
+        SetButtonOutline(button, visible: true);
+    }
+
+    // Круг даёт радиус в полстороны; размер зависит от масштаба, поэтому радиус пересчитывается вместе с ним.
+    private void ApplyPlayButtonShape()
+    {
+        if (!_settings.PlayButtonRound)
+        {
+            PlayPauseButton.ClearValue(Wpf.Ui.Controls.Button.CornerRadiusProperty);
+            return;
+        }
+
+        double side = PlayPauseButton.Width;
+        PlayPauseButton.CornerRadius = new CornerRadius((double.IsNaN(side) || side <= 0 ? 54 : side) / 2);
+    }
+
+    // У прозрачной кнопки WPF-UI остаётся контур шаблона: без фона его убирают, а в меню «Ещё» возвращают.
+    private static void SetButtonOutline(Wpf.Ui.Controls.Button button, bool visible)
+    {
+        if (visible)
+        {
+            button.ClearValue(System.Windows.Controls.Control.BorderThicknessProperty);
+            button.ClearValue(System.Windows.Controls.Control.BorderBrushProperty);
+        }
+        else
+        {
+            button.BorderThickness = new Thickness(0);
+            button.BorderBrush = Brushes.Transparent;
+        }
     }
 
     // ContentHost.MaxWidth считается от реальной ширины окна: шире на широком мониторе, без раздувания на ноутбучном;
@@ -209,11 +240,44 @@ public partial class MainWindow
     // Применяет акцент (AccentColorMode/AccentColorHex) на старте и при смене акцента или темы: Apply() учитывает тему,
     // выбирая светлые/тёмные варианты (SystemAccentColorLight1 и т.п.), поэтому пересчёт нужен и при смене темы.
 
+    // Фон у каждой кнопки ряда управления можно убрать в настройках; включённые Шаффл и Повтор остаются акцентными.
+    private ControlAppearance RestingButtonAppearance =>
+        _settings.ControlButtonsBackground ? ControlAppearance.Secondary : ControlAppearance.Transparent;
+
+    // Значок на акцентном фоне контрастный, на обычном берёт цвет кнопки.
+    private SvgPathIcon MakePlayPauseIcon(string resourceKey) =>
+        _settings.PlayButtonAccentBackground ? IconResources.MakeOnAccent(resourceKey, 15) : IconResources.Make(resourceKey, 15);
+
+    private void ApplyControlButtonsStyle()
+    {
+        ControlAppearance resting = RestingButtonAppearance;
+        foreach (UIElement child in ControlsPanel.Children)
+        {
+            if (child is not Wpf.Ui.Controls.Button button) continue;
+
+            SetButtonOutline(button, _settings.ControlButtonsBackground);
+            if (!ReferenceEquals(button, PlayPauseButton)) button.Appearance = resting;
+        }
+
+        ApplyPlayButtonShape();
+        PlayPauseButton.Icon = MakePlayPauseIcon(_isPlaying ? "IconPause" : "IconPlay");
+        if (_settings.PlayButtonAccentBackground)
+        {
+            PlayPauseButton.Appearance = ControlAppearance.Secondary;
+            PlayPauseButton.Background = new SolidColorBrush(GetResolvedAccentColor()); // не переключается с состоянием
+        }
+        else
+        {
+            PlayPauseButton.Appearance = resting;
+            PlayPauseButton.ClearValue(System.Windows.Controls.Control.BackgroundProperty);
+        }
+    }
+
     // Не полагаемся на ControlAppearance.Primary WPF-UI: баг библиотеки (lepoco/wpfui #965/#981) — не подхватывает смену акцента
     // вживую; красим Background вручную.
     private void SetAccentButtonActive(Wpf.Ui.Controls.Button button, bool active)
     {
-        button.Appearance = ControlAppearance.Secondary;
+        button.Appearance = ControlsPanel.Children.Contains(button) ? RestingButtonAppearance : ControlAppearance.Secondary;
 
         if (active)
             button.Background = new SolidColorBrush(GetResolvedAccentColor());
@@ -439,8 +503,7 @@ public partial class MainWindow
     // акцентных кнопках иконки (Пуск/Пауза, включённые Шаффл/Повтор) переприсваиваем явно после пересчёта кисти.
     private void RefreshAccentDependentIcons()
     {
-        PlayPauseButton.Icon = IconResources.MakeOnAccent(_isPlaying ? "IconPause" : "IconPlay", 15);
-        PlayPauseButton.Background = new SolidColorBrush(GetResolvedAccentColor()); // всегда акцентная, не переключается
+        ApplyControlButtonsStyle();
         ProgressWaveform.PlayedBrush = new SolidColorBrush(GetResolvedAccentColor());
         ProgressMaterial.PlayedBrush = new SolidColorBrush(GetResolvedAccentColor());
 

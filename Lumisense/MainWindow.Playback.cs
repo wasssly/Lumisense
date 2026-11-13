@@ -324,7 +324,7 @@ public partial class MainWindow
             _outputDevice!.Play();
             _isPlaying = true;
             UpdateCoverSpin();
-            PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
+            PlayPauseButton.Icon = MakePlayPauseIcon("IconPause");
             _progressTimer.Start();
             _playbackClock.Start();
             _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
@@ -334,7 +334,7 @@ public partial class MainWindow
         {
             _isPlaying = false;
             UpdateCoverSpin();
-            PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
+            PlayPauseButton.Icon = MakePlayPauseIcon("IconPlay");
             _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Paused);
             RaisePlaybackStateChanged(false);
         }
@@ -710,7 +710,7 @@ public partial class MainWindow
 
         _isPlaying = false;
         UpdateCoverSpin();
-        PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
+        PlayPauseButton.Icon = MakePlayPauseIcon("IconPlay");
         FlushPlaybackClock();
 
         // Последняя синхронизация позиции — и таймер на паузе не нужен: перемотка на паузе публикует позицию сама
@@ -745,7 +745,7 @@ public partial class MainWindow
 
         _isPlaying = true;
         UpdateCoverSpin();
-        PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPause", 15);
+        PlayPauseButton.Icon = MakePlayPauseIcon("IconPause");
         _progressTimer.Start();
         _playbackClock.Start();
         _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Playing);
@@ -896,7 +896,7 @@ public partial class MainWindow
             ProgressSlider.Value = 0;
             CurrentTimeText.Text = "00:00";
             ProgressWaveform.Peaks = null;
-            PlayPauseButton.Icon = IconResources.MakeOnAccent("IconPlay", 15);
+            PlayPauseButton.Icon = MakePlayPauseIcon("IconPlay");
             _integrations.NowPlaying?.SetPlaybackStatus(Windows.Media.MediaPlaybackStatus.Stopped);
             RaisePlaybackStateChanged(false);
             _discordRichPresence.ClearAndDispose();

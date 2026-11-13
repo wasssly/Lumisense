@@ -406,6 +406,15 @@ public class AppSettings
     // Вид «Стекло»: показывать ли подложку-капсулу под кнопками управления.
     public bool GlassControlsBackground { get; set; } = true;
 
+    // Фон у каждой кнопки ряда управления главного окна (плашка под значком), во всех видах.
+    public bool ControlButtonsBackground { get; set; } = true;
+
+    // Кнопка «Пуск/Пауза»: акцентный фон (как раньше) или вид остальных кнопок ряда (по настройке выше).
+    public bool PlayButtonAccentBackground { get; set; } = true;
+
+    // Форма кнопки «Пуск/Пауза»: квадрат с закруглёнными углами (как раньше) или круг.
+    public bool PlayButtonRound { get; set; }
+
     // Новый вид: показывать ли дополнительные кнопки по бокам от «Назад / Пуск / Вперёд» и какие именно. Слоты слева направо:
     // дальний левый, ближний левый, ближний правый, дальний правый; значения "", "Shuffle", "Repeat", "Stop", "Mini".
     public bool ModernShowSideButtons { get; set; } = true;

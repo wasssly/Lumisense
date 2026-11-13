@@ -78,6 +78,7 @@ public partial class MainWindow
     // Вызывается из окна настроек при смене вида: пересчитывает размеры и подгоняет высоту окна под новую обложку.
     public void ApplyMainWindowLayoutLive()
     {
+        ApplyControlButtonsStyle();
         ApplyContentScale(_isFullscreenLayout || _viewMode == PlayerViewMode.Square);
         UpdateContentMaxWidth();
         if (_isMiniMode) return;
