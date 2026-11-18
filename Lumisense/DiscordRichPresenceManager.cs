@@ -250,16 +250,16 @@ public sealed class DiscordRichPresenceManager : IDisposable
                 ? FormatArtistState(artist, isPlaying)
                 : activityState,
             Type = ActivityType.Listening,
-            // Две пользовательские кнопки (репозиторий и актуальный релиз) уходят вместе с Presence и видны зрителям;
-            // без галочки в настройках не отправляются.
-            Buttons = settings.DiscordRichPresenceShowButtons
-                ? new[]
-                {
-                    new Button { Label = "GitHub", Url = DiscordRichPresenceDefaults.GitHubRepositoryUrl },
-                    new Button { Label = "Скачать Lumisense", Url = DiscordRichPresenceDefaults.DownloadUrl }
-                }
-                : null
         };
+
+        // Пользовательские кнопки (репозиторий и актуальный релиз) уходят вместе с Presence и видны зрителям;
+        // каждая включается отдельной настройкой, без обеих кнопок поле остаётся пустым.
+        var buttons = new List<Button>();
+        if (settings.DiscordRichPresenceShowButtons)
+            buttons.Add(new Button { Label = "GitHub", Url = DiscordRichPresenceDefaults.GitHubRepositoryUrl });
+        if (settings.DiscordRichPresenceShowDownloadButton)
+            buttons.Add(new Button { Label = "Скачать Lumisense", Url = DiscordRichPresenceDefaults.DownloadUrl });
+        presence.Buttons = buttons.Count > 0 ? buttons.ToArray() : null;
 
         // LargeImageText дублировал бы Details/State при наведении на обложку, поэтому пустой,
         // пока трек виден текстом; заполняется только когда трек скрыт настройками приватности.

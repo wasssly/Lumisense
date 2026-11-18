@@ -347,8 +347,18 @@ public class AppSettings
     // Только вместе с DiscordRichPresenceShowTrackInfo (обложка выдаёт трек не хуже текста); ищется по артисту/названию
     // через открытые API (DiscordCoverArtLookupService), а не берётся из локального файла.
     public bool DiscordRichPresenceShowCoverArt { get; set; } = true;
-    // Кнопки «GitHub» и «Скачать Lumisense» под статусом: видны зрителям профиля, поэтому их можно отключить.
+    // Кнопка «GitHub» под статусом: видна зрителям профиля, поэтому её можно отключить. Раньше это был общий переключатель
+    // обеих кнопок; имя свойства осталось прежним, чтобы сохранённое значение читалось без миграции.
     public bool DiscordRichPresenceShowButtons { get; set; } = true;
+
+    // Кнопка «Скачать Lumisense». Пока пользователь не менял её отдельно (поля нет в settings.json), следует за прежним
+    // общим переключателем: кто отключил кнопки целиком, не получит скачивание обратно после обновления.
+    private bool? _discordRichPresenceShowDownloadButton;
+    public bool DiscordRichPresenceShowDownloadButton
+    {
+        get => _discordRichPresenceShowDownloadButton ?? DiscordRichPresenceShowButtons;
+        set => _discordRichPresenceShowDownloadButton = value;
+    }
 
     // Фоновое наблюдение за ресурсами (ResourceWatchdog): одно измерение в минуту, предупреждение в журнал при подозрении на утечку.
     public bool ResourceWatchdogEnabled { get; set; } = true;

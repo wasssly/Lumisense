@@ -346,6 +346,7 @@ public static class LumiProfileIO
         target.EqualizerBandGainsDb = source.EqualizerBandGainsDb.ToArray();
         target.DiscordRichPresenceShowCoverArt = source.DiscordRichPresenceShowCoverArt;
         target.DiscordRichPresenceShowButtons = source.DiscordRichPresenceShowButtons;
+        target.DiscordRichPresenceShowDownloadButton = source.DiscordRichPresenceShowDownloadButton;
         target.ResourceWatchdogEnabled = source.ResourceWatchdogEnabled;
         target.AutoRefreshPlaylistFolders = source.AutoRefreshPlaylistFolders;
         target.GameOverlayCompatibilityMode = source.GameOverlayCompatibilityMode;
