@@ -217,6 +217,13 @@
                                 <TextBlock Text="Улучшено" FontSize="11" Margin="5,0,0,0" />
                             </StackPanel>
                         </ToggleButton>
+                        <ToggleButton x:Name="FilterPerformanceToggle" Style="{StaticResource TypeChipStyle}"
+                                      Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
+                            <StackPanel Orientation="Horizontal">
+                                <local:SvgPathIcon Icon="IconSpeed" Size="11" Foreground="#EC4899" />
+                                <TextBlock Text="Производительность" FontSize="11" Margin="5,0,0,0" />
+                            </StackPanel>
+                        </ToggleButton>
                         <ToggleButton x:Name="FilterFixedToggle" Style="{StaticResource TypeChipStyle}"
                                       Checked="TypeFilterToggle_Changed" Unchecked="TypeFilterToggle_Changed">
                             <StackPanel Orientation="Horizontal">

@@ -25,11 +25,12 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$allowedTypes = @('added', 'changed', 'improved', 'fixed', 'removed', 'security')
+$allowedTypes = @('added', 'changed', 'improved', 'performance', 'fixed', 'removed', 'security')
 $sectionDefinitions = @(
     [pscustomobject]@{ Type = 'added'; Heading = 'Добавлено' },
     [pscustomobject]@{ Type = 'changed'; Heading = 'Изменено' },
     [pscustomobject]@{ Type = 'improved'; Heading = 'Улучшено' },
+    [pscustomobject]@{ Type = 'performance'; Heading = 'Производительность' },
     [pscustomobject]@{ Type = 'fixed'; Heading = 'Исправлено' },
     [pscustomobject]@{ Type = 'removed'; Heading = 'Удалено' },
     [pscustomobject]@{ Type = 'security'; Heading = 'Безопасность' }

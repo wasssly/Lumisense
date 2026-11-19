@@ -16,8 +16,9 @@ public static class ChangeTypeCatalog
     public static readonly Info Removed = new("removed", "Удалено", "IconDelete", Color.FromRgb(0xEF, 0x44, 0x44));
     public static readonly Info Improved = new("improved", "Улучшено", "IconRefresh", Color.FromRgb(0x8B, 0x5C, 0xF6));
     public static readonly Info Security = new("security", "Безопасность", "IconInfo", Color.FromRgb(0x14, 0xB8, 0xA6));
+    public static readonly Info Performance = new("performance", "Производительность", "IconSpeed", Color.FromRgb(0xEC, 0x48, 0x99));
 
-    public static readonly IReadOnlyList<Info> All = new[] { Added, Changed, Improved, Fixed, Removed, Security };
+    public static readonly IReadOnlyList<Info> All = new[] { Added, Changed, Improved, Performance, Fixed, Removed, Security };
 
     // неизвестный/пустой ключ падает на "Изменено", чтобы не ломать отображение
     public static Info Resolve(string? key) => key?.Trim().ToLowerInvariant() switch
@@ -27,6 +28,7 @@ public static class ChangeTypeCatalog
         "fixed" => Fixed,
         "removed" => Removed,
         "improved" => Improved,
+        "performance" => Performance,
         "security" => Security,
         _ => Changed
     };

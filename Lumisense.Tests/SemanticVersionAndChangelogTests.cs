@@ -207,6 +207,7 @@ public sealed class ChangeTypeCatalogTests
     [InlineData("added", "added")]
     [InlineData("changed", "changed")]
     [InlineData("improved", "improved")]
+    [InlineData("performance", "performance")]
     [InlineData("fixed", "fixed")]
     [InlineData("removed", "removed")]
     [InlineData("security", "security")]
@@ -219,7 +220,7 @@ public sealed class ChangeTypeCatalogTests
     [Theory]
     [InlineData(null)]
     [InlineData("")]
-    [InlineData("performance")]
+    [InlineData("deprecated")]
     [InlineData("unknown")]
     public void Resolve_FallsBackToChangedForUnknownTypes(string? input)
     {
@@ -231,6 +232,7 @@ public sealed class ChangeTypeCatalogTests
     {
         Assert.Equal(ChangeTypeCatalog.All.Count, ChangeTypeCatalog.All.Select(info => info.Key).Distinct().Count());
         Assert.Contains(ChangeTypeCatalog.Improved, ChangeTypeCatalog.All);
+        Assert.Contains(ChangeTypeCatalog.Performance, ChangeTypeCatalog.All);
         Assert.Contains(ChangeTypeCatalog.Security, ChangeTypeCatalog.All);
     }
 }

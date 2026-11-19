@@ -99,6 +99,7 @@ public static class LocalizationService
         ["Исправлено"] = "Fixed",
         ["Удалено"] = "Removed",
         ["Улучшено"] = "Improved",
+        ["Производительность"] = "Performance",
         ["Безопасность"] = "Security",
         ["Версия"] = "Version",
         ["Кол-во"] = "Count",
