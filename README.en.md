@@ -24,10 +24,18 @@ Your music stays on your disk: no streaming, no accounts, no subscriptions.
 
 ## Highlights
 
-| | | |
-|:--|:--|:--|
-| **Uncompromising sound**<br>Ten-band equalizer, limiter, ReplayGain and EBU R128 loudness measurement, crossfade, gapless transitions, WASAPI Exclusive. | **Live lyrics**<br>Synced `.lrc`, LRCLIB search, styling presets and a full-screen Now Playing with an animated background. | **Five window layouts**<br>New, Glass, Vinyl, Compact and Poster, plus a mini player and a floating Island. |
-| **A library without surprises**<br>Folders, favorites, queue, five shuffle modes, tag and cover editor, online cover search. | **Private by default**<br>Online features are optional and listed in [a single document](docs/NETWORK_AND_PRIVACY.md). Logs never leave your computer. | **Safe updates**<br>GitHub Releases, SHA-256 verification, build attestation, compact Velopack updates. |
+<table>
+  <tr>
+    <td valign="top" width="33%"><b>Uncompromising sound</b><br>Ten-band equalizer, limiter, ReplayGain and EBU R128 loudness measurement, crossfade, gapless transitions, WASAPI Exclusive.</td>
+    <td valign="top" width="33%"><b>Live lyrics</b><br>Synced <code>.lrc</code>, LRCLIB search, styling presets and a full-screen Now Playing with an animated background.</td>
+    <td valign="top" width="33%"><b>Five window layouts</b><br>New, Glass, Vinyl, Compact and Poster, plus a mini player and a floating Island.</td>
+  </tr>
+  <tr>
+    <td valign="top" width="33%"><b>A library without surprises</b><br>Folders, favorites, queue, five shuffle modes, tag and cover editor, online cover search.</td>
+    <td valign="top" width="33%"><b>Private by default</b><br>Online features are optional and listed in <a href="docs/NETWORK_AND_PRIVACY.md">a single document</a>. Logs never leave your computer.</td>
+    <td valign="top" width="33%"><b>Safe updates</b><br>GitHub Releases, SHA-256 verification, build attestation, compact Velopack updates.</td>
+  </tr>
+</table>
 
 > **Disclaimer.** Lumisense was largely created with the help of **Claude** and **Manus AI** and was originally developed for personal use, around the author's habits and preferences, not as a universal product for everyone. Some decisions may therefore be subjective, and some features may still need polish. If you find a bug or miss an important feature, please open an [issue](https://github.com/wasssly/Lumisense/issues).
 
