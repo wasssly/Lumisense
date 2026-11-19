@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="236" viewBox="0 0 900 236" role="img" aria-labelledby="t d">
+<title id="t">Signal path</title><desc id="d">Ten stages in order: file, speed and pitch, equalizer, mono and balance, stereo width and crossfeed, loudness compensation, volume, limiter, gapless transitions and crossfade, WASAPI.</desc>
+<defs><marker id="a" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto"><path d="M1 1 L7 4 L1 7" fill="none" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></marker></defs>
+<style>text{font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;text-anchor:middle}.t{font-size:14px;font-weight:600;fill:#e6edf3}.s{font-size:12px;fill:#8b949e}.n{font-size:11px;font-weight:700;fill:#fff}</style>
+<rect x="0.5" y="0.5" width="899" height="235" rx="12" fill="#0d1117" stroke="#30363d"/>
+<rect x="15" y="30" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="29" cy="30" r="11" fill="#7C5CFF"/><text class="n" x="29" y="34">1</text>
+<text class="t" x="90.0" y="63">File</text><text class="s" x="90.0" y="83">decoder + ReplayGain</text>
+<line x1="170" y1="67.0" x2="191" y2="67.0" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" marker-end="url(#a)"/>
+<rect x="195" y="30" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="209" cy="30" r="11" fill="#7C5CFF"/><text class="n" x="209" y="34">2</text>
+<text class="t" x="270.0" y="63">Speed</text><text class="s" x="270.0" y="83">and pitch</text>
+<line x1="350" y1="67.0" x2="371" y2="67.0" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" marker-end="url(#a)"/>
+<rect x="375" y="30" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="389" cy="30" r="11" fill="#7C5CFF"/><text class="n" x="389" y="34">3</text>
+<text class="t" x="450.0" y="63">Equalizer</text><text class="s" x="450.0" y="83">10 bands</text>
+<line x1="530" y1="67.0" x2="551" y2="67.0" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" marker-end="url(#a)"/>
+<rect x="555" y="30" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="569" cy="30" r="11" fill="#7C5CFF"/><text class="n" x="569" y="34">4</text>
+<text class="t" x="630.0" y="63">Mono</text><text class="s" x="630.0" y="83">and balance</text>
+<line x1="710" y1="67.0" x2="731" y2="67.0" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" marker-end="url(#a)"/>
+<rect x="735" y="30" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="749" cy="30" r="11" fill="#7C5CFF"/><text class="n" x="749" y="34">5</text>
+<text class="t" x="810.0" y="63">Stereo width</text><text class="s" x="810.0" y="83">and crossfeed</text>
+<rect x="15" y="134" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="29" cy="134" r="11" fill="#7C5CFF"/><text class="n" x="29" y="138">6</text>
+<text class="t" x="90.0" y="167">Loudness</text><text class="s" x="90.0" y="187">compensation</text>
+<line x1="170" y1="171.0" x2="191" y2="171.0" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" marker-end="url(#a)"/>
+<rect x="195" y="134" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="209" cy="134" r="11" fill="#7C5CFF"/><text class="n" x="209" y="138">7</text>
+<text class="t" x="270.0" y="176.0">Volume</text>
+<line x1="350" y1="171.0" x2="371" y2="171.0" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" marker-end="url(#a)"/>
+<rect x="375" y="134" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="389" cy="134" r="11" fill="#7C5CFF"/><text class="n" x="389" y="138">8</text>
+<text class="t" x="450.0" y="176.0">Limiter</text>
+<line x1="530" y1="171.0" x2="551" y2="171.0" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" marker-end="url(#a)"/>
+<rect x="555" y="134" width="150" height="74" rx="10" fill="#161b22" stroke="#7C5CFF" stroke-width="1.5"/>
+<circle cx="569" cy="134" r="11" fill="#7C5CFF"/><text class="n" x="569" y="138">9</text>
+<text class="t" x="630.0" y="167">Transitions</text><text class="s" x="630.0" y="187">gapless and crossfade</text>
+<line x1="710" y1="171.0" x2="731" y2="171.0" stroke="#8b949e" stroke-width="1.6" stroke-linecap="round" marker-end="url(#a)"/>
+<rect x="735" y="134" width="150" height="74" rx="10" fill="#161b22" stroke="#2EA44F" stroke-width="1.5"/>
+<circle cx="749" cy="134" r="11" fill="#2EA44F"/><text class="n" x="749" y="138">10</text>
+<text class="t" x="810.0" y="167">WASAPI</text><text class="s" x="810.0" y="187">Shared / Exclusive</text>
+</svg>

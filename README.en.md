@@ -190,18 +190,7 @@ Results come after LRCLIB and are labeled with their source.
 
 This is how sound travels from the file to the device. Unneeded stages can be turned off, and with all processing off in Exclusive mode the signal is bit-perfect.
 
-```mermaid
-flowchart LR
-    A["File<br/>decoder + ReplayGain"] --> B["Speed<br/>and pitch"]
-    B --> C["Equalizer<br/>10 bands"]
-    C --> D["Mono<br/>and balance"]
-    D --> E["Stereo width<br/>and crossfeed"]
-    E --> F["Loudness<br/>compensation"]
-    F --> G["Volume"]
-    G --> H["Limiter"]
-    H --> I["Gapless transition<br/>and crossfade"]
-    I --> J["WASAPI<br/>Shared / Exclusive"]
-```
+<p align="center"><img src="docs/signal-path.en.svg" alt="Signal path: file, speed and pitch, equalizer, mono and balance, stereo width and crossfeed, loudness compensation, volume, limiter, gapless transition and crossfade, WASAPI" width="860"></p>
 
 ## Privacy
 
