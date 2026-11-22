@@ -19,6 +19,12 @@ public partial class SettingsWindow
     private double _navScrollFrom, _navScrollTo;
     private long _navScrollStart;
 
+    private const double WheelSmoothingSeconds = 0.07;
+    private System.Windows.Controls.ScrollViewer? _wheelViewer;
+    private double _wheelTarget, _wheelCurrent;
+    private long _wheelLastFrame;
+    private bool _wheelAnimating;
+
     private void InitializeNavScroll()
     {
         AddHandler(UIElement.PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler(NavScroll_PreviewMouseDown), true);
@@ -28,7 +34,77 @@ public partial class SettingsWindow
             StopNavScroll();
             _navSavedOffset = null;
         };
-        Closed += (_, _) => StopNavScroll();
+        Closed += (_, _) =>
+        {
+            StopNavScroll();
+            StopWheelScroll();
+        };
+    }
+
+    // Колесо двигает цель, а страница догоняет её экспоненциально: частые щелчки складываются, а не рвут анимацию.
+    private void ScrollByWheel(System.Windows.Controls.ScrollViewer viewer, double delta)
+    {
+        if (ReferenceEquals(viewer, PART_ContentScroll))
+        {
+            StopNavScroll();
+            _navSavedOffset = null;
+        }
+
+        bool continuing = ReferenceEquals(_wheelViewer, viewer) && _wheelViewer is not null;
+        if (!continuing)
+        {
+            StopWheelScroll();
+            _wheelViewer = viewer;
+            _wheelCurrent = viewer.VerticalOffset;
+            _wheelTarget = _wheelCurrent;
+        }
+
+        _wheelTarget = Math.Clamp(_wheelTarget + delta, 0, viewer.ScrollableHeight);
+
+        if (AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow))
+        {
+            viewer.ScrollToVerticalOffset(_wheelTarget);
+            StopWheelScroll();
+            return;
+        }
+
+        if (_wheelAnimating) return;
+
+        _wheelAnimating = true;
+        _wheelLastFrame = Stopwatch.GetTimestamp();
+        CompositionTarget.Rendering += WheelScrollFrame;
+    }
+
+    private void WheelScrollFrame(object? sender, EventArgs e)
+    {
+        if (_wheelViewer is null)
+        {
+            StopWheelScroll();
+            return;
+        }
+
+        double dt = Stopwatch.GetElapsedTime(_wheelLastFrame).TotalSeconds;
+        _wheelLastFrame = Stopwatch.GetTimestamp();
+
+        double diff = _wheelTarget - _wheelCurrent;
+        if (Math.Abs(diff) < 0.5)
+        {
+            _wheelViewer.ScrollToVerticalOffset(_wheelTarget);
+            StopWheelScroll();
+            return;
+        }
+
+        _wheelCurrent += diff * (1 - Math.Exp(-dt / WheelSmoothingSeconds));
+        _wheelViewer.ScrollToVerticalOffset(_wheelCurrent);
+    }
+
+    private void StopWheelScroll()
+    {
+        _wheelViewer = null;
+        if (!_wheelAnimating) return;
+
+        _wheelAnimating = false;
+        CompositionTarget.Rendering -= WheelScrollFrame;
     }
 
     private void NavScroll_PreviewMouseDown(object sender, MouseButtonEventArgs e)
@@ -80,11 +156,13 @@ public partial class SettingsWindow
     private void ResetNavScrollMemory()
     {
         StopNavScroll();
+        StopWheelScroll();
         _navSavedOffset = null;
     }
 
     private void AnimateContentScroll(double target)
     {
+        StopWheelScroll();
         if (AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow))
         {
             StopNavScroll();

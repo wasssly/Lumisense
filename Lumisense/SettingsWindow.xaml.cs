@@ -2161,8 +2161,7 @@ public partial class SettingsWindow : FluentWindow
                            ?? PART_ContentScroll;
         if (scrollViewer.ScrollableHeight <= 0) return;
 
-        double offset = scrollViewer.VerticalOffset - e.Delta * 0.45;
-        scrollViewer.ScrollToVerticalOffset(Math.Clamp(offset, 0, scrollViewer.ScrollableHeight));
+        ScrollByWheel(scrollViewer, -e.Delta * 0.45);
         e.Handled = true;
     }
 
