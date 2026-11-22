@@ -249,7 +249,8 @@ public sealed class DiscordRichPresenceManager : IDisposable
             State = settings.DiscordRichPresenceShowTrackInfo && !string.IsNullOrWhiteSpace(artist)
                 ? FormatArtistState(artist, isPlaying)
                 : activityState,
-            Type = ActivityType.Listening,
+            // У Listening Discord показывает счётчик и без timestamps, у Playing — нет, поэтому на паузе тип меняется.
+            Type = isPlaying ? ActivityType.Listening : ActivityType.Playing,
         };
 
         // Пользовательские кнопки (репозиторий и актуальный релиз) уходят вместе с Presence и видны зрителям;
