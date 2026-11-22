@@ -35,8 +35,8 @@ public static class DiscordCoverArtLookupService
             using var timeoutCts = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeoutCts.CancelAfter(LookupTimeout);
 
-            // iTunes — самый широкий охват и быстрее всех; Deezer — второй. MusicBrainz в автоматический поиск не входит:
-            // это два и больше запросов на кандидата, а лимит сервиса — один запрос в секунду; он остаётся в ручном поиске обложки.
+            // iTunes — самый широкий охват и быстрее всех; Deezer, Яндекс Музыка (русский каталог) и Genius (треки вне каталогов) — запасные.
+            // MusicBrainz не входит: два и больше запросов на кандидата при лимите сервиса в один запрос в секунду.
             // Берётся первый результат того же исполнителя: поиск нечёткий, и первым нередко приходит чужой трек.
             var itunesResults = await CoverArtProviders.SearchItunesAsync(query, timeoutCts.Token);
             CoverArtProviders.ArtResult? found = FirstByArtist(itunesResults, artist);
@@ -45,6 +45,18 @@ public static class DiscordCoverArtLookupService
             {
                 var deezerResults = await CoverArtProviders.SearchDeezerAsync(query, timeoutCts.Token);
                 found = FirstByArtist(deezerResults, artist);
+            }
+
+            if (found is null)
+            {
+                var yandexResults = await CoverArtProviders.SearchYandexMusicAsync(query, timeoutCts.Token);
+                found = FirstByArtist(yandexResults, artist);
+            }
+
+            if (found is null)
+            {
+                var geniusResults = await CoverArtProviders.SearchGeniusAsync(query, timeoutCts.Token);
+                found = FirstByArtist(geniusResults, artist);
             }
 
             url = found?.FullUrl;
