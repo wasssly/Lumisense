@@ -105,7 +105,7 @@ internal partial class IslandPlayerWindow : Window
     private readonly System.Diagnostics.Stopwatch _clock = System.Diagnostics.Stopwatch.StartNew();
 
     private State _state = State.Compact, _volumeReturn = State.Compact;
-    private bool _userHidden, _fullscreenHidden;
+    private bool _userHidden, _fullscreenHidden, _nowPlayingHidden;
     private TimeSpan _loadedAt;
     private bool _hovered, _pressed, _morphing, _isPlaying, _isSeeking, _loopRunning, _playbackShown;
     private Grab _grab;
@@ -1350,7 +1350,16 @@ internal partial class IslandPlayerWindow : Window
 
     // ----- Средняя кнопка, колесо, меню -----
 
-    private bool IsAway => _userHidden || _fullscreenHidden;
+    private bool IsAway => _userHidden || _fullscreenHidden || _nowPlayingHidden;
+
+    // Now Playing занимает весь экран, и остров поверх него не нужен.
+    public void SetNowPlayingOpen(bool isOpen)
+    {
+        if (_nowPlayingHidden == isOpen) return;
+
+        _nowPlayingHidden = isOpen;
+        UpdateAway();
+    }
 
     // Плеер и меню — раскрытые карточки: они одинаково сворачиваются и не вытягиваются вниз.
     private bool IsCardOpen => _state == State.Open || _state == State.Menu;

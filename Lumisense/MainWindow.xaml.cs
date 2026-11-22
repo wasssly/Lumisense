@@ -1313,9 +1313,11 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             _nowPlayingWindow.Closed += (_, _) =>
             {
                 _nowPlayingWindow = null;
+                _islandWindow?.SetNowPlayingOpen(false);
                 RestoreMainWindowAfterNowPlaying();
             };
             _nowPlayingWindow.Show();
+            _islandWindow?.SetNowPlayingOpen(true);
         }
         else
         {

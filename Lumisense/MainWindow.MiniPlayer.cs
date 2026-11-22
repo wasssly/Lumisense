@@ -65,6 +65,7 @@ public partial class MainWindow
         _islandWindow.ApplyOverlayCompatibilityLive(EffectiveGameOverlayCompatibilityEnabled);
         _islandWindow.Closed += (_, _) => _islandWindow = null;
         _islandWindow.Show();
+        _islandWindow.SetNowPlayingOpen(_nowPlayingWindow is not null);
     }
 
     // Смена вида в настройках при открытом мини-плеере: пересоздаём окно, а не переключаем его на лету, потому что это разные окна.
