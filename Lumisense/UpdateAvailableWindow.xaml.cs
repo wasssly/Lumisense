@@ -35,6 +35,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     private bool _restartLegacyDownloadFromNewSource;
     private readonly bool _isMsiMigrationOnly;
     private readonly VelopackUpdateDiagnostics? _velopackDiagnostics;
+    private bool _velopackDiagnosticsRevealed;
 
     public UpdateAvailableWindow(UpdateCheckResult result, AppSettings? settings = null)
     {
@@ -244,7 +245,7 @@ public partial class UpdateAvailableWindow : FluentWindow
     private void ApplyVelopackDiagnosticsPresentation()
     {
         bool isVelopack = !_isMsiMigrationOnly && _velopackDiagnostics is not null;
-        VelopackDiagnosticsPanel.Visibility = isVelopack ? Visibility.Visible : Visibility.Collapsed;
+        VelopackDiagnosticsPanel.Visibility = isVelopack && _velopackDiagnosticsRevealed ? Visibility.Visible : Visibility.Collapsed;
         if (!isVelopack || _velopackDiagnostics is null) return;
 
         VelopackUpdatePlan plan = _velopackDiagnostics.Plan;
@@ -285,6 +286,16 @@ public partial class UpdateAvailableWindow : FluentWindow
 
     // Velopack SDK публично сообщает лишь этап и нормализованный процент: показываем их с планом и временем,
     // без вымышленных байтов, скорости или выбранного delta/full package.
+    // План пакетов нужен только при сбое: в обычном обновлении технические детали пользователю не показываются.
+    private void RevealVelopackDiagnostics()
+    {
+        if (_velopackDiagnostics is null) return;
+
+        _velopackDiagnosticsRevealed = true;
+        VelopackDiagnosticsPanel.Visibility = Visibility.Visible;
+        VelopackDiagnosticsPanel.IsExpanded = true;
+    }
+
     private void RefreshVelopackRuntimePresentation()
     {
         if (_velopackDiagnostics is null) return;
@@ -646,7 +657,6 @@ public partial class UpdateAvailableWindow : FluentWindow
         _isVelopackDownload = true;
         _velopackDiagnostics?.Start(isResuming);
         SetDownloading(true);
-        VelopackDiagnosticsPanel.IsExpanded = true;
         RefreshVelopackRuntimePresentation();
         _downloadCts = new CancellationTokenSource();
         var progress = new Progress<int>(UpdateVelopackProgressUi);
@@ -665,6 +675,7 @@ public partial class UpdateAvailableWindow : FluentWindow
             if (_settings is null || !SettingsManager.Save(_settings, forceBackup: true))
             {
                 _velopackDiagnostics?.Failed(new InvalidOperationException("Settings save before planned update restart was not confirmed."));
+                RevealVelopackDiagnostics();
                 SetDownloading(false);
                 RefreshVelopackRuntimePresentation();
                 ShowError(LocalizationService.Get(LocalizationKey.UpdateVelopackSaveBeforeRestartFailed));
@@ -699,6 +710,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         catch (Exception ex)
         {
             _velopackDiagnostics?.Failed(ex);
+            RevealVelopackDiagnostics();
             SetDownloading(false);
             RefreshVelopackRuntimePresentation();
             ShowError($"{LocalizationService.Get(LocalizationKey.UpdateVelopackUnavailable)}\n{ex.Message}");
@@ -727,6 +739,7 @@ public partial class UpdateAvailableWindow : FluentWindow
         {
             plannedRestartApp?.CancelPlannedUpdateRestart();
             _velopackDiagnostics?.Failed(ex);
+            RevealVelopackDiagnostics();
             SetDownloading(false);
             _velopackReadyToApply = false;
             RefreshVelopackRuntimePresentation();
