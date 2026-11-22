@@ -99,9 +99,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // Пауза объединяет быстрый ввод поиска в один запрос, фильтрация снимка идёт вне Dispatcher — иначе каждое нажатие
     // перестраивало бы раскладку тысяч ListViewItem.
     private readonly DispatcherTimer _playlistSearchDebounceTimer = new() { Interval = TimeSpan.FromMilliseconds(180) };
-    // Discord ограничивает частоту обновлений Rich Presence, поэтому серия быстрых смен трека уходит одним обновлением.
-    private static readonly TimeSpan DiscordTrackChangeQuietPeriod = TimeSpan.FromSeconds(1);
-    private readonly DispatcherTimer _discordTrackChangeTimer = new() { Interval = DiscordTrackChangeQuietPeriod };
+    // Discord отбрасывает обновления сверх ~5 за 20 секунд, а смена трека шлёт два: сразу и после поиска обложки.
+    private static readonly TimeSpan DiscordTrackChangeMinInterval = TimeSpan.FromSeconds(4);
+    private readonly DispatcherTimer _discordTrackChangeTimer = new();
     private DateTime _discordTrackChangeAtUtc;
     private bool _discordTrackChangePending;
     private CancellationTokenSource? _playlistSearchCts;
@@ -1647,20 +1647,21 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             force);
     }
 
-    // Первая смена после паузы уходит сразу, а серия смен подряд ждёт тишины и публикует только последний трек.
+    // Смена трека уходит сразу, если прошло достаточно времени; иначе ждёт остаток и публикует последний трек серии.
     private void QueueDiscordRichPresenceTrackUpdate()
     {
-        var now = DateTime.UtcNow;
-        bool burst = _discordTrackChangePending || now - _discordTrackChangeAtUtc < DiscordTrackChangeQuietPeriod;
-        _discordTrackChangeAtUtc = now;
-        if (!burst)
+        if (_discordTrackChangeTimer.IsEnabled) return;
+
+        TimeSpan wait = DiscordTrackChangeMinInterval - (DateTime.UtcNow - _discordTrackChangeAtUtc);
+        if (wait <= TimeSpan.Zero)
         {
+            _discordTrackChangeAtUtc = DateTime.UtcNow;
             UpdateDiscordRichPresence(force: true);
             return;
         }
 
         _discordTrackChangePending = true;
-        _discordTrackChangeTimer.Stop();
+        _discordTrackChangeTimer.Interval = wait;
         _discordTrackChangeTimer.Start();
     }
 
@@ -1668,6 +1669,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     {
         _discordTrackChangeTimer.Stop();
         _discordTrackChangePending = false;
+        _discordTrackChangeAtUtc = DateTime.UtcNow;
         UpdateDiscordRichPresence(force: true);
     }
 
