@@ -13,7 +13,7 @@ public sealed partial class SettingsSearchIndexLocalizationTests
     private static partial Regex SearchEntryRegex();
 
     private static string SourceFile([CallerFilePath] string testFile = "") =>
-        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "Lumisense", "SettingsWindow.xaml.cs"));
+        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "Lumisense", "SettingsWindow.Search.cs"));
 
     private static bool HasCyrillic(string text) => text.Any(c => c is >= '\u0400' and <= '\u04FF');
 

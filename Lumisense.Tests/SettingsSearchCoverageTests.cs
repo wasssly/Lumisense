@@ -39,7 +39,7 @@ public sealed partial class SettingsSearchCoverageTests
     [Fact]
     public void EverySettingControl_IsFindableThroughTheSearchIndex()
     {
-        string xamlPath = AppFile("SettingsWindow.xaml"), codePath = AppFile("SettingsWindow.xaml.cs");
+        string xamlPath = AppFile("SettingsWindow.xaml"), codePath = AppFile("SettingsWindow.Search.cs");
         if (!File.Exists(xamlPath) || !File.Exists(codePath)) return; // тесты запущены без исходников приложения
 
         var entries = IndexEntryRegex().Matches(File.ReadAllText(codePath))
