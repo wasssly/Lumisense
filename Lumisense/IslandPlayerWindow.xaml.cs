@@ -366,11 +366,85 @@ internal partial class IslandPlayerWindow : Window
         SeekTrack.Visibility = SeekFill.Visibility = segments ? Visibility.Collapsed : Visibility.Visible;
         if (!Settings.IslandTrackToast && _state == State.Toast) SetState(State.Compact);
         UpdateRim();
+        UpdateRings();
+        ApplyRingProgress();
         UpdateEqualizerState();
         ApplyMenuRows();
         RefreshControlStates();
         UpdateTargets();
         if (!_loopRunning) ApplyShape();
+    }
+
+    // ----- Кольца прогресса -----
+
+    private const double RingSize = 34, RingGap = 8, RingInset = 5, RingThickness = 3;
+    private bool _ringsShown;
+
+    // Кольца видны только у свёрнутого острова в покое; в Notch Nook их нет: форма висит на верхнем краю экрана.
+    private bool RingsActive => Settings.IslandRingSide != "Off" && !IsNotch && _state == State.Compact && !_morphing;
+
+    private void UpdateRings()
+    {
+        bool active = RingsActive;
+        if (active)
+        {
+            double top = (_pillRect.Height - RingSize) / 2;
+            Canvas.SetLeft(RingLeft, _pillRect.Left - RingGap - RingSize);
+            Canvas.SetLeft(RingRight, _pillRect.Right + RingGap);
+            Canvas.SetTop(RingLeft, top);
+            Canvas.SetTop(RingRight, top);
+            RingLeft.Visibility = Settings.IslandRingSide == "Left" ? Visibility.Visible : Visibility.Collapsed;
+            RingRight.Visibility = Settings.IslandRingSide == "Right" ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        if (active == _ringsShown) return;
+
+        _ringsShown = active;
+        RingLayer.BeginAnimation(OpacityProperty, null);
+        if (active)
+        {
+            ApplyRingProgress();
+            RingLayer.Visibility = Visibility.Visible;
+            if (ReduceMotion) RingLayer.Opacity = 1;
+            else RingLayer.BeginAnimation(OpacityProperty, new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)));
+            return;
+        }
+
+        if (ReduceMotion || RingLayer.Visibility != Visibility.Visible)
+        {
+            RingLayer.Opacity = 0;
+            RingLayer.Visibility = Visibility.Collapsed;
+            return;
+        }
+
+        var fade = new DoubleAnimation(0, TimeSpan.FromMilliseconds(120));
+        fade.Completed += (_, _) =>
+        {
+            if (_ringsShown) return;
+
+            RingLayer.BeginAnimation(OpacityProperty, null);
+            RingLayer.Opacity = 0;
+            RingLayer.Visibility = Visibility.Collapsed;
+        };
+        RingLayer.BeginAnimation(OpacityProperty, fade);
+    }
+
+    private void ApplyRingProgress()
+    {
+        if (RingLayer.Visibility != Visibility.Visible && !_ringsShown) return;
+
+        double ratio = Math.Clamp(_progressRatio, 0, 1);
+        SetRingArc(RingLeftArc, ratio);
+        SetRingArc(RingRightArc, ratio);
+    }
+
+    // Длины штриха считаются в толщинах линии; Ellipse рисует обводку внутрь своей рамки.
+    private void SetRingArc(System.Windows.Shapes.Ellipse arc, double ratio)
+    {
+        double circumference = Math.PI * (RingSize - 2 * RingInset - RingThickness);
+        // При нулевой доле круглый колпачок рисовал бы точку; на паузе дуга тускнеет.
+        arc.Opacity = ratio < 0.002 ? 0 : _isPlaying ? 1 : 0.55;
+        arc.StrokeDashArray = new DoubleCollection { circumference * ratio / RingThickness, circumference / RingThickness + 1 };
     }
 
     // ----- Полоса прогресса -----
@@ -438,6 +512,7 @@ internal partial class IslandPlayerWindow : Window
         var accent = _host.GetResolvedAccentColor();
         var target = Settings.IslandAccentRim && _isPlaying ? Color.FromArgb(0xC0, accent.R, accent.G, accent.B) : DefaultRim;
         ProgressRim.Stroke = new SolidColorBrush(Color.FromArgb(0xE6, accent.R, accent.G, accent.B));
+        RingLeftArc.Stroke = RingRightArc.Stroke = ProgressRim.Stroke;
         if (ReduceMotion)
         {
             _rimBrush.BeginAnimation(SolidColorBrush.ColorProperty, null);
@@ -703,6 +778,7 @@ internal partial class IslandPlayerWindow : Window
         _pillRect = pill;
         _pillRadius = r;
         UpdateProgressRimShape();
+        UpdateRings();
 
         double shadow = Math.Clamp((h - CompactMaxHeight) / ShadowFadeHeight, 0, 1);
         ShadowFar.Data = ShadowNear.Data = outline;
@@ -767,6 +843,7 @@ internal partial class IslandPlayerWindow : Window
         }
         Host.Effect = null;
         UpdateProgressRimShape();
+        UpdateRings();
     }
 
     // Размытие по скорости растяжения даёт ощущение движения, но это пиксельный эффект на каждом кадре,
@@ -1318,6 +1395,7 @@ internal partial class IslandPlayerWindow : Window
 
         _progressRatio = snapshot.ProgressRatio;
         ApplyProgressRimDash();
+        ApplyRingProgress();
 
         // Пока остров не раскрыт, элементы плеера не видны: обновлять их на каждый снимок значит зря гонять раскладку.
         if (_state != State.Open || _isSeeking) return;

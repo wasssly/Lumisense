@@ -1312,6 +1312,7 @@ public static class LocalizationService
         ["обычный"] = "plain",
         ["Пресет оформления"] = "Appearance preset",
         ["Свои настройки"] = "Custom settings",
+        ["Кольцо прогресса рядом с островом"] = "Progress ring beside the island",
         ["Полоса прогресса трека вокруг свёрнутого острова"] = "Track progress line around the collapsed island",
         ["Переименовать…"] = "Rename…",
         ["Переименовать папку"] = "Rename folder",

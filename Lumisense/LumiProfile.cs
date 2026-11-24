@@ -433,6 +433,7 @@ public static class LumiProfileIO
         target.IslandNotchHoverOpen = source.IslandNotchHoverOpen;
         if (source.IslandBackdrop is "None" or "Glow" or "Matrix" or "Wave") target.IslandBackdrop = source.IslandBackdrop;
         if (source.IslandSeekStyle is "Plain" or "Segments") target.IslandSeekStyle = source.IslandSeekStyle;
+        if (source.IslandRingSide is "Off" or "Left" or "Right") target.IslandRingSide = source.IslandRingSide;
         target.IslandLyricsShimmer = source.IslandLyricsShimmer;
         target.IslandWordRoll = source.IslandWordRoll;
         target.IslandLyricsWordRoll = source.IslandLyricsWordRoll;

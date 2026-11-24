@@ -433,6 +433,28 @@
             </Canvas>
         </Grid>
 
+        <!-- Отдельные кольца прогресса рядом со свёрнутым островом (IslandPlayerWindow.UpdateRings). Вне Host: он обрезается по контуру острова. -->
+        <Canvas x:Name="RingLayer" IsHitTestVisible="False" Visibility="Collapsed" Opacity="0">
+            <Grid x:Name="RingLeft" Width="34" Height="34" Visibility="Collapsed">
+                <Ellipse Fill="#FF000000" Stroke="#40FFFFFF" StrokeThickness="1.5" />
+                <Ellipse Margin="5" Stroke="#33FFFFFF" StrokeThickness="3" />
+                <Ellipse x:Name="RingLeftArc" Margin="5" Stroke="White" StrokeThickness="3" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
+                    <Ellipse.RenderTransform>
+                        <RotateTransform Angle="-90" />
+                    </Ellipse.RenderTransform>
+                </Ellipse>
+            </Grid>
+            <Grid x:Name="RingRight" Width="34" Height="34" Visibility="Collapsed">
+                <Ellipse Fill="#FF000000" Stroke="#40FFFFFF" StrokeThickness="1.5" />
+                <Ellipse Margin="5" Stroke="#33FFFFFF" StrokeThickness="3" />
+                <Ellipse x:Name="RingRightArc" Margin="5" Stroke="White" StrokeThickness="3" StrokeDashCap="Round" RenderTransformOrigin="0.5,0.5">
+                    <Ellipse.RenderTransform>
+                        <RotateTransform Angle="-90" />
+                    </Ellipse.RenderTransform>
+                </Ellipse>
+            </Grid>
+        </Canvas>
+
         <!-- Полоса прогресса трека по контуру свёрнутого острова (IslandPlayerWindow.UpdateProgressRimShape). Вне Host: его обрезка
              по контуру съела бы внешнюю половину линии. -->
         <Path x:Name="ProgressRim" StrokeThickness="2.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeDashCap="Round"

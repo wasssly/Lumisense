@@ -339,6 +339,9 @@ internal static class SettingsIntegrityService
         settings.IslandBackdrop = Allowed(settings.IslandBackdrop, defaults.IslandBackdrop, "None", "Glow", "Matrix", "Wave");
         settings.IslandShape = Allowed(settings.IslandShape, defaults.IslandShape, "Capsule", "Circle", "Notch");
         settings.IslandSeekStyle = Allowed(settings.IslandSeekStyle, defaults.IslandSeekStyle, "Plain", "Segments");
+        if (settings.IslandRingSide == "Both")
+            settings.IslandRingSide = "Right";
+        settings.IslandRingSide = Allowed(settings.IslandRingSide, defaults.IslandRingSide, "Off", "Left", "Right");
         if (settings.IslandLeftButton == settings.IslandRightButton)
             settings.IslandRightButton = settings.IslandLeftButton == defaults.IslandRightButton ? defaults.IslandLeftButton : defaults.IslandRightButton;
         settings.MiniPlayerSizePreset = Allowed(settings.MiniPlayerSizePreset, defaults.MiniPlayerSizePreset,

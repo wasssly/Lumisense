@@ -297,6 +297,7 @@ public partial class SettingsWindow : FluentWindow
         // чекбокс всегда показывает то, что реально настроено, а не могло устареть.
         LaunchOnStartupCheckBox.IsChecked = StartupManager.IsEnabled();
         StartHiddenInTrayCheckBox.IsChecked = _settings.StartHiddenInTray;
+        SelectComboByTag(IslandRingSideCombo, _settings.IslandRingSide);
 
         MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
@@ -1748,6 +1749,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Подсветка слов в тексте песни (бета)", "Остров", "Island", IslandReadAlongCheckBox, "read along слова подсветка пилюля текст песни караоке");
         Add("Размытие движения при растяжении", "Остров", "Island", IslandMotionBlurCheckBox, "motion blur растяжение");
         Add("Действия контекстного меню острова", "Остров", "Island", IslandMenuPlayPauseCheckBox, "контекстное меню пауза следующий предыдущий скрыть развернуть now playing скорость тон совместимость настройки context menu actions");
+        Add("Кольцо прогресса рядом с островом", "Остров", "Island", IslandRingSideCombo, "кольцо круг прогресс слева справа ring progress side");
         Add("Масштаб интерфейса", "Оформление", "Appearance", InterfaceScaleSlider, "размер текст scale interface size");
         Add("Все анимации", "Оформление", "Appearance", AnimationsMasterCheckBox, "движение анимация слайдеры переходы обложка текст песни полоса мини-плеер бегущая строка остров меню трея сердечко индикаторы загрузки motion animations reduce");
         Add("Now Playing: фон и переходы", "Оформление", "Appearance", AnimationNowPlayingCheckBox, "анимация фон now playing animation background");
@@ -3899,6 +3901,7 @@ public partial class SettingsWindow : FluentWindow
         combo.SelectedItem = combo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
             .FirstOrDefault(item => item.Tag as string == tag) ?? combo.Items[0];
 
+        _settings.IslandRingSide = SelectedTag(IslandRingSideCombo, "Off");
     private static string SelectedTag(System.Windows.Controls.ComboBox combo, string fallback) =>
         combo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag } ? tag : fallback;
 

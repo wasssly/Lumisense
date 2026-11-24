@@ -94,6 +94,7 @@ public sealed class LumiProfileSettingsCoverageTests
             case nameof(AppSettings.IslandEqualizerStyle): return current as string == "Bars" ? "Dots" : "Bars";
             case nameof(AppSettings.IslandBackdrop): return current as string == "None" ? "Wave" : "None";
             case nameof(AppSettings.IslandSeekStyle): return current as string == "Plain" ? "Segments" : "Plain";
+            case nameof(AppSettings.IslandRingSide): return current as string == "Off" ? "Right" : "Off";
             case nameof(AppSettings.LyricsManualSearchSource): return current as string == "All" ? "Kugou" : "All";
             case nameof(AppSettings.ModernControlSlots): return new List<string> { "Stop", "", "", "Mini" };
             case nameof(AppSettings.MainWindowLayout): return current as string == "Modern" ? "Glass" : "Modern";

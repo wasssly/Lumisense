@@ -227,6 +227,8 @@ public class AppSettings
     public bool IslandAccentRim { get; set; } = true;
     // Полоса прогресса трека по контуру свёрнутого острова.
     public bool IslandProgressRim { get; set; } = true;
+    // Отдельное кольцо прогресса рядом со свёрнутым островом: Off, Left или Right (слева пройденное, справа оставшееся).
+    public string IslandRingSide { get; set; } = "Off";
     public bool IslandBlurTransitions { get; set; }
     public int IslandHideSeconds { get; set; } = 10;
     // Через сколько секунд после ухода курсора раскрытый остров сворачивается (1–15).

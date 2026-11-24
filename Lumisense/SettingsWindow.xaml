@@ -6988,6 +6988,21 @@
                                                 Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                             </Grid>
                                         </Border>
+                                        <Border Style="{StaticResource SettingsRowStyle}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="Кольцо прогресса рядом с островом" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                <ComboBox x:Name="IslandRingSideCombo" AutomationProperties.Name="Кольцо прогресса рядом с островом" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                    <ComboBoxItem Content="Выкл." Tag="Off" />
+                                                    <ComboBoxItem Content="Слева" Tag="Left" />
+                                                    <ComboBoxItem Content="Справа" Tag="Right" />
+                                                </ComboBox>
+                                            </Grid>
+                                        </Border>
                                     </StackPanel>
                                 </Border>
                                 <TextBlock Text="Раскрытый вид" Style="{StaticResource SettingsGroupTitleStyle}" />
