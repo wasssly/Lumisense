@@ -14,7 +14,8 @@ public static class ShuffleBagSelector
         IList<string> bag,
         IEnumerable<string> activeTracks,
         string? excludePath,
-        Random random)
+        Random random,
+        Func<string, string>? groupOf = null)
     {
         ArgumentNullException.ThrowIfNull(bag);
         ArgumentNullException.ThrowIfNull(activeTracks);
@@ -59,10 +60,29 @@ public static class ShuffleBagSelector
             }
         }
 
-        string next = bag[0];
-        bag.RemoveAt(0);
+        // Каждый трек круга выпадает ровно один раз, но порядок внутри колоды можно слегка подправить: берём ближайший к началу
+        // трек из другой группы (папки), чтобы альбом не шёл подряд сам по себе.
+        int pick = 0;
+        if (groupOf is not null && excludePath is not null)
+        {
+            string previousGroup = groupOf(excludePath);
+            int scan = Math.Min(bag.Count, SpacingLookahead);
+            for (int i = 0; i < scan; i++)
+            {
+                if (!string.Equals(groupOf(bag[i]), previousGroup, StringComparison.OrdinalIgnoreCase))
+                {
+                    pick = i;
+                    break;
+                }
+            }
+        }
+
+        string next = bag[pick];
+        bag.RemoveAt(pick);
         return next;
     }
+
+    private const int SpacingLookahead = 8;
 
     private static void ShuffleInPlace(IList<string> list, Random random)
     {

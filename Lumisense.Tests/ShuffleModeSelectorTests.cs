@@ -118,4 +118,61 @@ public sealed class ShuffleModeSelectorTests
         Assert.Equal(2, visited.Distinct().Count());
         Assert.DoesNotContain(@"C:\m\c", visited);
     }
+
+    [Theory]
+    [InlineData(ShuffleModes.Random)]
+    [InlineData(ShuffleModes.Favorites)]
+    [InlineData(ShuffleModes.Rare)]
+    public void WeightedModes_DoNotReturnRecentlyPlayedTracks(string mode)
+    {
+        string[] many = Enumerable.Range(0, 40).Select(i => $@"C:\m\f{i % 8}\{i}.mp3").ToArray();
+        var random = new Random(21);
+        var recent = new List<string>();
+        for (int i = 0; i < 400; i++)
+        {
+            string? previous = recent.Count > 0 ? recent[^1] : null;
+            string next = ShuffleModeSelector.TakeNext(mode, new List<string>(), many, previous, random, recent: recent)!;
+            // Hard window = 40 / 5 = 8 последних треков.
+            Assert.DoesNotContain(next, recent.TakeLast(8));
+            recent.Add(next);
+        }
+    }
+
+    [Fact]
+    public void Random_AvoidsTheFolderOfThePreviousTrack()
+    {
+        var random = new Random(8);
+        int sameFolder = 0;
+        for (int i = 0; i < 2000; i++)
+        {
+            string next = ShuffleModeSelector.TakeNext(ShuffleModes.Random, new List<string>(), Tracks, Tracks[0], random,
+                recent: new[] { Tracks[0] })!;
+            if (next.StartsWith(@"C:\m\a\", StringComparison.Ordinal)) sameFolder++;
+        }
+
+        // Без штрафа две оставшиеся из папки a выпадали бы в 40% случаев.
+        Assert.True(sameFolder < 400, $"sameFolder={sameFolder}");
+    }
+
+    [Fact]
+    public void Deck_SkipsToAnotherFolderWhenTheBagStartsWithTheSameOne()
+    {
+        var random = new Random(2);
+        var bag = new List<string> { Tracks[1], Tracks[3], Tracks[2] };
+        string next = ShuffleModeSelector.TakeNext(ShuffleModes.Deck, bag, Tracks, Tracks[0], random)!;
+        Assert.Equal(Tracks[3], next);
+        Assert.Equal(new[] { Tracks[1], Tracks[2] }, bag);
+    }
+
+    [Fact]
+    public void Rare_NeverDropsAHeavilyPlayedTrackToZero()
+    {
+        var random = new Random(4);
+        string heavy = Tracks[0];
+        bool seen = false;
+        for (int i = 0; i < 4000 && !seen; i++)
+            seen = ShuffleModeSelector.TakeNext(ShuffleModes.Rare, new List<string>(), Tracks, null, random, playCount: _ => 10_000)! == heavy;
+
+        Assert.True(seen);
+    }
 }

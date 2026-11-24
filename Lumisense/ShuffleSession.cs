@@ -5,6 +5,7 @@ namespace Lumisense;
 internal sealed class ShuffleSession
 {
     private const int MaxPersistedHistory = 512;
+    private const int RecentContextSize = 40;
 
     private readonly Random _random;
     private readonly List<string> _history = new();
@@ -103,9 +104,10 @@ internal sealed class ShuffleSession
     public bool HasPlayedAll(List<string> activeTracks) =>
         IsEnabled && activeTracks.Count > 0 && activeTracks.All(_playedInRound.Contains);
 
-    public string GetRandom(List<string> activeTracks, string? excludePath)
+    public string GetRandom(List<string> activeTracks, string? excludePath, bool atStart = false)
     {
-        return ShuffleModeSelector.TakeNext(ModeProvider(), _bag, activeTracks, excludePath, _random, PlayCountProvider, FavoriteProvider)
+        return ShuffleModeSelector.TakeNext(
+                ModeProvider(), _bag, activeTracks, excludePath, _random, PlayCountProvider, FavoriteProvider, RecentContext(atStart))
             ?? throw new InvalidOperationException("Не удалось выбрать следующий трек из пустого плейлиста.");
     }
 
@@ -120,7 +122,20 @@ internal sealed class ShuffleSession
     }
 
     // Как выбирается следующий трек, определяет режим из настроек (ShuffleModes); во всех режимах трек не повторяется подряд.
-    public string GetNext(List<string> activeTracks, string? excludePath) => GetRandom(activeTracks, excludePath);
+    public string GetNext(List<string> activeTracks, string? excludePath, bool atStart = false) =>
+        GetRandom(activeTracks, excludePath, atStart);
+
+    // Последние сыгранные и уже спланированные треки по ту сторону истории, куда добавляется новый (от старых к новым):
+    // по ним режимы не возвращают недавние треки и папки. История переживает перезапуск, так что память тоже.
+    private IReadOnlyList<string> RecentContext(bool atStart)
+    {
+        int take = Math.Min(_history.Count, RecentContextSize);
+        if (take == 0) return Array.Empty<string>();
+
+        return atStart
+            ? _history.Take(take).Reverse().ToList()
+            : _history.Skip(_history.Count - take).ToList();
+    }
 
     // Двигается по истории шафла на shift (-1 назад, +1 вперёд); null, если в эту сторону больше некуда. Треки, удалённые из
     // плейлиста, пропускаются вместе с «хвостом» истории после них.
@@ -188,7 +203,7 @@ internal sealed class ShuffleSession
 
         while (found < reach)
         {
-            InsertAtHistoryStart(GetNext(activeTracks, _history[0]));
+            InsertAtHistoryStart(GetNext(activeTracks, _history[0], atStart: true));
             found++;
             if (_historyIndex >= 0) _historyIndex++;
         }
@@ -225,7 +240,7 @@ internal sealed class ShuffleSession
     // в истории шафла ещё нет ничего раньше текущего трека.
     public string PrependNew(List<string> activeTracks, string? currentPath)
     {
-        var prev = GetNext(activeTracks, currentPath);
+        var prev = GetNext(activeTracks, currentPath, atStart: true);
 
         if (_history.Count == 0 && currentPath != null)
             StartHistoryWith(currentPath);
