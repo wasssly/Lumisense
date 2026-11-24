@@ -112,6 +112,7 @@
                 <TextBlock x:Name="CompactTitle" Foreground="White" FontSize="12.5" FontWeight="SemiBold"
                            Margin="41,0" TextAlignment="Center" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
                            IsHitTestVisible="False" />
+                <local:WordRollLayer x:Name="CompactTitleRoll" Margin="41,0" VerticalAlignment="Center" />
                 <local:IslandEqualizer x:Name="IslandBars" Width="21" Height="16" HorizontalAlignment="Right"
                                        VerticalAlignment="Center" Margin="0,0,13,0" IsHitTestVisible="False" />
                 <local:SvgPathIcon x:Name="DeviceIcon" Icon="IconAudioWave" Size="16" Foreground="White"
@@ -128,7 +129,10 @@
 
             <Grid x:Name="ToastView" Width="340" Height="68" HorizontalAlignment="Center" VerticalAlignment="Top" Opacity="0" Visibility="Collapsed">
                 <StackPanel Margin="68,0,26,0" VerticalAlignment="Center" IsHitTestVisible="False">
-                    <TextBlock x:Name="ToastTitle" Foreground="White" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <Grid>
+                        <TextBlock x:Name="ToastTitle" Foreground="White" FontSize="14" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <local:WordRollLayer x:Name="ToastTitleRoll" />
+                    </Grid>
                     <TextBlock x:Name="ToastArtist" Foreground="#99FFFFFF" FontSize="12" Margin="0,1,0,0" TextTrimming="CharacterEllipsis" />
                 </StackPanel>
             </Grid>
@@ -279,8 +283,12 @@
                 <local:IslandEqualizer x:Name="OpenBars" Bars="8" Width="38" Height="26" HorizontalAlignment="Right" VerticalAlignment="Top"
                                        Margin="0,25,30,0" IsHitTestVisible="False" />
                 <StackPanel x:Name="OpenTitleStack" Margin="98,20,74,0" Height="64" VerticalAlignment="Top" IsHitTestVisible="False">
-                    <TextBlock x:Name="OpenTitle" Foreground="White" FontSize="16" FontWeight="SemiBold"
-                               TextTrimming="CharacterEllipsis" Margin="0,11,0,0" />
+                    <!-- Название: TextBlock задаёт размер и шрифт и показывает длинные названия, а слой Word roll катает буквы коротких. -->
+                    <Grid Margin="0,11,0,0">
+                        <TextBlock x:Name="OpenTitle" Foreground="White" FontSize="16" FontWeight="SemiBold"
+                                   TextTrimming="CharacterEllipsis" />
+                        <local:WordRollLayer x:Name="OpenTitleRoll" />
+                    </Grid>
                     <TextBlock x:Name="OpenArtist" Foreground="#99FFFFFF" FontSize="13" Margin="0,2,0,0"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
@@ -295,7 +303,14 @@
                         <StackPanel x:Name="LyricsLines" VerticalAlignment="Center">
                             <Grid Height="40"><TextBlock x:Name="LyricLine0" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
                             <Grid Height="40"><TextBlock x:Name="LyricLine1" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
-                            <Grid Height="40"><TextBlock x:Name="LyricLine2" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
+                            <Grid x:Name="LyricRow2" Height="40">
+                                <!-- Слой пилюли получает тот же масштаб, что и строка (преобразование общее), поэтому пилюля сидит на словах и во время сдвига. -->
+                                <Grid x:Name="ReadAlongHost" IsHitTestVisible="False" RenderTransformOrigin="0.5,0.5">
+                                    <Border x:Name="ReadAlongPill" HorizontalAlignment="Left" VerticalAlignment="Top" Height="0" Opacity="0"
+                                            Background="White" />
+                                </Grid>
+                                <TextBlock x:Name="LyricLine2" Style="{StaticResource IslandLyricLineStyle}" />
+                            </Grid>
                             <Grid Height="40"><TextBlock x:Name="LyricLine3" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
                             <Grid Height="40"><TextBlock x:Name="LyricLine4" Style="{StaticResource IslandLyricLineStyle}" /></Grid>
                         </StackPanel>

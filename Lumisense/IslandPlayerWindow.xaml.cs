@@ -62,6 +62,9 @@ internal partial class IslandPlayerWindow : Window
     private static readonly CoverSpot OpenCover = new(20, 20, 64);
     private static readonly TimeSpan SettingsOpenDelay = TimeSpan.FromMilliseconds(280);
     private static readonly TimeSpan ToastDuration = TimeSpan.FromSeconds(3.2);
+
+    // Со строкой песни в свёрнутом острове карточка уступает место тексту раньше.
+    private static readonly TimeSpan ToastDurationWithLyrics = TimeSpan.FromSeconds(2.2);
     private static readonly TimeSpan CoverSlide = TimeSpan.FromMilliseconds(460);
     private static readonly TimeSpan FadeInDelay = TimeSpan.FromMilliseconds(70);
     private static readonly double[] LyricOpacity = [0.25, 0.5, 1, 0.5, 0.25];
@@ -143,6 +146,7 @@ internal partial class IslandPlayerWindow : Window
             line.RenderTransformOrigin = new Point(0.5, 0.5);
             line.RenderTransform = new ScaleTransform();
         }
+        ReadAlongHost.RenderTransform = (ScaleTransform)LyricLine2.RenderTransform;
         ApplyLyricStyles();
         // Текст при смене трека гаснет и появляется со сдвигом; сдвиг лежит на самом TextBlock.
         foreach (var block in new[] { CompactTitle, ToastTitle, ToastArtist, OpenTitle, OpenArtist })
@@ -347,7 +351,7 @@ internal partial class IslandPlayerWindow : Window
         OpenBars.Visibility = Settings.IslandShowEqualizer ? Visibility.Visible : Visibility.Collapsed;
         IslandBars.Visibility = ShowBarsInCompact ? Visibility.Visible : Visibility.Collapsed;
         DeviceIcon.Visibility = ShowDeviceInCompact ? Visibility.Visible : Visibility.Collapsed;
-        CompactTitle.Visibility = IsCircle ? Visibility.Collapsed : Visibility.Visible;
+        CompactTitle.Visibility = CompactTitleRoll.Visibility = IsCircle ? Visibility.Collapsed : Visibility.Visible;
         IslandBars.Dots = OpenBars.Dots = Settings.IslandEqualizerStyle == "Dots";
         IslandBackdropLayer.Mode = Settings.IslandBackdrop switch
         {
@@ -545,13 +549,19 @@ internal partial class IslandPlayerWindow : Window
         _toastTimer.Stop();
         _collapseTimer.Stop();
         _volumeTimer.Stop();
-        if (next == State.Toast) _toastTimer.Start();
+        if (next == State.Toast) StartToastTimer();
         else if ((next == State.Open || next == State.Menu) && !_hovered && Settings.IslandAutoCollapse && !_lyricsShown) StartCollapseTimer();
         UpdateTargets();
     }
 
     // Кеш в битмап на время анимации не используется: при его снятии текст перерисовывался с другим сглаживанием и «дёргался».
     // Время сворачивания берётся из настроек при каждом запуске, чтобы изменение действовало сразу.
+    private void StartToastTimer()
+    {
+        _toastTimer.Interval = _compactLyricsOn ? ToastDurationWithLyrics : ToastDuration;
+        _toastTimer.Start();
+    }
+
     private void StartCollapseTimer()
     {
         _collapseTimer.Interval = TimeSpan.FromSeconds(Math.Clamp(Settings.IslandCollapseSeconds, 1, 15));
@@ -1122,13 +1132,15 @@ internal partial class IslandPlayerWindow : Window
         {
             _lyrics = LyricsDocument.Empty;
             _lyricsLine = int.MinValue;
+            ClearReadAlong();
         }
 
         string compactText = CompactText(_host.CurrentPlaybackSeconds);
-        SwapText(CompactTitle, compactText, live && _state == State.Compact, default, () => FitCompactWidth(compactText));
-        SwapText(ToastTitle, title, live && _state == State.Toast, default);
+        RollText(CompactTitle, CompactTitleRoll, compactText, live && _state == State.Compact, Settings.IslandWordRoll, default,
+            () => FitCompactWidth(compactText), CompactRollWidth);
+        RollText(ToastTitle, ToastTitleRoll, title, live && _state == State.Toast, Settings.IslandWordRoll, default, null, ToastTitleWidth);
         SwapText(ToastArtist, artist, live && _state == State.Toast, TimeSpan.FromMilliseconds(45));
-        SwapText(OpenTitle, title, live && _state == State.Open, default);
+        RollText(OpenTitle, OpenTitleRoll, title, live && _state == State.Open, Settings.IslandWordRoll, default, null, OpenTitle.ActualWidth);
         SwapText(OpenArtist, artist, live && _state == State.Open, TimeSpan.FromMilliseconds(45));
 
         if (!ReferenceEquals(art, _shownArt) || _coverLayer is null)
@@ -1147,16 +1159,69 @@ internal partial class IslandPlayerWindow : Window
             || (Settings.IslandQuietInGames && _host.EffectiveGameOverlayCompatibilityEnabled)) return;
 
         // Новый трек: свёрнутый остров на пару секунд раскрывается в карточку, раскрытый плеер остаётся как есть.
-        if (_state == State.Compact) SetState(State.Toast);
+        if (_state == State.Compact)
+        {
+            SetState(State.Toast);
+            RollIn(ToastTitle, ToastTitleRoll, title, live && Settings.IslandWordRoll, ToastTitleWidth);
+        }
         else if (_state == State.Toast)
         {
             _toastTimer.Stop();
-            _toastTimer.Start();
+            StartToastTimer();
         }
     }
 
     // Старый текст уходит вверх и гаснет, новый выезжает снизу; замена происходит, пока текст невидим, поэтому без скачка раскладки.
     // applied вызывается, когда новый текст уже стоит на месте (сразу или после исчезновения старого).
+    // Ширина строки названия в карточке: до первой раскладки ActualWidth у скрытой карточки равна нулю.
+    private double ToastTitleWidth => Math.Max(0, ToastView.Width - 94);
+
+    // Карточка только что раскрылась: название выезжает по буквам. Текст в TextBlock уже заменён, пока карточка была скрыта.
+    private static void RollIn(TextBlock block, WordRollLayer layer, string text, bool enabled, double availableWidth)
+    {
+        string? display = enabled ? WordRollLayer.Fit(text, block, availableWidth) : null;
+        if (display is null) return;
+
+        block.BeginAnimation(OpacityProperty, null);
+        block.Text = text;
+        block.Opacity = 0;
+        layer.Show(text, display, block, null, animate: true);
+    }
+
+    // Word roll: текст катается по буквам поверх TextBlock (он остаётся источником шрифта и запасным вариантом). Слишком длинный текст
+    // обрезается многоточием по ширине строки. Если слой выключен в настройках или анимации нет, работает обычный SwapText.
+    private void RollText(TextBlock block, WordRollLayer layer, string text, bool animate, bool rollEnabled, TimeSpan delay, Action? applied,
+        double availableWidth, double outMs = 120, double inMs = 260)
+    {
+        bool rolled = layer.Active;
+        string? display = animate && rollEnabled ? WordRollLayer.Fit(text, block, availableWidth) : null;
+        if (display is null)
+        {
+            layer.Clear();
+            block.BeginAnimation(OpacityProperty, null);
+            block.Opacity = 1;
+            SwapText(block, text, animate, delay, applied, outMs, inMs);
+            return;
+        }
+
+        if ((rolled ? layer.FullText : block.Text) == text)
+        {
+            applied?.Invoke();
+            return;
+        }
+
+        _pendingText.Remove(block);
+        string previous = block.Text;
+        block.Text = text;
+        block.BeginAnimation(OpacityProperty, null);
+        block.Opacity = 0;
+        string? previousDisplay = rolled || string.IsNullOrEmpty(previous)
+            ? null
+            : WordRollLayer.Fit(previous, block, availableWidth) ?? previous;
+        layer.Show(text, display, block, previousDisplay, animate: true);
+        applied?.Invoke();
+    }
+
     private void SwapText(TextBlock block, string text, bool animate, TimeSpan delay, Action? applied = null, double outMs = 120, double inMs = 260)
     {
         var move = (TranslateTransform)block.RenderTransform;
@@ -1258,7 +1323,11 @@ internal partial class IslandPlayerWindow : Window
         if (_state != State.Open || _isSeeking) return;
 
         _lastRatio = snapshot.ProgressRatio;
-        if (_lyricsShown) UpdateLyricLine(snapshot.PositionSeconds);
+        if (_lyricsShown)
+        {
+            UpdateLyricLine(snapshot.PositionSeconds);
+            UpdateReadAlong(snapshot.PositionSeconds);
+        }
         SeekSegments.SetDuration(snapshot.DurationSeconds);
         ElapsedText.Text = FormatTime(snapshot.PositionSeconds);
         RemainingText.Text = "–" + FormatTime(Math.Max(0, snapshot.DurationSeconds - snapshot.PositionSeconds));
@@ -1860,6 +1929,7 @@ internal partial class IslandPlayerWindow : Window
     private void ShowLyricsStatus(string text, bool loading = false)
     {
         LyricsLines.Visibility = LyricsScroll.Visibility = Visibility.Collapsed;
+        ClearReadAlong();
         bool shimmer = loading && Settings.IslandLyricsShimmer;
         LyricsShimmer.Visibility = shimmer ? Visibility.Visible : Visibility.Collapsed;
         LyricsStatus.Visibility = shimmer ? Visibility.Collapsed : Visibility.Visible;
@@ -1878,6 +1948,7 @@ internal partial class IslandPlayerWindow : Window
 
         _lyrics = document;
         _lyricsLine = int.MinValue;
+        ClearReadAlong();
         if (synced && Settings.IslandSeekStyle == "Segments") SeekSegments.SetLines(document.Lines.Select(line => line.Time.TotalSeconds).ToArray());
         LyricsStatus.Visibility = LyricsShimmer.Visibility = Visibility.Collapsed;
         LyricsLines.Visibility = synced ? Visibility.Visible : Visibility.Collapsed;
@@ -1897,6 +1968,9 @@ internal partial class IslandPlayerWindow : Window
     private bool _compactLyricsOn;
     private double? _compactLyricsWidth;
     private const double CompactTextPadding = 41 * 2 + 14, CompactLyricsMaxWidth = 600;
+
+    // Ширина, в которую должен влезть катающийся текст свёрнутого острова: со строкой песни остров расширяется до предела.
+    private double CompactRollWidth => _compactLyricsOn ? CompactLyricsMaxWidth - CompactTextPadding : CompactTitle.ActualWidth;
 
     // Строка по текущему времени, а в паузах между строками и без текста — название трека.
     private string CompactText(double positionSeconds)
@@ -1918,7 +1992,9 @@ internal partial class IslandPlayerWindow : Window
         string text = CompactText(positionSeconds);
         string shown = _pendingText.TryGetValue(CompactTitle, out string? pending) ? pending : CompactTitle.Text;
         // Строка сменяется мягко: старая гаснет, остров плавно меняет ширину, новая проявляется уже в нужной ширине.
-        if (shown != text) SwapText(CompactTitle, text, animate && !ReduceMotion, default, () => FitCompactWidth(text), outMs: 150, inMs: 340);
+        if (shown != text)
+            RollText(CompactTitle, CompactTitleRoll, text, animate && !ReduceMotion, Settings.IslandLyricsWordRoll, default,
+                () => FitCompactWidth(text), CompactRollWidth, outMs: 150, inMs: 340);
         else FitCompactWidth(text);
     }
 
@@ -2107,6 +2183,7 @@ internal partial class IslandPlayerWindow : Window
 
         ApplyLyricStyles();
         if (previous != int.MinValue && !ReduceMotion) AnimateLyricSlide(active - previous);
+        SetupReadAlong(active);
     }
 
     // Строки стоят на месте, меняется только текст в них: сдвиг на строку возвращает прежнюю картинку, и она плавно едет к новой.
