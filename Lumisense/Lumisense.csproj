@@ -27,7 +27,8 @@
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <PublishReadyToRun>false</PublishReadyToRun>
+    <PublishReadyToRun>true</PublishReadyToRun>
+    <TieredPGO>false</TieredPGO>
 
   </PropertyGroup>
 
@@ -44,7 +45,7 @@
          SoundTouch.Net напрямую, потому что SoundTouch.Net.NAudioSupport.Core собран для ABI NAudio 2.x. -->
     <PackageReference Include="NAudio" Version="3.3.0" />
     <PackageReference Include="SoundTouch.Net" Version="2.3.2" />
-    <PackageReference Include="z440.atl.core" Version="7.21.0" />
+    <PackageReference Include="z440.atl.core" Version="7.22.0" />
     <PackageReference Include="Lyricify.Lyrics.Helper" Version="0.2.1" />
     <PackageReference Include="SharpVectors.Wpf" Version="1.8.6" />
     <!-- Локальный Discord IPC / Rich Presence; фиксированная версия делает восстановление сборки воспроизводимым. -->

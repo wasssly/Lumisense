@@ -1,0 +1,9 @@
+#!/bin/sh
+# Сборка перед каждым коммитом: коммит с неработающей сборкой не создаётся.
+# Включение: git config core.hooksPath .githooks
+# Проверка уже сделанных коммитов: git rebase -i --exec "dotnet build Lumisense/Lumisense.csproj -c Release --nologo -v q" origin/main
+echo "pre-commit: dotnet build (Release)..."
+dotnet build Lumisense/Lumisense.csproj --configuration Release --nologo --verbosity quiet || {
+  echo "pre-commit: сборка не прошла, коммит отменён."
+  exit 1
+}
