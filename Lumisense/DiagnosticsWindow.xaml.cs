@@ -15,7 +15,9 @@ internal partial class DiagnosticsWindow : FluentWindow
 
     private sealed record RunOutcome(IReadOnlyList<ResourceSample> Samples, int InputDetections, string? Failure);
 
+    private readonly AppSettings _settings;
     private readonly IDiagnosticsHost _host;
+    private bool _isInitializing = true;
     private readonly DispatcherTimer _watchTimer = new() { Interval = TimeSpan.FromSeconds(5) };
     private CancellationTokenSource? _cts;
     private IReadOnlyList<ResourceSample> _lastSamples = Array.Empty<ResourceSample>();
@@ -23,8 +25,11 @@ internal partial class DiagnosticsWindow : FluentWindow
 
     public DiagnosticsWindow(AppSettings settings, IDiagnosticsHost host)
     {
+        _settings = settings;
         _host = host;
         InitializeComponent();
+        ResourceWatchdogCheckBox.IsChecked = settings.ResourceWatchdogEnabled;
+        _isInitializing = false;
         AutomationNames.Set(ScenarioCombo, "Сценарий проверки");
         AutomationNames.Set(LeakDurationCombo, "Длительность проверки утечек");
         AutomationNames.Set(RunProgress, "Ход проверки");
@@ -63,7 +68,7 @@ internal partial class DiagnosticsWindow : FluentWindow
         ResourceWatchdog? watchdog = ResourceWatchdog.Current;
         if (watchdog is null)
         {
-            WatchText.Text = string.Empty;
+            WatchText.Text = LocalizationService.Translate("Наблюдение выключено: измерения не собираются.");
             return;
         }
 
@@ -93,6 +98,17 @@ internal partial class DiagnosticsWindow : FluentWindow
         }
 
         WatchText.Text = string.Join(Environment.NewLine, lines);
+    }
+
+    private void ResourceWatchdogCheckBox_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.ResourceWatchdogEnabled = ResourceWatchdogCheckBox.IsChecked == true;
+        if (_settings.ResourceWatchdogEnabled) ResourceWatchdog.Start();
+        else ResourceWatchdog.Stop();
+        RefreshWatch();
+        BackgroundTask.FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private async void QuickButton_Click(object sender, RoutedEventArgs e)

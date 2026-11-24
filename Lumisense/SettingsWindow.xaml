@@ -8036,9 +8036,6 @@
                             </Grid>
                         </ui:Button>
 
-                        <CheckBox x:Name="ResourceWatchdogCheckBox" Margin="0,10,0,0"
-                                  Content="Фоновое наблюдение за ресурсами (раз в минуту, без сети)"
-                                  Checked="ResourceWatchdogCheckBox_Changed" Unchecked="ResourceWatchdogCheckBox_Changed" />
 
                         <ui:Button x:Name="OpenRepositoryButton" Appearance="Secondary"
                                    HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"

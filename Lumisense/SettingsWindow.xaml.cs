@@ -392,7 +392,6 @@ public partial class SettingsWindow : FluentWindow
         DiscordRichPresenceShowCoverArtCheckBox.IsChecked = _settings.DiscordRichPresenceShowCoverArt;
         DiscordRichPresenceShowButtonsCheckBox.IsChecked = _settings.DiscordRichPresenceShowButtons;
         DiscordRichPresenceShowDownloadButtonCheckBox.IsChecked = _settings.DiscordRichPresenceShowDownloadButton;
-        ResourceWatchdogCheckBox.IsChecked = _settings.ResourceWatchdogEnabled;
         UpdateDiscordRichPresenceConnectionStatus();
         bool carousel = _owner.IsAlbumArtTransitionEnabled && _settings.AlbumArtTransitionStyle == "Carousel";
         AlbumArtTransitionStyleCarouselRadio.IsChecked = carousel;
@@ -1640,7 +1639,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Вид кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonStyleRadioGroup, "акцентный фон как у остальных кнопок play pause accent");
         Add("Меню «Ещё» (три точки)", "Окно и запуск", "Window", MoreMenuStyleRadioGroup, "три точки очередь текст песни меню пружина анимация dynamic menu more");
         Add("Форма кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonShapeRadioGroup, "квадратный круглый круг квадрат по умолчанию форма кнопки play pause square round circle shape");
-        Add("Диагностика производительности", "О плеере", "About", DiagnosticsButton, "проверка нагрузка процессор память утечки тест diagnostics performance cpu memory leak");
+        Add("Диагностика производительности", "О плеере", "About", DiagnosticsButton, "проверка нагрузка процессор память утечки тест фоновое наблюдение за ресурсами watchdog diagnostics performance cpu memory leak");
         Add("Автоматически переводить журнал изменений на английский", "Оформление", "Appearance", ChangelogAutoTranslateCheckBox, "чейнджлог changelog перевод английский google translate история изменений патчноуты");
         Add("Показывать названия рядом с иконками", "Оформление", "Appearance", NavShowLabelsCheckBox, "подписи названия иконки навигация labels icons");
         Add("Сохранить пресет текста песни", "Тексты песен", "Lyrics", LyricsPresetSaveButton, "пресет сохранить удалить preset save delete lyrics style");
@@ -1756,7 +1755,6 @@ public partial class SettingsWindow : FluentWindow
         Add("Показывать дополнительные кнопки по бокам от кнопок управления", "Окно и запуск", "Window", ModernShowSideButtonsCheckBox, "кнопки слоты управление extra buttons slots");
         Add("Подложка у кнопок управления (вид «Стекло»)", "Окно и запуск", "Window", GlassControlsBackgroundCheckBox, "стекло glass подложка controls background");
         Add("Выравнивание обложки в виде «Компакт»", "Окно и запуск", "Window", CompactCoverAlignmentCombo, "компакт обложка выравнивание compact cover alignment");
-        Add("Фоновое наблюдение за ресурсами (раз в минуту, без сети)", "О плеере", "About", ResourceWatchdogCheckBox, "утечки память процессор watchdog resource monitoring leak");
     }
 
     private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => RefreshSearchResults();
@@ -2965,16 +2963,6 @@ public partial class SettingsWindow : FluentWindow
         DiscordRichPresenceConnectionStatusText.Text = LocalizationService.Translate(_settings.DiscordRichPresenceEnabled
             ? "Discord Rich Presence включён. При начале воспроизведения Lumisense обновит ваш статус."
             : "Нажмите «Подключить Discord», чтобы включить Rich Presence с официальным приложением Lumisense.");
-    }
-
-    private void ResourceWatchdogCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.ResourceWatchdogEnabled = ResourceWatchdogCheckBox.IsChecked == true;
-        if (_settings.ResourceWatchdogEnabled) ResourceWatchdog.Start();
-        else ResourceWatchdog.Stop();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     private void DiscordRichPresencePrivacyCheckBox_Changed(object sender, RoutedEventArgs e)

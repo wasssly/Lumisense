@@ -29,7 +29,10 @@
                 <Border Padding="16" Margin="0,0,0,12" CornerRadius="8"
                         Background="{DynamicResource CardBackgroundFillColorSecondaryBrush}">
                     <StackPanel>
-                        <TextBlock Text="Наблюдение за ресурсами (всегда включено)" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <TextBlock Text="Наблюдение за ресурсами" FontSize="15" FontWeight="SemiBold" Margin="0,0,0,8" />
+                        <CheckBox x:Name="ResourceWatchdogCheckBox" Margin="0,0,0,8"
+                                  Content="Фоновое наблюдение за ресурсами (раз в минуту, без сети)"
+                                  Checked="ResourceWatchdogCheckBox_Changed" Unchecked="ResourceWatchdogCheckBox_Changed" />
                         <TextBlock x:Name="WatchText" TextWrapping="Wrap" FontSize="12" Opacity="0.85" />
                     </StackPanel>
                 </Border>
