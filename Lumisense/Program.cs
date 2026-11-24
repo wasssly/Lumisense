@@ -10,6 +10,8 @@ internal static class Program
     [STAThread]
     public static void Main()
     {
+        SettingsManager.BeginPreload();
+
         try
         {
             VelopackApp.Build()

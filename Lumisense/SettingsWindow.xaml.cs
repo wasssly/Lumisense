@@ -110,9 +110,22 @@ public partial class SettingsWindow : FluentWindow
         ApplyWindowBackdrop(_settings);
     }
 
+    // Замер открытия окна: в журнал одной строкой попадает, сколько длились разбор XAML, заполнение страниц и первая отрисовка.
+    private readonly System.Diagnostics.Stopwatch _openClock = System.Diagnostics.Stopwatch.StartNew();
+    private readonly List<string> _openMarks = new();
+    private long _openLastMark;
+
+    private void MarkOpen(string name)
+    {
+        long now = _openClock.ElapsedMilliseconds;
+        _openMarks.Add($"{name}={now - _openLastMark}ms");
+        _openLastMark = now;
+    }
+
     internal SettingsWindow(AppSettings settings, ISettingsHost owner, string? initialPage = null)
     {
         InitializeComponent();
+        MarkOpen("initialize-component");
         InitializeRadioCombos();
         InitializeNavScroll();
         WindowSizing.FitToWorkArea(this);
@@ -284,6 +297,7 @@ public partial class SettingsWindow : FluentWindow
         SelectComboByTag(IslandShapeCombo, _settings.IslandShape);
         SelectComboByTag(IslandBackdropCombo, _settings.IslandBackdrop);
         SelectComboByTag(IslandSeekStyleCombo, _settings.IslandSeekStyle);
+        SelectComboByTag(IslandRingSideCombo, _settings.IslandRingSide);
         IslandLyricsShimmerCheckBox.IsChecked = _settings.IslandLyricsShimmer;
         IslandWordRollCheckBox.IsChecked = _settings.IslandWordRoll;
         IslandLyricsWordRollCheckBox.IsChecked = _settings.IslandLyricsWordRoll;
@@ -297,7 +311,6 @@ public partial class SettingsWindow : FluentWindow
         // чекбокс всегда показывает то, что реально настроено, а не могло устареть.
         LaunchOnStartupCheckBox.IsChecked = StartupManager.IsEnabled();
         StartHiddenInTrayCheckBox.IsChecked = _settings.StartHiddenInTray;
-        SelectComboByTag(IslandRingSideCombo, _settings.IslandRingSide);
 
         MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
@@ -493,6 +506,12 @@ public partial class SettingsWindow : FluentWindow
         Loaded += (_, _) => StartPageWarmUp();
 
         _isInitializing = false;
+        MarkOpen("fill-controls-and-search");
+        ContentRendered += (_, _) =>
+        {
+            MarkOpen("first-render");
+            Logger.Info($"TRACE settings-open: {string.Join(", ", _openMarks)}; всего {_openClock.ElapsedMilliseconds}ms");
+        };
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
         Loaded += async (_, _) =>
         {
@@ -1730,6 +1749,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Вместо эквалайзера показывать устройство вывода", "Остров", "Island", IslandCompactDeviceCheckBox, "устройство значок device icon");
         Add("Обводка цветом акцента во время игры", "Остров", "Island", IslandAccentRimCheckBox, "акцент обводка игра accent rim");
         Add("Полоса прогресса трека вокруг свёрнутого острова", "Остров", "Island", IslandProgressRimCheckBox, "контур прогресс ring progress");
+        Add("Кольцо прогресса рядом с островом", "Остров", "Island", IslandRingSideCombo, "кольцо круг прогресс слева справа ring progress side");
         Add("Размытие при смене вида", "Остров", "Island", IslandBlurTransitionsCheckBox, "blur transitions анимация");
         Add("Клик по обложке открывает её крупно", "Остров", "Island", IslandCoverPreviewCheckBox, "обложка просмотр cover preview");
         Add("Показывать громкость, когда её меняют не на острове", "Остров", "Island", IslandExternalVolumeCheckBox, "громкость volume");
@@ -1748,7 +1768,6 @@ public partial class SettingsWindow : FluentWindow
         Add("Подсветка слов в тексте песни (бета)", "Остров", "Island", IslandReadAlongCheckBox, "read along слова подсветка пилюля текст песни караоке");
         Add("Размытие движения при растяжении", "Остров", "Island", IslandMotionBlurCheckBox, "motion blur растяжение");
         Add("Действия контекстного меню острова", "Остров", "Island", IslandMenuPlayPauseCheckBox, "контекстное меню пауза следующий предыдущий скрыть развернуть now playing скорость тон совместимость настройки context menu actions");
-        Add("Кольцо прогресса рядом с островом", "Остров", "Island", IslandRingSideCombo, "кольцо круг прогресс слева справа ring progress side");
         Add("Масштаб интерфейса", "Оформление", "Appearance", InterfaceScaleSlider, "размер текст scale interface size");
         Add("Все анимации", "Оформление", "Appearance", AnimationsMasterCheckBox, "движение анимация слайдеры переходы обложка текст песни полоса мини-плеер бегущая строка остров меню трея сердечко индикаторы загрузки motion animations reduce");
         Add("Now Playing: фон и переходы", "Оформление", "Appearance", AnimationNowPlayingCheckBox, "анимация фон now playing animation background");
@@ -3882,6 +3901,7 @@ public partial class SettingsWindow : FluentWindow
         _settings.IslandShape = SelectedTag(IslandShapeCombo, "Capsule");
         _settings.IslandBackdrop = SelectedTag(IslandBackdropCombo, "Glow");
         _settings.IslandSeekStyle = SelectedTag(IslandSeekStyleCombo, "Plain");
+        _settings.IslandRingSide = SelectedTag(IslandRingSideCombo, "Off");
         SaveIslandSettings();
     }
 
@@ -3889,7 +3909,6 @@ public partial class SettingsWindow : FluentWindow
         combo.SelectedItem = combo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
             .FirstOrDefault(item => item.Tag as string == tag) ?? combo.Items[0];
 
-        _settings.IslandRingSide = SelectedTag(IslandRingSideCombo, "Off");
     private static string SelectedTag(System.Windows.Controls.ComboBox combo, string fallback) =>
         combo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag } ? tag : fallback;
 
@@ -4244,6 +4263,7 @@ public partial class SettingsWindow : FluentWindow
         NormalizePlaylistFileNamesButton.IsEnabled = false;
         FileNameNormalizationResultText.Text = LocalizationService.Translate("Подготавливается предпросмотр файлов…");
         FileNameNormalizationResultText.Visibility = Visibility.Visible;
+        FileNameNormalizationLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
         FileNameNormalizationLoadingIndicator.Visibility = Visibility.Visible;
 
         try
@@ -4263,7 +4283,6 @@ public partial class SettingsWindow : FluentWindow
         {
             FileNameNormalizationResultText.Text = LocalizationService.Translate($"Не удалось нормализовать имена: {ex.Message}");
         }
-        FileNameNormalizationLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
         finally
         {
             FileNameNormalizationLoadingIndicator.Visibility = Visibility.Collapsed;

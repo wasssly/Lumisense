@@ -188,7 +188,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     // true, если settings.json ещё ни разу не сохранялся (самый первый запуск) — от этого зависит стартовый вид плеера
     // (ResolveStartupViewMode); проверяется до загрузки настроек, порядок не важен.
     private readonly bool _isFirstLaunch = !SettingsManager.HasSavedSettingsFile;
-    private readonly AppSettings _settings = SettingsManager.Load();
+    private readonly AppSettings _settings = StartupTrace.Time("settings-load", SettingsManager.Load);
 
     // Путь к треку, который сейчас загружен/играет. Хранится как путь, а не как индекс —
     // это позволяет треку спокойно доигрывать даже если его папку потом удалили из плейлиста.
@@ -394,6 +394,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     public MainWindow(bool skipLastTrackRestore = false)
     {
         _skipLastTrackRestore = skipLastTrackRestore;
+        StartupTrace.Mark("window-ctor-begin");
         // Field-инициализатор не может ссылаться на _random (CS0236 — нестатическое поле), поэтому здесь, а не в объявлении поля.
         _shuffleSession = new ShuffleSession(_random)
         {
@@ -419,7 +420,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
         _audioOutputRecoveryService = new(
             _audioOutputRecoveryCoordinator, TimeSpan.FromMilliseconds(OutputRecoveryCooldownMilliseconds));
+        StartupTrace.Mark("settings-and-services");
         InitializeComponent();
+        StartupTrace.Mark("initialize-component");
         AutomationNames.Set(ProgressSlider, "Позиция воспроизведения");
         AutomationNames.Set(VolumeSlider, "Громкость");
         AutomationNames.Set(PlaybackRateSlider, "Скорость воспроизведения");
@@ -573,6 +576,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     public void StartupPresent()
     {
         new WindowInteropHelper(this).EnsureHandle();
+        StartupTrace.Mark("ensure-handle");
 
         PlayerViewMode startupMode = ResolveStartupViewMode(out bool? legacyPlaylistVisible);
         bool startsHidden = startupMode == PlayerViewMode.Mini || _settings.StartHiddenInTray;
@@ -607,7 +611,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             WindowBackdropType = originalBackdrop;
         }
 
+        StartupTrace.Mark("hidden-show-hide");
         RestorePlayerViewMode(startupMode, legacyPlaylistVisible);
+        StartupTrace.Mark("restore-view-mode");
 
         if (_settings.StartHiddenInTray)
         {
@@ -628,6 +634,8 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
             // см. ForceForeground.
             ForceForeground(this);
         }
+
+        StartupTrace.Mark("show-and-foreground");
 
         // Уведомление migration не блокирует построение окна и не появляется в скрытом/мини-старте.
         // Оно срабатывает ровно раз после успешной установки Velopack MSI.

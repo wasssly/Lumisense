@@ -34,6 +34,7 @@ public partial class App : Application
     // спрятало себя через Hide() при старте в мини-режиме — иначе мелькало бы пустое главное окно.
     protected override void OnStartup(StartupEventArgs e)
     {
+        StartupTrace.Mark("runtime-and-app-init");
         base.OnStartup(e);
 
         // Блокирующая сборка мусора останавливает все потоки, включая аудио: при нагрузке на процессор это щелчок в звуке.
@@ -180,6 +181,7 @@ public partial class App : Application
         MainWindow window;
         try
         {
+            StartupTrace.Mark("single-instance-and-args");
             window = new MainWindow(skipLastTrackRestore: externalPaths.Count > 0);
         }
         catch (Exception ex)
@@ -200,7 +202,10 @@ public partial class App : Application
         }
 
         MainWindow = window;
+        StartupTrace.Mark("main-window-ctor");
         window.StartupPresent();
+        StartupTrace.Mark("startup-present");
+        StartupTrace.Flush();
 
         Logger.Info("Главное окно создано и показано — запуск завершён успешно.");
 

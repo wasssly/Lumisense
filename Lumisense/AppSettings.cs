@@ -867,7 +867,30 @@ public static class SettingsManager
     // где вид подбирается по IsPlaylistVisible/WasMiniPlayerOnClose, чтобы после обновления ничего не переключилось.
     public static bool HasSavedSettingsFile => File.Exists(SettingsFilePath);
 
+    private static Task<AppSettings>? _preloaded;
+
+    // Читает settings.json в фоне, пока Velopack и App.InitializeComponent занимают главный поток; первый Load() забирает результат.
+    public static void BeginPreload() => _preloaded = Task.Run(LoadCore);
+
     public static AppSettings Load()
+    {
+        Task<AppSettings>? preloaded = Interlocked.Exchange(ref _preloaded, null);
+        if (preloaded is not null)
+        {
+            try
+            {
+                return preloaded.GetAwaiter().GetResult();
+            }
+            catch (Exception ex)
+            {
+                Logger.Warn($"Фоновое чтение настроек не удалось, читаю заново: {ex.Message}");
+            }
+        }
+
+        return LoadCore();
+    }
+
+    private static AppSettings LoadCore()
     {
         if (SettingsIntegrityService.TryLoad(SettingsFilePath, out AppSettings? settings, out string? failure) && settings != null)
         {
