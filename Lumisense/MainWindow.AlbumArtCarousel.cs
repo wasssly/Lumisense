@@ -128,7 +128,7 @@ public partial class MainWindow
     {
         try
         {
-            var pictures = new ATL.Track(path).EmbeddedPictures;
+            var pictures = (TrackTagCache.TryGetCachedTrack(path) ?? new ATL.Track(path)).EmbeddedPictures;
             if (pictures.Count == 0) return null;
 
             using var stream = new MemoryStream(pictures[0].PictureData);

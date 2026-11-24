@@ -60,7 +60,7 @@ internal static class TrackMetadataCache
 
         try
         {
-            var track = new ATL.Track(path);
+            var track = TrackTagCache.TryGetCachedTrack(path) ?? new ATL.Track(path);
             Remember(path, track.Title, track.Artist, track.AlbumArtist);
             return new Entry(track.Title, track.Artist, track.AlbumArtist);
         }

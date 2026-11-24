@@ -21,8 +21,7 @@ public static class ReplayGainReader
     {
         try
         {
-            var track = new ATL.Track(filePath);
-            return GetTrackGainLinear(track);
+            return GetTrackGainLinear(TrackTagCache.TryGetCachedTrack(filePath) ?? new ATL.Track(filePath));
         }
         catch
         {
@@ -35,7 +34,7 @@ public static class ReplayGainReader
     {
         try
         {
-            return GetGainLinear(new ATL.Track(filePath), preferAlbum, preampDb);
+            return GetGainLinear(TrackTagCache.TryGetCachedTrack(filePath) ?? new ATL.Track(filePath), preferAlbum, preampDb);
         }
         catch
         {
@@ -94,7 +93,7 @@ public static class ReplayGainReader
     {
         try
         {
-            var track = new ATL.Track(filePath);
+            var track = TrackTagCache.TryGetCachedTrack(filePath) ?? new ATL.Track(filePath);
             return TryReadDb(track, GainKeys, out _) || TryReadDb(track, AlbumGainKeys, out _)
                    || TryReadDb(track, R128TrackKeys, out _) || TryReadDb(track, R128AlbumKeys, out _);
         }

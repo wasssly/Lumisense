@@ -25,15 +25,47 @@ internal static class TrackTagCache
     private static readonly object Gate = new();
     private static readonly List<(string Key, TrackTags Tags)> Entries = [];
 
+    // Чтение, которое уже идёт (предзагрузка соседа или повторный запрос), не запускается второй раз: остальные ждут результат.
+    private static readonly Dictionary<string, Lazy<TrackTags>> InFlight = new();
+
     // Бросает исключение при ошибке чтения; неудачи не кэшируются.
     public static TrackTags GetOrLoad(string filePath)
     {
         string? key = KeyOf(filePath);
-        if (key is not null && TryGet(key, out var cached)) return cached;
+        if (key is null) return Load(filePath);
+        if (TryGet(key, out var cached)) return cached;
 
-        var loaded = Load(filePath);
-        if (key is not null) Store(key, loaded);
-        return loaded;
+        Lazy<TrackTags> pending;
+        lock (Gate)
+        {
+            if (!InFlight.TryGetValue(key, out pending!))
+            {
+                pending = new Lazy<TrackTags>(() => Load(filePath), LazyThreadSafetyMode.ExecutionAndPublication);
+                InFlight[key] = pending;
+            }
+        }
+
+        try
+        {
+            var loaded = pending.Value;
+            Store(key, loaded);
+            return loaded;
+        }
+        finally
+        {
+            lock (Gate)
+            {
+                if (InFlight.TryGetValue(key, out var current) && ReferenceEquals(current, pending))
+                    InFlight.Remove(key);
+            }
+        }
+    }
+
+    // Уже прочитанный ATL.Track без нового чтения файла; null, если трека нет в кэше. Для ReplayGain и превью обложек.
+    public static ATL.Track? TryGetCachedTrack(string filePath)
+    {
+        string? key = KeyOf(filePath);
+        return key is not null && TryGet(key, out var cached) ? cached.Track : null;
     }
 
     // Фоновое чтение для соседних треков; ошибки гасятся — основной путь прочитает сам.
