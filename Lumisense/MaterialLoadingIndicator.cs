@@ -58,7 +58,26 @@ public sealed class MaterialLoadingIndicator : FrameworkElement
         set => SetValue(IsAnimationEnabledProperty, value);
     }
 
+    private static readonly double[] CosTable = Enumerable.Range(0, SamplePoints).Select(i => Math.Cos(i * 2 * Math.PI / SamplePoints)).ToArray();
+    private static readonly double[] SinTable = Enumerable.Range(0, SamplePoints).Select(i => Math.Sin(i * 2 * Math.PI / SamplePoints)).ToArray();
+
+    // Шаги, кратные 240; выбирается наибольший, при котором точек не меньше 2,5 на пиксель диаметра (но не меньше 60).
+    private static readonly int[] Strides = { 6, 5, 4, 3, 2, 1 };
+
+    private static int StrideFor(double size)
+    {
+        double wanted = Math.Clamp(size * 2.5, 60, SamplePoints);
+        foreach (int stride in Strides)
+        {
+            if (SamplePoints / stride >= wanted) return stride;
+        }
+
+        return 1;
+    }
+
     private readonly Stopwatch _clock = new();
+    private double[] _xs = Array.Empty<double>();
+    private double[] _ys = Array.Empty<double>();
     private bool _rendering;
 
     public MaterialLoadingIndicator()
@@ -122,19 +141,33 @@ public sealed class MaterialLoadingIndicator : FrameworkElement
         double cosRotation = Math.Cos(rotation);
         double sinRotation = Math.Sin(rotation);
 
-        double[] radii = ComputeRadii(shape, morph);
+        double[] current = Profiles[shape % Profiles.Length];
+        double[] next = Profiles[(shape + 1) % Profiles.Length];
+        double blend = Math.Clamp(morph, 0.0, 1.0);
         double scale = outer * IndicatorRatio / MaxRadius;
 
-        var points = new Point[radii.Length];
-        double minX = double.MaxValue, maxX = double.MinValue, minY = double.MaxValue, maxY = double.MinValue;
-        for (int i = 0; i < radii.Length; i++)
+        // Маленькому индикатору хватает части из 240 отсчётов: шаг подбирается так, чтобы сторона многоугольника была около пикселя.
+        int stride = StrideFor(size);
+        int count = SamplePoints / stride;
+        if (_xs.Length != count)
         {
-            double angle = i * 2 * Math.PI / radii.Length;
-            points[i] = new Point(Math.Cos(angle) * radii[i], Math.Sin(angle) * radii[i]);
-            minX = Math.Min(minX, points[i].X);
-            maxX = Math.Max(maxX, points[i].X);
-            minY = Math.Min(minY, points[i].Y);
-            maxY = Math.Max(maxY, points[i].Y);
+            _xs = new double[count];
+            _ys = new double[count];
+        }
+
+        double minX = double.MaxValue, maxX = double.MinValue, minY = double.MaxValue, maxY = double.MinValue;
+        for (int k = 0; k < count; k++)
+        {
+            int i = k * stride;
+            double radius = current[i] * (1 - blend) + next[i] * blend;
+            double x = CosTable[i] * radius;
+            double y = SinTable[i] * radius;
+            _xs[k] = x;
+            _ys[k] = y;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (y < minY) minY = y;
+            if (y > maxY) maxY = y;
         }
 
         // Как в Compose, габарит фигуры ставится в центр контейнера и вращение идёт вокруг него.
@@ -144,14 +177,14 @@ public sealed class MaterialLoadingIndicator : FrameworkElement
         var geometry = new StreamGeometry();
         using (StreamGeometryContext ctx = geometry.Open())
         {
-            for (int i = 0; i < points.Length; i++)
+            for (int k = 0; k < count; k++)
             {
-                double x = (points[i].X - shiftX) * scale;
-                double y = (points[i].Y - shiftY) * scale;
+                double x = (_xs[k] - shiftX) * scale;
+                double y = (_ys[k] - shiftY) * scale;
                 var point = new Point(
                     center.X + x * cosRotation - y * sinRotation,
                     center.Y + x * sinRotation + y * cosRotation);
-                if (i == 0) ctx.BeginFigure(point, true, true);
+                if (k == 0) ctx.BeginFigure(point, true, true);
                 else ctx.LineTo(point, true, true);
             }
         }

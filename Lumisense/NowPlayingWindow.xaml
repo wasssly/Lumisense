@@ -285,7 +285,7 @@
                                 <DockPanel VerticalAlignment="Center" HorizontalAlignment="Left" LastChildFill="True">
                                     <!-- Индикатор ожидания, пока ищется текст или другие варианты (SetLyricsStatusText). -->
                                     <local:MaterialLoadingIndicator x:Name="LyricsLoadingIndicator" DockPanel.Dock="Left"
-                                                                    Width="24" Height="24" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                                    Width="36" Height="36" Margin="0,0,10,0" VerticalAlignment="Center"
                                                                     Visibility="Collapsed"
                                                                     ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
                                     <TextBlock x:Name="LyricsModeText" Text="Нет текста" FontSize="12" Foreground="#A8FFFFFF"

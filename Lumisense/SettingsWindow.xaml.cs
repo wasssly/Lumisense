@@ -4263,6 +4263,7 @@ public partial class SettingsWindow : FluentWindow
         {
             FileNameNormalizationResultText.Text = LocalizationService.Translate($"Не удалось нормализовать имена: {ex.Message}");
         }
+        FileNameNormalizationLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
         finally
         {
             FileNameNormalizationLoadingIndicator.Visibility = Visibility.Collapsed;

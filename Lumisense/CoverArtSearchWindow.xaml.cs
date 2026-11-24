@@ -46,7 +46,10 @@ public partial class CoverArtSearchWindow : FluentWindow
         InitializeComponent();
         WindowSizing.FitToWorkArea(this);
         if (settings != null)
+        {
             AccessibilityPreferences.ApplyToWindow(this, settings);
+            SearchLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(settings, AnimationAreas.Loading);
+        }
 
         var query = string.Join(" ", new[] { artist, title }
             .Where(s => !string.IsNullOrWhiteSpace(s)));

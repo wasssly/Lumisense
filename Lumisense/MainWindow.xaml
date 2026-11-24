@@ -871,11 +871,6 @@
                 <local:WaveformView x:Name="ProgressWaveform" Height="28" IsHitTestVisible="False"
                                      Visibility="Collapsed"
                                      UnplayedBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
-                <!-- Пока считается форма звука, на её месте крутится индикатор Material (UpdateWaveformLoadingIndicator). -->
-                <local:MaterialLoadingIndicator x:Name="WaveformLoadingIndicator" Width="26" Height="26"
-                                                HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False"
-                                                Visibility="Collapsed"
-                                                ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
 
                 <!-- Третий вид полосы — Material (AppSettings.ProgressBarStyle == "Material"): волнистая линия,
                      тоже только рисует, позиция и перемотка остаются у ProgressSlider. -->

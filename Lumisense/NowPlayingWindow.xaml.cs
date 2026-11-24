@@ -970,6 +970,7 @@ public partial class NowPlayingWindow : Window
     private void SetLyricsStatusText(string text, bool loading = false)
     {
         LyricsModeText.Text = text;
+        LyricsLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_owner.Settings, AnimationAreas.Loading);
         LyricsLoadingIndicator.Visibility = loading ? Visibility.Visible : Visibility.Collapsed;
     }
 

@@ -7859,7 +7859,7 @@
 
                                 <!-- Индикатор загрузки Material 3 Expressive; показывается вместе с надписью (Visibility привязана к ней). -->
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
-                                    <local:MaterialLoadingIndicator x:Name="AllVersionsLoadingIndicator" Width="32" Height="32"
+                                    <local:MaterialLoadingIndicator x:Name="AllVersionsLoadingIndicator" Width="44" Height="44"
                                                                     Margin="0,0,12,0" VerticalAlignment="Center"
                                                                     ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}"
                                                                     Visibility="{Binding Visibility, ElementName=AllVersionsLoadingText}" />
