@@ -24,6 +24,7 @@
         <!-- Явные шаблоны контролов выбора. Они читают кисти как DynamicResource, поэтому
              цвет индикатора обновляется сразу после смены cover-акцента. -->
         <Style TargetType="CheckBox">
+            <Setter Property="local:SpringMotion.SpringCheck" Value="True" />
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             <Setter Property="Cursor" Value="Hand" />
             <Setter Property="Margin" Value="0,0,0,8" />
@@ -65,56 +66,6 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill" Storyboard.TargetProperty="Opacity"
-                                                             To="1" Duration="0:0:0.18"
-                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
-                                                             To="1" Duration="0:0:0.18"
-                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
-                                                             To="1" Duration="0:0:0.18"
-                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
-                                                             To="1" Duration="0:0:0.16"
-                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
-                                                             To="1" Duration="0:0:0.16"
-                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
-                                                             To="1" Duration="0:0:0.16"
-                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
-                                                             To="0.82" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
-                                                             To="0.82" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
-                                                             To="0.55" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
-                                                             To="0.55" Duration="0:0:0.12" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
@@ -172,56 +123,6 @@
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsChecked" Value="True">
                                 <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill" Storyboard.TargetProperty="Opacity"
-                                                             To="1" Duration="0:0:0.18"
-                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
-                                                             To="1" Duration="0:0:0.18"
-                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
-                                                             To="1" Duration="0:0:0.18"
-                                                             AccelerationRatio="0.12" DecelerationRatio="0.72" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
-                                                             To="1" Duration="0:0:0.16"
-                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
-                                                             To="1" Duration="0:0:0.16"
-                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
-                                                             To="1" Duration="0:0:0.16"
-                                                             AccelerationRatio="0.08" DecelerationRatio="0.78" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
-                                                             To="0.82" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="AccentFill"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
-                                                             To="0.82" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark" Storyboard.TargetProperty="Opacity"
-                                                             To="0" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleX)"
-                                                             To="0.55" Duration="0:0:0.12" />
-                                            <DoubleAnimation Storyboard.TargetName="Mark"
-                                                             Storyboard.TargetProperty="RenderTransform.(ScaleTransform.ScaleY)"
-                                                             To="0.55" Duration="0:0:0.12" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource AccentFillColorSecondaryBrush}" />
@@ -231,6 +132,56 @@
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        
+
+        <!-- Spring dropdown (designbookmark.com/motion): шаблон ComboBox остаётся стандартным шаблоном WPF-UI, поверх него SpringMotion
+             раскрывает меню на пружине, роняет строки по очереди и растягивает подсветку. Строки переопределены ради галочки. -->
+        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
+            <Setter Property="local:SpringMotion.SpringDropdown" Value="True" />
+            <Setter Property="ItemContainerStyle">
+                <Setter.Value>
+                    <Style TargetType="ComboBoxItem">
+                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+                        <Setter Property="Cursor" Value="Hand" />
+                        <Setter Property="Margin" Value="4,1" />
+                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate TargetType="ComboBoxItem">
+                                    <Border x:Name="Bd" MinHeight="34" Padding="12,0,10,0" CornerRadius="8" Background="Transparent">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <ContentPresenter VerticalAlignment="Center" Margin="0,6" />
+                                            <Path x:Name="Tick" Grid.Column="1" Margin="14,0,0,0" Width="16" Height="14" VerticalAlignment="Center"
+                                                  Data="M 1,7 L 6,12 L 15,2" Stretch="Uniform" StrokeThickness="2"
+                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
+                                                  StrokeDashArray="9.4,100" StrokeDashOffset="9.4" Opacity="0"
+                                                  Stroke="{DynamicResource TextFillColorPrimaryBrush}" />
+                                        </Grid>
+                                    </Border>
+                                    <ControlTemplate.Triggers>
+                                        <Trigger Property="IsSelected" Value="True">
+                                            <Setter TargetName="Tick" Property="Opacity" Value="1" />
+                                            <Setter TargetName="Tick" Property="StrokeDashOffset" Value="0" />
+                                        </Trigger>
+                                        <Trigger Property="IsEnabled" Value="False">
+                                            <Setter TargetName="Bd" Property="Opacity" Value="0.4" />
+                                        </Trigger>
+                                        <Trigger Property="IsHighlighted" Value="True">
+                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+                                        </Trigger>
+                                    </ControlTemplate.Triggers>
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
                 </Setter.Value>
             </Setter>
         </Style>
@@ -864,6 +815,7 @@
             <Setter Property="Padding" Value="0" />
             <Setter Property="Margin" Value="0" />
             <Setter Property="HorizontalAlignment" Value="Right" />
+            <Setter Property="local:SpringMotion.SpringToggle" Value="True" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FocusVisualStyle" Value="{x:Null}" />
             <Setter Property="Template">
@@ -884,22 +836,6 @@
                                 <Setter TargetName="Track" Property="Background" Value="{DynamicResource AccentFillColorDefaultBrush}" />
                                 <Setter TargetName="Track" Property="BorderBrush" Value="{DynamicResource AccentFillColorDefaultBrush}" />
                                 <Setter TargetName="Knob" Property="Fill" Value="{DynamicResource TextOnAccentFillColorPrimaryBrush}" />
-                                <Trigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <ThicknessAnimation Storyboard.TargetName="Knob" Storyboard.TargetProperty="Margin"
-                                                                To="26,0,0,0" Duration="0:0:0.12" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.EnterActions>
-                                <Trigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <ThicknessAnimation Storyboard.TargetName="Knob" Storyboard.TargetProperty="Margin"
-                                                                To="6,0,0,0" Duration="0:0:0.12" />
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </Trigger.ExitActions>
                             </Trigger>
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="Root" Property="Opacity" Value="0.4" />
@@ -3160,6 +3096,38 @@
                                                         <RadioButton x:Name="PlayButtonSquareRadio" GroupName="PlayButtonShape" Content="Квадратный (по умолчанию)"
                                                         Checked="PlayButtonShape_Changed" />
                                                         <RadioButton x:Name="PlayButtonRoundRadio" GroupName="PlayButtonShape" Content="Круглый" Checked="PlayButtonShape_Changed" />
+                                                    </StackPanel>
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                        <Border Style="{StaticResource SettingsRowStyle}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Меню «Ещё» (три точки)">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=MoreMenuStyleRadioCombo}" Value="False">
+                                                                        <Setter Property="Opacity" Value="0.45" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </StackPanel>
+                                                <StackPanel x:Name="MoreMenuStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                                    <ComboBox x:Name="MoreMenuStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Меню «Ещё» (три точки)" MinWidth="220" HorizontalAlignment="Right">
+                                                        <ComboBoxItem Content="Пружинное (растёт из кнопки)" Tag="MoreMenuSpringRadio" />
+                                                        <ComboBoxItem Content="Классическое окошко" Tag="MoreMenuClassicRadio" />
+                                                    </ComboBox>
+                                                    <StackPanel Visibility="Collapsed">
+                                                        <RadioButton x:Name="MoreMenuSpringRadio" GroupName="MoreMenuStyle" Content="Пружинное (растёт из кнопки)"
+                                                        Checked="MoreMenuStyle_Changed" />
+                                                        <RadioButton x:Name="MoreMenuClassicRadio" GroupName="MoreMenuStyle" Content="Классическое окошко" Checked="MoreMenuStyle_Changed" />
                                                     </StackPanel>
                                                 </StackPanel>
                                             </Grid>
@@ -7094,6 +7062,47 @@
                                                     <TextBlock Text="Мерцание, пока ищется текст песни" Style="{StaticResource SettingsRowTitleStyle}" />
                                                 </StackPanel>
                                                 <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandLyricsShimmerCheckBox" AutomationProperties.Name="Мерцание, пока ищется текст песни"
+                                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                            </Grid>
+                                        </Border>
+                                        <Border Style="{StaticResource SettingsRowStyle}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Название трека катается по буквам" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                </StackPanel>
+                                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandWordRollCheckBox" AutomationProperties.Name="Название трека катается по буквам"
+                                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                            </Grid>
+                                        </Border>
+                                        <Border Style="{StaticResource SettingsRowStyle}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Строки песни в свёрнутом острове катаются по буквам" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                </StackPanel>
+                                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandLyricsWordRollCheckBox" AutomationProperties.Name="Строки песни в свёрнутом острове катаются по буквам"
+                                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                                            </Grid>
+                                        </Border>
+                                        <Border Style="{StaticResource SettingsRowStyle}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                                    <TextBlock Text="Подсветка слов в тексте песни (бета)" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                    <TextBlock Text="Слова подсвечиваются приблизительно: в тексте песни нет точных таймингов слов, поэтому время строки делится между словами по их длине. Подсветка может чуть опережать голос или отставать от него."
+                                                               Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" />
+                                                </StackPanel>
+                                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandReadAlongCheckBox" AutomationProperties.Name="Подсветка слов в тексте песни (бета)"
                                                 Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                                             </Grid>
                                         </Border>

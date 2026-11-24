@@ -406,6 +406,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         // смену пака применяет IconPackContext, здесь только начальное значение.
         IconPacks.Initialize(_settings);
 
+        // Пружинные компоненты (переключатели, списки, меню) читают «Снизить движение» из этих же настроек.
+        SpringMotion.Settings = _settings;
+
         // То же самое для Icon окна (см. AppIconContext, на который биндится Icon в XAML).
         AppIcons.Initialize(_settings);
         LyricsService.ApplyExtraSourceSettings(_settings);

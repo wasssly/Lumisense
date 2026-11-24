@@ -290,6 +290,7 @@ public static class LumiProfileIO
         target.ControlButtonsBackground = source.ControlButtonsBackground;
         target.PlayButtonAccentBackground = source.PlayButtonAccentBackground;
         target.PlayButtonRound = source.PlayButtonRound;
+        target.MoreMenuSpring = source.MoreMenuSpring;
         target.ModernShowSideButtons = source.ModernShowSideButtons;
         target.ModernControlSlots = MainWindow.NormalizeModernSlots(source.ModernControlSlots);
         target.IsShuffleEnabled = source.IsShuffleEnabled;
@@ -433,6 +434,9 @@ public static class LumiProfileIO
         if (source.IslandBackdrop is "None" or "Glow" or "Matrix" or "Wave") target.IslandBackdrop = source.IslandBackdrop;
         if (source.IslandSeekStyle is "Plain" or "Segments") target.IslandSeekStyle = source.IslandSeekStyle;
         target.IslandLyricsShimmer = source.IslandLyricsShimmer;
+        target.IslandWordRoll = source.IslandWordRoll;
+        target.IslandLyricsWordRoll = source.IslandLyricsWordRoll;
+        target.IslandReadAlong = source.IslandReadAlong;
         if (MiniPlayerSizePreset.IsKnown(source.MiniPlayerSizePreset))
             target.MiniPlayerSizePreset = source.MiniPlayerSizePreset;
         if (source.TrackChangeToastTextAlignment is "Left" or "Center" or "Right")

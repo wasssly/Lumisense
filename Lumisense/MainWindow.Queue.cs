@@ -10,6 +10,7 @@ public partial class MainWindow
 {
     private void MoreActionsButton_Click(object sender, RoutedEventArgs e)
     {
+        if (!MoreActionsPopup.IsOpen) PrepareMoreMenu();
         MoreActionsPopup.IsOpen = !MoreActionsPopup.IsOpen;
         e.Handled = true;
     }

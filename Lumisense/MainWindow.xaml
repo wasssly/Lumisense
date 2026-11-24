@@ -1346,25 +1346,44 @@
             </ui:Button>
         </Grid>
 
+        <!-- Меню «Ещё»: вид выбирается в настройках (MoreMenuStyle). «Классическое» — обычное всплывающее окно; «Пружинное» —
+             Dynamic menu: поверхность вырастает из кнопки на пружинах, пункты выезжают по очереди, шапка с крестиком закрывает меню.
+             Тип и размеры задаёт MainWindow.MoreMenu.cs. -->
         <Popup x:Name="MoreActionsPopup" PlacementTarget="{Binding ElementName=MoreActionsButton}"
                Placement="Bottom" StaysOpen="False" AllowsTransparency="True"
-               VerticalOffset="6" PopupAnimation="Fade">
-            <Border Background="#FF242424" BorderBrush="#FF707070" BorderThickness="1" CornerRadius="8" Padding="8">
-                <StackPanel x:Name="MoreActionsItemsPanel" Width="136">
-                    <ui:Button x:Name="QueueButton" Appearance="Secondary" Width="136" Height="32" Margin="0,0,0,4"
-                               Content="Очередь" ToolTip="Очередь «Играть следующим»" Click="QueueButton_Click">
-                        <ui:Button.Icon>
-                            <local:SvgPathIcon Icon="IconMusicNote" Size="15" />
-                        </ui:Button.Icon>
-                    </ui:Button>
-                    <ui:Button x:Name="LyricsPanelButton" Appearance="Secondary" Width="136" Height="32"
-                               Content="Текст песни" ToolTip="Текст песни" Click="LyricsPanelButton_Click">
-                        <ui:Button.Icon>
-                            <local:SvgPathIcon x:Name="LyricsPanelButtonIcon" Icon="IconLyrics" Size="15" />
-                        </ui:Button.Icon>
-                    </ui:Button>
-                </StackPanel>
-            </Border>
+               VerticalOffset="6" PopupAnimation="Fade" Opened="MoreActionsPopup_Opened" Closed="MoreActionsPopup_Closed">
+            <Grid x:Name="MoreMenuHost">
+                <Border x:Name="MoreMenuSurface" HorizontalAlignment="Right" VerticalAlignment="Top"
+                        Background="#FF242424" BorderBrush="#FF707070" BorderThickness="1" CornerRadius="8" Padding="8">
+                    <StackPanel>
+                        <Grid x:Name="MoreMenuHeader" Height="32" Visibility="Collapsed" Background="Transparent" Cursor="Hand"
+                              MouseLeftButtonUp="MoreMenuHeader_MouseLeftButtonUp">
+                            <TextBlock Text="Ещё" Margin="4,0,0,0" VerticalAlignment="Center" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextFillColorPrimaryBrush}" />
+                            <Canvas HorizontalAlignment="Right" Width="32" Height="32">
+                                <Border x:Name="MoreMenuLineTop" Canvas.Left="8" Canvas.Top="15" Width="16" Height="2" CornerRadius="1"
+                                        RenderTransformOrigin="0.5,0.5" Background="{DynamicResource TextFillColorPrimaryBrush}" />
+                                <Border x:Name="MoreMenuLineBottom" Canvas.Left="8" Canvas.Top="15" Width="16" Height="2" CornerRadius="1"
+                                        RenderTransformOrigin="0.5,0.5" Background="{DynamicResource TextFillColorPrimaryBrush}" />
+                            </Canvas>
+                        </Grid>
+                        <StackPanel x:Name="MoreActionsItemsPanel" Width="136">
+                            <ui:Button x:Name="QueueButton" Appearance="Secondary" Width="136" Height="32" Margin="0,0,0,4"
+                                       Content="Очередь" ToolTip="Очередь «Играть следующим»" Click="QueueButton_Click">
+                                <ui:Button.Icon>
+                                    <local:SvgPathIcon Icon="IconMusicNote" Size="15" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                            <ui:Button x:Name="LyricsPanelButton" Appearance="Secondary" Width="136" Height="32"
+                                       Content="Текст песни" ToolTip="Текст песни" Click="LyricsPanelButton_Click">
+                                <ui:Button.Icon>
+                                    <local:SvgPathIcon x:Name="LyricsPanelButtonIcon" Icon="IconLyrics" Size="15" />
+                                </ui:Button.Icon>
+                            </ui:Button>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+            </Grid>
         </Popup>
 
         <!-- Плейлист: список групп (папки/отдельные файлы); чекбокс выключает группу — она пропускается при воспроизведении, но остаётся

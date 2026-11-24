@@ -116,7 +116,6 @@ public partial class SettingsWindow : FluentWindow
         InitializeRadioCombos();
         InitializeNavScroll();
         WindowSizing.FitToWorkArea(this);
-        _autoScrollTimer.Tick += AutoScrollTimer_Tick;
         // Class handlers получают событие даже если дочерний контрол пометил MouseDown
         // обработанным. Это важно для клика по тексту, Slider и другим элементам страницы.
         AddHandler(Mouse.PreviewMouseDownEvent, new MouseButtonEventHandler(SettingsWindow_PreviewMouseDown), true);
@@ -286,6 +285,9 @@ public partial class SettingsWindow : FluentWindow
         SelectComboByTag(IslandBackdropCombo, _settings.IslandBackdrop);
         SelectComboByTag(IslandSeekStyleCombo, _settings.IslandSeekStyle);
         IslandLyricsShimmerCheckBox.IsChecked = _settings.IslandLyricsShimmer;
+        IslandWordRollCheckBox.IsChecked = _settings.IslandWordRoll;
+        IslandLyricsWordRollCheckBox.IsChecked = _settings.IslandLyricsWordRoll;
+        IslandReadAlongCheckBox.IsChecked = _settings.IslandReadAlong;
         IslandHideSystemToastCheckBox.IsChecked = _settings.IslandHideSystemToast;
         foreach (var box in IslandMenuActionBoxes())
             box.IsChecked = !_settings.DisabledIslandMenuActions.Contains((string)box.Tag);
@@ -440,6 +442,8 @@ public partial class SettingsWindow : FluentWindow
         PlayButtonPlainRadio.IsChecked = !_settings.PlayButtonAccentBackground;
         PlayButtonSquareRadio.IsChecked = !_settings.PlayButtonRound;
         PlayButtonRoundRadio.IsChecked = _settings.PlayButtonRound;
+        MoreMenuSpringRadio.IsChecked = _settings.MoreMenuSpring;
+        MoreMenuClassicRadio.IsChecked = !_settings.MoreMenuSpring;
         SelectComboByTag(CompactCoverAlignmentCombo, _settings.CompactCoverAlignment);
         ModernSlotsGrid.IsEnabled = _settings.ModernShowSideButtons;
         SelectModernSlotCombos(MainWindow.NormalizeModernSlots(_settings.ModernControlSlots));
@@ -499,7 +503,6 @@ public partial class SettingsWindow : FluentWindow
         {
             _isWindowClosed = true;
             StopAutoScrolling();
-            _autoScrollTimer.Tick -= AutoScrollTimer_Tick;
             _sourceProbeCts?.Cancel();
             _basePackageCts?.Cancel();
             LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
@@ -743,6 +746,14 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.PlayButtonAccentBackground = PlayButtonAccentRadio.IsChecked == true;
         _owner.ApplyMainWindowLayoutLive();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+    }
+
+    private void MoreMenuStyle_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.MoreMenuSpring = MoreMenuSpringRadio.IsChecked == true;
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
@@ -1626,6 +1637,7 @@ public partial class SettingsWindow : FluentWindow
         Add("Открыть папку с логами", "О плеере", "About", OpenLogsButton, "логи log ошибка краш crash диагностика");
         Add("Фон у кнопок управления", "Окно и запуск", "Window", ControlButtonsBackgroundCheckBox, "кнопки плашка подложка прозрачные без фона buttons background plate transparent");
         Add("Вид кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonStyleRadioGroup, "акцентный фон как у остальных кнопок play pause accent");
+        Add("Меню «Ещё» (три точки)", "Окно и запуск", "Window", MoreMenuStyleRadioGroup, "три точки очередь текст песни меню пружина анимация dynamic menu more");
         Add("Форма кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonShapeRadioGroup, "квадратный круглый круг квадрат по умолчанию форма кнопки play pause square round circle shape");
         Add("Диагностика производительности", "О плеере", "About", DiagnosticsButton, "проверка нагрузка процессор память утечки тест diagnostics performance cpu memory leak");
         Add("Автоматически переводить журнал изменений на английский", "Оформление", "Appearance", ChangelogAutoTranslateCheckBox, "чейнджлог changelog перевод английский google translate история изменений патчноуты");
@@ -1731,6 +1743,9 @@ public partial class SettingsWindow : FluentWindow
         Add("Фон раскрытого острова", "Остров", "Island", IslandBackdropCombo, "фон backdrop background");
         Add("Полоса перемотки раскрытого острова", "Остров", "Island", IslandSeekStyleCombo, "перемотка seek bar");
         Add("Мерцание, пока ищется текст песни", "Остров", "Island", IslandLyricsShimmerCheckBox, "текст песни поиск lyrics shimmer");
+        Add("Название трека катается по буквам", "Остров", "Island", IslandWordRollCheckBox, "word roll анимация название трек буквы");
+        Add("Строки песни в свёрнутом острове катаются по буквам", "Остров", "Island", IslandLyricsWordRollCheckBox, "word roll анимация строка песни текст буквы свёрнутый");
+        Add("Подсветка слов в тексте песни (бета)", "Остров", "Island", IslandReadAlongCheckBox, "read along слова подсветка пилюля текст песни караоке");
         Add("Размытие движения при растяжении", "Остров", "Island", IslandMotionBlurCheckBox, "motion blur растяжение");
         Add("Действия контекстного меню острова", "Остров", "Island", IslandMenuPlayPauseCheckBox, "контекстное меню пауза следующий предыдущий скрыть развернуть now playing скорость тон совместимость настройки context menu actions");
         Add("Масштаб интерфейса", "Оформление", "Appearance", InterfaceScaleSlider, "размер текст scale interface size");
@@ -2079,7 +2094,9 @@ public partial class SettingsWindow : FluentWindow
     private Cursor? _previousCursor;
     private Point _autoScrollOrigin;
     private System.Windows.Controls.ScrollViewer? _autoScrollViewer;
-    private readonly DispatcherTimer _autoScrollTimer = new() { Interval = TimeSpan.FromMilliseconds(16) };
+    private bool _autoScrollHooked;
+    private double _autoScrollVelocity, _autoScrollOffset;
+    private long _autoScrollLastFrame;
 
     private void SettingsWindow_PreviewMouseDown(object sender, MouseButtonEventArgs e)
     {
@@ -2102,7 +2119,16 @@ public partial class SettingsWindow : FluentWindow
         _isAutoScrolling = true;
         Mouse.Capture(this, CaptureMode.SubTree);
         Cursor = Cursors.ScrollNS;
-        _autoScrollTimer.Start();
+        StopWheelScroll();
+        _autoScrollOffset = _autoScrollViewer.VerticalOffset;
+        _autoScrollVelocity = 0;
+        _autoScrollLastFrame = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (!_autoScrollHooked)
+        {
+            _autoScrollHooked = true;
+            CompositionTarget.Rendering += AutoScrollFrame;
+        }
+
         e.Handled = true;
     }
 
@@ -2121,29 +2147,39 @@ public partial class SettingsWindow : FluentWindow
         StopAutoScrolling();
     }
 
-    private void AutoScrollTimer_Tick(object? sender, EventArgs e)
+    // Автопрокрутка идёт по кадрам отрисовки, а не по таймеру: скорость сглаживается, поэтому страница разгоняется и тормозит плавно,
+    // а положение не округляется до пикселя на каждом тике. Чем дальше курсор от точки запуска, тем быстрее страница.
+    private const double AutoScrollDeadZone = 8, AutoScrollMaxSpeed = 2000, AutoScrollSmoothingSeconds = 0.12;
+
+    private void AutoScrollFrame(object? sender, EventArgs e)
     {
         if (!_isAutoScrolling || _autoScrollViewer is null) return;
 
-        Point current = Mouse.GetPosition(RootLayout);
-        double distance = current.Y - _autoScrollOrigin.Y;
-        if (Math.Abs(distance) < 4) return;
+        double dt = Math.Min(System.Diagnostics.Stopwatch.GetElapsedTime(_autoScrollLastFrame).TotalSeconds, 0.05);
+        _autoScrollLastFrame = System.Diagnostics.Stopwatch.GetTimestamp();
+        if (dt <= 0) return;
 
-        // Чем дальше курсор от точки запуска, тем быстрее движется страница. Умножение на
-        // 0.12 даёт мягкую скорость, близкую к стандартной автопрокрутке браузеров.
-        double delta = Math.Clamp(distance * 0.12, -24, 24);
-        double nextOffset = Math.Clamp(
-            _autoScrollViewer.VerticalOffset + delta,
-            0,
-            _autoScrollViewer.ScrollableHeight);
-        _autoScrollViewer.ScrollToVerticalOffset(nextOffset);
+        double distance = Mouse.GetPosition(RootLayout).Y - _autoScrollOrigin.Y;
+        double effective = Math.Max(0, Math.Abs(distance) - AutoScrollDeadZone);
+        double target = Math.Sign(distance) * Math.Min(AutoScrollMaxSpeed, 6.5 * effective + 0.015 * effective * effective);
+        _autoScrollVelocity += (target - _autoScrollVelocity) * (1 - Math.Exp(-dt / AutoScrollSmoothingSeconds));
+        if (Math.Abs(_autoScrollVelocity) < 0.5 && target == 0) return;
+
+        _autoScrollOffset = Math.Clamp(_autoScrollOffset + _autoScrollVelocity * dt, 0, _autoScrollViewer.ScrollableHeight);
+        _autoScrollViewer.ScrollToVerticalOffset(_autoScrollOffset);
     }
 
     private void StopAutoScrolling()
     {
-        if (!_isAutoScrolling && !_autoScrollTimer.IsEnabled) return;
+        if (!_isAutoScrolling && !_autoScrollHooked) return;
         _isAutoScrolling = false;
-        _autoScrollTimer.Stop();
+        if (_autoScrollHooked)
+        {
+            _autoScrollHooked = false;
+            CompositionTarget.Rendering -= AutoScrollFrame;
+        }
+
+        _autoScrollVelocity = 0;
         if (Mouse.Captured is not null) Mouse.Capture(null);
         Cursor = _previousCursor ?? Cursors.Arrow;
         _previousCursor = null;
@@ -3828,6 +3864,9 @@ public partial class SettingsWindow : FluentWindow
         _settings.IslandNotchHoverOpen = IslandNotchHoverOpenCheckBox.IsChecked == true;
         _settings.IslandAcceptDrops = IslandAcceptDropsCheckBox.IsChecked == true;
         _settings.IslandLyricsShimmer = IslandLyricsShimmerCheckBox.IsChecked == true;
+        _settings.IslandWordRoll = IslandWordRollCheckBox.IsChecked == true;
+        _settings.IslandLyricsWordRoll = IslandLyricsWordRollCheckBox.IsChecked == true;
+        _settings.IslandReadAlong = IslandReadAlongCheckBox.IsChecked == true;
         _settings.IslandHideSystemToast = IslandHideSystemToastCheckBox.IsChecked == true;
         SaveIslandSettings();
     }

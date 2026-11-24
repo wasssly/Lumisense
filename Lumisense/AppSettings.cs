@@ -263,6 +263,15 @@ public class AppSettings
     public string IslandSeekStyle { get; set; } = "Plain";
     public bool IslandLyricsShimmer { get; set; } = true;
 
+    // Word roll: название трека в острове меняется, перекатываясь по буквам.
+    public bool IslandWordRoll { get; set; } = true;
+
+    // Word roll для строк песни в свёрнутом острове.
+    public bool IslandLyricsWordRoll { get; set; } = true;
+
+    // Read along: слова читаемой строки песни в раскрытом острове подсвечиваются пилюлей, которая едет от слова к слову.
+    public bool IslandReadAlong { get; set; } = true;
+
     // Прятать обложку, пока открыта панель «Текст песни», чтобы тексту хватало места.
     public bool HideCoverInLyricsPanel { get; set; } = true;
 
@@ -424,6 +433,9 @@ public class AppSettings
 
     // Форма кнопки «Пуск/Пауза»: квадрат с закруглёнными углами (как раньше) или круг.
     public bool PlayButtonRound { get; set; }
+
+    // Меню «Ещё» (три точки) в главном окне: пружинное (растёт из кнопки, Dynamic menu) или обычное всплывающее окно.
+    public bool MoreMenuSpring { get; set; } = true;
 
     // Новый вид: показывать ли дополнительные кнопки по бокам от «Назад / Пуск / Вперёд» и какие именно. Слоты слева направо:
     // дальний левый, ближний левый, ближний правый, дальний правый; значения "", "Shuffle", "Repeat", "Stop", "Mini".
