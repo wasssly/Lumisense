@@ -264,14 +264,12 @@ public sealed class DiscordRichPresenceManager : IDisposable
 
         // LargeImageText дублировал бы Details/State при наведении на обложку, поэтому пустой,
         // пока трек виден текстом; заполняется только когда трек скрыт настройками приватности.
-        if (!string.IsNullOrWhiteSpace(coverUrl))
+        bool hasCover = !string.IsNullOrWhiteSpace(coverUrl);
+        presence.Assets = new Assets
         {
-            presence.Assets = new Assets
-            {
-                LargeImageKey = coverUrl,
-                LargeImageText = settings.DiscordRichPresenceShowTrackInfo ? null : "Lumisense"
-            };
-        }
+            LargeImageKey = hasCover ? coverUrl : DiscordRichPresenceDefaults.DefaultIconUrl,
+            LargeImageText = hasCover && settings.DiscordRichPresenceShowTrackInfo ? null : "Lumisense"
+        };
 
         // Таймлайн скрывается на паузе: иначе Discord продолжал бы отсчёт и показывал неверное
         // оставшееся время. Для играющего трека задаём абсолютные timestamps от UTC.
