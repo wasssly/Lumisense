@@ -10,7 +10,7 @@ public partial class SettingsWindow
         Dispatcher.BeginInvoke(() =>
         {
             if (_lazyPages.TryGetValue("Equalizer", out ILazySettingsPage? page)) ((EqualizerSettingsPage)page).RefreshFromOwner();
-            PlaybackBalanceSlider.Value = Math.Clamp(_settings.PlaybackBalance, -100, 100);
+            if (_lazyPages.TryGetValue("Playback", out ILazySettingsPage? playbackPage)) ((PlaybackSettingsPage)playbackPage).RefreshPlaybackBalance();
         });
     }
 }

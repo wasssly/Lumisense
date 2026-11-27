@@ -452,4 +452,13 @@ public partial class SettingsWindow
         ProgressPreviewWaveform.HoverRatio = null;
         ProgressPreviewWaveformHost.ToolTip = null;
     }
+
+    // См. AppSettings.SliderStyle: переключение применяется ко всем окнам сразу через SliderAppearance.
+    private void SliderStyleRadio_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        _settings.SliderStyle = SliderStyleMaterialRadio.IsChecked == true ? "Material" : "Default";
+        _owner.ApplySliderStyle();
+    }
 }

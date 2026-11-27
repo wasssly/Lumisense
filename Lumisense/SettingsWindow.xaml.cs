@@ -24,8 +24,7 @@ public partial class SettingsWindow : FluentWindow
     private bool _isInitializing = true;
     private bool _isSyncingIslandButtons;
     private bool _interfaceScaleRestartNoticeShown;
-    private bool _isRefreshingOutputDevices;
-    private bool _isRefreshingWasapiMode;
+    private bool _isWindowClosed;
 
     // Индекс поиска — ручной перечень опций: подпись, страница, ссылка на элемент (для прокрутки и подсветки)
     // и ключевые слова; разметка не читается.
@@ -169,14 +168,6 @@ public partial class SettingsWindow : FluentWindow
 
         InitializeProgressAppearanceEditor();
 
-        RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
-        LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
-        InitializeOutputDeviceCombo();
-        InitializeWasapiModeCombo();
-        InitializeWasapiLatencyCombo();
-        RaisePlaybackPriorityCheckBox.IsChecked = _settings.RaisePlaybackPriority;
-        TrackLoadTraceCheckBox.IsChecked = _settings.TrackLoadTraceEnabled;
-        NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked = _settings.NeverAutoPlayLastTrackOnStartup;
         MiniStyleIslandRadio.IsChecked = _settings.MiniPlayerStyle == "Island";
         MiniStyleClassicRadio.IsChecked = !MiniStyleIslandRadio.IsChecked.GetValueOrDefault();
         IslandInactiveNote.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
@@ -261,40 +252,11 @@ public partial class SettingsWindow : FluentWindow
         MiniArtistMarqueeCheckBox.IsChecked = _settings.MiniPlayerArtistMarquee;
 
         InitializeMiniPlayerContextMenuActionCheckBoxes();
-        LoadShuffleModeControls();
-        SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
-        AutoRefreshPlaylistFoldersCheckBox.IsChecked = _settings.AutoRefreshPlaylistFolders;
         MiniArtworkProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "Material";
         MiniArtworkProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "MaterialSlider";
         MiniArtworkProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle is not ("Material" or "MaterialSlider");
         SliderStyleMaterialRadio.IsChecked = _settings.SliderStyle == "Material";
         SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
-        ReplayGainCheckBox.IsChecked = _settings.ReplayGainEnabled;
-        ReplayGainAlbumCheckBox.IsChecked = _settings.ReplayGainAlbumMode;
-        LoudnessScanCheckBox.IsChecked = _settings.LoudnessScanEnabled;
-        LimiterCheckBox.IsChecked = _settings.LimiterEnabled;
-        PlaybackSpeedChangesPitchCheckBox.IsChecked = _settings.PlaybackSpeedChangesPitch;
-        ReplayGainPreampSlider.Value = Math.Clamp(_settings.ReplayGainPreampDb, -12, 12);
-        UpdateReplayGainPreampText();
-        ChannelModeMonoRadio.IsChecked = _settings.PlaybackChannelMode == "Mono";
-        ChannelModeStereoRadio.IsChecked = _settings.PlaybackChannelMode != "Mono";
-        PlaybackBalanceSlider.Value = Math.Clamp(_settings.PlaybackBalance, -100, 100);
-        DeviceConnectStyleCombo.SelectedItem = DeviceConnectStyleCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
-            .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.DeviceConnectStyle, StringComparison.Ordinal))
-            ?? DeviceConnectStyleCombo.Items[0];
-        DeviceCardAnimationCombo.SelectedItem = DeviceCardAnimationCombo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
-            .FirstOrDefault(item => string.Equals(item.Tag as string, _settings.DeviceCardAnimation, StringComparison.Ordinal))
-            ?? DeviceCardAnimationCombo.Items[0];
-        RefreshDeviceKindControls();
-        UpdatePlaybackBalanceText();
-        StereoWidthSlider.Value = Math.Clamp(_settings.StereoWidthPercent, 0, 200);
-        CrossfeedSlider.Value = Math.Clamp(_settings.CrossfeedPercent, 0, 100);
-        LoudnessCompensationSlider.Value = Math.Clamp(_settings.LoudnessCompensationPercent, 0, 100);
-        UpdateStereoImageTexts();
-        GaplessCheckBox.IsChecked = _settings.GaplessEnabled;
-        CrossfadeSlider.Value = Math.Clamp(_settings.CrossfadeSeconds, 0, 12);
-        CrossfadeSkipSameAlbumCheckBox.IsChecked = _settings.CrossfadeSkipSameAlbum;
-        UpdateCrossfadeText();
 
         SearchResultsList.ItemsSource = _searchResults;
         foreach (var (menu, panel) in ContextMenuOrderPanels())
@@ -340,6 +302,8 @@ public partial class SettingsWindow : FluentWindow
                 ((UpdatesSettingsPage)updatesPage).CancelBackgroundWork();
             if (_lazyPages.TryGetValue("Lyrics", out ILazySettingsPage? lyricsPage))
                 ((LyricsSettingsPage)lyricsPage).MarkWindowClosed();
+            if (_lazyPages.TryGetValue("Playback", out ILazySettingsPage? playbackPage))
+                ((PlaybackSettingsPage)playbackPage).MarkWindowClosed();
             LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         };
         LocalizationService.Apply(this);
@@ -469,6 +433,22 @@ public partial class SettingsWindow : FluentWindow
             // Без finally исключение выше оставило бы флаг включённым, и окно перестало бы сохранять любые изменения.
             _isInitializing = wasInitializing1;
         }
+    }
+
+    // Страница «Воспроизведение» создаётся при первом показе; до этого читает состояние при создании.
+    public void RefreshOutputDeviceSelection()
+    {
+        if (_lazyPages.TryGetValue("Playback", out ILazySettingsPage? page)) ((PlaybackSettingsPage)page).RefreshOutputDeviceSelection();
+    }
+
+    public void RefreshOutputDeviceRuntimeStatus()
+    {
+        if (_lazyPages.TryGetValue("Playback", out ILazySettingsPage? page)) ((PlaybackSettingsPage)page).RefreshOutputDeviceRuntimeStatus();
+    }
+
+    public void RefreshWasapiModeSelection()
+    {
+        if (_lazyPages.TryGetValue("Playback", out ILazySettingsPage? page)) ((PlaybackSettingsPage)page).RefreshWasapiModeSelection();
     }
 
     // Страница «Окно» отмечает миниатюру сама; пока она не создана, вид читается при её создании.

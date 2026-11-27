@@ -19,45 +19,13 @@ namespace Lumisense;
 
 public partial class SettingsWindow
 {
-    private void RememberVolumeCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.RememberVolume = RememberVolumeCheckBox.IsChecked == true;
-    }
-
-    private void LogarithmicVolumeCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.UseLogarithmicVolume = LogarithmicVolumeCheckBox.IsChecked == true;
-        _owner.RefreshVolumeCurve();
-    }
-
-    private void NeverAutoPlayLastTrackOnStartupCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.NeverAutoPlayLastTrackOnStartup = NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked == true;
-    }
-
-    private void TrackLoadTraceCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.TrackLoadTraceEnabled = TrackLoadTraceCheckBox.IsChecked == true;
-        AudioDiagnosticsCopyStatusText.Text = _settings.TrackLoadTraceEnabled
-            ? LocalizationService.Translate("Trace подготовки трека включён")
-            : LocalizationService.Translate("Trace подготовки трека выключен");
-    }
-
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
     {
         // Показанные результаты поиска хранят уже выведенные подписи: пересобираем их на новом языке.
         if (SettingsSearchBox.Text.Trim().Length > 0) RefreshSearchResults();
 
         if (_lazyPages.TryGetValue("About", out ILazySettingsPage? aboutPage)) ((AboutSettingsPage)aboutPage).RefreshAppVersionText();
-        InitializeOutputDeviceCombo();
+        if (_lazyPages.TryGetValue("Playback", out ILazySettingsPage? playbackPage)) ((PlaybackSettingsPage)playbackPage).RefreshLocalization();
         if (_lazyPages.TryGetValue("Notifications", out ILazySettingsPage? toastPage)) ((NotificationsSettingsPage)toastPage).RefreshMonitorCombo();
         InitializeIslandMonitorCombo();
         if (_lazyPages.TryGetValue("Integrations", out ILazySettingsPage? discordPage)) ((IntegrationsSettingsPage)discordPage).UpdateDiscordRichPresenceConnectionStatus();
