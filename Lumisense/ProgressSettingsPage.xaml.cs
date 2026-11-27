@@ -243,35 +243,8 @@ public sealed partial class ProgressSettingsPage : UserControl, ILazySettingsPag
         UpdateProgressPreviewSticky();
     }
 
-    // Предпросмотр остаётся на экране, пока виден хотя бы его кусок карточки: сдвигается вниз вместе с прокруткой, но не дальше
-    // нижнего края карточки (за её пределы настройки уже другие, предпросмотр им не нужен).
-    private void UpdateProgressPreviewSticky()
-    {
-        if (!ProgressAppearanceCard.IsVisible || !ProgressPreviewPanel.IsVisible || ProgressPreviewPanel.ActualHeight <= 0)
-        {
-            ProgressPreviewTranslate.Y = 0;
-            return;
-        }
-
-        try
-        {
-            Point panelTop = ProgressPreviewPanel.TransformToAncestor(_window.PART_ContentScroll).Transform(new Point(0, 0));
-            Point cardTop = ProgressAppearanceCard.TransformToAncestor(_window.PART_ContentScroll).Transform(new Point(0, 0));
-
-            const double topGap = 8.0;
-            const double bottomPadding = 16.0;
-            double naturalTop = panelTop.Y - ProgressPreviewTranslate.Y;
-            double cardBottom = cardTop.Y + ProgressAppearanceCard.ActualHeight;
-            double maxOffset = cardBottom - bottomPadding - (naturalTop + ProgressPreviewPanel.ActualHeight);
-            double wanted = topGap - naturalTop;
-
-            ProgressPreviewTranslate.Y = Math.Max(0.0, Math.Min(wanted, maxOffset));
-        }
-        catch (InvalidOperationException)
-        {
-            ProgressPreviewTranslate.Y = 0;
-        }
-    }
+    private void UpdateProgressPreviewSticky() =>
+        StickyPreview.Update(_window.PART_ContentScroll, ProgressAppearanceCard, ProgressPreviewPanel, ProgressPreviewTranslate);
 
     private float[]? _samplePeaks;
 
