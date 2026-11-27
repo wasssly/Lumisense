@@ -19,15 +19,8 @@ namespace Lumisense;
 
 public partial class SettingsWindow
 {
-    private void MiniStyleRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.MiniPlayerStyle = MiniStyleIslandRadio.IsChecked == true ? "Island" : "Classic";
-        IslandInactiveNote.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
-        _owner.ApplyMiniPlayerStyleLive();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
+    internal void UpdateIslandInactiveNote() =>
+        IslandInactiveNote.Visibility = _settings.MiniPlayerStyle == "Island" ? Visibility.Collapsed : Visibility.Visible;
 
     private void SaveIslandSettings()
     {
@@ -174,34 +167,6 @@ public partial class SettingsWindow
             IslandMonitorCombo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag } ? tag : "";
         _owner.ApplyIslandMonitorLive();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
-
-    private void MiniSizePresetRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.MiniPlayerSizePreset = MiniSizeCompactRadio.IsChecked == true ? MiniPlayerSizePreset.Compact
-            : MiniSizeCurrentRadio.IsChecked == true ? MiniPlayerSizePreset.Current
-            : MiniPlayerSizePreset.Classic;
-        _owner.ApplyMiniPlayerSizePresetLive();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
-
-    private void MiniInfoModeRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.MiniPlayerInfoMode = MiniInfoOnlyTitleRadio.IsChecked == true ? "TitleOnly"
-            : MiniInfoRemainingRadio.IsChecked == true ? "TitleRemaining"
-            : "TitleArtist";
-        _owner.ApplyMiniPlayerInfoModeLive();
-    }
-
-    private void MiniArtistMarqueeCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-        _settings.MiniPlayerArtistMarquee = MiniArtistMarqueeCheckBox.IsChecked == true;
-        _owner.ApplyMiniPlayerInfoModeLive();
     }
 
     private void InitializeIslandMonitorCombo()

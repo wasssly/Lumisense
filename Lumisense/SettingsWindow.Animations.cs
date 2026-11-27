@@ -22,7 +22,6 @@ public partial class SettingsWindow
     // Меню «Трек» упорядочивает страница «Библиотека» (LibrarySettingsPage).
     private IEnumerable<(string Menu, System.Windows.Controls.Panel Panel)> ContextMenuOrderPanels() =>
     [
-        (ContextMenuOrdering.Mini, MiniContextMenuActionsPanel),
         (ContextMenuOrdering.Island, IslandMenuActionsPanel),
     ];
 

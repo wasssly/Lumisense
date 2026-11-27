@@ -133,9 +133,7 @@ public partial class SettingsWindow : FluentWindow
         foreach (var (menu, panel) in ContextMenuOrderPanels())
             PanelReorder.Sort(panel, ContextMenuOrdering.Effective(_settings, menu));
 
-        MiniStyleIslandRadio.IsChecked = _settings.MiniPlayerStyle == "Island";
-        MiniStyleClassicRadio.IsChecked = !MiniStyleIslandRadio.IsChecked.GetValueOrDefault();
-        IslandInactiveNote.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
+        UpdateIslandInactiveNote();
         InitializeIslandMonitorCombo();
         IslandScaleSlider.Value = _settings.IslandScalePercent;
         IslandScaleValueText.Text = $"{_settings.IslandScalePercent}%";
@@ -180,46 +178,6 @@ public partial class SettingsWindow : FluentWindow
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
         // чекбокс всегда показывает то, что реально настроено, а не могло устареть.
 
-        MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
-        MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
-        MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
-        GameOverlayCompatibilityCheckBox.IsChecked = _settings.GameOverlayCompatibilityMode;
-        GameOverlayAutoDetectCheckBox.IsChecked = _settings.GameOverlayCompatibilityAutoDetect;
-        MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
-        MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
-        MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
-        MiniSecondaryFavoriteRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Favorite";
-        MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault()
-                                              && !MiniSecondaryFavoriteRadio.IsChecked.GetValueOrDefault();
-        MiniButtonsOverlayRadio.IsChecked = _settings.MiniPlayerButtonsLayout == "Overlay";
-        MiniButtonsBelowRadio.IsChecked = !MiniButtonsOverlayRadio.IsChecked.GetValueOrDefault();
-        MiniArtworkVinylRadio.IsChecked = _settings.MiniPlayerArtworkStyle == "Vinyl";
-        MiniArtworkStaticCircleRadio.IsChecked = _settings.MiniPlayerArtworkStyle == "StaticCircle";
-        MiniArtworkDefaultRadio.IsChecked = !MiniArtworkVinylRadio.IsChecked.GetValueOrDefault()
-                                             && !MiniArtworkStaticCircleRadio.IsChecked.GetValueOrDefault();
-        MiniShowProgressCheckBox.IsChecked = _settings.MiniPlayerShowProgress;
-        MiniShowArtworkProgressCheckBox.IsChecked = _settings.MiniPlayerShowArtworkProgress;
-        MiniArtworkProgressThicknessSlider.Value = _settings.MiniPlayerArtworkProgressThickness;
-        RefreshMiniArtworkProgressThicknessPresentation();
-        MiniArtworkProgressFixedRadio.IsChecked = _settings.MiniPlayerArtworkProgressColorMode == "Fixed";
-        MiniArtworkProgressAccentRadio.IsChecked = !MiniArtworkProgressFixedRadio.IsChecked.GetValueOrDefault();
-        MiniArtworkProgressColorSwatchesPanel.Visibility = MiniArtworkProgressFixedRadio.IsChecked == true
-            ? Visibility.Visible : Visibility.Collapsed;
-        RefreshMiniArtworkProgressColorSwatchSelection();
-        MiniInfoOnlyTitleRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleOnly";
-        MiniSizeCurrentRadio.IsChecked = _settings.MiniPlayerSizePreset == MiniPlayerSizePreset.Current;
-        MiniSizeCompactRadio.IsChecked = _settings.MiniPlayerSizePreset == MiniPlayerSizePreset.Compact;
-        MiniSizeClassicRadio.IsChecked = !MiniSizeCurrentRadio.IsChecked.GetValueOrDefault()
-                                         && !MiniSizeCompactRadio.IsChecked.GetValueOrDefault();
-        MiniInfoRemainingRadio.IsChecked = _settings.MiniPlayerInfoMode == "TitleRemaining";
-        MiniInfoArtistRadio.IsChecked = !MiniInfoOnlyTitleRadio.IsChecked.GetValueOrDefault()
-                                         && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
-        MiniArtistMarqueeCheckBox.IsChecked = _settings.MiniPlayerArtistMarquee;
-
-        InitializeMiniPlayerContextMenuActionCheckBoxes();
-        MiniArtworkProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "Material";
-        MiniArtworkProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "MaterialSlider";
-        MiniArtworkProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle is not ("Material" or "MaterialSlider");
 
         SearchResultsList.ItemsSource = _searchResults;
         foreach (var (menu, panel) in ContextMenuOrderPanels())
@@ -262,41 +220,6 @@ public partial class SettingsWindow : FluentWindow
             LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         };
         LocalizationService.Apply(this);
-    }
-
-    private void InitializeMiniPlayerContextMenuActionCheckBoxes()
-    {
-        var checkBoxes = new[]
-        {
-            MiniContextSettingsCheckBox,
-            MiniContextNowPlayingCheckBox,
-            MiniContextPinCheckBox,
-            MiniContextTopmostCheckBox,
-            MiniContextOverlayCompatibilityCheckBox,
-            MiniContextSecondaryButtonCheckBox,
-            MiniContextPlaybackRateCheckBox,
-            MiniContextPitchCheckBox,
-            MiniContextOpacityCheckBox,
-            MiniContextSnapToEdgesCheckBox,
-            MiniContextShowProgressCheckBox,
-            MiniContextShowArtworkProgressCheckBox,
-            MiniContextArtworkStyleCheckBox,
-            MiniContextButtonsLayoutCheckBox
-        };
-
-        foreach (System.Windows.Controls.CheckBox checkBox in checkBoxes)
-        {
-            if (checkBox.Tag is string actionId)
-                checkBox.IsChecked = !_owner.IsMiniPlayerContextMenuActionDisabled(actionId);
-        }
-    }
-
-    private void MiniPlayerContextMenuActionCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-        if (sender is not System.Windows.Controls.CheckBox { Tag: string actionId } checkBox) return;
-
-        _owner.SetMiniPlayerContextMenuActionDisabled(actionId, checkBox.IsChecked != true);
     }
 
     // CenterOwner не подходит (Owner не выставляется), центрируем вручную; двигавшееся окно открываем на прежнем месте
@@ -363,31 +286,6 @@ public partial class SettingsWindow : FluentWindow
 
         _settings.SettingsWindowLeft = Left;
         _settings.SettingsWindowTop = Top;
-    }
-
-    // Вызывается извне, когда закрепление, "поверх окон" или прозрачность переключили прямо на мини-плеере;
-    // _isInitializing глушит Changed-обработчики, чтобы не применять настройку повторно и не зациклить обновления.
-    public void RefreshMiniPlayerToggles()
-    {
-        bool wasInitializing1 = _isInitializing;
-        _isInitializing = true;
-        try
-        {
-            MiniAlwaysOnTopCheckBox.IsChecked = _settings.MiniPlayerAlwaysOnTop;
-            MiniPinnedCheckBox.IsChecked = _settings.MiniPlayerPinned;
-            MiniSnapToEdgesCheckBox.IsChecked = _settings.MiniPlayerSnapToEdges;
-            MiniSecondaryShuffleRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Shuffle";
-            MiniSecondaryFavoriteRadio.IsChecked = _settings.MiniPlayerSecondaryButton == "Favorite";
-            MiniSecondaryRepeatRadio.IsChecked = !MiniSecondaryShuffleRadio.IsChecked.GetValueOrDefault()
-                                                  && !MiniSecondaryFavoriteRadio.IsChecked.GetValueOrDefault();
-            MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
-            MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
-        }
-        finally
-        {
-            // Без finally исключение выше оставило бы флаг включённым, и окно перестало бы сохранять любые изменения.
-            _isInitializing = wasInitializing1;
-        }
     }
 
     // Страница «Воспроизведение» создаётся при первом показе; до этого читает состояние при создании.
