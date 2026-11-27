@@ -124,6 +124,19 @@ public partial class SettingsWindow
         if (FindVisualAncestor<System.Windows.Controls.Slider>(e.OriginalSource as DependencyObject) is not null)
             return;
 
+        // Колесо над открытым списком листает его самого; в любом другом месте список просто закрывается.
+        if (OpenComboBox() is { } combo)
+        {
+            if (e.OriginalSource is DependencyObject src && PresentationSource.FromDependencyObject(src) != PresentationSource.FromVisual(this))
+            {
+                var inList = FindVisualAncestor<System.Windows.Controls.ScrollViewer>(e.OriginalSource as DependencyObject);
+                if (inList is null || inList.ScrollableHeight <= 0) e.Handled = true;
+                return;
+            }
+
+            combo.IsDropDownOpen = false;
+        }
+
         var scrollViewer = FindVisualAncestor<System.Windows.Controls.ScrollViewer>(e.OriginalSource as DependencyObject)
                            ?? PART_ContentScroll;
         if (scrollViewer.ScrollableHeight <= 0) return;
@@ -131,6 +144,15 @@ public partial class SettingsWindow
         ScrollByWheel(scrollViewer, -e.Delta * 0.45);
         e.Handled = true;
     }
+
+    private static System.Windows.Controls.ComboBox? OpenComboBox() => Keyboard.FocusedElement switch
+    {
+        System.Windows.Controls.ComboBox { IsDropDownOpen: true } combo => combo,
+        System.Windows.Controls.ComboBoxItem item =>
+            System.Windows.Controls.ItemsControl.ItemsControlFromItemContainer(item) as System.Windows.Controls.ComboBox
+            is { IsDropDownOpen: true } owner ? owner : null,
+        _ => null
+    };
 
     private static T? FindVisualAncestor<T>(DependencyObject? source) where T : DependencyObject
     {
