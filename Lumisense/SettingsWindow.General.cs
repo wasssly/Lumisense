@@ -27,7 +27,7 @@ public partial class SettingsWindow
         if (_lazyPages.TryGetValue("About", out ILazySettingsPage? aboutPage)) ((AboutSettingsPage)aboutPage).RefreshAppVersionText();
         if (_lazyPages.TryGetValue("Playback", out ILazySettingsPage? playbackPage)) ((PlaybackSettingsPage)playbackPage).RefreshLocalization();
         if (_lazyPages.TryGetValue("Notifications", out ILazySettingsPage? toastPage)) ((NotificationsSettingsPage)toastPage).RefreshMonitorCombo();
-        InitializeIslandMonitorCombo();
+        RefreshIslandMonitorCombo();
         if (_lazyPages.TryGetValue("Integrations", out ILazySettingsPage? discordPage)) ((IntegrationsSettingsPage)discordPage).UpdateDiscordRichPresenceConnectionStatus();
 
         if (_lazyPages.TryGetValue("Equalizer", out ILazySettingsPage? eqPage)) ((EqualizerSettingsPage)eqPage).RefreshBandTexts();

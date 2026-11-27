@@ -21,10 +21,6 @@ public partial class SettingsWindow
 {
     private void BuildSearchIndex()
     {
-        void Add(string label, string pageTitle, string pageKey, FrameworkElement target, string extraKeywords = "")
-            => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey,
-                $"{label} {LocalizationService.ToEnglish(label)} {extraKeywords}".ToLowerInvariant(), target));
-
         // Элементы ленивых страниц ещё не существуют при сборке индекса, поэтому ищутся по имени при переходе.
         void AddLazy(string label, string pageTitle, string pageKey, string targetName, string extraKeywords = "")
             => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey,
@@ -65,8 +61,8 @@ public partial class SettingsWindow
         AddLazy("Эквалайзер", "Эквалайзер", "Equalizer", "EqualizerEnabledCheckBox", "equalizer эквалайзер частоты полосы бас звук eq");
         AddLazy("Звук для каждого устройства", "Эквалайзер", "Equalizer", "DeviceSoundProfilesCheckBox", "профиль устройство наушники колонки эквалайзер баланс запоминать device profile");
         AddLazy("Авто-преамп эквалайзера", "Эквалайзер", "Equalizer", "EqualizerAutoHeadroomCheckBox", "преамп headroom клиппинг перегрузка громкость эквалайзер eq подъём");
-        Add("Монитор острова", "Остров", "Island", IslandMonitorCombo, "остров монитор экран дисплей island monitor display");
-        Add("Настройки острова", "Остров", "Island", IslandCustomCard, "остров круг капсула вид свёрнутого только обложка размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
+        AddLazy("Монитор острова", "Остров", "Island", "IslandMonitorCombo", "остров монитор экран дисплей island monitor display");
+        AddLazy("Настройки острова", "Остров", "Island", "IslandCustomCard", "остров круг капсула вид свёрнутого только обложка размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
         AddLazy("Вид мини-плеера: карточка или остров", "Мини-плеер", "MiniPlayer", "MiniStyleCard", "остров капсула dynamic island монитор экран вид мини плеер island monitor style");
         AddLazy("Прозрачность окна мини-плеера", "Мини-плеер", "MiniPlayer", "MiniOpacitySlider", "прозрачность opacity мини плеер");
         AddLazy("Поверх всех окон (мини-плеер)", "Мини-плеер", "MiniPlayer", "MiniAlwaysOnTopCheckBox", "topmost мини плеер");
@@ -229,39 +225,39 @@ public partial class SettingsWindow
         AddLazy("Расположение кнопок (мини-плеер)", "Мини-плеер", "MiniPlayer", "MiniButtonsLayoutRadioGroup", "снизу сбоку кнопки управление buttons below на месте обложки и названия размер окна не меняется");
         AddLazy("Стиль контура прогресса вокруг обложки", "Мини-плеер", "MiniPlayer", "MiniPlayerArtworkProgressStyleRadioGroup", "обычный волнистый wavy outline material волнистая линия как в android slider ползунок с зазором");
         AddLazy("Что показывать под названием (мини-плеер)", "Мини-плеер", "MiniPlayer", "MiniInfoModeRadioGroup", "исполнитель альбом artist album ничего только название трека оставшееся время");
-        Add("Вид свёрнутого острова", "Остров", "Island", IslandShapeCombo, "капсула круг notch nook вырез capsule circle shape");
-        Add("Notch Nook: раскрывать при наведении курсора", "Остров", "Island", IslandNotchHoverOpenCheckBox, "вырез наведение hover notch");
-        Add("Размер острова", "Остров", "Island", IslandScaleSlider, "масштаб scale size");
-        Add("Ширина острова", "Остров", "Island", IslandWidthSlider, "width");
-        Add("Отступ острова от верхнего края", "Остров", "Island", IslandTopGapSlider, "отступ сверху gap top");
-        Add("Скрытие острова по средней кнопке мыши", "Остров", "Island", IslandHideSlider, "скрыть средняя кнопка колесо hide middle click");
-        Add("Сворачивание острова после ухода курсора", "Остров", "Island", IslandCollapseSlider, "таймер задержка collapse delay");
-        Add("Раскрываться при смене трека", "Остров", "Island", IslandTrackToastCheckBox, "смена трека уведомление track change");
-        Add("Не показывать уведомление о смене трека в виде «Остров»", "Остров", "Island", IslandHideSystemToastCheckBox, "уведомление toast");
-        Add("Сворачиваться, когда курсор ушёл", "Остров", "Island", IslandAutoCollapseCheckBox, "collapse cursor");
-        Add("Эквалайзер в свёрнутом виде", "Остров", "Island", IslandEqualizerCheckBox, "полоски equalizer bars");
-        Add("Вместо эквалайзера показывать устройство вывода", "Остров", "Island", IslandCompactDeviceCheckBox, "устройство значок device icon");
-        Add("Обводка цветом акцента во время игры", "Остров", "Island", IslandAccentRimCheckBox, "акцент обводка игра accent rim");
-        Add("Полоса прогресса трека вокруг свёрнутого острова", "Остров", "Island", IslandProgressRimCheckBox, "контур прогресс ring progress");
-        Add("Кольцо прогресса рядом с островом", "Остров", "Island", IslandRingSideCombo, "кольцо круг прогресс слева справа ring progress side");
-        Add("Размытие при смене вида", "Остров", "Island", IslandBlurTransitionsCheckBox, "blur transitions анимация");
-        Add("Клик по обложке открывает её крупно", "Остров", "Island", IslandCoverPreviewCheckBox, "обложка просмотр cover preview");
-        Add("Показывать громкость, когда её меняют не на острове", "Остров", "Island", IslandExternalVolumeCheckBox, "громкость volume");
-        Add("Не раскрываться при смене трека в играх", "Остров", "Island", IslandQuietInGamesCheckBox, "игры games quiet");
-        Add("Перетягивание острова: влево — назад, вправо — вперёд", "Остров", "Island", IslandSwipeInvertedCheckBox, "свайп swipe перетягивание");
-        Add("Круглая обложка", "Остров", "Island", IslandRoundCoverCheckBox, "round cover");
-        Add("Принимать перетаскиваемые файлы и папки", "Остров", "Island", IslandAcceptDropsCheckBox, "drag drop перетаскивание файлы");
-        Add("Левая кнопка раскрытого острова", "Остров", "Island", IslandLeftButtonCombo, "кнопка button left");
-        Add("Правая кнопка раскрытого острова", "Остров", "Island", IslandRightButtonCombo, "кнопка button right");
-        Add("Эквалайзер свёрнутого острова", "Остров", "Island", IslandEqualizerStyleCombo, "полоски equalizer style");
-        Add("Фон раскрытого острова", "Остров", "Island", IslandBackdropCombo, "фон backdrop background");
-        Add("Полоса перемотки раскрытого острова", "Остров", "Island", IslandSeekStyleCombo, "перемотка seek bar");
-        Add("Мерцание, пока ищется текст песни", "Остров", "Island", IslandLyricsShimmerCheckBox, "текст песни поиск lyrics shimmer");
-        Add("Название трека катается по буквам", "Остров", "Island", IslandWordRollCheckBox, "word roll анимация название трек буквы");
-        Add("Строки песни в свёрнутом острове катаются по буквам", "Остров", "Island", IslandLyricsWordRollCheckBox, "word roll анимация строка песни текст буквы свёрнутый");
-        Add("Подсветка слов в тексте песни (бета)", "Остров", "Island", IslandReadAlongCheckBox, "read along слова подсветка пилюля текст песни караоке");
-        Add("Размытие движения при растяжении", "Остров", "Island", IslandMotionBlurCheckBox, "motion blur растяжение");
-        Add("Действия контекстного меню острова", "Остров", "Island", IslandMenuPlayPauseCheckBox, "контекстное меню пауза следующий предыдущий скрыть развернуть now playing скорость тон совместимость настройки context menu actions");
+        AddLazy("Вид свёрнутого острова", "Остров", "Island", "IslandShapeCombo", "капсула круг notch nook вырез capsule circle shape");
+        AddLazy("Notch Nook: раскрывать при наведении курсора", "Остров", "Island", "IslandNotchHoverOpenCheckBox", "вырез наведение hover notch");
+        AddLazy("Размер острова", "Остров", "Island", "IslandScaleSlider", "масштаб scale size");
+        AddLazy("Ширина острова", "Остров", "Island", "IslandWidthSlider", "width");
+        AddLazy("Отступ острова от верхнего края", "Остров", "Island", "IslandTopGapSlider", "отступ сверху gap top");
+        AddLazy("Скрытие острова по средней кнопке мыши", "Остров", "Island", "IslandHideSlider", "скрыть средняя кнопка колесо hide middle click");
+        AddLazy("Сворачивание острова после ухода курсора", "Остров", "Island", "IslandCollapseSlider", "таймер задержка collapse delay");
+        AddLazy("Раскрываться при смене трека", "Остров", "Island", "IslandTrackToastCheckBox", "смена трека уведомление track change");
+        AddLazy("Не показывать уведомление о смене трека в виде «Остров»", "Остров", "Island", "IslandHideSystemToastCheckBox", "уведомление toast");
+        AddLazy("Сворачиваться, когда курсор ушёл", "Остров", "Island", "IslandAutoCollapseCheckBox", "collapse cursor");
+        AddLazy("Эквалайзер в свёрнутом виде", "Остров", "Island", "IslandEqualizerCheckBox", "полоски equalizer bars");
+        AddLazy("Вместо эквалайзера показывать устройство вывода", "Остров", "Island", "IslandCompactDeviceCheckBox", "устройство значок device icon");
+        AddLazy("Обводка цветом акцента во время игры", "Остров", "Island", "IslandAccentRimCheckBox", "акцент обводка игра accent rim");
+        AddLazy("Полоса прогресса трека вокруг свёрнутого острова", "Остров", "Island", "IslandProgressRimCheckBox", "контур прогресс ring progress");
+        AddLazy("Кольцо прогресса рядом с островом", "Остров", "Island", "IslandRingSideCombo", "кольцо круг прогресс слева справа ring progress side");
+        AddLazy("Размытие при смене вида", "Остров", "Island", "IslandBlurTransitionsCheckBox", "blur transitions анимация");
+        AddLazy("Клик по обложке открывает её крупно", "Остров", "Island", "IslandCoverPreviewCheckBox", "обложка просмотр cover preview");
+        AddLazy("Показывать громкость, когда её меняют не на острове", "Остров", "Island", "IslandExternalVolumeCheckBox", "громкость volume");
+        AddLazy("Не раскрываться при смене трека в играх", "Остров", "Island", "IslandQuietInGamesCheckBox", "игры games quiet");
+        AddLazy("Перетягивание острова: влево — назад, вправо — вперёд", "Остров", "Island", "IslandSwipeInvertedCheckBox", "свайп swipe перетягивание");
+        AddLazy("Круглая обложка", "Остров", "Island", "IslandRoundCoverCheckBox", "round cover");
+        AddLazy("Принимать перетаскиваемые файлы и папки", "Остров", "Island", "IslandAcceptDropsCheckBox", "drag drop перетаскивание файлы");
+        AddLazy("Левая кнопка раскрытого острова", "Остров", "Island", "IslandLeftButtonCombo", "кнопка button left");
+        AddLazy("Правая кнопка раскрытого острова", "Остров", "Island", "IslandRightButtonCombo", "кнопка button right");
+        AddLazy("Эквалайзер свёрнутого острова", "Остров", "Island", "IslandEqualizerStyleCombo", "полоски equalizer style");
+        AddLazy("Фон раскрытого острова", "Остров", "Island", "IslandBackdropCombo", "фон backdrop background");
+        AddLazy("Полоса перемотки раскрытого острова", "Остров", "Island", "IslandSeekStyleCombo", "перемотка seek bar");
+        AddLazy("Мерцание, пока ищется текст песни", "Остров", "Island", "IslandLyricsShimmerCheckBox", "текст песни поиск lyrics shimmer");
+        AddLazy("Название трека катается по буквам", "Остров", "Island", "IslandWordRollCheckBox", "word roll анимация название трек буквы");
+        AddLazy("Строки песни в свёрнутом острове катаются по буквам", "Остров", "Island", "IslandLyricsWordRollCheckBox", "word roll анимация строка песни текст буквы свёрнутый");
+        AddLazy("Подсветка слов в тексте песни (бета)", "Остров", "Island", "IslandReadAlongCheckBox", "read along слова подсветка пилюля текст песни караоке");
+        AddLazy("Размытие движения при растяжении", "Остров", "Island", "IslandMotionBlurCheckBox", "motion blur растяжение");
+        AddLazy("Действия контекстного меню острова", "Остров", "Island", "IslandMenuPlayPauseCheckBox", "контекстное меню пауза следующий предыдущий скрыть развернуть now playing скорость тон совместимость настройки context menu actions");
         AddLazy("Масштаб интерфейса", "Оформление", "Appearance", "InterfaceScaleSlider", "размер текст scale interface size");
         AddLazy("Все анимации", "Оформление", "Appearance", "AnimationsMasterCheckBox", "движение анимация слайдеры переходы обложка текст песни полоса мини-плеер бегущая строка остров меню трея сердечко индикаторы загрузки motion animations reduce");
         AddLazy("Now Playing: фон и переходы", "Оформление", "Appearance", "AnimationNowPlayingCheckBox", "анимация фон now playing animation background");

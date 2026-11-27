@@ -22,7 +22,6 @@ public partial class SettingsWindow : FluentWindow
     private readonly AppSettings _settings;
     private readonly ISettingsHost _owner;
     private bool _isInitializing = true;
-    private bool _isSyncingIslandButtons;
     private bool _isWindowClosed;
 
     // Индекс поиска — ручной перечень опций: подпись, страница, ссылка на элемент (для прокрутки и подсветки)
@@ -130,62 +129,12 @@ public partial class SettingsWindow : FluentWindow
         TaskbarWindowIdentity.AssignWhenSourceReady(this, TaskbarWindowIdentity.Settings);
         RestoreOrCenterPosition(owner);
 
-        foreach (var (menu, panel) in ContextMenuOrderPanels())
-            PanelReorder.Sort(panel, ContextMenuOrdering.Effective(_settings, menu));
-
-        UpdateIslandInactiveNote();
-        InitializeIslandMonitorCombo();
-        IslandScaleSlider.Value = _settings.IslandScalePercent;
-        IslandScaleValueText.Text = $"{_settings.IslandScalePercent}%";
-        IslandWidthSlider.Value = _settings.IslandWidthPercent;
-        IslandWidthValueText.Text = $"{_settings.IslandWidthPercent}%";
-        IslandTopGapSlider.Value = _settings.IslandTopGap;
-        IslandTopGapValueText.Text = $"{_settings.IslandTopGap} px";
-        IslandHideSlider.Value = _settings.IslandHideSeconds;
-        IslandHideValueText.Text = $"{_settings.IslandHideSeconds} с";
-        IslandCollapseSlider.Value = _settings.IslandCollapseSeconds;
-        IslandCollapseValueText.Text = $"{_settings.IslandCollapseSeconds} с";
-        IslandTrackToastCheckBox.IsChecked = _settings.IslandTrackToast;
-        IslandAutoCollapseCheckBox.IsChecked = _settings.IslandAutoCollapse;
-        IslandEqualizerCheckBox.IsChecked = _settings.IslandShowEqualizer;
-        IslandCompactDeviceCheckBox.IsChecked = _settings.IslandCompactShowDevice;
-        IslandAccentRimCheckBox.IsChecked = _settings.IslandAccentRim;
-        IslandProgressRimCheckBox.IsChecked = _settings.IslandProgressRim;
-        IslandBlurTransitionsCheckBox.IsChecked = _settings.IslandBlurTransitions;
-        IslandMotionBlurCheckBox.IsChecked = _settings.IslandMotionBlur;
-        IslandCoverPreviewCheckBox.IsChecked = _settings.IslandCoverPreview;
-        IslandExternalVolumeCheckBox.IsChecked = _settings.IslandExternalVolume;
-        IslandQuietInGamesCheckBox.IsChecked = _settings.IslandQuietInGames;
-        IslandSwipeInvertedCheckBox.IsChecked = _settings.IslandSwipeInverted;
-        IslandRoundCoverCheckBox.IsChecked = _settings.IslandRoundCover;
-        IslandNotchHoverOpenCheckBox.IsChecked = _settings.IslandNotchHoverOpen;
-        IslandAcceptDropsCheckBox.IsChecked = _settings.IslandAcceptDrops;
-        SelectComboByTag(IslandLeftButtonCombo, _settings.IslandLeftButton);
-        SelectComboByTag(IslandRightButtonCombo, _settings.IslandRightButton);
-        SelectComboByTag(IslandEqualizerStyleCombo, _settings.IslandEqualizerStyle);
-        SelectComboByTag(IslandShapeCombo, _settings.IslandShape);
-        SelectComboByTag(IslandBackdropCombo, _settings.IslandBackdrop);
-        SelectComboByTag(IslandSeekStyleCombo, _settings.IslandSeekStyle);
-        SelectComboByTag(IslandRingSideCombo, _settings.IslandRingSide);
-        IslandLyricsShimmerCheckBox.IsChecked = _settings.IslandLyricsShimmer;
-        IslandWordRollCheckBox.IsChecked = _settings.IslandWordRoll;
-        IslandLyricsWordRollCheckBox.IsChecked = _settings.IslandLyricsWordRoll;
-        IslandReadAlongCheckBox.IsChecked = _settings.IslandReadAlong;
-        IslandHideSystemToastCheckBox.IsChecked = _settings.IslandHideSystemToast;
-        foreach (var box in IslandMenuActionBoxes())
-            box.IsChecked = !_settings.DisabledIslandMenuActions.Contains((string)box.Tag);
 
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
         // чекбокс всегда показывает то, что реально настроено, а не могло устареть.
 
 
         SearchResultsList.ItemsSource = _searchResults;
-        foreach (var (menu, panel) in ContextMenuOrderPanels())
-        {
-            string menuKey = menu;
-            PanelReorder.Enable(panel, ids => ContextMenuOrderChanged(menuKey, ids));
-        }
-
         BuildSearchIndex();
 
 

@@ -1,0 +1,650 @@
+<UserControl x:Class="Lumisense.IslandSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Lumisense">
+    <StackPanel x:Name="PageIsland">
+        <TextBlock Text="Остров" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Text="Вид, поведение и оформление острова. Сам режим включается на вкладке «Мини-плеер»." Style="{StaticResource PageDescriptionStyle}" />
+
+        <TextBlock x:Name="IslandInactiveNote" Visibility="Collapsed" TextWrapping="Wrap" Margin="0,0,0,12"
+                   Text="Остров сейчас не используется: выберите вид «Остров» на вкладке «Мини-плеер», и эти настройки начнут действовать."
+                   Style="{StaticResource SettingsHelperTextStyle}" />
+
+        <!-- См. AppSettings.IslandMonitor и IslandPlayerWindow. -->
+        <Border Style="{StaticResource SettingsGroupCardStyle}">
+            <StackPanel x:Name="IslandMonitorPanel">
+                <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                            <TextBlock Text="Монитор острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                            <TextBlock Text="Остров остаётся по центру верхнего края выбранного монитора; если монитор отключён, он переезжает на основной." Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" />
+                        </StackPanel>
+                        <ComboBox x:Name="IslandMonitorCombo" AutomationProperties.Name="Монитор острова" SelectionChanged="IslandMonitorCombo_SelectionChanged"
+                                                                  Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="220" />
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Border>
+
+        <Border x:Name="IslandCustomCard">
+            <StackPanel>
+                <TextBlock Text="Настройки острова" Style="{StaticResource SettingsSectionTitleStyle}" />
+                <TextBlock Text="Размер и положение" Style="{StaticResource SettingsGroupTitleStyle}" />
+                <Border Style="{StaticResource SettingsGroupCardStyle}">
+                    <StackPanel>
+                        <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="340" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Размер острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                <Grid Grid.Column="1" VerticalAlignment="Center">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Slider x:Name="IslandScaleSlider" AutomationProperties.Name="Размер острова" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="120"
+                                                                            TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                                            ValueChanged="IslandScaleSlider_ValueChanged" />
+                                                                    <TextBlock x:Name="IslandScaleValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="340" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Ширина острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                <Grid Grid.Column="1" VerticalAlignment="Center">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Slider x:Name="IslandWidthSlider" AutomationProperties.Name="Ширина острова" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="80" Maximum="130"
+                                                                            TickFrequency="5" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                                            ValueChanged="IslandWidthSlider_ValueChanged" />
+                                                                    <TextBlock x:Name="IslandWidthValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="340" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Отступ от верхнего края" Style="{StaticResource SettingsRowTitleStyle}" />
+                                <Grid Grid.Column="1" VerticalAlignment="Center">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Slider x:Name="IslandTopGapSlider" AutomationProperties.Name="Отступ острова от верхнего края" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="0" Maximum="40"
+                                                                            TickFrequency="2" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                                            ValueChanged="IslandTopGapSlider_ValueChanged" />
+                                                                    <TextBlock x:Name="IslandTopGapValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Вид свёрнутого острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                                <ComboBox x:Name="IslandShapeCombo" AutomationProperties.Name="Вид свёрнутого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                    <ComboBoxItem Content="Капсула" Tag="Capsule" />
+                                                                    <ComboBoxItem Content="Круг (только обложка)" Tag="Circle" />
+                                                                    <ComboBoxItem Content="Notch Nook (у верхнего края экрана)" Tag="Notch" />
+                                                                </ComboBox>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Круглая обложка" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandRoundCoverCheckBox" AutomationProperties.Name="Круглая обложка"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Поведение" Style="{StaticResource SettingsGroupTitleStyle}" />
+                <Border Style="{StaticResource SettingsGroupCardStyle}">
+                    <StackPanel>
+                        <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Раскрываться при смене трека" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandTrackToastCheckBox" AutomationProperties.Name="Раскрываться при смене трека"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Не показывать уведомление о смене трека в виде «Остров»" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandHideSystemToastCheckBox" AutomationProperties.Name="Не показывать уведомление о смене трека в виде «Остров»"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Не раскрываться при смене трека в играх" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandQuietInGamesCheckBox" AutomationProperties.Name="Не раскрываться при смене трека в играх"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Сворачиваться, когда курсор ушёл" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandAutoCollapseCheckBox" AutomationProperties.Name="Сворачиваться, когда курсор ушёл"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="340" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Сворачивание после ухода курсора" Style="{StaticResource SettingsRowTitleStyle}" />
+                                <Grid Grid.Column="1" VerticalAlignment="Center">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Slider x:Name="IslandCollapseSlider" AutomationProperties.Name="Сворачивание острова после ухода курсора" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="1" Maximum="15"
+                                                                            TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                                            ValueChanged="IslandCollapseSlider_ValueChanged" />
+                                                                    <TextBlock x:Name="IslandCollapseValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="340" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Скрытие по средней кнопке мыши" Style="{StaticResource SettingsRowTitleStyle}" />
+                                <Grid Grid.Column="1" VerticalAlignment="Center">
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="Auto" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Slider x:Name="IslandHideSlider" AutomationProperties.Name="Скрытие острова по средней кнопке мыши" Style="{StaticResource SettingsAccentSliderStyle}" Minimum="3" Maximum="60"
+                                                                            TickFrequency="1" IsMoveToPointEnabled="True" IsSnapToTickEnabled="True"
+                                                                            ValueChanged="IslandHideSlider_ValueChanged" />
+                                                                    <TextBlock x:Name="IslandHideValueText" Grid.Column="1" MinWidth="48" Margin="14,0,0,0"
+                                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Notch Nook: раскрывать при наведении курсора" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandNotchHoverOpenCheckBox" AutomationProperties.Name="Notch Nook: раскрывать при наведении курсора"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Клик по обложке открывает её крупно" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandCoverPreviewCheckBox" AutomationProperties.Name="Клик по обложке открывает её крупно"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Показывать громкость, когда её меняют не на острове" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandExternalVolumeCheckBox" AutomationProperties.Name="Показывать громкость, когда её меняют не на острове"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Перетягивание острова: влево — назад, вправо — вперёд" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandSwipeInvertedCheckBox" AutomationProperties.Name="Перетягивание острова: влево — назад, вправо — вперёд"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Принимать перетаскиваемые файлы и папки" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandAcceptDropsCheckBox" AutomationProperties.Name="Принимать перетаскиваемые файлы и папки"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Свёрнутый вид" Style="{StaticResource SettingsGroupTitleStyle}" />
+                <Border Style="{StaticResource SettingsGroupCardStyle}">
+                    <StackPanel>
+                        <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Эквалайзер в свёрнутом виде" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandEqualizerCheckBox" AutomationProperties.Name="Эквалайзер в свёрнутом виде"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Вместо эквалайзера показывать устройство вывода" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandCompactDeviceCheckBox" AutomationProperties.Name="Вместо эквалайзера показывать устройство вывода"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Эквалайзер свёрнутого острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                                <ComboBox x:Name="IslandEqualizerStyleCombo" AutomationProperties.Name="Эквалайзер свёрнутого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                    <ComboBoxItem Content="Полоски" Tag="Bars" />
+                                                                    <ComboBoxItem Content="Точки" Tag="Dots" />
+                                                                </ComboBox>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Обводка цветом акцента во время игры" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandAccentRimCheckBox" AutomationProperties.Name="Обводка цветом акцента во время игры"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Полоса прогресса трека вокруг свёрнутого острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandProgressRimCheckBox" AutomationProperties.Name="Полоса прогресса трека вокруг свёрнутого острова"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Кольцо прогресса рядом с островом" Style="{StaticResource SettingsRowTitleStyle}" />
+                                <ComboBox x:Name="IslandRingSideCombo" AutomationProperties.Name="Кольцо прогресса рядом с островом" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                    <ComboBoxItem Content="Выкл." Tag="Off" />
+                                    <ComboBoxItem Content="Слева" Tag="Left" />
+                                    <ComboBoxItem Content="Справа" Tag="Right" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Раскрытый вид" Style="{StaticResource SettingsGroupTitleStyle}" />
+                <Border Style="{StaticResource SettingsGroupCardStyle}">
+                    <StackPanel>
+                        <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Левая кнопка раскрытого острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                                <ComboBox x:Name="IslandLeftButtonCombo" AutomationProperties.Name="Левая кнопка раскрытого острова" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                    <ComboBoxItem Content="Избранное" Tag="Favorite" />
+                                                                    <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
+                                                                    <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
+                                                                </ComboBox>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Правая кнопка раскрытого острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                                <ComboBox x:Name="IslandRightButtonCombo" AutomationProperties.Name="Правая кнопка раскрытого острова" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                    <ComboBoxItem Content="Избранное" Tag="Favorite" />
+                                                                    <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
+                                                                    <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
+                                                                </ComboBox>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Фон раскрытого острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                                <ComboBox x:Name="IslandBackdropCombo" AutomationProperties.Name="Фон раскрытого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                    <ComboBoxItem Content="Без фона" Tag="None" />
+                                                                    <ComboBoxItem Content="Свечение" Tag="Glow" />
+                                                                    <ComboBoxItem Content="Матрица из точек" Tag="Matrix" />
+                                                                </ComboBox>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="Полоса перемотки раскрытого острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                                <ComboBox x:Name="IslandSeekStyleCombo" AutomationProperties.Name="Полоса перемотки раскрытого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                    <ComboBoxItem Content="Сплошная" Tag="Plain" />
+                                                                    <ComboBoxItem Content="Сегменты" Tag="Segments" />
+                                                                </ComboBox>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Мерцание, пока ищется текст песни" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandLyricsShimmerCheckBox" AutomationProperties.Name="Мерцание, пока ищется текст песни"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Название трека катается по буквам" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandWordRollCheckBox" AutomationProperties.Name="Название трека катается по буквам"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Строки песни в свёрнутом острове катаются по буквам" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandLyricsWordRollCheckBox" AutomationProperties.Name="Строки песни в свёрнутом острове катаются по буквам"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Подсветка слов в тексте песни (бета)" Style="{StaticResource SettingsRowTitleStyle}" />
+                                    <TextBlock Text="Слова подсвечиваются приблизительно: в тексте песни нет точных таймингов слов, поэтому время строки делится между словами по их длине. Подсветка может чуть опережать голос или отставать от него."
+                                               Style="{StaticResource SettingsHelperTextStyle}" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandReadAlongCheckBox" AutomationProperties.Name="Подсветка слов в тексте песни (бета)"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Эффекты" Style="{StaticResource SettingsGroupTitleStyle}" />
+                <Border Style="{StaticResource SettingsGroupCardStyle}">
+                    <StackPanel>
+                        <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Размытие при смене вида" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandBlurTransitionsCheckBox" AutomationProperties.Name="Размытие при смене вида"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Размытие движения при растяжении" Style="{StaticResource SettingsRowTitleStyle}" />
+                                                                    <TextBlock Text="Размытия нагружают видеокарту: если остров подтормаживает, отключите их."
+                                                                               Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="IslandMotionBlurCheckBox" AutomationProperties.Name="Размытие движения при растяжении"
+                                Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </Border>
+                <TextBlock Text="Пункты контекстного меню острова" Style="{StaticResource SettingsGroupTitleStyle}" />
+                <Border Style="{StaticResource SettingsGroupCardStyle}">
+                    <StackPanel>
+                        <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                            <StackPanel>
+                                <TextBlock Text="Чтобы изменить порядок, перетаскивайте пункты за значок ⋮⋮ слева."
+                                                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,12" />
+                                                                <ui:Button Tag="Island" Content="Порядок по умолчанию" Appearance="Secondary"
+                                                                           HorizontalAlignment="Left" Margin="0,0,0,12"
+                                                                           Click="ContextMenuOrderReset_Click" />
+                                                                <StackPanel x:Name="IslandMenuActionsPanel">
+                                                                <Border Tag="PlayPause" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuPlayPauseCheckBox" Tag="PlayPause" Content="Пауза / продолжить" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="Next" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuNextCheckBox" Tag="Next" Content="Следующий трек" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="Previous" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuPreviousCheckBox" Tag="Previous" Content="Предыдущий трек" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="Hide" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuHideCheckBox" Tag="Hide" Content="Скрыть остров" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="Expand" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuExpandCheckBox" Tag="Expand" Content="Развернуть плеер" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="NowPlaying" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuNowPlayingCheckBox" Tag="NowPlaying" Content="Now Playing (полный экран)" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="Speed" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuSpeedCheckBox" Tag="Speed" Content="Скорость" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="Pitch" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuPitchCheckBox" Tag="Pitch" Content="Тон" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="Overlay" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuOverlayCheckBox" Tag="Overlay" Content="Совместимость с играми и оверлеем" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                <Border Tag="Settings" Style="{StaticResource ReorderRowStyle}">
+                                                                        <Grid>
+                                                                            <Grid.ColumnDefinitions>
+                                                                                <ColumnDefinition Width="24" />
+                                                                                <ColumnDefinition Width="*" />
+                                                                            </Grid.ColumnDefinitions>
+                                                                            <TextBlock Style="{StaticResource ReorderGripStyle}" />
+                                                                            <CheckBox Grid.Column="1" VerticalAlignment="Center" Margin="0" x:Name="IslandMenuSettingsCheckBox" Tag="Settings" Content="Настройки острова" Checked="IslandMenuAction_Changed" Unchecked="IslandMenuAction_Changed" />
+                                                                        </Grid>
+                                                                    </Border>
+                                                                </StackPanel>
+                                                                <TextBlock Text="Если скрыть все пункты, меню по правой кнопке мыши не откроется."
+                                                                           Style="{StaticResource SettingsHelperTextStyle}" Margin="0,6,0,16" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+    </StackPanel>
+</UserControl>

@@ -140,6 +140,7 @@ public partial class SettingsWindow
             "Appearance" => PageAppearance,
             "Progress" => PageProgress,
             "MiniPlayer" => PageMiniPlayer,
+            "Island" => PageIsland,
             _ => null
         };
         if (host is null) return;
@@ -161,6 +162,7 @@ public partial class SettingsWindow
             "Appearance" => new AppearanceSettingsPage(this, _settings, _owner),
             "Progress" => new ProgressSettingsPage(this, _settings, _owner),
             "MiniPlayer" => new MiniPlayerSettingsPage(this, _settings, _owner),
+            "Island" => new IslandSettingsPage(this, _settings, _owner),
             _ => new NotificationsSettingsPage(this, _settings, _owner)
         };
         page.MoveContentTo(host);
@@ -185,6 +187,7 @@ public partial class SettingsWindow
         : ReferenceEquals(host, PageAppearance) ? "Appearance"
         : ReferenceEquals(host, PageProgress) ? "Progress"
         : ReferenceEquals(host, PageMiniPlayer) ? "MiniPlayer"
+        : ReferenceEquals(host, PageIsland) ? "Island"
         : null;
 
     private FrameworkElement? ResolveLazyTarget(SettingsSearchEntry entry) =>
