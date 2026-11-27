@@ -253,4 +253,22 @@ public partial class SettingsWindow
                 : Brushes.Transparent;
         }
     }
+
+    // Вкладка «Полоса и ползунки» показывает, включён ли контур обложки и какого он вида, поэтому её надо обновлять при смене этих настроек.
+    internal void ReloadProgressControls()
+    {
+        if (_lazyPages.TryGetValue("Progress", out ILazySettingsPage? page)) ((ProgressSettingsPage)page).ReloadProgressControls();
+    }
+
+    // Вызывается главным окном при смене трека, обложки, акцента и формы звука.
+    public void RefreshProgressPreview()
+    {
+        if (_lazyPages.TryGetValue("Progress", out ILazySettingsPage? page)) ((ProgressSettingsPage)page).RefreshProgressPreview();
+    }
+
+    internal void MakeMiniArtworkProgressWavy()
+    {
+        MiniShowArtworkProgressCheckBox.IsChecked = true;
+        MiniArtworkProgressStyleMaterialRadio.IsChecked = true;
+    }
 }

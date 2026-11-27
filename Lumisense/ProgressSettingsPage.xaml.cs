@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -10,8 +12,39 @@ namespace Lumisense;
 
 // Карточка «Полоса воспроизведения»: вид полосы (стиль у каждого окна свой или общий) и её внешний вид (ProgressBarAppearance).
 // Правит профиль общий или одного из окон; предпросмотр рисуют настоящие контролы выбранного вида и закрепляется вверху карточки.
-public partial class SettingsWindow
+// Создаётся при первом показе страницы (см. SettingsWindow.EnsurePageBuilt).
+public sealed partial class ProgressSettingsPage : UserControl, ILazySettingsPage
 {
+    private readonly SettingsWindow _window;
+    private readonly AppSettings _settings;
+    private readonly ISettingsHost _owner;
+
+    // Глушит Changed-обработчики, пока значения читаются из настроек.
+    private bool _isInitializing = true;
+
+    internal ProgressSettingsPage(SettingsWindow window, AppSettings settings, ISettingsHost owner)
+    {
+        _window = window;
+        _settings = settings;
+        _owner = owner;
+
+        // StaticResource разбирается до того, как элементы попадут в дерево окна, поэтому ресурсы окна подключаются заранее.
+        Resources.MergedDictionaries.Add(window.Resources);
+        InitializeComponent();
+
+        InitializeProgressAppearanceEditor();
+        SliderStyleMaterialRadio.IsChecked = _settings.SliderStyle == "Material";
+        SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
+
+        // Выпадающие списки радиогрупп читают отмеченные радиокнопки, поэтому связываются после загрузки настроек.
+        RadioComboLinks.Initialize(this, FindName);
+        _isInitializing = false;
+    }
+
+    public void MoveContentTo(Panel host) => LazySettingsPage.MoveChildren(PageProgress, host);
+
+    public FrameworkElement? FindElement(string name) => FindName(name) as FrameworkElement;
+
     private ProgressSurface _progressEditSurface = ProgressSurface.Main;
 
     // Пока true, изменения контролов не пишутся в настройки: так XAML-значения ползунков при загрузке окна ничего не портят.
@@ -65,7 +98,7 @@ public partial class SettingsWindow
         };
 
         // Предпросмотр следует за прокруткой, пока карточка на экране (UpdateProgressPreviewSticky).
-        PART_ContentScroll.ScrollChanged += (_, _) => UpdateProgressPreviewSticky();
+        _window.PART_ContentScroll.ScrollChanged += (_, _) => UpdateProgressPreviewSticky();
         ProgressAppearanceCard.SizeChanged += (_, _) => UpdateProgressPreviewSticky();
         ProgressPreviewPanel.SizeChanged += (_, _) => UpdateProgressPreviewSticky();
         ProgressAppearanceCard.IsVisibleChanged += (_, _) => UpdateProgressPreviewSticky();
@@ -145,7 +178,7 @@ public partial class SettingsWindow
     }
 
     // Вызывается главным окном при смене трека, обложки, акцента и формы звука: предпросмотр должен показывать то же, что окна.
-    public void RefreshProgressPreview()
+    internal void RefreshProgressPreview()
     {
         if (_progressEditorLoading) return;
 
@@ -222,8 +255,8 @@ public partial class SettingsWindow
 
         try
         {
-            Point panelTop = ProgressPreviewPanel.TransformToAncestor(PART_ContentScroll).Transform(new Point(0, 0));
-            Point cardTop = ProgressAppearanceCard.TransformToAncestor(PART_ContentScroll).Transform(new Point(0, 0));
+            Point panelTop = ProgressPreviewPanel.TransformToAncestor(_window.PART_ContentScroll).Transform(new Point(0, 0));
+            Point cardTop = ProgressAppearanceCard.TransformToAncestor(_window.PART_ContentScroll).Transform(new Point(0, 0));
 
             const double topGap = 8.0;
             const double bottomPadding = 16.0;
@@ -274,7 +307,7 @@ public partial class SettingsWindow
     private static bool IsDefaultAppearance(ProgressBarAppearance appearance) =>
         JsonSerializer.Serialize(appearance) == JsonSerializer.Serialize(new ProgressBarAppearance());
 
-    private void ReloadProgressControls()
+    internal void ReloadProgressControls()
     {
         _progressEditorLoading = true;
         try
@@ -364,8 +397,8 @@ public partial class SettingsWindow
             FullOpen = true
         };
 
-        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-        if (dialog.ShowDialog(new Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
+        var handle = new System.Windows.Interop.WindowInteropHelper(_window).Handle;
+        if (dialog.ShowDialog(new SettingsWindow.Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
 
         var picked = dialog.Color;
         appearance.ColorHex = $"#{picked.R:X2}{picked.G:X2}{picked.B:X2}";
@@ -420,8 +453,7 @@ public partial class SettingsWindow
     // Включает контур в виде «Material» через те же переключатели, что на вкладке «Мини-плеер»: их обработчики применяют вид к окну.
     private void ProgressRingMakeWavyButton_Click(object sender, RoutedEventArgs e)
     {
-        MiniShowArtworkProgressCheckBox.IsChecked = true;
-        MiniArtworkProgressStyleMaterialRadio.IsChecked = true;
+        _window.MakeMiniArtworkProgressWavy();
         ReloadProgressControls();
         UpdateProgressPreview();
     }

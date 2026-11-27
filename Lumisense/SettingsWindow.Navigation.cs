@@ -138,6 +138,7 @@ public partial class SettingsWindow
             "Lyrics" => PageLyrics,
             "Playback" => PagePlayback,
             "Appearance" => PageAppearance,
+            "Progress" => PageProgress,
             _ => null
         };
         if (host is null) return;
@@ -157,6 +158,7 @@ public partial class SettingsWindow
             "Lyrics" => new LyricsSettingsPage(this, _settings, _owner),
             "Playback" => new PlaybackSettingsPage(this, _settings, _owner),
             "Appearance" => new AppearanceSettingsPage(this, _settings, _owner),
+            "Progress" => new ProgressSettingsPage(this, _settings, _owner),
             _ => new NotificationsSettingsPage(this, _settings, _owner)
         };
         page.MoveContentTo(host);
@@ -179,6 +181,7 @@ public partial class SettingsWindow
         : ReferenceEquals(host, PageLyrics) ? "Lyrics"
         : ReferenceEquals(host, PagePlayback) ? "Playback"
         : ReferenceEquals(host, PageAppearance) ? "Appearance"
+        : ReferenceEquals(host, PageProgress) ? "Progress"
         : null;
 
     private FrameworkElement? ResolveLazyTarget(SettingsSearchEntry entry) =>

@@ -133,8 +133,6 @@ public partial class SettingsWindow : FluentWindow
         foreach (var (menu, panel) in ContextMenuOrderPanels())
             PanelReorder.Sort(panel, ContextMenuOrdering.Effective(_settings, menu));
 
-        InitializeProgressAppearanceEditor();
-
         MiniStyleIslandRadio.IsChecked = _settings.MiniPlayerStyle == "Island";
         MiniStyleClassicRadio.IsChecked = !MiniStyleIslandRadio.IsChecked.GetValueOrDefault();
         IslandInactiveNote.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
@@ -222,8 +220,6 @@ public partial class SettingsWindow : FluentWindow
         MiniArtworkProgressStyleMaterialRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "Material";
         MiniArtworkProgressStyleMaterialSliderRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle == "MaterialSlider";
         MiniArtworkProgressStyleDefaultRadio.IsChecked = _settings.MiniPlayerArtworkProgressStyle is not ("Material" or "MaterialSlider");
-        SliderStyleMaterialRadio.IsChecked = _settings.SliderStyle == "Material";
-        SliderStyleDefaultRadio.IsChecked = _settings.SliderStyle != "Material";
 
         SearchResultsList.ItemsSource = _searchResults;
         foreach (var (menu, panel) in ContextMenuOrderPanels())

@@ -1,0 +1,509 @@
+<UserControl x:Class="Lumisense.ProgressSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Lumisense">
+    <StackPanel x:Name="PageProgress">
+        <TextBlock Text="Полоса и ползунки" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Text="Вид полосы воспроизведения и ползунков." Style="{StaticResource PageDescriptionStyle}" />
+
+        <!-- Полоса воспроизведения: стиль (AppSettings.ProgressBarStyle, NowPlayingProgressStyle, MiniPlayerProgressStyle через
+             ProgressStyleResolver) и вид (ProgressBarAppearance) — одна карточка для всех окон. Предпросмотр рисуют настоящие
+             контролы и закрепляют вверху, пока карточка на экране (SettingsWindow.ProgressAppearance.cs). -->
+        <StackPanel x:Name="ProgressAppearanceCard" Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Полоса воспроизведения">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=ProgressScopeRadioCombo}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel x:Name="ProgressScopeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                <ComboBox x:Name="ProgressScopeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Полоса воспроизведения" MinWidth="220" HorizontalAlignment="Right">
+                                    <ComboBoxItem Content="Одинаковая для всех окон" Tag="ProgressScopeSharedRadio" />
+                                    <ComboBoxItem Content="Своя для каждого окна (по умолчанию)" Tag="ProgressScopePerWindowRadio" />
+                                </ComboBox>
+                                <StackPanel Visibility="Collapsed">
+                                    <RadioButton x:Name="ProgressScopeSharedRadio" Content="Одинаковая для всех окон"
+                                    GroupName="ProgressScope" Checked="ProgressScopeRadio_Changed" />
+                                    <RadioButton x:Name="ProgressScopePerWindowRadio" Content="Своя для каждого окна (по умолчанию)"
+                                    GroupName="ProgressScope" Checked="ProgressScopeRadio_Changed" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressSurfacePanel}">
+                        <WrapPanel x:Name="ProgressSurfacePanel" Margin="28,0,0,0" Visibility="Collapsed">
+                            <RadioButton x:Name="ProgressSurfaceMainRadio" Content="Главное окно" GroupName="ProgressSurface"
+                                         Checked="ProgressSurfaceRadio_Changed" Margin="0,0,16,0" />
+                            <RadioButton x:Name="ProgressSurfaceNowPlayingRadio" Content="Now Playing" GroupName="ProgressSurface"
+                                         Checked="ProgressSurfaceRadio_Changed" Margin="0,0,16,0" />
+                            <RadioButton x:Name="ProgressSurfaceMiniRadio" Content="Мини-плеер" GroupName="ProgressSurface"
+                                         Checked="ProgressSurfaceRadio_Changed" Margin="0" />
+                        </WrapPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <TextBlock Text="Вид полосы" Style="{StaticResource SettingsGroupTitleStyle}" />
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=ProgressStyleFollowMainRadio}">
+                        <RadioButton Style="{StaticResource SettingsRowRadioButtonStyle}" x:Name="ProgressStyleFollowMainRadio" Content="Как в главном окне (по умолчанию)"
+                        GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" Visibility="Collapsed" />
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressStyleSliderRadio}">
+                        <RadioButton Style="{StaticResource SettingsRowRadioButtonStyle}" x:Name="ProgressStyleSliderRadio" Content="Обычная (по умолчанию)"
+                        GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" />
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressStyleWaveformRadio}">
+                        <RadioButton Style="{StaticResource SettingsRowRadioButtonStyle}" x:Name="ProgressStyleWaveformRadio" Content="Waveform (форма звука, как в SoundCloud)"
+                        GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" />
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressStyleMaterialRadio}">
+                        <RadioButton Style="{StaticResource SettingsRowRadioButtonStyle}" x:Name="ProgressStyleMaterialRadio" Content="Material (волнистая линия, как в Android)"
+                        GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" />
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressStyleMaterialSliderRadio}">
+                        <RadioButton Style="{StaticResource SettingsRowRadioButtonStyle}" x:Name="ProgressStyleMaterialSliderRadio" Content="Material Slider (ползунок с зазором, как в Android)"
+                        GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" />
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Форма звука считается один раз при загрузке трека и держится в памяти, пока плеер открыт — на длинных файлах (FLAC/WAV) первый расчёт может занять секунду-другую." TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" x:Name="ProgressStyleNote"
+                            TextWrapping="Wrap" Visibility="Collapsed" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0" Panel.ZIndex="10">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=ProgressPreviewPanel}" Panel.ZIndex="10">
+                        <Border x:Name="ProgressPreviewPanel" Panel.ZIndex="10" Margin="0,0,0,0" Padding="16,12" CornerRadius="10"
+                                BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="ProgressPreviewTranslate" />
+                            </Border.RenderTransform>
+                            <StackPanel>
+                                <TextBlock x:Name="ProgressPreviewCaption" Text="Предпросмотр" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
+                                <Grid x:Name="ProgressPreviewHost" HorizontalAlignment="Left" Width="390">
+                                    <Border x:Name="ProgressPreviewWaveformHost" Height="32" Background="Transparent"
+                                            MouseMove="ProgressPreviewWaveform_MouseMove" MouseLeave="ProgressPreviewWaveform_MouseLeave">
+                                        <local:WaveformView x:Name="ProgressPreviewWaveform" Progress="0.45"
+                                                            UnplayedBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                    </Border>
+                                    <local:MaterialProgressView x:Name="ProgressPreviewMaterial" Height="24" Progress="0.45" IsWaving="True"
+                                                                TrackBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                    <local:MaterialSliderVisual x:Name="ProgressPreviewMaterialSlider" Height="24" Progress="0.45"
+                                                                InactiveBrush="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                    <Grid x:Name="ProgressPreviewPlain" Height="24">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="0.45*" />
+                                            <ColumnDefinition Width="0.55*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border x:Name="ProgressPreviewTrack" Grid.ColumnSpan="2" Height="4" CornerRadius="2"
+                                                VerticalAlignment="Center"
+                                                Background="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                        <Border x:Name="ProgressPreviewFill" Height="4" CornerRadius="2" VerticalAlignment="Center" />
+                                    </Grid>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Цвет активной части">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=ProgressColorRadioCombo}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel x:Name="ProgressColorRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                <ComboBox x:Name="ProgressColorRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Цвет активной части" MinWidth="220" HorizontalAlignment="Right">
+                                    <ComboBoxItem Content="Акцент приложения (по умолчанию)" Tag="ProgressColorAccentRadio" />
+                                    <ComboBoxItem Content="От обложки текущего трека" Tag="ProgressColorCoverRadio" />
+                                    <ComboBoxItem Content="Свой цвет" Tag="ProgressColorCustomRadio" />
+                                </ComboBox>
+                                <StackPanel Visibility="Collapsed">
+                                    <RadioButton x:Name="ProgressColorAccentRadio" Content="Акцент приложения (по умолчанию)"
+                                    GroupName="ProgressColor" Checked="ProgressColorRadio_Changed" />
+                                    <RadioButton x:Name="ProgressColorCoverRadio" Content="От обложки текущего трека"
+                                    GroupName="ProgressColor" Checked="ProgressColorRadio_Changed" />
+                                    <RadioButton x:Name="ProgressColorCustomRadio" Content="Свой цвет"
+                                    GroupName="ProgressColor" Checked="ProgressColorRadio_Changed" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressColorCustomPanel}">
+                        <StackPanel x:Name="ProgressColorCustomPanel" Orientation="Horizontal" Margin="28,0,0,0" Visibility="Collapsed">
+                            <Border x:Name="ProgressColorSwatch" Width="28" Height="28" CornerRadius="6"
+                                    BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                            <ui:Button x:Name="ProgressColorPickButton" Content="Выбрать цвет…" Appearance="Secondary"
+                                       Margin="12,0,0,0" Click="ProgressColorPickButton_Click" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressThicknessSlider}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Толщина дорожки" Style="{StaticResource SettingsRowTitleStyle}" />
+                            </StackPanel>
+                            <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ProgressThicknessValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ProgressThicknessSlider" AutomationProperties.Name="Толщина дорожки прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
+                                Minimum="50" Maximum="200" Value="50" TickFrequency="5" IsSnapToTickEnabled="True"
+                                ValueChanged="ProgressAppearanceSlider_ValueChanged" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressThumbSlider}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Размер ручки" Style="{StaticResource SettingsRowTitleStyle}" />
+                            </StackPanel>
+                            <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ProgressThumbValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ProgressThumbSlider" AutomationProperties.Name="Размер ручки прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
+                                Minimum="60" Maximum="150" Value="60" TickFrequency="5" IsSnapToTickEnabled="True"
+                                ValueChanged="ProgressAppearanceSlider_ValueChanged" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,8" Text="Форма концов" Style="{StaticResource SettingsFieldLabelStyle}" />
+                            <WrapPanel>
+                                <RadioButton x:Name="ProgressShapeRoundRadio" Content="Скруглённые (по умолчанию)" GroupName="ProgressShape"
+                                             Checked="ProgressShapeRadio_Changed" Margin="0,0,16,0" />
+                                <RadioButton x:Name="ProgressShapeFlatRadio" Content="Прямые" GroupName="ProgressShape"
+                                             Checked="ProgressShapeRadio_Changed" Margin="0" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel x:Name="ProgressWaveGroup">
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressWaveAmplitudeSlider}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Высота волны" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ProgressWaveAmplitudeValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ProgressWaveAmplitudeSlider" AutomationProperties.Name="Высота волны прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
+                                    Minimum="0" Maximum="200" Value="0" TickFrequency="10" IsSnapToTickEnabled="True"
+                                    ValueChanged="ProgressAppearanceSlider_ValueChanged" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressWaveLengthSlider}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Длина волны" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ProgressWaveLengthValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ProgressWaveLengthSlider" AutomationProperties.Name="Длина волны прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
+                                    Minimum="50" Maximum="200" Value="50" TickFrequency="10" IsSnapToTickEnabled="True"
+                                    ValueChanged="ProgressAppearanceSlider_ValueChanged" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressWaveSpeedSlider}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Скорость волны" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ProgressWaveSpeedValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ProgressWaveSpeedSlider" AutomationProperties.Name="Скорость волны прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
+                                    Minimum="0" Maximum="200" Value="0" TickFrequency="10" IsSnapToTickEnabled="True"
+                                    ValueChanged="ProgressAppearanceSlider_ValueChanged" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressWaveAlwaysCheckBox}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Волна бежит и на паузе">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=ProgressWaveAlwaysCheckBox}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="ProgressWaveAlwaysCheckBox" AutomationProperties.Name="Волна бежит и на паузе"
+                                Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressWaveHandleCheckBox}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Ручка на волне">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=ProgressWaveHandleCheckBox}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" x:Name="ProgressRingNote"
+                                    TextWrapping="Wrap" Visibility="Collapsed"
+                                    Text="Контур вокруг обложки: его вид и толщина выбираются на вкладке «Мини-плеер», а волна и цвет берутся отсюда." />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="ProgressWaveHandleCheckBox" AutomationProperties.Name="Ручка на волне"
+                                Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressRingMakeWavyButton}">
+                            <ui:Button x:Name="ProgressRingMakeWavyButton" Content="Сделать контур волнистым" Appearance="Secondary"
+                            HorizontalAlignment="Left" Margin="0,0,0,0" Visibility="Collapsed"
+                            Click="ProgressRingMakeWavyButton_Click" />
+                        </Border>
+                    </StackPanel>
+                    <StackPanel x:Name="ProgressWaveformGroup">
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <StackPanel>
+                                <TextBlock Margin="0,0,0,8" Text="Вид столбиков" Style="{StaticResource SettingsFieldLabelStyle}" />
+                                <StackPanel Orientation="Horizontal">
+                                    <RadioButton x:Name="ProgressWaveformWaveRadio" Content="Тонкие (по умолчанию)" GroupName="ProgressWaveformShape"
+                                                 Checked="ProgressWaveformShapeRadio_Changed" Margin="0,0,16,0" />
+                                    <RadioButton x:Name="ProgressWaveformCapsulesRadio" Content="Скруглённые столбики" GroupName="ProgressWaveformShape"
+                                                 Checked="ProgressWaveformShapeRadio_Changed" Margin="0" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressWaveformGapSlider}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Зазор между столбиками" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ProgressWaveformGapValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ProgressWaveformGapSlider" AutomationProperties.Name="Зазор между столбиками прогресса" Style="{StaticResource SettingsAccentSliderStyle}"
+                                    Minimum="10" Maximum="70" Value="10" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    ValueChanged="ProgressAppearanceSlider_ValueChanged" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressWaveformOpacitySlider}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Прозрачность непроигранной части" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ProgressWaveformOpacityValueText" Text="100%" Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ProgressWaveformOpacitySlider" AutomationProperties.Name="Прозрачность непроигранной части" Style="{StaticResource SettingsAccentSliderStyle}"
+                                    Minimum="30" Maximum="100" Value="30" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    ValueChanged="ProgressAppearanceSlider_ValueChanged" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <TextBlock Text="Подсказка при наведении" FontSize="13" FontWeight="SemiBold" Opacity="0.75" />
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressHoverTimeCheckBox}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Показывать время в точке под курсором">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=ProgressHoverTimeCheckBox}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="ProgressHoverTimeCheckBox" AutomationProperties.Name="Показывать время в точке под курсором"
+                                Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressHoverHighlightCheckBox}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Подсвечивать участок до курсора">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=ProgressHoverHighlightCheckBox}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="ProgressHoverHighlightCheckBox" AutomationProperties.Name="Подсвечивать участок до курсора"
+                                Checked="ProgressCheckBox_Changed" Unchecked="ProgressCheckBox_Changed" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressAppearanceResetButton}">
+                        <ui:Button x:Name="ProgressAppearanceResetButton" Content="Сбросить вид полосы" Appearance="Secondary"
+                        HorizontalAlignment="Left" Margin="0,0,0,0" Click="ProgressAppearanceResetButton_Click" />
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Размеры задаются в процентах от стандартных, поэтому 100% — прежний вид. Показаны только настройки, которые действуют на выбранный вид полосы." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- См. AppSettings.SliderStyle / MaterialSliderVisual. -->
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Вид ползунков">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=SliderStyleRadioCombo}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel x:Name="SliderStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                <ComboBox x:Name="SliderStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид ползунков" MinWidth="220" HorizontalAlignment="Right">
+                                    <ComboBoxItem Content="Обычный (по умолчанию)" Tag="SliderStyleDefaultRadio" />
+                                    <ComboBoxItem Content="Material (тонкая ручка с зазором, как в Android)" Tag="SliderStyleMaterialRadio" />
+                                </ComboBox>
+                                <StackPanel Visibility="Collapsed">
+                                    <RadioButton x:Name="SliderStyleDefaultRadio" Content="Обычный (по умолчанию)"
+                                    GroupName="SliderStyle" Checked="SliderStyleRadio_Changed" />
+                                    <RadioButton x:Name="SliderStyleMaterialRadio" Content="Material (тонкая ручка с зазором, как в Android)"
+                                    GroupName="SliderStyle" Checked="SliderStyleRadio_Changed" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Меняет вид всех ползунков: громкость, скорость, эквалайзер и настройки." TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Полоса воспроизведения настраивается отдельно, в разделе «Полоса воспроизведения» выше." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>
