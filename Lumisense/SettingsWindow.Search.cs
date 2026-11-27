@@ -171,6 +171,8 @@ public partial class SettingsWindow
         AddLazy("Better Lyrics", "Тексты песен", "Lyrics", "UseBetterLyricsCheckBox", "тексты источник дополнительный lyrics source");
         AddLazy("Binimum", "Тексты песен", "Lyrics", "UseBinimumLyricsCheckBox", "тексты источник дополнительный lyrics source");
         AddLazy("LyricsPlus", "Тексты песен", "Lyrics", "UseLyricsPlusLyricsCheckBox", "тексты источник дополнительный lyrics source");
+        AddLazy("Deezer", "Тексты песен", "Lyrics", "UseDeezerLyricsCheckBox", "тексты источник дополнительный lyrics source дизер");
+        AddLazy("LRCMUX", "Тексты песен", "Lyrics", "UseLrcMuxLyricsCheckBox", "тексты источник дополнительный lyrics source lrc mux");
         AddLazy("Состав подписи под названием трека", "Обложка и Now Playing", "Cover", "BadgePartStateCheckBox", "состояние расширение битрейт частота дискретизации размер файла badge bitrate sample rate extension file size");
         AddLazy("Режим WASAPI", "Воспроизведение", "Playback", "WasapiModeCombo", "wasapi exclusive shared эксклюзивный общий");
         AddLazy("Размер буфера WASAPI", "Воспроизведение", "Playback", "WasapiLatencyCombo", "задержка latency buffer wasapi");

@@ -153,6 +153,15 @@ public partial class MainWindow
             if (loaded is null) return;
 
             SetMainWindowLyrics(loaded.Document);
+
+            // Простой текст показан сразу; синхронный, если он есть в другом запросе или источнике, подменит его позже.
+            if (loaded.Document.Kind != LyricsKind.Synced)
+            {
+                LyricsService.SyncedUpgrade? upgrade = await LyricsService.TryUpgradeToSyncedAsync(
+                    trackPath, CurrentTitle, CurrentArtist, CurrentTrackDurationSeconds, _settings.LyricsSearchPolicy, token);
+                if (upgrade is not null && IsMainWindowLyricsRequestCurrent(trackPath, token))
+                    SetMainWindowLyrics(LyricsService.CreateDocumentFromOnlineResult(upgrade.Result));
+            }
         }
         catch (LyricsRateLimitException)
         {

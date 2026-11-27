@@ -377,7 +377,9 @@ public static class LumiProfileIO
         target.UseBetterLyrics = source.UseBetterLyrics;
         target.UseBinimumLyrics = source.UseBinimumLyrics;
         target.UseLyricsPlusLyrics = source.UseLyricsPlusLyrics;
-        if (source.LyricsManualSearchSource is "All" or "LRCLIB" or "NetEase" or "QQ Music" or "Kugou" or "Paxsenix" or "Better Lyrics" or "Binimum" or "LyricsPlus")
+        target.UseDeezerLyrics = source.UseDeezerLyrics;
+        target.UseLrcMuxLyrics = source.UseLrcMuxLyrics;
+        if (source.LyricsManualSearchSource is "All" or "LRCLIB" or "NetEase" or "QQ Music" or "Kugou" or "Paxsenix" or "Better Lyrics" or "Binimum" or "LyricsPlus" or "Deezer" or "LRCMUX")
             target.LyricsManualSearchSource = source.LyricsManualSearchSource;
         if (source.NowPlayingBackground is "Clouds" or "Orbs" or "Waves" or "Cover" or "Solid" or "None")
             target.NowPlayingBackground = source.NowPlayingBackground;

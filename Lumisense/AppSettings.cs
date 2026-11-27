@@ -190,11 +190,13 @@ public class AppSettings
     public bool UseQqMusicLyrics { get; set; } = true;
     public bool UseKugouLyrics { get; set; } = true;
     public bool UsePaxsenixLyrics { get; set; } = true;
-    // Новые сервисы (Better Lyrics, Binimum, LyricsPlus) по умолчанию выключены: включившие дополнительные источники раньше
+    // Новые сервисы (Better Lyrics, Binimum, LyricsPlus, Deezer, LRCMUX) по умолчанию выключены: включившие дополнительные источники раньше
     // не соглашались отправлять название и исполнителя трека на эти серверы, поэтому включаются они только вручную.
     public bool UseBetterLyrics { get; set; }
     public bool UseBinimumLyrics { get; set; }
     public bool UseLyricsPlusLyrics { get; set; }
+    public bool UseDeezerLyrics { get; set; }
+    public bool UseLrcMuxLyrics { get; set; }
 
     // Источник в ручном поиске текста (Now Playing): "All" или имя одного сервиса.
     public string LyricsManualSearchSource { get; set; } = "All";

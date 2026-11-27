@@ -432,7 +432,7 @@ public static class LyricsService
         return Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(canonicalPath))).ToLowerInvariant();
     }
 
-    // Включает дополнительные источники текстов (NetEase, QQ Music, Kugou, Paxsenix, Better Lyrics, Binimum, LyricsPlus); выставляется из настроек.
+    // Включает дополнительные источники текстов (NetEase, QQ Music, Kugou, Paxsenix, Better Lyrics, Binimum, LyricsPlus, Deezer, LRCMUX); выставляется из настроек.
     public static bool ExtraSourceEnabled { get; set; }
 
     // Какие именно дополнительные источники включены (имена как в OnlineLyricsResult.Source). Набор подменяется целиком,
@@ -454,6 +454,8 @@ public static class LyricsService
         if (settings.UseBetterLyrics) enabled.Add(BetterLyricsSource.SourceName);
         if (settings.UseBinimumLyrics) enabled.Add(BinimumLyricsSource.SourceName);
         if (settings.UseLyricsPlusLyrics) enabled.Add(LyricsPlusSource.SourceName);
+        if (settings.UseDeezerLyrics) enabled.Add(DeezerLyricsSource.SourceName);
+        if (settings.UseLrcMuxLyrics) enabled.Add(LrcMuxLyricsSource.SourceName);
 
         _enabledExtraSources = enabled;
         ExtraSourceEnabled = settings.UseExtraLyricsSource;
@@ -572,7 +574,7 @@ public static class LyricsService
     public const string LrcLibSourceName = "LRCLIB";
 
     // sourceFilter — выбор источника в окне поиска: null — все (дополнительные по настройке), "LRCLIB" — только LRCLIB,
-    // иное имя (NetEase, QQ Music, Kugou, Paxsenix, Better Lyrics, Binimum, LyricsPlus) — только он, если дополнительные источники включены в настройках.
+    // иное имя (NetEase, QQ Music, Kugou, Paxsenix, Better Lyrics, Binimum, LyricsPlus, Deezer, LRCMUX) — только он, если дополнительные источники включены в настройках.
     public static async Task<IReadOnlyList<OnlineLyricsResult>> SearchOnlineVariantsAsync(
         string trackName,
         string artistName,
@@ -652,8 +654,9 @@ public static class LyricsService
     // «Нужен выбор варианта» или «Нет текста» — и все уверенные совпадения по убыванию качества (для кнопки «Другой вариант»).
     public sealed record AutomaticLyricsLookup(OnlineLyricsResult? Best, int CandidateCount, IReadOnlyList<OnlineLyricsResult> Matches);
 
-    // Автоподбор текста для текущего трека: перебирает варианты запроса, пока не появится уверенное совпадение
-    // (см. LyricsMatcher.RankMatches). Останавливается на первом удачном варианте, чтобы не нагружать публичные сервисы.
+    // Автоподбор текста для текущего трека: перебирает варианты запроса, пока не появится уверенное совпадение с синхронным
+    // текстом (см. LyricsMatcher.RankMatches); если такого нет, берёт лучшее из найденного. Быстрый и экономный: дополнительные
+    // источники подключаются, только когда LRCLIB ничего не дал. Лучший формат ищет TryUpgradeToSyncedAsync после показа текста.
     public static async Task<AutomaticLyricsLookup> FindAutomaticAsync(
         string trackName,
         string artistName,
@@ -715,6 +718,54 @@ public static class LyricsService
         return new LyricsLoadResult(document, lookup);
     }
 
+    // Для какого трека синхронный текст уже искали в этом сеансе: простой текст не должен гонять сеть при каждом включении.
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<string, byte> SyncedSearchTried = new(StringComparer.OrdinalIgnoreCase);
+
+    // Найденный синхронный вариант и все подходящие совпадения по убыванию качества (для кнопки «Другой вариант»).
+    public sealed record SyncedUpgrade(OnlineLyricsResult Result, IReadOnlyList<OnlineLyricsResult> Ranked);
+
+    // Когда показан простой текст (или никакого), ищет синхронный по всем запросам LRCLIB и всем включённым источникам, сохраняет
+    // его рядом с остальными текстами и возвращает; null — синхронного нет, поиск запрещён политикой или уже шёл для этого трека.
+    // Быстрый результат показывают сразу, а этот поиск идёт после и заменяет его, только если нашёл вариант лучше.
+    public static async Task<SyncedUpgrade?> TryUpgradeToSyncedAsync(
+        string? trackPath,
+        string trackName,
+        string artistName,
+        double durationSeconds,
+        string searchPolicy,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(trackPath) || searchPolicy != "AutoExact" || !SyncedSearchTried.TryAdd(trackPath, 0)) return null;
+
+        long started = Environment.TickCount64;
+        try
+        {
+            IReadOnlyList<OnlineLyricsResult> found = await SearchOnlineVariantsAsync(trackName, artistName, cancellationToken);
+            IReadOnlyList<OnlineLyricsResult> ranked = LyricsMatcher.RankMatches(found, trackName, artistName, durationSeconds);
+            OnlineLyricsResult? synced = ranked.FirstOrDefault(result => result.HasSyncedLyrics);
+
+            // Без названия и исполнителя: в журнал идут только итоги поиска.
+            Logger.Info($"Поиск синхронного текста: кандидатов {found.Count}, подходящих {ranked.Count}, " +
+                        $"{(synced is null ? "синхронного нет" : $"выбран {synced.Source}")}, {Environment.TickCount64 - started} мс");
+            if (synced is null) return null;
+
+            await SaveOnlineResultAsync(trackPath, synced, cancellationToken);
+            return new SyncedUpgrade(synced, ranked);
+        }
+        catch (OperationCanceledException)
+        {
+            SyncedSearchTried.TryRemove(trackPath, out _);
+            throw;
+        }
+        catch (Exception ex)
+        {
+            // Временный сбой не должен закрывать поиск для трека до конца сеанса.
+            SyncedSearchTried.TryRemove(trackPath, out _);
+            Logger.Warn($"Поиск синхронного текста не удался: {ex.Message}");
+            return null;
+        }
+    }
+
     // Варианты текста из LRCLIB для кнопки «Другой вариант», когда автоподбор их не запоминал (текст был сохранён раньше).
     public static async Task<IReadOnlyList<OnlineLyricsResult>> FindLrcLibVariantsAsync(
         string trackName,
@@ -767,7 +818,10 @@ public static class LyricsService
             {
                 AddCandidates(candidates, await SearchLrcLibAsync(title, artist, cancellationToken));
                 IReadOnlyList<OnlineLyricsResult> matches = LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds);
-                if (matches.Count > 0) return (matches, null);
+
+                // Простой текст не повод останавливаться: синхронный мог найтись по другому варианту запроса. Запросов немного,
+                // и перебор идёт только пока синхронного текста нет.
+                if (matches.Any(match => match.HasSyncedLyrics)) return (matches, null);
             }
 
             string? generalQuery = BuildGeneralQuery(trackName, artistName);
@@ -786,7 +840,8 @@ public static class LyricsService
             return (LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds), null);
         }
 
-        return (Array.Empty<OnlineLyricsResult>(), null);
+        // Общего запроса нет (исполнитель неизвестен): остаётся то, что нашли варианты запроса.
+        return (LyricsMatcher.RankMatches(candidates, trackName, artistName, durationSeconds), null);
     }
 
     private static void AddCandidates(List<OnlineLyricsResult> candidates, IReadOnlyList<OnlineLyricsResult> found)

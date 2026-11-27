@@ -38,6 +38,8 @@ public sealed class SettingsIntegrityServiceTests : IDisposable
     [InlineData("Better Lyrics")]
     [InlineData("Binimum")]
     [InlineData("LyricsPlus")]
+    [InlineData("Deezer")]
+    [InlineData("LRCMUX")]
     public void TryLoad_KeepsNewLyricsSearchSources(string source)
     {
         Assert.True(TryLoad($"{{\"LyricsManualSearchSource\": \"{source}\"}}", out var settings, out _));

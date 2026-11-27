@@ -61,16 +61,20 @@ internal static class LyricifyLyricsSource
         Task<IReadOnlyList<OnlineLyricsResult>> paxsenixSearch = Wants(PaxsenixLyricsSource.SourceName)
             ? PaxsenixLyricsSource.SearchAsync(title, artist, token) : NoResults;
 
-        // Better Lyrics, Binimum и LyricsPlus тоже обрабатывают сбои сами; их результаты идут последними.
+        // Better Lyrics, Binimum, LyricsPlus, Deezer и LRCMUX тоже обрабатывают сбои сами; их результаты идут последними.
         Task<IReadOnlyList<OnlineLyricsResult>> betterSearch = Wants(BetterLyricsSource.SourceName)
             ? BetterLyricsSource.SearchAsync(title, artist, token) : NoResults;
         Task<IReadOnlyList<OnlineLyricsResult>> binimumSearch = Wants(BinimumLyricsSource.SourceName)
             ? BinimumLyricsSource.SearchAsync(title, artist, token) : NoResults;
         Task<IReadOnlyList<OnlineLyricsResult>> lyricsPlusSearch = Wants(LyricsPlusSource.SourceName)
             ? LyricsPlusSource.SearchAsync(title, artist, token) : NoResults;
+        Task<IReadOnlyList<OnlineLyricsResult>> deezerSearch = Wants(DeezerLyricsSource.SourceName)
+            ? DeezerLyricsSource.SearchAsync(title, artist, token) : NoResults;
+        Task<IReadOnlyList<OnlineLyricsResult>> lrcMuxSearch = Wants(LrcMuxLyricsSource.SourceName)
+            ? LrcMuxLyricsSource.SearchAsync(title, artist, token) : NoResults;
 
         IReadOnlyList<OnlineLyricsResult>[] groups = await Task.WhenAll(
-            neteaseSearch, qqSearch, kugouSearch, paxsenixSearch, betterSearch, binimumSearch, lyricsPlusSearch).ConfigureAwait(false);
+            neteaseSearch, qqSearch, kugouSearch, paxsenixSearch, betterSearch, binimumSearch, lyricsPlusSearch, deezerSearch, lrcMuxSearch).ConfigureAwait(false);
         return groups.SelectMany(group => group).ToList();
     }
 

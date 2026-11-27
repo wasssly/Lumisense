@@ -17,6 +17,8 @@ public sealed class LyricsExtraServiceSelectionTests : IDisposable
         UseBetterLyrics = LyricsService.IsExtraSourceEnabled("Better Lyrics"),
         UseBinimumLyrics = LyricsService.IsExtraSourceEnabled("Binimum"),
         UseLyricsPlusLyrics = LyricsService.IsExtraSourceEnabled("LyricsPlus"),
+        UseDeezerLyrics = LyricsService.IsExtraSourceEnabled("Deezer"),
+        UseLrcMuxLyrics = LyricsService.IsExtraSourceEnabled("LRCMUX"),
     };
 
     public void Dispose() => LyricsService.ApplyExtraSourceSettings(_original);
@@ -33,6 +35,8 @@ public sealed class LyricsExtraServiceSelectionTests : IDisposable
         Assert.False(settings.UseBetterLyrics);
         Assert.False(settings.UseBinimumLyrics);
         Assert.False(settings.UseLyricsPlusLyrics);
+        Assert.False(settings.UseDeezerLyrics);
+        Assert.False(settings.UseLrcMuxLyrics);
     }
 
     [Fact]
@@ -66,5 +70,14 @@ public sealed class LyricsExtraServiceSelectionTests : IDisposable
         Assert.True(LyricsService.IsExtraSourceEnabled("Better Lyrics"));
         Assert.False(LyricsService.IsExtraSourceEnabled("Binimum"));
         Assert.True(LyricsService.IsExtraSourceEnabled("LyricsPlus"));
+    }
+
+    [Fact]
+    public void IsExtraSourceEnabled_ReflectsDeezerAndLrcMuxCheckboxes()
+    {
+        LyricsService.ApplyExtraSourceSettings(new AppSettings { UseExtraLyricsSource = true, UseDeezerLyrics = true, UseLrcMuxLyrics = false });
+
+        Assert.True(LyricsService.IsExtraSourceEnabled("Deezer"));
+        Assert.False(LyricsService.IsExtraSourceEnabled("LRCMUX"));
     }
 }

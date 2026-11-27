@@ -142,33 +142,46 @@ public static class LyricsMatcher
         foreach (OnlineLyricsResult result in results)
         {
             if (!result.HasLyrics) continue;
-            if (NormalizeKey(CleanTitle(result.TrackName)) != wantedTitle) continue;
 
-            if (wantedArtists.Count > 0 && !ArtistsOverlap(wantedArtists, ArtistKeys(result.ArtistName))) continue;
+            // Сначала «тот ли это трек» (null — нет), затем качество самого текста: так формат синхронизации не может
+            // перевесить чужой трек, а новый формат (например, пословный) добавляется только в ScoreTextQuality.
+            double? match = ScoreTrackMatch(result, wantedTitle, rawTitleKey, wantedArtists, durationSeconds);
+            if (match is null) continue;
 
-            double score = 0;
-            if (durationSeconds > 0 && result.Duration > 0)
-            {
-                double difference = Math.Abs(durationSeconds - result.Duration);
-                if (difference > MaxDurationDifferenceSeconds) continue;
-                score += difference <= StrongDurationToleranceSeconds ? 2 : 0.5;
-            }
-
-            if (result.HasSyncedLyrics)
-            {
-                score += 2;
-                // Строки текста заканчиваются заметно позже трека: это версия другой длины (ремикс, замедленная).
-                if (durationSeconds > 0 && LastTimestampSeconds(result.SyncedLyrics) > durationSeconds + 3) score -= 1.5;
-            }
-            if (NormalizeKey(result.TrackName) == rawTitleKey) score += 1;
-            if (result.Source == "LRCLIB") score += 0.25;
-
-            scored.Add((result, score));
+            scored.Add((result, match.Value + ScoreTextQuality(result) + ScoreSourcePreference(result)));
         }
 
         // OrderByDescending стабилен: равные по оценке остаются в исходном порядке.
         return scored.OrderByDescending(item => item.Score).Select(item => item.Result).ToList();
     }
+
+    // Насколько результат относится к нужному треку: название, исполнитель, длительность и версия. null — не подходит.
+    private static double? ScoreTrackMatch(
+        OnlineLyricsResult result, string wantedTitle, string rawTitleKey, HashSet<string> wantedArtists, double durationSeconds)
+    {
+        if (NormalizeKey(CleanTitle(result.TrackName)) != wantedTitle) return null;
+        if (wantedArtists.Count > 0 && !ArtistsOverlap(wantedArtists, ArtistKeys(result.ArtistName))) return null;
+
+        double score = 0;
+        if (durationSeconds > 0 && result.Duration > 0)
+        {
+            double difference = Math.Abs(durationSeconds - result.Duration);
+            if (difference > MaxDurationDifferenceSeconds) return null;
+            score += difference <= StrongDurationToleranceSeconds ? 2 : 0.5;
+        }
+
+        // Строки текста заканчиваются заметно позже трека: это версия другой длины (ремикс, замедленная).
+        if (result.HasSyncedLyrics && durationSeconds > 0 && LastTimestampSeconds(result.SyncedLyrics) > durationSeconds + 3) score -= 1.5;
+
+        if (NormalizeKey(result.TrackName) == rawTitleKey) score += 1;
+        return score;
+    }
+
+    // Насколько хорош сам текст: синхронный выше простого. Пословная синхронизация станет здесь отдельной ступенью выше построчной.
+    private static double ScoreTextQuality(OnlineLyricsResult result) => result.HasSyncedLyrics ? 2 : 0;
+
+    // Небольшое предпочтение LRCLIB при равных остальных оценках.
+    private static double ScoreSourcePreference(OnlineLyricsResult result) => result.Source == "LRCLIB" ? 0.25 : 0;
 
     private static readonly System.Text.RegularExpressions.Regex TimestampPattern =
         new(@"\[(\d{1,3}):(\d{2})(?:[.:]\d{1,3})?\]", System.Text.RegularExpressions.RegexOptions.Compiled);

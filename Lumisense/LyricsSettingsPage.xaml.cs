@@ -9,7 +9,7 @@ namespace Lumisense;
 // Создаётся при первом показе страницы (см. SettingsWindow.EnsurePageBuilt).
 public sealed partial class LyricsSettingsPage : System.Windows.Controls.UserControl, ILazySettingsPage
 {
-    private readonly Window _window;
+    private readonly SettingsWindow _window;
     private readonly AppSettings _settings;
     private readonly ISettingsHost _owner;
 
@@ -17,7 +17,7 @@ public sealed partial class LyricsSettingsPage : System.Windows.Controls.UserCon
     private bool _isInitializing = true;
     private bool _isWindowClosed;
 
-    internal LyricsSettingsPage(Window window, AppSettings settings, ISettingsHost owner)
+    internal LyricsSettingsPage(SettingsWindow window, AppSettings settings, ISettingsHost owner)
     {
         _window = window;
         _settings = settings;
@@ -60,6 +60,8 @@ public sealed partial class LyricsSettingsPage : System.Windows.Controls.UserCon
         UseBetterLyricsCheckBox.IsChecked = _settings.UseBetterLyrics;
         UseBinimumLyricsCheckBox.IsChecked = _settings.UseBinimumLyrics;
         UseLyricsPlusLyricsCheckBox.IsChecked = _settings.UseLyricsPlusLyrics;
+        UseDeezerLyricsCheckBox.IsChecked = _settings.UseDeezerLyrics;
+        UseLrcMuxLyricsCheckBox.IsChecked = _settings.UseLrcMuxLyrics;
         ExtraLyricsSourcesPanel.IsEnabled = _settings.UseExtraLyricsSource;
         HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
         LyricsAlignCenterRadio.IsChecked = _settings.LyricsTextAlignment == "Center";
@@ -75,8 +77,20 @@ public sealed partial class LyricsSettingsPage : System.Windows.Controls.UserCon
         RefreshLyricsCacheInfo();
 
         // Выпадающий список источника читает отмеченные радиокнопки, поэтому связывается после загрузки настроек.
+        InitializeLyricsPreviewSticky();
         RadioComboLinks.Initialize(this, FindName);
         _isInitializing = false;
+    }
+
+    // Как у предпросмотра полосы: следует за прокруткой, пока карточка текста песни на экране.
+    private void InitializeLyricsPreviewSticky()
+    {
+        void Update() => StickyPreview.Update(_window.PART_ContentScroll, LyricsAppearanceCard, LyricsPreviewPanel, LyricsPreviewTranslate);
+
+        _window.PART_ContentScroll.ScrollChanged += (_, _) => Update();
+        LyricsAppearanceCard.SizeChanged += (_, _) => Update();
+        LyricsPreviewPanel.SizeChanged += (_, _) => Update();
+        LyricsAppearanceCard.IsVisibleChanged += (_, _) => Update();
     }
 
     public void MoveContentTo(System.Windows.Controls.Panel host) => LazySettingsPage.MoveChildren(PageLyrics, host);
@@ -316,6 +330,8 @@ public sealed partial class LyricsSettingsPage : System.Windows.Controls.UserCon
         _settings.UseBetterLyrics = UseBetterLyricsCheckBox.IsChecked == true;
         _settings.UseBinimumLyrics = UseBinimumLyricsCheckBox.IsChecked == true;
         _settings.UseLyricsPlusLyrics = UseLyricsPlusLyricsCheckBox.IsChecked == true;
+        _settings.UseDeezerLyrics = UseDeezerLyricsCheckBox.IsChecked == true;
+        _settings.UseLrcMuxLyrics = UseLrcMuxLyricsCheckBox.IsChecked == true;
         LyricsService.ApplyExtraSourceSettings(_settings);
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }

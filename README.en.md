@@ -129,6 +129,8 @@ Sections are collapsed to keep the page easy to scan: expand the one you need.
 | Better Lyrics | — | Without a key it finds only tracks from its own cache |
 | Binimum | — | A catalog of TTML links |
 | LyricsPlus | — | A fallback address when the main one fails |
+| Deezer | — | Unofficial interface (anonymous token), may stop responding |
+| LRCMUX | — | An aggregator with an LRCLIB-compatible interface |
 
 Results come after LRCLIB and are labeled with their source.
 

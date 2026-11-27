@@ -132,4 +132,52 @@ public sealed class LyricsMatcherTests
         Assert.Equal(new long[] { 1, 2 },
             LyricsMatcher.RankMatches(new[] { first, second }, "Song", "Artist", 200).Select(result => result.Id).ToArray());
     }
+
+    [Fact]
+    public void RankMatches_RejectsResultsWithoutLyrics()
+    {
+        var empty = new OnlineLyricsResult(1, "Song", "Artist", string.Empty, 200, null, null, "LRCLIB");
+        var blank = new OnlineLyricsResult(2, "Song", "Artist", string.Empty, 200, "   ", "  ", "NetEase");
+        Assert.Empty(LyricsMatcher.RankMatches(new[] { empty, blank }, "Song", "Artist", 200));
+    }
+
+    [Fact]
+    public void RankMatches_SyncedFromAnotherSourceBeatsPlainFromLrcLib()
+    {
+        var plain = Result("Song", "Artist", synced: false, source: "LRCLIB", id: 1);
+        var synced = Result("Song", "Artist", synced: true, source: "NetEase", id: 2);
+        Assert.Equal(new long[] { 2, 1 }, LyricsMatcher.RankMatches(new[] { plain, synced }, "Song", "Artist", 200).Select(result => result.Id).ToArray());
+    }
+
+    [Fact]
+    public void RankMatches_SyncedFormatDoesNotRescueWrongTrack()
+    {
+        var wrongArtist = Result("Song", "Someone Else", synced: true, source: "NetEase", id: 1);
+        var wrongTitle = Result("Another Song", "Artist", synced: true, source: "NetEase", id: 2);
+        var plain = Result("Song", "Artist", synced: false, id: 3);
+        Assert.Equal(new long[] { 3 }, LyricsMatcher.RankMatches(new[] { wrongArtist, wrongTitle, plain }, "Song", "Artist", 200).Select(result => result.Id).ToArray());
+    }
+
+    [Fact]
+    public void RankMatches_ReturnsPlainTextWhenNoSyncedExists()
+    {
+        var plain = Result("Song", "Artist", synced: false, id: 1);
+        Assert.Equal(new long[] { 1 }, LyricsMatcher.RankMatches(new[] { plain }, "Song", "Artist", 200).Select(result => result.Id).ToArray());
+    }
+
+    [Fact]
+    public void RankMatches_RejectsVersionOfVeryDifferentLength()
+    {
+        var radioEdit = Result("Song", "Artist", duration: 200, id: 1);
+        var extended = Result("Song", "Artist", duration: 330, id: 2);
+        Assert.Equal(new long[] { 1 }, LyricsMatcher.RankMatches(new[] { extended, radioEdit }, "Song", "Artist", 200).Select(result => result.Id).ToArray());
+    }
+
+    [Fact]
+    public void RankMatches_PenalizesSyncedTextThatRunsPastTheTrack()
+    {
+        var fits = new OnlineLyricsResult(1, "Song", "Artist", string.Empty, 200, null, "[01:00.00]line", "NetEase");
+        var runsLong = new OnlineLyricsResult(2, "Song", "Artist", string.Empty, 200, null, "[10:00.00]line", "NetEase");
+        Assert.Equal(new long[] { 1, 2 }, LyricsMatcher.RankMatches(new[] { runsLong, fits }, "Song", "Artist", 200).Select(result => result.Id).ToArray());
+    }
 }

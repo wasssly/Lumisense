@@ -4,7 +4,7 @@ using Xunit;
 
 namespace Lumisense.Tests;
 
-// Better Lyrics, Binimum и LyricsPlus: разбор их ответов без сети.
+// Better Lyrics, Binimum, LyricsPlus, Deezer и LRCMUX: разбор их ответов без сети.
 public sealed class LyricsNewSourcesTests
 {
     private const string Ttml = """
@@ -183,6 +183,139 @@ public sealed class LyricsNewSourcesTests
         Assert.Equal("hello", await ExtraLyricsHttp.GetTextAsync(small, "https://example.test/", "test", TestContext.Current.CancellationToken));
         Assert.Null(await ExtraLyricsHttp.GetTextAsync(large, "https://example.test/", "test", TestContext.Current.CancellationToken));
     }
+
+    [Fact]
+    public void Deezer_ParseToken_ReadsJwt()
+    {
+        Assert.Equal("abc.def", DeezerLyricsSource.ParseToken("{\"jwt\":\" abc.def \"}"));
+        Assert.Null(DeezerLyricsSource.ParseToken("{}"));
+        Assert.Null(DeezerLyricsSource.ParseToken("garbage"));
+        Assert.Null(DeezerLyricsSource.ParseToken(null));
+    }
+
+    [Fact]
+    public void Deezer_ParseSearch_ReadsTracksAndSkipsBrokenEntries()
+    {
+        const string json = """
+            {"data":[
+              {"id":3135556,"title":"Harder, Better","duration":224,"artist":{"name":"Daft Punk"},"album":{"title":"Discovery"}},
+              {"title":"No id","duration":100},
+              {"id":7,"title":"","duration":100}
+            ]}
+            """;
+
+        var tracks = DeezerLyricsSource.ParseSearch(json);
+
+        var track = Assert.Single(tracks);
+        Assert.Equal(3135556, track.Id);
+        Assert.Equal("Harder, Better", track.Title);
+        Assert.Equal("Daft Punk", track.Artist);
+        Assert.Equal("Discovery", track.Album);
+        Assert.Equal(224, track.Duration);
+        Assert.Empty(DeezerLyricsSource.ParseSearch("garbage"));
+    }
+
+    [Fact]
+    public void Deezer_ParseLyrics_BuildsSyncedFromLinesAndKeepsPlainText()
+    {
+        const string json = """
+            {"data":{"track":{"id":"1","lyrics":{"text":"Hello\nWorld",
+              "synchronizedLines":[{"line":"World","milliseconds":5000},{"line":"Hello","milliseconds":1000},{"line":"","milliseconds":3000}]}}}}
+            """;
+
+        (string? plain, string? synced) = DeezerLyricsSource.ParseLyrics(json);
+
+        Assert.Equal("Hello\nWorld", plain);
+        Assert.Equal("[00:01.00]Hello\n[00:05.00]World", synced);
+    }
+
+    [Fact]
+    public void Deezer_ParseLyrics_FallsBackToWordTimedLines()
+    {
+        const string json = """
+            {"data":{"track":{"lyrics":{"text":null,"synchronizedLines":[],
+              "synchronizedWordByWordLines":[
+                {"start":1000,"end":2000,"words":[{"word":"Hi","start":1000,"end":1500},{"word":"there","start":1500,"end":2000}]},
+                {"start":4000,"end":5000,"words":[{"word":"Bye","start":4000,"end":5000}]}]}}}}
+            """;
+
+        (string? plain, string? synced) = DeezerLyricsSource.ParseLyrics(json);
+
+        Assert.Equal("Hi there\nBye", plain);
+        Assert.Equal("[00:01.00]Hi there\n[00:04.00]Bye", synced);
+    }
+
+    [Theory]
+    [InlineData("garbage")]
+    [InlineData("{}")]
+    [InlineData("{\"data\":{\"track\":null}}")]
+    [InlineData("{\"data\":{\"track\":{\"lyrics\":null}}}")]
+    public void Deezer_ParseLyrics_ReturnsNothingWithoutLyrics(string json)
+    {
+        Assert.Equal((null, null), DeezerLyricsSource.ParseLyrics(json));
+    }
+
+    [Fact]
+    public void Deezer_BuildRequestBody_CarriesTrackIdAsString()
+    {
+        string body = DeezerLyricsSource.BuildRequestBody(123);
+
+        using JsonDocument document = JsonDocument.Parse(body);
+        Assert.Equal("GetLyrics", document.RootElement.GetProperty("operationName").GetString());
+        Assert.Equal("123", document.RootElement.GetProperty("variables").GetProperty("trackId").GetString());
+        Assert.Contains("synchronizedLines", document.RootElement.GetProperty("query").GetString());
+    }
+
+    [Fact]
+    public void Deezer_BuildSearchUrl_UsesTitleAndArtist() =>
+        Assert.Equal("https://api.deezer.com/2.0/search?q=Song%20Band&limit=5", DeezerLyricsSource.BuildSearchUrl("Song", "Band"));
+
+    [Fact]
+    public void LrcMux_ParseResponse_ReadsLrcLibShapedObject()
+    {
+        const string json = """
+            {"id":42,"trackName":"Song","artistName":"Band","albumName":"Album","duration":200.5,"instrumental":false,
+             "plainLyrics":"Hello","syncedLyrics":"[00:01.00]Hello\n[00:03.00]World"}
+            """;
+
+        var result = Assert.Single(LrcMuxLyricsSource.ParseResponse(json));
+
+        Assert.Equal("LRCMUX", result.Source);
+        Assert.Equal("Song", result.TrackName);
+        Assert.Equal("Band", result.ArtistName);
+        Assert.Equal(200.5, result.Duration);
+        Assert.True(result.HasSyncedLyrics);
+    }
+
+    [Fact]
+    public void LrcMux_ParseResponse_ReadsArraysAndSkipsInstrumentalAndEmptyEntries()
+    {
+        const string json = """
+            [
+              {"id":1,"trackName":"Song","artistName":"Band","instrumental":true,"plainLyrics":"x"},
+              {"id":2,"trackName":"Song","artistName":"Band","plainLyrics":"Words here"},
+              {"id":3,"trackName":"Song","artistName":"Band","plainLyrics":"","syncedLyrics":null}
+            ]
+            """;
+
+        var result = Assert.Single(LrcMuxLyricsSource.ParseResponse(json));
+
+        Assert.False(result.HasSyncedLyrics);
+        Assert.True(result.HasLyrics);
+    }
+
+    [Theory]
+    [InlineData("garbage")]
+    [InlineData("{}")]
+    [InlineData("[]")]
+    public void LrcMux_ParseResponse_ReturnsNothingForUnusableBodies(string json)
+    {
+        Assert.Empty(LrcMuxLyricsSource.ParseResponse(json));
+    }
+
+    [Fact]
+    public void LrcMux_BuildUrl_UsesTrackAndArtist() =>
+        Assert.Equal("https://lrcmux.dev/api/get?track_name=Song&artist_name=Band", LrcMuxLyricsSource.BuildUrl("https://lrcmux.dev/api", "Song", "Band"));
 
     private sealed class FixedBodyHandler(string body) : HttpMessageHandler
     {
