@@ -951,7 +951,7 @@ public static class LocalizationService
         ["Поиск по плейлисту"] = "Search by playlist",
         ["{Binding Duration, StringFormat={}{0:0} сек.}"] = "{Binding Duration, StringFormat={}{0:0} sec.}",
         ["Поиск настроек"] = "Search settings",
-        ["Русский"] = "Russian",
+        ["Русский"] = "Русский",
         ["Например: {Artist} - {Title}{Extension}"] = "For example: {Artist} - {Title}{Extension}",
         ["Не указано в файле"] = "Not specified in file",
         ["Не указан"] = "Not specified",
