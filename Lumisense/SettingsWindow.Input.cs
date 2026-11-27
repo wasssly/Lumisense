@@ -155,43 +155,4 @@ public partial class SettingsWindow
         return null;
     }
 
-    private void InterfaceScaleSlider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
-    {
-        // Клик по дорожке обрабатывает сам Slider (IsMoveToPointEnabled); для Thumb блокируем только захват бегунка,
-        // чтобы точечный клик менял масштаб без перетаскивания.
-        if (e.OriginalSource is Thumb)
-            e.Handled = true;
-    }
-
-    private void InterfaceScaleSlider_PreviewMouseMove(object sender, MouseEventArgs e)
-    {
-        if (e.LeftButton == MouseButtonState.Pressed && e.OriginalSource is Thumb)
-            e.Handled = true;
-    }
-
-    private void InterfaceScaleSlider_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is System.Windows.Controls.Slider slider && slider.IsMouseCaptured)
-            slider.ReleaseMouseCapture();
-    }
-
-    private void InterfaceScaleSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (_isInitializing || InterfaceScaleValueText is null) return;
-
-        _settings.InterfaceScale = AccessibilityPreferences.NormalizeScale(e.NewValue / 100d);
-        InterfaceScaleValueText.Text = $"{_settings.InterfaceScale * 100:0}%";
-
-        // Масштаб WPF безопасно применяется при создании окон; перестройка открытых окон на лету может оставить мини-плеер
-        // в смешанном DPI/layout (например, 100% → 135% → 100%), поэтому значение сохраняем и применяем после перезапуска.
-        if (!_interfaceScaleRestartNoticeShown)
-        {
-            _interfaceScaleRestartNoticeShown = true;
-            var restartDialog = new ScaleRestartDialog(this, _settings);
-            restartDialog.ShowDialog();
-            // «Позже» относится только к текущему изменению. При следующем изменении
-            // масштаба уведомление должно появиться снова.
-            _interfaceScaleRestartNoticeShown = false;
-        }
-    }
 }

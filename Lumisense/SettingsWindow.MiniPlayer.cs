@@ -246,7 +246,7 @@ public partial class SettingsWindow
 
         for (int i = 0; i < swatches.Length; i++)
         {
-            bool selected = string.Equals(AccentPresetHexes[i], _settings.MiniPlayerArtworkProgressColorHex,
+            bool selected = string.Equals(AppearanceSettingsPage.AccentPresetHexes[i], _settings.MiniPlayerArtworkProgressColorHex,
                 StringComparison.OrdinalIgnoreCase);
             swatches[i].BorderBrush = selected
                 ? (Brush)FindResource("TextFillColorPrimaryBrush")

@@ -137,6 +137,7 @@ public partial class SettingsWindow
             "Cover" => PageCover,
             "Lyrics" => PageLyrics,
             "Playback" => PagePlayback,
+            "Appearance" => PageAppearance,
             _ => null
         };
         if (host is null) return;
@@ -155,6 +156,7 @@ public partial class SettingsWindow
             "Cover" => new CoverSettingsPage(this, _settings, _owner),
             "Lyrics" => new LyricsSettingsPage(this, _settings, _owner),
             "Playback" => new PlaybackSettingsPage(this, _settings, _owner),
+            "Appearance" => new AppearanceSettingsPage(this, _settings, _owner),
             _ => new NotificationsSettingsPage(this, _settings, _owner)
         };
         page.MoveContentTo(host);
@@ -176,6 +178,7 @@ public partial class SettingsWindow
         : ReferenceEquals(host, PageCover) ? "Cover"
         : ReferenceEquals(host, PageLyrics) ? "Lyrics"
         : ReferenceEquals(host, PagePlayback) ? "Playback"
+        : ReferenceEquals(host, PageAppearance) ? "Appearance"
         : null;
 
     private FrameworkElement? ResolveLazyTarget(SettingsSearchEntry entry) =>
@@ -190,55 +193,6 @@ public partial class SettingsWindow
 
     private static string NormalizeNavigationStyle(string? style) =>
         style is "Pills" or "FloatingBar" ? style : "Sidebar";
-
-    private void NavStyleRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.SettingsNavigationStyle = NavStylePillsRadio.IsChecked == true ? "Pills"
-            : NavStyleFloatingRadio.IsChecked == true ? "FloatingBar"
-            : "Sidebar";
-        ApplyNavigationStyle(_settings.SettingsNavigationStyle);
-        UpdateNavOptionsVisibility(animate: true);
-    }
-
-    private void NavShowLabelsCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.SettingsNavigationShowLabels = NavShowLabelsCheckBox.IsChecked == true;
-        ApplyNavigationStyle(_settings.SettingsNavigationStyle);
-        UpdateNavOptionsVisibility(animate: true);
-    }
-
-    private void NavLabelModeRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.SettingsNavigationLabelMode = NavLabelModeSelectedRadio.IsChecked == true ? "Selected" : "Below";
-        ApplyNavigationStyle(_settings.SettingsNavigationStyle);
-    }
-
-    // Параметры названий относятся только к плавающей панели: блок появляется при её выборе, а выбор способа показа — когда
-    // включён флажок «Показывать названия».
-    private void UpdateNavOptionsVisibility(bool animate)
-    {
-        bool floating = _navigationStyle == "FloatingBar";
-        SetNavOptionVisible(NavLabelOptionsPanel, floating, animate);
-        SetNavOptionVisible(NavLabelModePanel, floating && _settings.SettingsNavigationShowLabels, animate);
-    }
-
-    private void SetNavOptionVisible(FrameworkElement element, bool show, bool animate)
-    {
-        bool wasHidden = element.Visibility != Visibility.Visible;
-        element.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
-
-        if (show && wasHidden && animate && !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.SettingsWindow))
-        {
-            element.BeginAnimation(UIElement.OpacityProperty,
-                new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(220)) { EasingFunction = NavEasing });
-        }
-    }
 
     // Панель с названиями может быть шире окна: ограничиваем её ширину окном, остальное листается внутри.
     private void UpdateFloatingBarMaxWidth()
@@ -622,7 +576,7 @@ public partial class SettingsWindow
     private void TopNavPanel_SizeChanged(object sender, SizeChangedEventArgs e) => UpdatePillHighlight(animate: false);
 
 
-    private static readonly System.Windows.Media.Animation.CubicEase NavEasing =
+    internal static readonly System.Windows.Media.Animation.CubicEase NavEasing =
         new() { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut };
 
     // ----- Стрелки по краям полосы таблеток -----

@@ -30,13 +30,13 @@ public partial class SettingsWindow
             => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey,
                 $"{label} {LocalizationService.ToEnglish(label)} {extraKeywords}".ToLowerInvariant(), null, targetName));
 
-        Add("Язык интерфейса", "Оформление", "Appearance", InterfaceLanguageRadioGroup, "язык русский english language locale локализация");
-        Add("Тема", "Оформление", "Appearance", ThemeRadioGroup, "тёмная светлая цвет тема оформление dark light");
-        Add("Навигация в настройках", "Оформление", "Appearance", NavigationStyleCard, "навигация меню таблетки панель боковая плавающая нижняя разделы названия подписи текст pills sidebar floating navigation labels");
-        Add("Акцентный цвет", "Оформление", "Appearance", AccentModeRadioGroup, "акцент цвет палитра accent color");
-        Add("Основа окна", "Оформление", "Appearance", BackdropRadioGroup, "mica alt acrylic blur акрил размытие блюр подложка фон backdrop более плотная и контрастная основа windows 11 22h2 сильнее прозрачность");
-        Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
-        Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация анимации по разделам слайдеры accessibility scale motion animations sliders");
+        AddLazy("Язык интерфейса", "Оформление", "Appearance", "InterfaceLanguageRadioGroup", "язык русский english language locale локализация");
+        AddLazy("Тема", "Оформление", "Appearance", "ThemeRadioGroup", "тёмная светлая цвет тема оформление dark light");
+        AddLazy("Навигация в настройках", "Оформление", "Appearance", "NavigationStyleCard", "навигация меню таблетки панель боковая плавающая нижняя разделы названия подписи текст pills sidebar floating navigation labels");
+        AddLazy("Акцентный цвет", "Оформление", "Appearance", "AccentModeRadioGroup", "акцент цвет палитра accent color");
+        AddLazy("Основа окна", "Оформление", "Appearance", "BackdropRadioGroup", "mica alt acrylic blur акрил размытие блюр подложка фон backdrop более плотная и контрастная основа windows 11 22h2 сильнее прозрачность");
+        AddLazy("Цвет основы от текущей обложки", "Оформление", "Appearance", "CoverBaseFromCoverCheckBox", "обложка cover основа фон окно цвет theme");
+        AddLazy("Доступность", "Оформление", "Appearance", "AccessibilityCard", "масштаб интерфейса текст размер доступность движение анимация анимации по разделам слайдеры accessibility scale motion animations sliders");
         AddLazy("Анимация смены обложки", "Обложка и Now Playing", "Cover", "AlbumArtTransitionOnRadio", "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
         AddLazy("Подпись под названием трека", "Обложка и Now Playing", "Cover", "TrackStateBadgeModeRadioGroup", "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size flac mp3 и частота свой набор отметить что показывать");
         AddLazy("Жесты на обложке", "Обложка и Now Playing", "Cover", "AlbumArtGesturesCheckBox", "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
@@ -153,8 +153,8 @@ public partial class SettingsWindow
         AddLazy("Меню «Ещё» (три точки)", "Окно и запуск", "Window", "MoreMenuStyleRadioGroup", "три точки очередь текст песни меню пружина анимация dynamic menu more");
         AddLazy("Форма кнопки Пуск/Пауза", "Окно и запуск", "Window", "PlayButtonShapeRadioGroup", "квадратный круглый круг квадрат по умолчанию форма кнопки play pause square round circle shape");
         AddLazy("Диагностика производительности", "О плеере", "About", "DiagnosticsButton", "проверка нагрузка процессор память утечки тест фоновое наблюдение за ресурсами watchdog diagnostics performance cpu memory leak");
-        Add("Автоматически переводить журнал изменений на английский", "Оформление", "Appearance", ChangelogAutoTranslateCheckBox, "чейнджлог changelog перевод английский google translate история изменений патчноуты");
-        Add("Показывать названия рядом с иконками", "Оформление", "Appearance", NavShowLabelsCheckBox, "подписи названия иконки навигация labels icons");
+        AddLazy("Автоматически переводить журнал изменений на английский", "Оформление", "Appearance", "ChangelogAutoTranslateCheckBox", "чейнджлог changelog перевод английский google translate история изменений патчноуты");
+        AddLazy("Показывать названия рядом с иконками", "Оформление", "Appearance", "NavShowLabelsCheckBox", "подписи названия иконки навигация labels icons");
         AddLazy("Сохранить пресет текста песни", "Тексты песен", "Lyrics", "LyricsPresetSaveButton", "пресет сохранить удалить preset save delete lyrics style");
         AddLazy("Размер шрифта текста песни", "Тексты песен", "Lyrics", "SyncedLyricsFontSizeSlider", "шрифт размер текст font size lyrics");
         AddLazy("Размер текста в Now Playing", "Тексты песен", "Lyrics", "NowPlayingLyricsFontSizeSlider", "шрифт размер текст песни font size lyrics");
@@ -262,9 +262,9 @@ public partial class SettingsWindow
         Add("Подсветка слов в тексте песни (бета)", "Остров", "Island", IslandReadAlongCheckBox, "read along слова подсветка пилюля текст песни караоке");
         Add("Размытие движения при растяжении", "Остров", "Island", IslandMotionBlurCheckBox, "motion blur растяжение");
         Add("Действия контекстного меню острова", "Остров", "Island", IslandMenuPlayPauseCheckBox, "контекстное меню пауза следующий предыдущий скрыть развернуть now playing скорость тон совместимость настройки context menu actions");
-        Add("Масштаб интерфейса", "Оформление", "Appearance", InterfaceScaleSlider, "размер текст scale interface size");
-        Add("Все анимации", "Оформление", "Appearance", AnimationsMasterCheckBox, "движение анимация слайдеры переходы обложка текст песни полоса мини-плеер бегущая строка остров меню трея сердечко индикаторы загрузки motion animations reduce");
-        Add("Now Playing: фон и переходы", "Оформление", "Appearance", AnimationNowPlayingCheckBox, "анимация фон now playing animation background");
+        AddLazy("Масштаб интерфейса", "Оформление", "Appearance", "InterfaceScaleSlider", "размер текст scale interface size");
+        AddLazy("Все анимации", "Оформление", "Appearance", "AnimationsMasterCheckBox", "движение анимация слайдеры переходы обложка текст песни полоса мини-плеер бегущая строка остров меню трея сердечко индикаторы загрузки motion animations reduce");
+        AddLazy("Now Playing: фон и переходы", "Оформление", "Appearance", "AnimationNowPlayingCheckBox", "анимация фон now playing animation background");
         AddLazy("Показывать дополнительные кнопки по бокам от кнопок управления", "Окно и запуск", "Window", "ModernShowSideButtonsCheckBox", "кнопки слоты управление extra buttons slots");
         AddLazy("Подложка у кнопок управления (вид «Стекло»)", "Окно и запуск", "Window", "GlassControlsBackgroundCheckBox", "стекло glass подложка controls background");
         AddLazy("Выравнивание обложки в виде «Компакт»", "Окно и запуск", "Window", "CompactCoverAlignmentCombo", "компакт обложка выравнивание compact cover alignment");

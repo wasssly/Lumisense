@@ -23,7 +23,6 @@ public partial class SettingsWindow : FluentWindow
     private readonly ISettingsHost _owner;
     private bool _isInitializing = true;
     private bool _isSyncingIslandButtons;
-    private bool _interfaceScaleRestartNoticeShown;
     private bool _isWindowClosed;
 
     // Индекс поиска — ручной перечень опций: подпись, страница, ссылка на элемент (для прокрутки и подсветки)
@@ -119,10 +118,10 @@ public partial class SettingsWindow : FluentWindow
 
         // Стартовую страницу выбираем здесь, а не IsChecked="True" в XAML: все страницы уже созданы, и NavItem_Checked
         // не падает с NullReferenceException.
-        NavigateToPage(initialPage);
-
         _settings = settings;
         _owner = owner;
+        NavigateToPage(initialPage);
+
         AccessibilityPreferences.ApplyToWindow(this, _settings);
 
         // Owner намеренно не выставляется: Windows не позволяет owner оказаться выше owned-окна, и клик по главному окну
@@ -130,38 +129,6 @@ public partial class SettingsWindow : FluentWindow
         ShowInTaskbar = true;
         TaskbarWindowIdentity.AssignWhenSourceReady(this, TaskbarWindowIdentity.Settings);
         RestoreOrCenterPosition(owner);
-
-        LanguageEnglishRadio.IsChecked = string.Equals(_settings.Language, LocalizationService.English, StringComparison.OrdinalIgnoreCase);
-        LanguageRussianRadio.IsChecked = !LanguageEnglishRadio.IsChecked.GetValueOrDefault();
-        ChangelogAutoTranslateCheckBox.IsChecked = _settings.ChangelogAutoTranslate;
-
-        ThemeLightRadio.IsChecked = _settings.Theme == "Light";
-        ThemeDarkRadio.IsChecked = !ThemeLightRadio.IsChecked.GetValueOrDefault();
-
-        RefreshIconPackCardSelection();
-        RefreshAppIconCardSelection();
-
-        AccentManualRadio.IsChecked = _settings.AccentColorMode == "Manual";
-        AccentCoverRadio.IsChecked = _settings.AccentColorMode == "Cover";
-        AccentSystemRadio.IsChecked = !AccentManualRadio.IsChecked.GetValueOrDefault()
-                                      && !AccentCoverRadio.IsChecked.GetValueOrDefault();
-        AccentSwatchesPanel.Visibility = AccentManualRadio.IsChecked == true ? Visibility.Visible : Visibility.Collapsed;
-        RefreshAccentSwatchSelection();
-
-        BackdropCard.Visibility = WindowBackdropOptions.IsSelectionSupportedNow ? Visibility.Visible : Visibility.Collapsed;
-        string backdrop = WindowBackdropOptions.Normalize(_settings.WindowBackdropType);
-        BackdropAcrylicRadio.IsChecked = backdrop == WindowBackdropOptions.Acrylic;
-        BackdropBlurRadio.IsChecked = backdrop == WindowBackdropOptions.Blur;
-        BackdropMicaAltRadio.IsChecked = backdrop == WindowBackdropOptions.MicaAlt;
-        BackdropMicaRadio.IsChecked = backdrop == WindowBackdropOptions.Mica;
-        CoverBaseFromCoverCheckBox.IsChecked = _settings.CoverBaseFromCover;
-
-        InterfaceScaleSlider.Value = AccessibilityPreferences.NormalizeScale(_settings.InterfaceScale) * 100;
-        InterfaceScaleValueText.Text = $"{InterfaceScaleSlider.Value:0}%";
-        // «Снизить движение» — это все разделы выключенными, поэтому отдельного флажка у него нет.
-        foreach (var box in AnimationAreaBoxes())
-            box.IsChecked = !_settings.ReduceMotion && !_settings.DisabledAnimationAreas.Contains((string)box.Tag);
-        RefreshAnimationsMasterCheckBox();
 
         foreach (var (menu, panel) in ContextMenuOrderPanels())
             PanelReorder.Sort(panel, ContextMenuOrdering.Effective(_settings, menu));
@@ -268,15 +235,7 @@ public partial class SettingsWindow : FluentWindow
         BuildSearchIndex();
 
 
-        NavShowLabelsCheckBox.IsChecked = _settings.SettingsNavigationShowLabels;
-        NavLabelModeSelectedRadio.IsChecked = _settings.SettingsNavigationLabelMode == "Selected";
-        NavLabelModeBelowRadio.IsChecked = _settings.SettingsNavigationLabelMode != "Selected";
-        NavStylePillsRadio.IsChecked = _settings.SettingsNavigationStyle == "Pills";
-        NavStyleFloatingRadio.IsChecked = _settings.SettingsNavigationStyle == "FloatingBar";
-        NavStyleSidebarRadio.IsChecked = !NavStylePillsRadio.IsChecked.GetValueOrDefault()
-                                         && !NavStyleFloatingRadio.IsChecked.GetValueOrDefault();
         ApplyNavigationStyle(_settings.SettingsNavigationStyle);
-        UpdateNavOptionsVisibility(animate: false);
         SizeChanged += (_, _) => UpdateFloatingBarMaxWidth();
         Loaded += (_, _) => StartPageWarmUp();
 
