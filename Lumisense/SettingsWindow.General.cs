@@ -51,54 +51,6 @@ public partial class SettingsWindow
             : LocalizationService.Translate("Trace подготовки трека выключен");
     }
 
-    // Подсчёт обходит все файлы кэша и заодно чистит устаревшие: делаем в фоне, чтобы не задерживать открытие окна.
-    private int _lyricsCacheInfoVersion;
-
-    private void RefreshLyricsCacheInfo() =>
-        FireAndForget(RefreshLyricsCacheInfoAsync(++_lyricsCacheInfoVersion), "RefreshLyricsCacheInfoAsync");
-
-    private async Task RefreshLyricsCacheInfoAsync(int version)
-    {
-        LyricsCacheInfo info = await Task.Run(LyricsService.GetPastedLyricsCacheInfo);
-        if (_isWindowClosed || version != _lyricsCacheInfoVersion) return;
-
-        LyricsCacheInfoText.Text = LocalizationService.FormatKey(LocalizationKey.ProfileLyricsCacheInfo,
-            info.EntryCount, FormatLyricsCacheSize(info.TotalBytes));
-        ClearLyricsCacheButton.IsEnabled = !info.IsEmpty;
-    }
-
-    private static string FormatLyricsCacheSize(long bytes)
-    {
-        string bytesUnit = LocalizationService.IsEnglish ? "B" : "Б";
-        string kilobytesUnit = LocalizationService.IsEnglish ? "KB" : "КБ";
-        string megabytesUnit = LocalizationService.IsEnglish ? "MB" : "МБ";
-        if (bytes < 1024) return $"{bytes} {bytesUnit}";
-        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} {kilobytesUnit}";
-        return $"{bytes / (1024.0 * 1024.0):0.#} {megabytesUnit}";
-    }
-
-    private void ClearLyricsCacheButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (LyricsService.GetPastedLyricsCacheInfo().IsEmpty)
-        {
-            RefreshLyricsCacheInfo();
-            return;
-        }
-
-        var confirm = LocalizedMessageBox.Show(this,
-            LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearConfirm),
-            LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearTitle), System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
-        if (confirm != System.Windows.MessageBoxResult.Yes) return;
-
-        if (!LyricsService.ClearPastedLyricsCache())
-        {
-            LocalizedMessageBox.Show(this, LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearFailed),
-                LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearErrorTitle), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
-        }
-
-        RefreshLyricsCacheInfo();
-    }
-
     private void LocalizationService_LanguageChanged(object? sender, EventArgs e)
     {
         // Показанные результаты поиска хранят уже выведенные подписи: пересобираем их на новом языке.
@@ -114,7 +66,7 @@ public partial class SettingsWindow
 
         if (_lazyPages.TryGetValue("Updates", out ILazySettingsPage? updatesPage)) ((UpdatesSettingsPage)updatesPage).RefreshLocalization();
 
-        RefreshLyricsCacheInfo();
+        if (_lazyPages.TryGetValue("Lyrics", out ILazySettingsPage? lyricsPage)) ((LyricsSettingsPage)lyricsPage).RefreshLocalization();
         RefreshMiniArtworkProgressThicknessPresentation();
     }
 }

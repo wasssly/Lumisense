@@ -1,24 +1,92 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Net.Http;
-using System.Globalization;
 using System.Linq;
 using System.Windows;
-using System.Windows.Controls.Primitives;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
-using Wpf.Ui.Appearance;
-using Wpf.Ui.Controls;
 using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
-public partial class SettingsWindow
+// Создаётся при первом показе страницы (см. SettingsWindow.EnsurePageBuilt).
+public sealed partial class LyricsSettingsPage : System.Windows.Controls.UserControl, ILazySettingsPage
 {
+    private readonly Window _window;
+    private readonly AppSettings _settings;
+    private readonly ISettingsHost _owner;
+
+    // Глушит Changed-обработчики, пока значения читаются из настроек.
+    private bool _isInitializing = true;
+    private bool _isWindowClosed;
+
+    internal LyricsSettingsPage(Window window, AppSettings settings, ISettingsHost owner)
+    {
+        _window = window;
+        _settings = settings;
+        _owner = owner;
+
+        // StaticResource разбирается до того, как элементы попадут в дерево окна, поэтому ресурсы окна подключаются заранее.
+        Resources.MergedDictionaries.Add(window.Resources);
+        InitializeComponent();
+
+        SyncedLyricsFontSizeSlider.Value = Math.Clamp(_settings.SyncedLyricsFontSize, 12, 20);
+        SyncedLyricsFontSizeValueText.Text = $"{SyncedLyricsFontSizeSlider.Value:0} px";
+        string lyricsEffect = _settings.SyncedLyricsHighlightEffect;
+        SyncedLyricsEffectNoneRadio.IsChecked = lyricsEffect == "None";
+        SyncedLyricsEffectGlowPillRadio.IsChecked = lyricsEffect == "GlowPill";
+        SyncedLyricsEffectPillRadio.IsChecked = lyricsEffect == "Pill";
+        SyncedLyricsEffectBarRadio.IsChecked = lyricsEffect == "Bar";
+        // Старые значения Scale/GlowScale после обновления корректно воспринимаются как Glow.
+        SyncedLyricsEffectGlowRadio.IsChecked = lyricsEffect is not ("None" or "GlowPill" or "Pill" or "Bar");
+        SyncedLyricsScaleCheckBox.IsChecked = _settings.SyncedLyricsScaleActiveLine;
+        SyncedLyricsFadeCheckBox.IsChecked = _settings.SyncedLyricsFadeDistantLines;
+        NowPlayingLyricsFontSizeSlider.Value = Math.Clamp(_settings.NowPlayingLyricsFontSize,
+            LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
+        NowPlayingLyricsFontSizeValueText.Text = $"{NowPlayingLyricsFontSizeSlider.Value:0} px";
+        SyncedLyricsGlowStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsGlowStrength, 10, 100);
+        SyncedLyricsBlurCheckBox.IsChecked = _settings.SyncedLyricsBlurInactive;
+        SyncedLyricsBlurStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsBlurStrength,
+            LyricsHighlightStyle.MinBlurStrength, LyricsHighlightStyle.MaxBlurStrength);
+        SyncedLyricsFadeStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsFadeStrength, 0, 100);
+        SyncedLyricsScalePercentSlider.Value = Math.Clamp(_settings.SyncedLyricsScalePercent, LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
+        int savedVisibleLines = LyricsHighlightStyle.NormalizeVisibleLines(_settings.SyncedLyricsVisibleLines);
+        SyncedLyricsVisibleLinesSlider.Value = savedVisibleLines == 0 ? SyncedLyricsVisibleLinesSlider.Maximum : savedVisibleLines;
+        UpdateSyncedLyricsHighlightTexts();
+        SettingsWindow.SelectComboByTag(LyricsTransitionCombo, LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition));
+        RefreshLyricsPresetList();
+        UseExtraLyricsSourceCheckBox.IsChecked = _settings.UseExtraLyricsSource;
+        UseNetEaseLyricsCheckBox.IsChecked = _settings.UseNetEaseLyrics;
+        UseQqMusicLyricsCheckBox.IsChecked = _settings.UseQqMusicLyrics;
+        UseKugouLyricsCheckBox.IsChecked = _settings.UseKugouLyrics;
+        UsePaxsenixLyricsCheckBox.IsChecked = _settings.UsePaxsenixLyrics;
+        UseBetterLyricsCheckBox.IsChecked = _settings.UseBetterLyrics;
+        UseBinimumLyricsCheckBox.IsChecked = _settings.UseBinimumLyrics;
+        UseLyricsPlusLyricsCheckBox.IsChecked = _settings.UseLyricsPlusLyrics;
+        ExtraLyricsSourcesPanel.IsEnabled = _settings.UseExtraLyricsSource;
+        HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
+        LyricsAlignCenterRadio.IsChecked = _settings.LyricsTextAlignment == "Center";
+        LyricsAlignRightRadio.IsChecked = _settings.LyricsTextAlignment == "Right";
+        LyricsAlignLeftRadio.IsChecked = !LyricsAlignCenterRadio.IsChecked.GetValueOrDefault()
+                                         && !LyricsAlignRightRadio.IsChecked.GetValueOrDefault();
+        LyricsDisplayPlainRadio.IsChecked = _settings.LyricsDisplayMode == "Plain";
+        LyricsDisplaySyncedRadio.IsChecked = _settings.LyricsDisplayMode != "Plain";
+        UpdateLyricsPreview();
+        LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
+        LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
+        LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
+        RefreshLyricsCacheInfo();
+
+        // Выпадающий список источника читает отмеченные радиокнопки, поэтому связывается после загрузки настроек.
+        RadioComboLinks.Initialize(this, FindName);
+        _isInitializing = false;
+    }
+
+    public void MoveContentTo(System.Windows.Controls.Panel host) => LazySettingsPage.MoveChildren(PageLyrics, host);
+
+    public FrameworkElement? FindElement(string name) => FindName(name) as FrameworkElement;
+
+    public void RefreshLocalization() => RefreshLyricsCacheInfo();
+
+    public void MarkWindowClosed() => _isWindowClosed = true;
+
     private void SyncedLyricsFontSizeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
         // Slider вызывает ValueChanged во время загрузки XAML, когда SyncedLyricsFontSizeValueText ещё может не быть в namescope;
@@ -87,7 +155,7 @@ public partial class SettingsWindow
                 LyricsPresetCombo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = LocalizationService.Translate(preset.Name), Tag = preset.Name });
 
             LyricsPreset? current = FindLyricsPreset(_settings.LyricsPresetName);
-            SelectComboByTag(LyricsPresetCombo, current?.Name ?? string.Empty);
+            SettingsWindow.SelectComboByTag(LyricsPresetCombo, current?.Name ?? string.Empty);
         }
         finally
         {
@@ -99,7 +167,7 @@ public partial class SettingsWindow
 
     private void UpdateLyricsPresetButtons()
     {
-        string selected = SelectedTag(LyricsPresetCombo, string.Empty);
+        string selected = SettingsWindow.SelectedTag(LyricsPresetCombo, string.Empty);
         LyricsPresetDeleteButton.IsEnabled = selected.Length > 0 && !LyricsPreset.IsBuiltInName(selected);
     }
 
@@ -119,7 +187,7 @@ public partial class SettingsWindow
     {
         if (_isInitializing) return;
 
-        string name = SelectedTag(LyricsPresetCombo, string.Empty);
+        string name = SettingsWindow.SelectedTag(LyricsPresetCombo, string.Empty);
         LyricsPreset? preset = FindLyricsPreset(name);
         if (preset is null)
         {
@@ -176,7 +244,7 @@ public partial class SettingsWindow
             LyricsDisplayPlainRadio.IsChecked = _settings.LyricsDisplayMode == "Plain";
             LyricsDisplaySyncedRadio.IsChecked = _settings.LyricsDisplayMode != "Plain";
             HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
-            SelectComboByTag(LyricsTransitionCombo, LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition));
+            SettingsWindow.SelectComboByTag(LyricsTransitionCombo, LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition));
             LyricsPreview.Apply(_settings);
         }
         finally
@@ -189,7 +257,7 @@ public partial class SettingsWindow
     {
         if (_isInitializing || LyricsTransitionCombo.SelectedItem is null) return;
 
-        _settings.SyncedLyricsTransition = LyricsTransitionStyle.Normalize(SelectedTag(LyricsTransitionCombo, LyricsTransitionStyle.Smooth));
+        _settings.SyncedLyricsTransition = LyricsTransitionStyle.Normalize(SettingsWindow.SelectedTag(LyricsTransitionCombo, LyricsTransitionStyle.Smooth));
         MarkLyricsPresetCustom();
         _owner.ApplySyncedLyricsAppearance();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
@@ -197,7 +265,7 @@ public partial class SettingsWindow
 
     private void LyricsPresetSaveButton_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new TextInputDialog("Сохранить пресет", "Название пресета:", _settings.LyricsPresetName, _settings) { Owner = this };
+        var dialog = new TextInputDialog("Сохранить пресет", "Название пресета:", _settings.LyricsPresetName, _settings) { Owner = _window };
         if (dialog.ShowDialog() != true) return;
 
         string name = dialog.ResultText.Trim();
@@ -218,7 +286,7 @@ public partial class SettingsWindow
 
     private void LyricsPresetDeleteButton_Click(object sender, RoutedEventArgs e)
     {
-        string name = SelectedTag(LyricsPresetCombo, string.Empty);
+        string name = SettingsWindow.SelectedTag(LyricsPresetCombo, string.Empty);
         if (name.Length == 0 || LyricsPreset.IsBuiltInName(name)) return;
 
         _settings.CustomLyricsPresets.RemoveAll(preset => string.Equals(preset.Name, name, StringComparison.OrdinalIgnoreCase));
@@ -332,5 +400,53 @@ public partial class SettingsWindow
         // Ползунки степени имеют смысл только при включённом соответствующем приёме.
         SyncedLyricsFadeStrengthSlider.IsEnabled = SyncedLyricsFadeCheckBox.IsChecked == true;
         SyncedLyricsScalePercentSlider.IsEnabled = SyncedLyricsScaleCheckBox.IsChecked == true;
+    }
+
+    // Подсчёт обходит все файлы кэша и заодно чистит устаревшие: делаем в фоне, чтобы не задерживать открытие окна.
+    private int _lyricsCacheInfoVersion;
+
+    private void RefreshLyricsCacheInfo() =>
+        FireAndForget(RefreshLyricsCacheInfoAsync(++_lyricsCacheInfoVersion), "RefreshLyricsCacheInfoAsync");
+
+    private async Task RefreshLyricsCacheInfoAsync(int version)
+    {
+        LyricsCacheInfo info = await Task.Run(LyricsService.GetPastedLyricsCacheInfo);
+        if (_isWindowClosed || version != _lyricsCacheInfoVersion) return;
+
+        LyricsCacheInfoText.Text = LocalizationService.FormatKey(LocalizationKey.ProfileLyricsCacheInfo,
+            info.EntryCount, FormatLyricsCacheSize(info.TotalBytes));
+        ClearLyricsCacheButton.IsEnabled = !info.IsEmpty;
+    }
+
+    private static string FormatLyricsCacheSize(long bytes)
+    {
+        string bytesUnit = LocalizationService.IsEnglish ? "B" : "Б";
+        string kilobytesUnit = LocalizationService.IsEnglish ? "KB" : "КБ";
+        string megabytesUnit = LocalizationService.IsEnglish ? "MB" : "МБ";
+        if (bytes < 1024) return $"{bytes} {bytesUnit}";
+        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} {kilobytesUnit}";
+        return $"{bytes / (1024.0 * 1024.0):0.#} {megabytesUnit}";
+    }
+
+    private void ClearLyricsCacheButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (LyricsService.GetPastedLyricsCacheInfo().IsEmpty)
+        {
+            RefreshLyricsCacheInfo();
+            return;
+        }
+
+        var confirm = LocalizedMessageBox.Show(_window,
+            LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearConfirm),
+            LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearTitle), System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+        if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+        if (!LyricsService.ClearPastedLyricsCache())
+        {
+            LocalizedMessageBox.Show(_window, LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearFailed),
+                LocalizationService.Get(LocalizationKey.ProfileLyricsCacheClearErrorTitle), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+        }
+
+        RefreshLyricsCacheInfo();
     }
 }

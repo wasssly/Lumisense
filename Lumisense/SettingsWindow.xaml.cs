@@ -167,52 +167,7 @@ public partial class SettingsWindow : FluentWindow
         foreach (var (menu, panel) in ContextMenuOrderPanels())
             PanelReorder.Sort(panel, ContextMenuOrdering.Effective(_settings, menu));
 
-        SyncedLyricsFontSizeSlider.Value = Math.Clamp(_settings.SyncedLyricsFontSize, 12, 20);
-        SyncedLyricsFontSizeValueText.Text = $"{SyncedLyricsFontSizeSlider.Value:0} px";
-        string lyricsEffect = _settings.SyncedLyricsHighlightEffect;
-        SyncedLyricsEffectNoneRadio.IsChecked = lyricsEffect == "None";
-        SyncedLyricsEffectGlowPillRadio.IsChecked = lyricsEffect == "GlowPill";
-        SyncedLyricsEffectPillRadio.IsChecked = lyricsEffect == "Pill";
-        SyncedLyricsEffectBarRadio.IsChecked = lyricsEffect == "Bar";
-        // Старые значения Scale/GlowScale после обновления корректно воспринимаются как Glow.
-        SyncedLyricsEffectGlowRadio.IsChecked = lyricsEffect is not ("None" or "GlowPill" or "Pill" or "Bar");
-        SyncedLyricsScaleCheckBox.IsChecked = _settings.SyncedLyricsScaleActiveLine;
-        SyncedLyricsFadeCheckBox.IsChecked = _settings.SyncedLyricsFadeDistantLines;
-        NowPlayingLyricsFontSizeSlider.Value = Math.Clamp(_settings.NowPlayingLyricsFontSize,
-            LyricsHighlightStyle.MinNowPlayingFontSize, LyricsHighlightStyle.MaxNowPlayingFontSize);
-        NowPlayingLyricsFontSizeValueText.Text = $"{NowPlayingLyricsFontSizeSlider.Value:0} px";
-        SyncedLyricsGlowStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsGlowStrength, 10, 100);
-        SyncedLyricsBlurCheckBox.IsChecked = _settings.SyncedLyricsBlurInactive;
-        SyncedLyricsBlurStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsBlurStrength,
-            LyricsHighlightStyle.MinBlurStrength, LyricsHighlightStyle.MaxBlurStrength);
-        SyncedLyricsFadeStrengthSlider.Value = Math.Clamp(_settings.SyncedLyricsFadeStrength, 0, 100);
-        SyncedLyricsScalePercentSlider.Value = Math.Clamp(_settings.SyncedLyricsScalePercent, LyricsHighlightStyle.MinScalePercent, LyricsHighlightStyle.MaxScalePercent);
-        int savedVisibleLines = LyricsHighlightStyle.NormalizeVisibleLines(_settings.SyncedLyricsVisibleLines);
-        SyncedLyricsVisibleLinesSlider.Value = savedVisibleLines == 0 ? SyncedLyricsVisibleLinesSlider.Maximum : savedVisibleLines;
-        UpdateSyncedLyricsHighlightTexts();
-        SelectComboByTag(LyricsTransitionCombo, LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition));
-        RefreshLyricsPresetList();
-        UseExtraLyricsSourceCheckBox.IsChecked = _settings.UseExtraLyricsSource;
-        UseNetEaseLyricsCheckBox.IsChecked = _settings.UseNetEaseLyrics;
-        UseQqMusicLyricsCheckBox.IsChecked = _settings.UseQqMusicLyrics;
-        UseKugouLyricsCheckBox.IsChecked = _settings.UseKugouLyrics;
-        UsePaxsenixLyricsCheckBox.IsChecked = _settings.UsePaxsenixLyrics;
-        UseBetterLyricsCheckBox.IsChecked = _settings.UseBetterLyrics;
-        UseBinimumLyricsCheckBox.IsChecked = _settings.UseBinimumLyrics;
-        UseLyricsPlusLyricsCheckBox.IsChecked = _settings.UseLyricsPlusLyrics;
-        ExtraLyricsSourcesPanel.IsEnabled = _settings.UseExtraLyricsSource;
-        HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
-        LyricsAlignCenterRadio.IsChecked = _settings.LyricsTextAlignment == "Center";
-        LyricsAlignRightRadio.IsChecked = _settings.LyricsTextAlignment == "Right";
-        LyricsAlignLeftRadio.IsChecked = !LyricsAlignCenterRadio.IsChecked.GetValueOrDefault()
-                                         && !LyricsAlignRightRadio.IsChecked.GetValueOrDefault();
-        LyricsDisplayPlainRadio.IsChecked = _settings.LyricsDisplayMode == "Plain";
-        LyricsDisplaySyncedRadio.IsChecked = _settings.LyricsDisplayMode != "Plain";
-        UpdateLyricsPreview();
         InitializeProgressAppearanceEditor();
-        LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
-        LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
-        LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
 
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
@@ -350,7 +305,6 @@ public partial class SettingsWindow : FluentWindow
 
         BuildSearchIndex();
 
-        RefreshLyricsCacheInfo();
 
         NavShowLabelsCheckBox.IsChecked = _settings.SettingsNavigationShowLabels;
         NavLabelModeSelectedRadio.IsChecked = _settings.SettingsNavigationLabelMode == "Selected";
@@ -384,6 +338,8 @@ public partial class SettingsWindow : FluentWindow
             StopAutoScrolling();
             if (_lazyPages.TryGetValue("Updates", out ILazySettingsPage? updatesPage))
                 ((UpdatesSettingsPage)updatesPage).CancelBackgroundWork();
+            if (_lazyPages.TryGetValue("Lyrics", out ILazySettingsPage? lyricsPage))
+                ((LyricsSettingsPage)lyricsPage).MarkWindowClosed();
             LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         };
         LocalizationService.Apply(this);
