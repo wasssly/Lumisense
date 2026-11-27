@@ -33,7 +33,7 @@ public partial class MainWindow
                 thread.Priority = ThreadPriority.BelowNormal;
                 try
                 {
-                    using var reader = new AudioFileReader(path);
+                    using var reader = TrackReaderFactory.Open(path);
                     return LoudnessAnalyzer.MeasureIntegratedLufs(reader, cts.Token);
                 }
                 finally

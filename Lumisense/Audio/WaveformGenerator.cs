@@ -28,7 +28,7 @@ public static class WaveformGenerator
         {
             // Отдельный AudioFileReader: играющий (MainWindow._audioFile) уже читает цепочка вывода, и параллельное
             // чтение из него сдвинуло бы позицию воспроизведения.
-            using var reader = new AudioFileReader(filePath);
+            using var reader = TrackReaderFactory.Open(filePath);
 
             int channels = System.Math.Max(reader.WaveFormat.Channels, 1);
             var buffer = new float[ChunkSamples * channels];

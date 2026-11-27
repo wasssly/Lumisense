@@ -91,7 +91,7 @@ internal sealed class TrackExportService
     // буферное состояние, которое нельзя просто "перемотать назад".
     private static ExportPipeline BuildExportPipeline(string sourcePath, TrackExportOptions options)
     {
-        var reader = new AudioFileReader(sourcePath);
+        var reader = TrackReaderFactory.Open(sourcePath);
         try
         {
             // Экспорт намеренно не подключает EqualizerSampleProvider: в MP3 должны попасть

@@ -13,7 +13,7 @@ public partial class MainWindow
     private bool GaplessOrCrossfadeWanted => _settings.GaplessEnabled || _settings.CrossfadeSeconds > 0;
 
     // Остаток трека в кадрах выходного формата (после ресемплинга, если он есть) с учётом скорости.
-    private Func<long> RemainingFramesOf(NAudio.Wave.AudioFileReader reader, int outputSampleRate) =>
+    private Func<long> RemainingFramesOf(ITrackReader reader, int outputSampleRate) =>
         () => (long)((reader.TotalTime - reader.CurrentTime).TotalSeconds / Math.Max(0.25, _runtimePlaybackRate) * outputSampleRate);
 
     // Приводит следующий трек к формату выхода (моно↔стерео, частота); null, если число каналов не поддержано.
@@ -49,7 +49,7 @@ public partial class MainWindow
         return (int)(Math.Min(seconds, limit) * (_gapless?.WaveFormat.SampleRate ?? _audioFile.WaveFormat.SampleRate));
     }
 
-    private NAudio.Wave.AudioFileReader? _gaplessPreviousFile;
+    private ITrackReader? _gaplessPreviousFile;
 
     private void DisposeGaplessPreviousFile()
     {

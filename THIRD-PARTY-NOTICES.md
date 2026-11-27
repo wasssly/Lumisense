@@ -8,6 +8,7 @@ with Lumisense are in the `licenses` folder next to the executable.
 |---|---|---|
 | WPF-UI, WPF-UI.Tray | MIT | https://github.com/lepoco/wpfui |
 | NAudio | MIT | https://github.com/naudio/NAudio |
+| NVorbis | MIT | https://github.com/NVorbis/NVorbis |
 | Audio Tools Library (z440.atl.core) | MIT | https://github.com/Zeugma440/atldotnet |
 | SoundTouch.Net (SoundTouch) | LGPL-2.1-or-later | https://github.com/owoudenberg/soundtouch.net |
 | Lyricify.Lyrics.Helper | Apache-2.0 | https://github.com/WXRIW/Lyricify-Lyrics-Helper |

@@ -8,7 +8,7 @@ namespace Lumisense;
 
 internal sealed class PreparedTrack : IDisposable
 {
-    public required AudioFileReader AudioFile { get; init; }
+    public required ITrackReader AudioFile { get; init; }
     public required SoundTouchSampleProvider TempoProvider { get; init; }
     public required EqualizerSampleProvider Equalizer { get; init; }
     public required double ReplayGainFactor { get; init; }
@@ -116,11 +116,9 @@ internal sealed class TrackPreparationService
 
         token.ThrowIfCancellationRequested();
         var audioFileReaderTimer = Stopwatch.StartNew();
-        var reader = new AudioFileReader(filePath)
-        {
-            // Здесь только ReplayGain (до эквалайзера); громкость ползунка применяется в конце цепочки (MasterVolumeSampleProvider).
-            Volume = (float)replayGain
-        };
+        var reader = TrackReaderFactory.Open(filePath);
+        // Здесь только ReplayGain (до эквалайзера); громкость ползунка применяется в конце цепочки (MasterVolumeSampleProvider).
+        reader.Volume = (float)replayGain;
         long audioFileReaderMilliseconds = audioFileReaderTimer.ElapsedMilliseconds;
         try
         {

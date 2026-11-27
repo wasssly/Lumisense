@@ -39,7 +39,7 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
     private static readonly string[] SupportedExtensions = AudioFormats.Extensions;
 
     // AudioFileReader умеет читать mp3/wav/wma и сразу даёт регулировку громкости
-    private AudioFileReader? _audioFile;
+    private ITrackReader? _audioFile;
     private SoundTouchSampleProvider? _tempoProvider;
 
     // WasapiPlayer открывает поток для одного IWaveProvider, поэтому устройство создаётся заново на каждый трек; fade-out/fade-in
