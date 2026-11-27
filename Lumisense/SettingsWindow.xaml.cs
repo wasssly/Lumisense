@@ -192,14 +192,6 @@ public partial class SettingsWindow : FluentWindow
         UpdateSyncedLyricsHighlightTexts();
         SelectComboByTag(LyricsTransitionCombo, LyricsTransitionStyle.Normalize(_settings.SyncedLyricsTransition));
         RefreshLyricsPresetList();
-        NowPlayingBackgroundOrbsRadio.IsChecked = _settings.NowPlayingBackground == "Orbs";
-        NowPlayingBackgroundWavesRadio.IsChecked = _settings.NowPlayingBackground == "Waves";
-        NowPlayingBackgroundCoverRadio.IsChecked = _settings.NowPlayingBackground == "Cover";
-        NowPlayingBackgroundSolidRadio.IsChecked = _settings.NowPlayingBackground == "Solid";
-        NowPlayingBackgroundNoneRadio.IsChecked = _settings.NowPlayingBackground == "None";
-        NowPlayingBackgroundCloudsRadio.IsChecked = _settings.NowPlayingBackground is not ("Orbs" or "Waves" or "Cover" or "Solid" or "None");
-        NowPlayingBackgroundColorPanel.IsEnabled = _settings.NowPlayingBackground == "Solid";
-        RefreshNowPlayingBackgroundColorSwatch();
         UseExtraLyricsSourceCheckBox.IsChecked = _settings.UseExtraLyricsSource;
         UseNetEaseLyricsCheckBox.IsChecked = _settings.UseNetEaseLyrics;
         UseQqMusicLyricsCheckBox.IsChecked = _settings.UseQqMusicLyrics;
@@ -210,12 +202,6 @@ public partial class SettingsWindow : FluentWindow
         UseLyricsPlusLyricsCheckBox.IsChecked = _settings.UseLyricsPlusLyrics;
         ExtraLyricsSourcesPanel.IsEnabled = _settings.UseExtraLyricsSource;
         HideCoverInLyricsCheckBox.IsChecked = _settings.HideCoverInLyricsPanel;
-        FavoriteHeartSparksRadio.IsChecked = _settings.FavoriteHeartAnimation == "Sparks";
-        FavoriteHeartRingRadio.IsChecked = _settings.FavoriteHeartAnimation == "Ring";
-        FavoriteHeartNoneRadio.IsChecked = _settings.FavoriteHeartAnimation == "None";
-        FavoriteHeartFillRadio.IsChecked = !FavoriteHeartSparksRadio.IsChecked.GetValueOrDefault()
-                                           && !FavoriteHeartRingRadio.IsChecked.GetValueOrDefault()
-                                           && !FavoriteHeartNoneRadio.IsChecked.GetValueOrDefault();
         LyricsAlignCenterRadio.IsChecked = _settings.LyricsTextAlignment == "Center";
         LyricsAlignRightRadio.IsChecked = _settings.LyricsTextAlignment == "Right";
         LyricsAlignLeftRadio.IsChecked = !LyricsAlignCenterRadio.IsChecked.GetValueOrDefault()
@@ -223,7 +209,6 @@ public partial class SettingsWindow : FluentWindow
         LyricsDisplayPlainRadio.IsChecked = _settings.LyricsDisplayMode == "Plain";
         LyricsDisplaySyncedRadio.IsChecked = _settings.LyricsDisplayMode != "Plain";
         UpdateLyricsPreview();
-        UpdateBadgePreview();
         InitializeProgressAppearanceEditor();
         LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
         LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
@@ -355,22 +340,6 @@ public partial class SettingsWindow : FluentWindow
         CrossfadeSlider.Value = Math.Clamp(_settings.CrossfadeSeconds, 0, 12);
         CrossfadeSkipSameAlbumCheckBox.IsChecked = _settings.CrossfadeSkipSameAlbum;
         UpdateCrossfadeText();
-        BadgeModeExtensionRadio.IsChecked = _settings.TrackStateBadgeMode == "Extension";
-        BadgeModeQualityRadio.IsChecked = _settings.TrackStateBadgeMode == "Quality";
-        BadgeModeFileSizeRadio.IsChecked = _settings.TrackStateBadgeMode == "FileSize";
-        BadgeModeCustomRadio.IsChecked = _settings.TrackStateBadgeMode == "Custom";
-        BadgeModeStateRadio.IsChecked = _settings.TrackStateBadgeMode is not ("Extension" or "Quality" or "FileSize" or "Custom");
-        BadgePartStateCheckBox.IsChecked = _settings.TrackStateBadgeShowState;
-        BadgePartExtensionCheckBox.IsChecked = _settings.TrackStateBadgeShowExtension;
-        BadgePartBitrateCheckBox.IsChecked = _settings.TrackStateBadgeShowBitrate;
-        BadgePartSampleRateCheckBox.IsChecked = _settings.TrackStateBadgeShowSampleRate;
-        BadgePartFileSizeCheckBox.IsChecked = _settings.TrackStateBadgeShowFileSize;
-        BadgeCustomPartsPanel.Visibility = _settings.TrackStateBadgeMode == "Custom" ? Visibility.Visible : Visibility.Collapsed;
-        bool carousel = _owner.IsAlbumArtTransitionEnabled && _settings.AlbumArtTransitionStyle == "Carousel";
-        AlbumArtTransitionStyleCarouselRadio.IsChecked = carousel;
-        AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled && !carousel;
-        AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
-        AlbumArtGesturesCheckBox.IsChecked = _settings.AlbumArtGesturesEnabled;
 
         SearchResultsList.ItemsSource = _searchResults;
         foreach (var (menu, panel) in ContextMenuOrderPanels())

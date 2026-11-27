@@ -53,7 +53,7 @@ public sealed partial class SettingsSearchCoverageTests
             .ToArray();
 
         // Ленивые страницы лежат в отдельных файлах: их элементы нужно проверять так же, как остальные.
-        XElement[] elements = new[] { xamlPath, AppFile("HotkeysSettingsPage.xaml"), AppFile("ProfileSettingsPage.xaml"), AppFile("NotificationsSettingsPage.xaml"), AppFile("EqualizerSettingsPage.xaml"), AppFile("IntegrationsSettingsPage.xaml"), AppFile("AboutSettingsPage.xaml"), AppFile("UpdatesSettingsPage.xaml"), AppFile("WindowSettingsPage.xaml"), AppFile("LibrarySettingsPage.xaml") }
+        XElement[] elements = new[] { xamlPath, AppFile("HotkeysSettingsPage.xaml"), AppFile("ProfileSettingsPage.xaml"), AppFile("NotificationsSettingsPage.xaml"), AppFile("EqualizerSettingsPage.xaml"), AppFile("IntegrationsSettingsPage.xaml"), AppFile("AboutSettingsPage.xaml"), AppFile("UpdatesSettingsPage.xaml"), AppFile("WindowSettingsPage.xaml"), AppFile("LibrarySettingsPage.xaml"), AppFile("CoverSettingsPage.xaml") }
             .SelectMany(path => XDocument.Load(path).Descendants())
             .ToArray();
         var unreachable = new SortedSet<string>(StringComparer.Ordinal);

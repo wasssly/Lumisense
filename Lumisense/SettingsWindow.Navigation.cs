@@ -134,6 +134,7 @@ public partial class SettingsWindow
             "Updates" => PageUpdates,
             "Window" => PageWindow,
             "Library" => PageLibrary,
+            "Cover" => PageCover,
             _ => null
         };
         if (host is null) return;
@@ -149,6 +150,7 @@ public partial class SettingsWindow
             "Updates" => new UpdatesSettingsPage(this, _settings),
             "Window" => new WindowSettingsPage(this, _settings, _owner),
             "Library" => new LibrarySettingsPage(this, _settings, _owner),
+            "Cover" => new CoverSettingsPage(this, _settings, _owner),
             _ => new NotificationsSettingsPage(this, _settings, _owner)
         };
         page.MoveContentTo(host);
@@ -167,6 +169,7 @@ public partial class SettingsWindow
         : ReferenceEquals(host, PageUpdates) ? "Updates"
         : ReferenceEquals(host, PageWindow) ? "Window"
         : ReferenceEquals(host, PageLibrary) ? "Library"
+        : ReferenceEquals(host, PageCover) ? "Cover"
         : null;
 
     private FrameworkElement? ResolveLazyTarget(SettingsSearchEntry entry) =>

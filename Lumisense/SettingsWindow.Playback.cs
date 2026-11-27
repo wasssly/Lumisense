@@ -303,51 +303,5 @@ public partial class SettingsWindow
             : $"{LocalizationService.Translate(value < 0 ? "Л" : "П")} {Math.Abs(value)}%";
     }
 
-    // См. AppSettings.TrackStateBadgeMode.
-    private void TrackStateBadgeModeRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.TrackStateBadgeMode = BadgeModeExtensionRadio.IsChecked == true ? "Extension"
-            : BadgeModeQualityRadio.IsChecked == true ? "Quality"
-            : BadgeModeFileSizeRadio.IsChecked == true ? "FileSize"
-            : BadgeModeCustomRadio.IsChecked == true ? "Custom"
-            : "State";
-        BadgeCustomPartsPanel.Visibility = _settings.TrackStateBadgeMode == "Custom" ? Visibility.Visible : Visibility.Collapsed;
-        UpdateBadgePreview();
-        _owner.ApplyTrackStateBadgeMode();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
-
-    private void BadgePartCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.TrackStateBadgeShowState = BadgePartStateCheckBox.IsChecked == true;
-        _settings.TrackStateBadgeShowExtension = BadgePartExtensionCheckBox.IsChecked == true;
-        _settings.TrackStateBadgeShowBitrate = BadgePartBitrateCheckBox.IsChecked == true;
-        _settings.TrackStateBadgeShowSampleRate = BadgePartSampleRateCheckBox.IsChecked == true;
-        _settings.TrackStateBadgeShowFileSize = BadgePartFileSizeCheckBox.IsChecked == true;
-        UpdateBadgePreview();
-        _owner.ApplyTrackStateBadgeMode();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
-
-    private void AlbumArtTransitionRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _owner.SetAlbumArtTransitionEnabled(AlbumArtTransitionOffRadio.IsChecked != true);
-        _settings.AlbumArtTransitionStyle = AlbumArtTransitionStyleCarouselRadio.IsChecked == true ? "Carousel" : "Slide";
-        _owner.ApplyAlbumArtTransitionStyleLive();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
-
-    private void AlbumArtGesturesCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-        _settings.AlbumArtGesturesEnabled = AlbumArtGesturesCheckBox.IsChecked == true;
-    }
-
     // Экспорт/импорт .lumi (см. LumiProfile.cs): только настройки (тема, акцент, EQ, хоткеи), без плейлиста и избранного.
 }

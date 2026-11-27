@@ -227,76 +227,6 @@ public partial class SettingsWindow
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
-    private void UpdateBadgePreview()
-    {
-        BadgePreviewText.Text = _settings.TrackStateBadgeMode switch
-        {
-            "Extension" => "FLAC",
-            "Quality" => "320 kbps · 44.1 kHz",
-            "FileSize" => "8.4 MB",
-            "Custom" => TrackBadgeFormatter.Join(
-                    _settings.TrackStateBadgeShowState ? LocalizationService.Get(LocalizationKey.TrackStatePlaying) : null,
-                    _settings.TrackStateBadgeShowExtension ? "FLAC" : null,
-                    _settings.TrackStateBadgeShowBitrate ? "320 kbps" : null,
-                    _settings.TrackStateBadgeShowSampleRate ? "44.1 kHz" : null,
-                    _settings.TrackStateBadgeShowFileSize ? "8.4 MB" : null)
-                ?? LocalizationService.Get(LocalizationKey.TrackStatePlaying),
-            _ => LocalizationService.Get(LocalizationKey.TrackStatePlaying)
-        };
-    }
-
-    private void NowPlayingBackgroundRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.NowPlayingBackground = NowPlayingBackgroundOrbsRadio.IsChecked == true ? "Orbs"
-            : NowPlayingBackgroundWavesRadio.IsChecked == true ? "Waves"
-            : NowPlayingBackgroundCoverRadio.IsChecked == true ? "Cover"
-            : NowPlayingBackgroundSolidRadio.IsChecked == true ? "Solid"
-            : NowPlayingBackgroundNoneRadio.IsChecked == true ? "None"
-            : "Clouds";
-        NowPlayingBackgroundColorPanel.IsEnabled = _settings.NowPlayingBackground == "Solid";
-        _owner.ApplyNowPlayingBackgroundLive();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
-
-    private void NowPlayingBackgroundColorButton_Click(object sender, RoutedEventArgs e)
-    {
-        System.Drawing.Color initialColor;
-        try
-        {
-            initialColor = System.Drawing.ColorTranslator.FromHtml(_settings.NowPlayingBackgroundColor);
-        }
-        catch
-        {
-            // Сохранённый цвет повреждён: диалог открывается с цветом по умолчанию.
-            initialColor = System.Drawing.Color.FromArgb(0x10, 0x12, 0x18);
-        }
-
-        using var dialog = new System.Windows.Forms.ColorDialog { Color = initialColor, FullOpen = true };
-        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-        if (dialog.ShowDialog(new Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
-
-        var color = dialog.Color;
-        _settings.NowPlayingBackgroundColor = $"#{color.R:X2}{color.G:X2}{color.B:X2}";
-        RefreshNowPlayingBackgroundColorSwatch();
-        _owner.ApplyNowPlayingBackgroundLive();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
-
-    private void RefreshNowPlayingBackgroundColorSwatch()
-    {
-        try
-        {
-            var color = (System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(_settings.NowPlayingBackgroundColor);
-            NowPlayingBackgroundColorSwatch.Background = new System.Windows.Media.SolidColorBrush(color);
-        }
-        catch
-        {
-            NowPlayingBackgroundColorSwatch.Background = System.Windows.Media.Brushes.Transparent;
-        }
-    }
-
     private void UseExtraLyricsSourceCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -329,17 +259,6 @@ public partial class SettingsWindow
         _settings.HideCoverInLyricsPanel = HideCoverInLyricsCheckBox.IsChecked == true;
         MarkLyricsPresetCustom();
         _owner.ApplySyncedLyricsAppearance();
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
-
-    private void FavoriteHeartAnimationRadio_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.FavoriteHeartAnimation = FavoriteHeartSparksRadio.IsChecked == true ? HeartAnimation.Sparks
-            : FavoriteHeartRingRadio.IsChecked == true ? HeartAnimation.Ring
-            : FavoriteHeartNoneRadio.IsChecked == true ? HeartAnimation.None
-            : HeartAnimation.Fill;
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 

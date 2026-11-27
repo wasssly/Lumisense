@@ -37,9 +37,9 @@ public partial class SettingsWindow
         Add("Основа окна", "Оформление", "Appearance", BackdropRadioGroup, "mica alt acrylic blur акрил размытие блюр подложка фон backdrop более плотная и контрастная основа windows 11 22h2 сильнее прозрачность");
         Add("Цвет основы от текущей обложки", "Оформление", "Appearance", CoverBaseFromCoverCheckBox, "обложка cover основа фон окно цвет theme");
         Add("Доступность", "Оформление", "Appearance", AccessibilityCard, "масштаб интерфейса текст размер доступность движение анимация анимации по разделам слайдеры accessibility scale motion animations sliders");
-        Add("Анимация смены обложки", "Обложка и Now Playing", "Cover", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
-        Add("Подпись под названием трека", "Обложка и Now Playing", "Cover", TrackStateBadgeModeRadioGroup, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size flac mp3 и частота свой набор отметить что показывать");
-        Add("Жесты на обложке", "Обложка и Now Playing", "Cover", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
+        AddLazy("Анимация смены обложки", "Обложка и Now Playing", "Cover", "AlbumArtTransitionOnRadio", "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
+        AddLazy("Подпись под названием трека", "Обложка и Now Playing", "Cover", "TrackStateBadgeModeRadioGroup", "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size flac mp3 и частота свой набор отметить что показывать");
+        AddLazy("Жесты на обложке", "Обложка и Now Playing", "Cover", "AlbumArtGesturesCheckBox", "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
         AddLazy("Вид главного окна", "Окно и запуск", "Window", "MainWindowLayoutCard", "оформление новый классический крупная обложка кнопки управление layout modern classic");
         AddLazy("Вид плеера", "Окно и запуск", "Window", "PlayerViewModeCard", "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
         AddLazy("Поверх всех окон", "Окно и запуск", "Window", "AlwaysOnTopCheckBox", "topmost всегда сверху главное окно");
@@ -123,11 +123,11 @@ public partial class SettingsWindow
         AddLazy("Размер уведомления", "Уведомления", "Notifications", "ToastSizeSmallRadio", "размер уведомление тост маленький средний большой size toast notification");
         Add("Выравнивание текста песни", "Тексты песен", "Lyrics", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
         Add("Дополнительный источник текстов", "Тексты песен", "Lyrics", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease qq kugou paxsenix lyricify русские исполнители extra source");
-        Add("Фон Now Playing", "Обложка и Now Playing", "Cover", NowPlayingBackgroundCloudsRadio, "фон now playing размытая обложка один цвет без фона облака цветные шары волны background orbs clouds waves простой тёмный");
+        AddLazy("Фон Now Playing", "Обложка и Now Playing", "Cover", "NowPlayingBackgroundCloudsRadio", "фон now playing размытая обложка один цвет без фона облака цветные шары волны background orbs clouds waves простой тёмный");
         Add("Пресет оформления текста песни", "Тексты песен", "Lyrics", LyricsPresetCombo, "пресет оформление текст песни караоке apple music классика минимализм сохранить свой preset lyrics style");
         Add("Переход между строками текста", "Тексты песен", "Lyrics", LyricsTransitionCombo, "переход анимация строк текст песни apple music плавный быстрый волна прокрутка lyrics transition animation");
         Add("Скрывать обложку при тексте песни", "Тексты песен", "Lyrics", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
-        Add("Анимация избранного", "Обложка и Now Playing", "Cover", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
+        AddLazy("Анимация избранного", "Обложка и Now Playing", "Cover", "FavoriteHeartFillRadio", "сердечко избранное анимация заливка искры кольцо favorite heart animation");
         Add("Размер мини-плеера", "Мини-плеер", "MiniPlayer", MiniPlayerSizePresetRadioGroup, "размер мини плеер компактный классический текущий 1.21 size preset");
         AddLazy("Цвет уведомления", "Уведомления", "Notifications", "ToastColorModeRadioGroup", "цвет уведомления обложка акцент свой окрашивание фон toast color cover accent tint стандартный по теме умолчанию акцентный приложения");
         AddLazy("Прозрачность уведомления", "Уведомления", "Notifications", "ToastOpacitySlider", "прозрачность фона уведомление тост opacity transparency toast");
@@ -175,7 +175,7 @@ public partial class SettingsWindow
         Add("Better Lyrics", "Тексты песен", "Lyrics", UseBetterLyricsCheckBox, "тексты источник дополнительный lyrics source");
         Add("Binimum", "Тексты песен", "Lyrics", UseBinimumLyricsCheckBox, "тексты источник дополнительный lyrics source");
         Add("LyricsPlus", "Тексты песен", "Lyrics", UseLyricsPlusLyricsCheckBox, "тексты источник дополнительный lyrics source");
-        Add("Состав подписи под названием трека", "Обложка и Now Playing", "Cover", BadgePartStateCheckBox, "состояние расширение битрейт частота дискретизации размер файла badge bitrate sample rate extension file size");
+        AddLazy("Состав подписи под названием трека", "Обложка и Now Playing", "Cover", "BadgePartStateCheckBox", "состояние расширение битрейт частота дискретизации размер файла badge bitrate sample rate extension file size");
         Add("Режим WASAPI", "Воспроизведение", "Playback", WasapiModeCombo, "wasapi exclusive shared эксклюзивный общий");
         Add("Размер буфера WASAPI", "Воспроизведение", "Playback", WasapiLatencyCombo, "задержка latency buffer wasapi");
         Add("Повышенный приоритет плеера", "Воспроизведение", "Playback", RaisePlaybackPriorityCheckBox, "priority процесс приоритет");
