@@ -44,7 +44,7 @@ internal static class LegacyIntegrationRepairService
             if (string.Equals(currentExePath, registeredExePath, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            key.SetValue(RunValueName, $"\"{currentExePath}\"");
+            key.SetValue(RunValueName, StartupManager.BuildRunValue(currentExePath));
             Logger.Info("Автозапуск перепривязан с legacy EXE-копии Lumisense на текущую MSI-копию перед cleanup.");
         }
         catch (Exception ex)

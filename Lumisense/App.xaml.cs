@@ -154,6 +154,14 @@ public partial class App : Application
                 return;
             }
 
+            // Запуск из автозагрузки, когда пользователь уже открыл плеер сам: вид работающего окна менять не нужно.
+            if (Environment.GetCommandLineArgs().Skip(1).Any(arg => string.Equals(arg, StartupManager.AutostartArgument, StringComparison.OrdinalIgnoreCase)))
+            {
+                Logger.Info("Автозапуск при уже работающем плеере — завершаюсь, не трогая открытый экземпляр (это не ошибка).");
+                Shutdown();
+                return;
+            }
+
             Logger.Info("Плеер уже запущен — переключаю вид у уже открытого экземпляра и завершаюсь (это не ошибка).");
 
             try

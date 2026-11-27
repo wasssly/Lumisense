@@ -34,6 +34,31 @@ public sealed class StartupManagerTests
     }
 
     [Fact]
+    public void RepairRunValue_AddsAutostartMarkerAndKeepsRegisteredPath()
+    {
+        const string portable = "\"D:\\Portable\\Lumisense.exe\"";
+        Assert.Equal(portable + " --autostart", StartupManager.RepairRunValue(portable, Current, _ => true));
+    }
+
+    [Fact]
+    public void RepairRunValue_LeavesValueWithMarkerUntouched()
+    {
+        Assert.Null(StartupManager.RepairRunValue(StartupManager.BuildRunValue(Current), Current, _ => true));
+    }
+
+    [Fact]
+    public void RepairRunValue_RepointsStalePathWithMarker()
+    {
+        Assert.Equal(StartupManager.BuildRunValue(Current), StartupManager.RepairRunValue("\"D:\\Old\\Lumisense.exe\"", Current, _ => false));
+    }
+
+    [Fact]
+    public void RepairRunValue_IgnoresMalformedValue()
+    {
+        Assert.Null(StartupManager.RepairRunValue("\"unterminated", Current, _ => true));
+    }
+
+    [Fact]
     public void ShouldRepoint_IgnoresUnknownCurrentPath()
     {
         Assert.False(StartupManager.ShouldRepoint("\"D:\\Old\\Lumisense.exe\"", null, _ => false));
