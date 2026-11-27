@@ -242,6 +242,7 @@ public partial class SettingsWindow
         AddLazy("Обводка цветом акцента во время игры", "Остров", "Island", "IslandAccentRimCheckBox", "акцент обводка игра accent rim");
         AddLazy("Полоса прогресса трека вокруг свёрнутого острова", "Остров", "Island", "IslandProgressRimCheckBox", "контур прогресс ring progress");
         AddLazy("Кольцо прогресса рядом с островом", "Остров", "Island", "IslandRingSideCombo", "кольцо круг прогресс слева справа ring progress side");
+        AddLazy("Клавиша для временного перемещения острова", "Остров", "Island", "IslandMoveKeyCombo", "переместить переносить двигать позиция положение ctrl alt shift клавиша move drag");
         AddLazy("Размытие при смене вида", "Остров", "Island", "IslandBlurTransitionsCheckBox", "blur transitions анимация");
         AddLazy("Клик по обложке открывает её крупно", "Остров", "Island", "IslandCoverPreviewCheckBox", "обложка просмотр cover preview");
         AddLazy("Показывать громкость, когда её меняют не на острове", "Остров", "Island", "IslandExternalVolumeCheckBox", "громкость volume");

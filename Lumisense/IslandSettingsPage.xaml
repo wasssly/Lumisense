@@ -287,6 +287,25 @@
                                 Checked="IslandOption_Changed" Unchecked="IslandOption_Changed" />
                             </Grid>
                         </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Клавиша для временного перемещения острова" Style="{StaticResource SettingsRowTitleStyle}" />
+                                    <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                               Text="Зажмите её и перетащите остров мышью. Двойной клик с ней возвращает остров на место; положение не сохраняется." />
+                                </StackPanel>
+                                <ComboBox x:Name="IslandMoveKeyCombo" AutomationProperties.Name="Клавиша для временного перемещения острова" SelectionChanged="IslandLookCombo_SelectionChanged"
+                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="140" Margin="0">
+                                    <ComboBoxItem Content="Ctrl" Tag="Control" />
+                                    <ComboBoxItem Content="Alt" Tag="Alt" />
+                                    <ComboBoxItem Content="Shift" Tag="Shift" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
                     </StackPanel>
                 </Border>
                 <TextBlock Text="Свёрнутый вид" Style="{StaticResource SettingsGroupTitleStyle}" />

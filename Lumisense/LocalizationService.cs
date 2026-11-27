@@ -716,6 +716,9 @@ public static class LocalizationService
         ["Полоса перемотки раскрытого острова"] = "Expanded island seek bar",
         ["Сплошная"] = "Solid",
         ["Сегменты"] = "Segments",
+        ["Клавиша для временного перемещения острова"] = "Key to temporarily move the island",
+        ["Зажмите её и перетащите остров мышью. Двойной клик с ней возвращает остров на место; положение не сохраняется."] =
+            "Hold it and drag the island with the mouse. Double-clicking with it puts the island back; the position is not saved.",
         ["Мерцание, пока ищется текст песни"] = "Shimmer while lyrics are loading",
         ["Название трека катается по буквам"] = "Track title rolls letter by letter",
         ["Строки песни в свёрнутом острове катаются по буквам"] = "Lyric lines in the collapsed island roll letter by letter",

@@ -265,6 +265,8 @@ public class AppSettings
     public string IslandBackdrop { get; set; } = "Glow";
     // Полоса перемотки раскрытого острова: "Plain" (сплошная) | "Segments" (сегменты).
     public string IslandSeekStyle { get; set; } = "Plain";
+    // Клавиша, с которой перетаскивание острова временно переносит его по экрану: "Control" | "Alt" | "Shift".
+    public string IslandMoveKey { get; set; } = "Control";
     public bool IslandLyricsShimmer { get; set; } = true;
 
     // Word roll: название трека в острове меняется, перекатываясь по буквам.

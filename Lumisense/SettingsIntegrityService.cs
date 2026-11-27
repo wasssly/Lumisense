@@ -342,6 +342,7 @@ internal static class SettingsIntegrityService
         if (settings.IslandRingSide == "Both")
             settings.IslandRingSide = "Right";
         settings.IslandRingSide = Allowed(settings.IslandRingSide, defaults.IslandRingSide, "Off", "Left", "Right");
+        settings.IslandMoveKey = Allowed(settings.IslandMoveKey, defaults.IslandMoveKey, "Control", "Alt", "Shift");
         if (settings.IslandLeftButton == settings.IslandRightButton)
             settings.IslandRightButton = settings.IslandLeftButton == defaults.IslandRightButton ? defaults.IslandLeftButton : defaults.IslandRightButton;
         settings.MiniPlayerSizePreset = Allowed(settings.MiniPlayerSizePreset, defaults.MiniPlayerSizePreset,

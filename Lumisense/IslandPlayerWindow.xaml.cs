@@ -63,8 +63,10 @@ internal partial class IslandPlayerWindow : Window
     private static readonly TimeSpan SettingsOpenDelay = TimeSpan.FromMilliseconds(280);
     private static readonly TimeSpan ToastDuration = TimeSpan.FromSeconds(3.2);
 
-    // Со строкой песни в свёрнутом острове карточка уступает место тексту раньше.
+    // Со строкой песни в свёрнутом острове карточка уступает место тексту раньше: по таймеру или, как только строка пошла,
+    // но не раньше ToastLyricMinMs, чтобы название успело прочитаться.
     private static readonly TimeSpan ToastDurationWithLyrics = TimeSpan.FromSeconds(2.2);
+    private const long ToastLyricMinMs = 1000;
     private static readonly TimeSpan CoverSlide = TimeSpan.FromMilliseconds(460);
     private static readonly TimeSpan FadeInDelay = TimeSpan.FromMilliseconds(70);
     private static readonly double[] LyricOpacity = [0.25, 0.5, 1, 0.5, 0.25];
@@ -125,6 +127,9 @@ internal partial class IslandPlayerWindow : Window
     private string? _lyricsPath, _seekLinesPath;
     private CancellationTokenSource? _seekLinesCts;
     private CancellationTokenSource? _lyricsCts;
+    // Поиск текста идёт: его не сбрасывают ни сворачивание острова, ни повторное раскрытие.
+    private bool _lyricsLoading;
+    private static readonly TimeSpan[] LyricsRetryDelays = [TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(15)];
     private Brush _accentBrush = Brushes.White;
     private string _lastTitle = "";
     private Brush? _shownArt;
@@ -225,7 +230,11 @@ internal partial class IslandPlayerWindow : Window
             RefreshControlStates();
             ApplyShape();
         };
-        DpiChanged += (_, _) => Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(PositionOnMonitor));
+        // Перенесённый руками остров при смене DPI остаётся где стоит: возврат на место его снова утащил бы вверх по центру.
+        DpiChanged += (_, _) =>
+        {
+            if (!_movedByUser && !_moveMode) Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(PositionOnMonitor));
+        };
 
         _host.TrackInfoChanged += OnTrackInfoChanged;
         _host.OutputDeviceChanged += OnOutputDeviceChanged;
@@ -307,6 +316,65 @@ internal partial class IslandPlayerWindow : Window
         int widthPx = (int)Math.Round(Width * dpi.DpiScaleX);
         int x = area.Left + (area.Width - widthPx) / 2;
         SetWindowPos(handle, IntPtr.Zero, x, area.Top, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        _movedByUser = false;
+    }
+
+    // ----- Временное перемещение -----
+
+    // Зажатая клавиша (Ctrl, Alt или Shift, по настройке) и перетаскивание левой кнопкой уносят остров в другое место экрана,
+    // например чтобы не закрывал вкладки. Положение нигде не сохраняется: двойной клик с клавишей, смена монитора или экрана
+    // в настройках и перезапуск возвращают остров на место.
+    private int MoveKeyCode => Settings.IslandMoveKey switch
+    {
+        "Alt" => 0x12,
+        "Shift" => 0x10,
+        _ => 0x11,
+    };
+
+    private bool _moveMode, _movedByUser, _moveShifted;
+    private NativePoint _moveCursorStart;
+    private (int X, int Y, int Width) _moveWindowStart;
+
+    private void Island_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if ((GetAsyncKeyState(MoveKeyCode) & 0x8000) == 0) return;
+
+        e.Handled = true;
+        if (e.ClickCount >= 2)
+        {
+            PositionOnMonitor();
+            return;
+        }
+
+        IntPtr handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero || !GetCursorPos(out _moveCursorStart) || !GetWindowRect(handle, out NativeRect rect)) return;
+        if (!Island.CaptureMouse()) return;
+
+        _moveWindowStart = (rect.Left, rect.Top, rect.Right - rect.Left);
+        _moveShifted = false;
+        _moveMode = true;
+    }
+
+    private void MoveIslandWithCursor()
+    {
+        IntPtr handle = new WindowInteropHelper(this).Handle;
+        if (handle == IntPtr.Zero || !GetCursorPos(out NativePoint cursor)) return;
+
+        // Остров не уносится за край: центр окна остаётся на мониторе под курсором, а верх — выше его нижнего края.
+        var area = System.Windows.Forms.Screen.FromPoint(new System.Drawing.Point(cursor.X, cursor.Y)).WorkingArea;
+        int x = _moveWindowStart.X + cursor.X - _moveCursorStart.X;
+        int y = _moveWindowStart.Y + cursor.Y - _moveCursorStart.Y;
+        x = Math.Clamp(x, area.Left - _moveWindowStart.Width / 2, area.Right - _moveWindowStart.Width / 2);
+        y = Math.Clamp(y, area.Top, area.Bottom - 80);
+        SetWindowPos(handle, IntPtr.Zero, x, y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+        _moveShifted = true;
+    }
+
+    private void EndIslandMove()
+    {
+        _moveMode = false;
+        if (_moveShifted) _movedByUser = true;
+        if (Island.IsMouseCaptured) Island.ReleaseMouseCapture();
     }
 
     private void OnDisplaySettingsChanged(object? sender, EventArgs e) =>
@@ -591,9 +659,10 @@ internal partial class IslandPlayerWindow : Window
         _state = next;
         if (next != State.Open && _lyricsShown)
         {
-            // Найденный синхронный текст остаётся во включённом виде: свёрнутый остров показывает его строки.
-            _compactLyricsOn = _lyrics.Kind == LyricsKind.Synced && _lyrics.Lines.Count > 0;
-            SetLyricsShown(false);
+            // Включённый текст остаётся включённым и для следующих треков, даже если у этого нашёлся только простой (или никакой):
+            // свёрнутый остров показывает строки синхронного текста, когда он есть. Поиск, который ещё идёт, не сбрасывается.
+            _compactLyricsOn = true;
+            SetLyricsShown(false, keepLoading: _lyricsLoading);
         }
         if (next == State.Menu) RefreshMenuText();
         if (next is State.Menu or State.Open)
@@ -634,7 +703,25 @@ internal partial class IslandPlayerWindow : Window
     private void StartToastTimer()
     {
         _toastTimer.Interval = _compactLyricsOn ? ToastDurationWithLyrics : ToastDuration;
+        _toastShownAt = Environment.TickCount64;
         _toastTimer.Start();
+    }
+
+    private long _toastShownAt;
+
+    // Пока включён текст песни, карточка с названием не ждёт таймер: как только у трека пошла строка синхронного текста,
+    // остров сворачивается в неё (таймер остаётся запасным вариантом, если текста нет или он ещё ищется).
+    private void TryEndToastForLyric(double positionSeconds)
+    {
+        if (_state != State.Toast || _grab != Grab.None || !CompactLyricsActive) return;
+        if (!string.Equals(_lyricsPath, _host.CurrentTrackPath, StringComparison.OrdinalIgnoreCase)) return;
+        if (Environment.TickCount64 - _toastShownAt < ToastLyricMinMs) return;
+
+        int active = LyricsService.FindActiveLineIndex(_lyrics.Lines, TimeSpan.FromSeconds(positionSeconds));
+        if (active < 0 || active >= _lyrics.Lines.Count || string.IsNullOrWhiteSpace(_lyrics.Lines[active].Text)) return;
+
+        _toastTimer.Stop();
+        SetState(State.Compact);
     }
 
     private void StartCollapseTimer()
@@ -1097,6 +1184,12 @@ internal partial class IslandPlayerWindow : Window
 
     private void Island_MouseMove(object sender, MouseEventArgs e)
     {
+        if (_moveMode)
+        {
+            MoveIslandWithCursor();
+            return;
+        }
+
         if (_grab == Grab.None) return;
 
         Vector moved = e.GetPosition(this) - _grabStart;
@@ -1124,6 +1217,13 @@ internal partial class IslandPlayerWindow : Window
 
     private void Island_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
+        if (_moveMode)
+        {
+            EndIslandMove();
+            e.Handled = true;
+            return;
+        }
+
         if (!_pressed) return;
 
         _pressed = false;
@@ -1159,6 +1259,12 @@ internal partial class IslandPlayerWindow : Window
 
     private void Island_LostMouseCapture(object sender, MouseEventArgs e)
     {
+        if (_moveMode)
+        {
+            EndIslandMove();
+            return;
+        }
+
         if (_grab == Grab.None) return;
 
         _pressed = false;
@@ -1392,6 +1498,7 @@ internal partial class IslandPlayerWindow : Window
         }
 
         if (_compactLyricsOn && _state == State.Compact) UpdateCompactLyric(snapshot.PositionSeconds);
+        else if (_state == State.Toast) TryEndToastForLyric(snapshot.PositionSeconds);
 
         _progressRatio = snapshot.ProgressRatio;
         ApplyProgressRimDash();
@@ -1913,7 +2020,7 @@ internal partial class IslandPlayerWindow : Window
     // ----- Текст песни -----
 
     // При тексте остров раскрывается шире и заметно длиннее; из раскрытого вида выходим без текста.
-    private void SetLyricsShown(bool shown)
+    private void SetLyricsShown(bool shown, bool keepLoading = false)
     {
         if (_lyricsShown == shown) return;
 
@@ -1935,7 +2042,7 @@ internal partial class IslandPlayerWindow : Window
         }
         else
         {
-            CancelLyricsLoad();
+            if (!keepLoading) CancelLyricsLoad();
             LyricsPanel.Visibility = Visibility.Collapsed;
             LyricsPanel.Opacity = 0;
         }
@@ -1950,9 +2057,13 @@ internal partial class IslandPlayerWindow : Window
 
     private void StartLyricsLoad()
     {
+        // Текст этого трека уже ищется: повторный запуск (остров раскрыли, кнопку нажали снова) только сбросил бы поиск с начала.
+        if (_lyricsLoading && _lyricsCts is not null && string.Equals(_host.CurrentTrackPath, _lyricsPath, StringComparison.OrdinalIgnoreCase)) return;
+
         CancelLyricsLoad();
         _lyricsCts = new CancellationTokenSource();
         _lyricsPath = _host.CurrentTrackPath;
+        _lyricsLoading = true;
         _lyrics = LyricsDocument.Empty;
         LyricsVariantText.Text = "";
         ShowLyricsStatus("Ищем текст…", loading: true);
@@ -1963,16 +2074,18 @@ internal partial class IslandPlayerWindow : Window
     {
         _lyricsCts?.Cancel();
         _lyricsCts = null;
+        _lyricsLoading = false;
     }
+
+    // Поиск дошёл до конца и не был отменён.
+    private void FinishLyricsLoad() => _lyricsLoading = false;
 
     // Тот же порядок, что в панели главного окна: локальный текст, затем автоподбор только при точном совпадении.
     private async Task LoadLyricsAsync(string? path, CancellationToken token)
     {
         try
         {
-            LyricsService.LyricsLoadResult loaded = (await LyricsService.LoadWithAutomaticLookupAsync(
-                path, _host.CurrentTitle, _host.CurrentArtist, _host.PlaybackState.Current.DurationSeconds,
-                Settings.LyricsSearchPolicy, token))!;
+            LyricsService.LyricsLoadResult loaded = await LookupLyricsWithRetryAsync(path, token);
 
             if (loaded.Lookup is { Best: { } exact } lookup)
             {
@@ -1987,6 +2100,9 @@ internal partial class IslandPlayerWindow : Window
 
             if (token.IsCancellationRequested) return;
             ShowLyrics(LyricsService.ApplyDisplayMode(loaded.Document, Settings.LyricsDisplayMode));
+
+            // В свёрнутом острове видны только строки синхронного текста, поэтому простой текст не считается удачей.
+            if (loaded.Document.Kind != LyricsKind.Synced) await TryUpgradeToSyncedAsync(path, token);
         }
         catch (LyricsRateLimitException)
         {
@@ -2001,7 +2117,56 @@ internal partial class IslandPlayerWindow : Window
             Logger.Error("Не удалось загрузить текст для острова", ex);
             if (!token.IsCancellationRequested) ShowLyricsStatus("Текст не найден");
         }
+        finally
+        {
+            if (!token.IsCancellationRequested) FinishLyricsLoad();
+        }
     }
+
+    // Сбой сети или лимит сервиса чаще временные, а пустой результат мог быть из-за недоступного сервиса: пока текст нужен,
+    // поиск повторяется с паузой, а не оставляет «Текст не найден» до ручного нажатия. Без автоподбора повторять нечего.
+    private async Task<LyricsService.LyricsLoadResult> LookupLyricsWithRetryAsync(string? path, CancellationToken token)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            bool canRetry = path is not null && Settings.LyricsSearchPolicy == "AutoExact" && attempt < LyricsRetryDelays.Length;
+            try
+            {
+                LyricsService.LyricsLoadResult loaded = (await LyricsService.LoadWithAutomaticLookupAsync(
+                    path, _host.CurrentTitle, _host.CurrentArtist, _host.PlaybackState.Current.DurationSeconds,
+                    Settings.LyricsSearchPolicy, token))!;
+
+                // Пустой результат повторяют один раз: два одинаковых промаха подряд уже похожи на трек без текста.
+                if (loaded.Document.Kind != LyricsKind.None || !canRetry || attempt > 0) return loaded;
+            }
+            catch (Exception ex) when (canRetry && ex is not OperationCanceledException && !token.IsCancellationRequested)
+            {
+                Logger.Warn($"Текст для острова: поиск не удался, повтор через {LyricsRetryDelays[attempt].TotalSeconds:0} с: {ex.Message}");
+            }
+
+            await Task.Delay(LyricsRetryDelays[attempt], token);
+        }
+    }
+
+    // В свёрнутом острове видны только строки синхронного текста. Если найден простой, синхронный ищется по всем запросам и
+    // источникам (общий поиск LyricsService) и подменяет простой.
+    private async Task TryUpgradeToSyncedAsync(string? path, CancellationToken token)
+    {
+        if (path is null) return;
+
+        LyricsService.SyncedUpgrade? upgrade = await LyricsService.TryUpgradeToSyncedAsync(
+            path, _host.CurrentTitle, _host.CurrentArtist, _host.PlaybackState.Current.DurationSeconds, Settings.LyricsSearchPolicy, token);
+        if (upgrade is null || token.IsCancellationRequested || !IsCurrentTrack(path)) return;
+
+        ResetLyricsVariants(path);
+        _lyricsVariants.AddRange(upgrade.Ranked);
+        _lyricsVariantIndex = Math.Max(0, _lyricsVariants.IndexOf(upgrade.Result));
+        _lyricsVariantsLrcLibLoaded = _lyricsVariantsExtraLoaded = true;
+        UpdateLyricsVariantText();
+        ShowLyrics(LyricsService.ApplyDisplayMode(LyricsService.CreateDocumentFromOnlineResult(upgrade.Result), Settings.LyricsDisplayMode));
+    }
+
+    private bool IsCurrentTrack(string path) => string.Equals(path, _host.CurrentTrackPath, StringComparison.OrdinalIgnoreCase);
 
     // Пока текст ищется, вместо надписи бежит мерцание (если оно включено в настройках).
     private void ShowLyricsStatus(string text, bool loading = false)
@@ -2039,16 +2204,22 @@ internal partial class IslandPlayerWindow : Window
         else UpdateLyricLine(_host.PlaybackState.Current.PositionSeconds);
 
         if (_compactLyricsOn && _state == State.Compact) UpdateCompactLyric(_host.CurrentPlaybackSeconds);
+        else if (_state == State.Toast) TryEndToastForLyric(_host.CurrentPlaybackSeconds);
     }
 
     // ----- Текст песни в свёрнутом острове -----
 
+    // Текст песни включён для свёрнутого острова; строки видны, только когда у трека есть синхронный текст (CompactLyricsActive).
     private bool _compactLyricsOn;
+
+    // Без синхронного текста (простой, поиск ещё идёт, у трека его нет) остров остаётся обычной ширины, а текст всё равно ищется
+    // для следующих треков.
+    private bool CompactLyricsActive => _compactLyricsOn && _lyrics.Kind == LyricsKind.Synced && _lyrics.Lines.Count > 0;
     private double? _compactLyricsWidth;
     private const double CompactTextPadding = 41 * 2 + 14, CompactLyricsMaxWidth = 600;
 
     // Ширина, в которую должен влезть катающийся текст свёрнутого острова: со строкой песни остров расширяется до предела.
-    private double CompactRollWidth => _compactLyricsOn ? CompactLyricsMaxWidth - CompactTextPadding : CompactTitle.ActualWidth;
+    private double CompactRollWidth => CompactLyricsActive ? CompactLyricsMaxWidth - CompactTextPadding : CompactTitle.ActualWidth;
 
     // Строка по текущему времени, а в паузах между строками и без текста — название трека.
     private string CompactText(double positionSeconds)
@@ -2080,7 +2251,7 @@ internal partial class IslandPlayerWindow : Window
     private void FitCompactWidth(string text)
     {
         double? width = null;
-        if (_compactLyricsOn && text.Length > 0)
+        if (CompactLyricsActive && text.Length > 0)
         {
             var typeface = new Typeface(CompactTitle.FontFamily, CompactTitle.FontStyle, CompactTitle.FontWeight, CompactTitle.FontStretch);
             var measured = new FormattedText(text, System.Globalization.CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
@@ -2180,6 +2351,7 @@ internal partial class IslandPlayerWindow : Window
         _lyricsCts = new CancellationTokenSource();
         var token = _lyricsCts.Token;
         _lyricsVariantBusy = true;
+        _lyricsLoading = true;
         LyricsVariantButton.IsEnabled = false;
         try
         {
@@ -2241,6 +2413,7 @@ internal partial class IslandPlayerWindow : Window
         {
             _lyricsVariantBusy = false;
             LyricsVariantButton.IsEnabled = true;
+            if (!token.IsCancellationRequested) FinishLyricsLoad();
         }
     }
 
@@ -2352,6 +2525,19 @@ internal partial class IslandPlayerWindow : Window
     private const uint SWP_NOSIZE = 0x0001;
     private const uint SWP_NOZORDER = 0x0004;
     private const uint SWP_NOACTIVATE = 0x0010;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct NativeRect
+    {
+        public int Left;
+        public int Top;
+        public int Right;
+        public int Bottom;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool GetWindowRect(IntPtr hWnd, out NativeRect rect);
 
     [DllImport("user32.dll")]
     private static extern int GetWindowLong(IntPtr hWnd, int nIndex);

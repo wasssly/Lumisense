@@ -436,6 +436,7 @@ public static class LumiProfileIO
         if (source.IslandBackdrop is "None" or "Glow" or "Matrix" or "Wave") target.IslandBackdrop = source.IslandBackdrop;
         if (source.IslandSeekStyle is "Plain" or "Segments") target.IslandSeekStyle = source.IslandSeekStyle;
         if (source.IslandRingSide is "Off" or "Left" or "Right") target.IslandRingSide = source.IslandRingSide;
+        if (source.IslandMoveKey is "Control" or "Alt" or "Shift") target.IslandMoveKey = source.IslandMoveKey;
         target.IslandLyricsShimmer = source.IslandLyricsShimmer;
         target.IslandWordRoll = source.IslandWordRoll;
         target.IslandLyricsWordRoll = source.IslandLyricsWordRoll;

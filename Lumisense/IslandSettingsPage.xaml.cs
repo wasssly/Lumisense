@@ -59,6 +59,7 @@ public sealed partial class IslandSettingsPage : System.Windows.Controls.UserCon
         SettingsWindow.SelectComboByTag(IslandBackdropCombo, _settings.IslandBackdrop);
         SettingsWindow.SelectComboByTag(IslandSeekStyleCombo, _settings.IslandSeekStyle);
         SettingsWindow.SelectComboByTag(IslandRingSideCombo, _settings.IslandRingSide);
+        SettingsWindow.SelectComboByTag(IslandMoveKeyCombo, _settings.IslandMoveKey);
         IslandLyricsShimmerCheckBox.IsChecked = _settings.IslandLyricsShimmer;
         IslandWordRollCheckBox.IsChecked = _settings.IslandWordRoll;
         IslandLyricsWordRollCheckBox.IsChecked = _settings.IslandLyricsWordRoll;
@@ -178,6 +179,7 @@ public sealed partial class IslandSettingsPage : System.Windows.Controls.UserCon
         _settings.IslandBackdrop = SettingsWindow.SelectedTag(IslandBackdropCombo, "Glow");
         _settings.IslandSeekStyle = SettingsWindow.SelectedTag(IslandSeekStyleCombo, "Plain");
         _settings.IslandRingSide = SettingsWindow.SelectedTag(IslandRingSideCombo, "Off");
+        _settings.IslandMoveKey = SettingsWindow.SelectedTag(IslandMoveKeyCombo, "Control");
         SaveIslandSettings();
     }
 

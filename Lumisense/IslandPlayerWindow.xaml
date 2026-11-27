@@ -87,6 +87,7 @@
     <Grid x:Name="Island" Width="640" Height="490" HorizontalAlignment="Center" VerticalAlignment="Top"
           RenderTransformOrigin="0.5,0"
           MouseEnter="Island_MouseEnter" MouseLeave="Island_MouseLeave"
+          PreviewMouseLeftButtonDown="Island_PreviewMouseLeftButtonDown"
           MouseLeftButtonDown="Island_MouseLeftButtonDown" MouseMove="Island_MouseMove"
           MouseDown="Island_MouseDown" MouseRightButtonUp="Island_MouseRightButtonUp" MouseWheel="Island_MouseWheel"
           MouseLeftButtonUp="Island_MouseLeftButtonUp" LostMouseCapture="Island_LostMouseCapture" AllowDrop="True">
