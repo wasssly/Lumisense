@@ -27,18 +27,6 @@ internal static class MotionTokens
     public static readonly SpringSpec CheckPop = new(520, 13);
     public static readonly SpringSpec CheckDraw = new(160, 20);
 
-    // Spring dropdown.
-    public static readonly SpringSpec DropdownHeight = new(300, 23);
-    public static readonly SpringSpec DropdownFade = new(400, 34);
-    public static readonly SpringSpec DropdownRow = new(300, 24);
-    public static readonly SpringSpec DropdownTick = new(260, 26);
-    public static readonly SpringSpec DropdownChevron = new(300, 18);
-    public static readonly SpringSpec DropdownTrigger = new(500, 18);
-    public static readonly SpringSpec DropdownValue = new(340, 26);
-    public static readonly SpringSpec DropdownHighlightLead = new(620, 36);
-    public static readonly SpringSpec DropdownHighlightTrail = new(200, 20);
-    public static readonly SpringSpec DropdownHighlightFade = new(400, 32);
-
     // Word roll: пружина каждой буквы (1 — под полосой, 0 — на месте, -1 — над ней).
     public static readonly SpringSpec WordRollLetter = new(420, 26);
 

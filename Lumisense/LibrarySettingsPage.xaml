@@ -34,7 +34,7 @@
              предпросмотра и подтверждения; см. FileNameNormalizer/MainWindow. -->
         <StackPanel Margin="0,0,0,24">
             <TextBlock Text="Нормализация имён файлов" Style="{StaticResource SettingsGroupTitleStyle}" />
-            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,16">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
                 <StackPanel>
                     <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
                         <StackPanel>
@@ -54,11 +54,7 @@
                             <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Токены: {Artist}, {Title}, {Album}, {Track}, {Extension}. Расширение исходного файла сохраняется автоматически." TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
-                </StackPanel>
-            </Border>
-            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
-                <StackPanel>
-                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}">
                         <StackPanel>
                             <Button x:Name="NormalizePlaylistFileNamesButton" Content="Показать предпросмотр и нормализовать"
                             HorizontalAlignment="Left" Margin="0,0,0,0"
@@ -68,7 +64,7 @@
                             ForegroundBrush="{DynamicResource AccentFillColorDefaultBrush}" />
                         </StackPanel>
                     </Border>
-                    <Border Padding="20,0,20,14">
+                    <Border Padding="20,0,20,14" Visibility="{Binding Visibility, ElementName=FileNameNormalizationResultText}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" x:Name="FileNameNormalizationResultText" Visibility="Collapsed" TextWrapping="Wrap" />
                         </StackPanel>

@@ -65,7 +65,17 @@
                         <RadioButton Style="{StaticResource SettingsRowRadioButtonStyle}" x:Name="ProgressStyleFollowMainRadio" Content="Как в главном окне (по умолчанию)"
                         GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" Visibility="Collapsed" />
                     </Border>
-                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressStyleSliderRadio}">
+                    <Border Visibility="{Binding Visibility, ElementName=ProgressStyleSliderRadio}">
+                        <Border.Style>
+                            <Style TargetType="Border" BasedOn="{StaticResource SettingsRowStyle}">
+                                <Style.Triggers>
+                                    <!-- Первая строка карточки: «Как в главном окне» скрыта, разделитель сверху не нужен. -->
+                                    <DataTrigger Binding="{Binding Visibility, ElementName=ProgressStyleFollowMainRadio}" Value="Collapsed">
+                                        <Setter Property="BorderThickness" Value="0" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </Border.Style>
                         <RadioButton Style="{StaticResource SettingsRowRadioButtonStyle}" x:Name="ProgressStyleSliderRadio" Content="Обычная (по умолчанию)"
                         GroupName="ProgressStyle" Checked="ProgressStyleRadio_Changed" />
                     </Border>
@@ -161,7 +171,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ProgressColorCustomPanel}">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}" Visibility="{Binding Visibility, ElementName=ProgressColorCustomPanel}">
                         <StackPanel x:Name="ProgressColorCustomPanel" Orientation="Horizontal" Margin="28,0,0,0" Visibility="Collapsed">
                             <Border x:Name="ProgressColorSwatch" Width="28" Height="28" CornerRadius="6"
                                     BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" />

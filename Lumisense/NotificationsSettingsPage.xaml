@@ -88,7 +88,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <Border Style="{StaticResource SettingsRowStyle}">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}">
                         <StackPanel Margin="0,0,0,0">
                             <ui:Button x:Name="ToastPickPositionButton" Content="Выбрать своё положение…" Appearance="Secondary"
                                        HorizontalAlignment="Left" Margin="0,0,0,8"
@@ -180,7 +180,17 @@
                             </Grid>
                         </Border>
                     </StackPanel>
-                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ToastWidthSlider}">
+                    <Border Visibility="{Binding Visibility, ElementName=ToastWidthSlider}">
+                            <Border.Style>
+                                <Style TargetType="Border" BasedOn="{StaticResource SettingsRowStyle}">
+                                    <Style.Triggers>
+                                        <!-- Первая строка карточки, пока панель «Обложка рядом с текстом» скрыта: без разделителя сверху. -->
+                                        <DataTrigger Binding="{Binding Visibility, ElementName=ToastArtNextToTextPanel}" Value="Collapsed">
+                                            <Setter Property="BorderThickness" Value="0" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -298,7 +308,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ToastColorCustomPanel}">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}" Visibility="{Binding Visibility, ElementName=ToastColorCustomPanel}">
                         <StackPanel x:Name="ToastColorCustomPanel" Orientation="Horizontal" Margin="28,0,0,0" Visibility="Collapsed">
                             <Border x:Name="ToastColorSwatch" Width="28" Height="28" CornerRadius="6"
                                     BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" />

@@ -680,7 +680,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=MiniArtworkProgressColorSwatchesPanel}">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}" Visibility="{Binding Visibility, ElementName=MiniArtworkProgressColorSwatchesPanel}">
                         <WrapPanel x:Name="MiniArtworkProgressColorSwatchesPanel" Margin="26,0,0,0">
                             <Border x:Name="MiniArtworkProgressColorSwatch0" Width="26" Height="26" CornerRadius="6"
                                     Margin="0,0,8,8" Background="#0078D4" BorderThickness="2"

@@ -9,21 +9,28 @@
 
         <!-- Одна карточка для всего, что влияет на вид текста песни, и один общий предпросмотр сверху:
              AppSettings.SyncedLyricsFontSize/SyncedLyricsHighlightEffect, LyricsTextAlignment, LyricsDisplayMode. -->
-        <StackPanel Margin="0,0,0,24">
+        <StackPanel x:Name="LyricsAppearanceCard" Margin="0,0,0,24">
             <TextBlock Text="Текст песни" Style="{StaticResource SettingsGroupTitleStyle}" />
-            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0" Panel.ZIndex="10">
                 <StackPanel>
-                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
-                        <StackPanel>
-                            <TextBlock Margin="0,0,0,8" Text="Предпросмотр" Style="{StaticResource SettingsFieldLabelStyle}" />
-                            <local:LyricsPreviewControl x:Name="LyricsPreview" />
-                        </StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Panel.ZIndex="10">
+                        <Border x:Name="LyricsPreviewPanel" Panel.ZIndex="10" Padding="16,12" CornerRadius="10"
+                                BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}"
+                                Background="{DynamicResource SolidBackgroundFillColorBaseBrush}">
+                            <Border.RenderTransform>
+                                <TranslateTransform x:Name="LyricsPreviewTranslate" />
+                            </Border.RenderTransform>
+                            <StackPanel>
+                                <TextBlock Text="Предпросмотр" FontSize="11" Opacity="0.6" Margin="0,0,0,6" />
+                                <local:LyricsPreviewControl x:Name="LyricsPreview" />
+                            </StackPanel>
+                        </Border>
                     </Border>
                     <Border Style="{StaticResource SettingsRowStyle}">
                         <StackPanel>
                             <TextBlock Margin="0,0,0,8" Text="Пресет оформления" Style="{StaticResource SettingsFieldLabelStyle}" />
                             <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Пресет задаёт сразу всё оформление текста песни: размеры, эффект, размытие, выравнивание, режим и переход. Если после выбора что-то поменять вручную, пресет станет «Своими настройками». Свои пресеты можно сохранить под любым именем." TextWrapping="Wrap" />
-                            <Grid>
+                            <Grid Margin="0,10,0,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
@@ -375,194 +382,37 @@
             <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
                 <StackPanel>
                     <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=UseExtraLyricsSourceCheckBox}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                                <TextBlock Text="Искать тексты в дополнительных сервисах">
-                                    <TextBlock.Style>
-                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=UseExtraLyricsSourceCheckBox}" Value="False">
-                                                    <Setter Property="Opacity" Value="0.45" />
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </TextBlock.Style>
-                                </TextBlock>
-                            </StackPanel>
-                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="UseExtraLyricsSourceCheckBox" AutomationProperties.Name="Искать тексты в дополнительных сервисах"
-                            Checked="UseExtraLyricsSourceCheckBox_Changed" Unchecked="UseExtraLyricsSourceCheckBox_Changed" />
-                        </Grid>
-                    </Border>
-                    <StackPanel x:Name="ExtraLyricsSourcesPanel">
-                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=UseNetEaseLyricsCheckBox}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                                    <TextBlock Text="NetEase Cloud Music">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=UseNetEaseLyricsCheckBox}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.45" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="UseNetEaseLyricsCheckBox" AutomationProperties.Name="NetEase Cloud Music"
-                                Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=UseQqMusicLyricsCheckBox}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                                    <TextBlock Text="QQ Music">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=UseQqMusicLyricsCheckBox}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.45" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="UseQqMusicLyricsCheckBox" AutomationProperties.Name="QQ Music"
-                                Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=UseKugouLyricsCheckBox}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                                    <TextBlock Text="Kugou">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=UseKugouLyricsCheckBox}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.45" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="UseKugouLyricsCheckBox" AutomationProperties.Name="Kugou"
-                                Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=UsePaxsenixLyricsCheckBox}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                                    <TextBlock Text="Paxsenix (Apple Music)">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=UsePaxsenixLyricsCheckBox}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.45" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="UsePaxsenixLyricsCheckBox" AutomationProperties.Name="Paxsenix (Apple Music)"
-                                Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=UseBetterLyricsCheckBox}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                                    <TextBlock Text="Better Lyrics">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=UseBetterLyricsCheckBox}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.45" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="UseBetterLyricsCheckBox" AutomationProperties.Name="Better Lyrics"
-                                Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=UseBinimumLyricsCheckBox}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                                    <TextBlock Text="Binimum">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=UseBinimumLyricsCheckBox}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.45" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="UseBinimumLyricsCheckBox" AutomationProperties.Name="Binimum"
-                                Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=UseLyricsPlusLyricsCheckBox}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
-                                    <TextBlock Text="LyricsPlus">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=UseLyricsPlusLyricsCheckBox}" Value="False">
-                                                        <Setter Property="Opacity" Value="0.45" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </StackPanel>
-                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="UseLyricsPlusLyricsCheckBox" AutomationProperties.Name="LyricsPlus"
-                                Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
-                            </Grid>
-                        </Border>
-                    </StackPanel>
-                    <Border Padding="20,0,20,14">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Помогает найти тексты русских и других исполнителей, которых нет в LRCLIB. При онлайн-поиске название и исполнитель трека отправляются на серверы отмеченных сервисов: NetEase, QQ Music, Kugou, Paxsenix (для текстов Apple Music трек ещё ищется в каталоге iTunes), а также Better Lyrics, Binimum и LyricsPlus. Эти три сервиса по умолчанию не отмечены; Better Lyrics отдаёт текст только для треков из своего кэша. Результаты идут после LRCLIB и помечены источником; сбой одного источника не прерывает поиск в остальных." TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,10" Text="Помогает найти тексты русских и других исполнителей, которых нет в LRCLIB. При онлайн-поиске название и исполнитель трека отправляются на серверы отмеченных сервисов: NetEase, QQ Music, Kugou, Paxsenix (для текстов Apple Music трек ещё ищется в каталоге iTunes), а также Better Lyrics, Binimum, LyricsPlus, Deezer и LRCMUX. Эти пять сервисов по умолчанию не отмечены; Better Lyrics отдаёт текст только для треков из своего кэша, а Deezer работает через неофициальный интерфейс и может перестать отвечать. Результаты идут после LRCLIB и помечены источником; сбой одного источника не прерывает поиск в остальных." TextWrapping="Wrap" />
+                            <Border CornerRadius="10" Padding="14,12" Background="{DynamicResource ControlFillColorTertiaryBrush}">
+                                <StackPanel>
+                                    <CheckBox x:Name="UseExtraLyricsSourceCheckBox" Content="Искать тексты в дополнительных сервисах" Margin="0"
+                                              FontWeight="SemiBold"
+                                              Checked="UseExtraLyricsSourceCheckBox_Changed" Unchecked="UseExtraLyricsSourceCheckBox_Changed" />
+                                    <Border Height="1" Margin="0,10,0,10" Opacity="0.35"
+                                            Background="{DynamicResource TextFillColorTertiaryBrush}" />
+                                    <StackPanel x:Name="ExtraLyricsSourcesPanel" Margin="22,0,0,0">
+                <CheckBox x:Name="UseNetEaseLyricsCheckBox" Content="NetEase Cloud Music"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                <CheckBox x:Name="UseQqMusicLyricsCheckBox" Content="QQ Music"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                <CheckBox x:Name="UseKugouLyricsCheckBox" Content="Kugou"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                <CheckBox x:Name="UsePaxsenixLyricsCheckBox" Content="Paxsenix (Apple Music)"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                <CheckBox x:Name="UseBetterLyricsCheckBox" Content="Better Lyrics"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                <CheckBox x:Name="UseBinimumLyricsCheckBox" Content="Binimum"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                <CheckBox x:Name="UseLyricsPlusLyricsCheckBox" Content="LyricsPlus"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                <CheckBox x:Name="UseDeezerLyricsCheckBox" Content="Deezer"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                <CheckBox x:Name="UseLrcMuxLyricsCheckBox" Content="LRCMUX"
+                          Checked="ExtraLyricsServiceCheckBox_Changed" Unchecked="ExtraLyricsServiceCheckBox_Changed" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </StackPanel>

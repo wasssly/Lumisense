@@ -38,7 +38,7 @@
                         <RadioButton Style="{StaticResource SettingsRowRadioButtonStyle}" x:Name="NowPlayingBackgroundSolidRadio" Content="Один цвет"
                         GroupName="NowPlayingBackground" Checked="NowPlayingBackgroundRadio_Changed" />
                     </Border>
-                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=NowPlayingBackgroundColorPanel}">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}" Visibility="{Binding Visibility, ElementName=NowPlayingBackgroundColorPanel}">
                         <StackPanel x:Name="NowPlayingBackgroundColorPanel" Orientation="Horizontal" Margin="26,0,0,0">
                             <Border x:Name="NowPlayingBackgroundColorSwatch" Width="26" Height="26" CornerRadius="6"
                                     BorderThickness="1" BorderBrush="#40FFFFFF" Margin="0,0,10,0" VerticalAlignment="Center" />
@@ -141,7 +141,7 @@
 
         <!-- См. AppSettings.TrackStateBadgeMode / MainWindow.UpdateTrackUserStatePresentation. -->
         <StackPanel Margin="0,0,0,24">
-            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,16">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
                 <StackPanel>
                     <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
                         <Grid>
@@ -307,11 +307,7 @@
                             <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Загрузка и ошибка всегда показываются как состояние. Если для файла нет нужных данных, остаётся состояние; его же видно во всплывающей подсказке." TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
-                </StackPanel>
-            </Border>
-            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
-                <StackPanel>
-                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}">
                         <StackPanel>
                             <TextBlock Margin="0,0,0,8" Text="Предпросмотр" Style="{StaticResource SettingsFieldLabelStyle}" />
                             <Border CornerRadius="8" Padding="8,3" HorizontalAlignment="Left"

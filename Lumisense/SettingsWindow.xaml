@@ -138,54 +138,6 @@
 
         
 
-        <!-- Spring dropdown (designbookmark.com/motion): шаблон ComboBox остаётся стандартным шаблоном WPF-UI, поверх него SpringMotion
-             раскрывает меню на пружине, роняет строки по очереди и растягивает подсветку. Строки переопределены ради галочки. -->
-        <Style TargetType="ComboBox" BasedOn="{StaticResource {x:Type ComboBox}}">
-            <Setter Property="local:SpringMotion.SpringDropdown" Value="True" />
-            <Setter Property="ItemContainerStyle">
-                <Setter.Value>
-                    <Style TargetType="ComboBoxItem">
-                        <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
-                        <Setter Property="Cursor" Value="Hand" />
-                        <Setter Property="Margin" Value="4,1" />
-                        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
-                        <Setter Property="Template">
-                            <Setter.Value>
-                                <ControlTemplate TargetType="ComboBoxItem">
-                                    <Border x:Name="Bd" MinHeight="34" Padding="12,0,10,0" CornerRadius="8" Background="Transparent">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <ContentPresenter VerticalAlignment="Center" Margin="0,6" />
-                                            <Path x:Name="Tick" Grid.Column="1" Margin="14,0,0,0" Width="16" Height="14" VerticalAlignment="Center"
-                                                  Data="M 1,7 L 6,12 L 15,2" Stretch="Uniform" StrokeThickness="2"
-                                                  StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"
-                                                  StrokeDashArray="9.4,100" StrokeDashOffset="9.4" Opacity="0"
-                                                  Stroke="{DynamicResource TextFillColorPrimaryBrush}" />
-                                        </Grid>
-                                    </Border>
-                                    <ControlTemplate.Triggers>
-                                        <Trigger Property="IsSelected" Value="True">
-                                            <Setter TargetName="Tick" Property="Opacity" Value="1" />
-                                            <Setter TargetName="Tick" Property="StrokeDashOffset" Value="0" />
-                                        </Trigger>
-                                        <Trigger Property="IsEnabled" Value="False">
-                                            <Setter TargetName="Bd" Property="Opacity" Value="0.4" />
-                                        </Trigger>
-                                        <Trigger Property="IsHighlighted" Value="True">
-                                            <Setter TargetName="Bd" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
-                                        </Trigger>
-                                    </ControlTemplate.Triggers>
-                                </ControlTemplate>
-                            </Setter.Value>
-                        </Setter>
-                    </Style>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
         <Style TargetType="RadioButton">
             <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
             <Setter Property="Cursor" Value="Hand" />
@@ -799,6 +751,13 @@
             <Setter Property="BorderBrush" Value="{DynamicResource ControlStrokeColorDefaultBrush}" />
         </Style>
 
+        <!-- Строка, продолжающая настройку выше (палитра, кнопка «Показать пример»): без разделителя сверху, чтобы они читались как одна. -->
+        <Style x:Key="SettingsRowAttachedStyle" TargetType="Border" BasedOn="{StaticResource SettingsRowStyle}">
+            <Setter Property="Padding" Value="20,0,20,12" />
+            <Setter Property="MinHeight" Value="0" />
+            <Setter Property="BorderThickness" Value="0" />
+        </Style>
+
         <Style x:Key="SettingsRowTitleStyle" TargetType="TextBlock">
             <Setter Property="FontSize" Value="14" />
             <Setter Property="TextWrapping" Value="Wrap" />
@@ -1151,7 +1110,6 @@
                     CornerRadius="22">
                 <ScrollViewer x:Name="PART_ContentScroll" VerticalScrollBarVisibility="Auto">
                     <Grid x:Name="ContentPagesGrid" Margin="46,40,46,44" HorizontalAlignment="Stretch">
-
                     <StackPanel x:Name="PageAppearance" Visibility="Collapsed" />
 
                     <StackPanel x:Name="PageLyrics" Visibility="Collapsed" />

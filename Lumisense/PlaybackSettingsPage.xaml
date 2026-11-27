@@ -138,7 +138,7 @@
                             </ComboBox>
                         </Grid>
                     </Border>
-                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=DeviceConnectPreviewButton}">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}" Visibility="{Binding Visibility, ElementName=DeviceConnectPreviewButton}">
                         <Button x:Name="DeviceConnectPreviewButton" Content="Показать пример" HorizontalAlignment="Left" Margin="0,0,0,0"
                         Click="DeviceConnectPreviewButton_Click" />
                     </Border>

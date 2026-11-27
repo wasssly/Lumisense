@@ -216,109 +216,193 @@
                             <Border x:Name="IconPackCardDuotone" Tag="Duotone" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
                                     MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                        <local:SvgPathIcon Pack="Duotone" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Duotone" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Duotone" Icon="IconSettings" Size="22" />
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                            <local:SvgPathIcon Pack="Duotone" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Duotone" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Duotone" Icon="IconSettings" Size="22" />
+                                        </StackPanel>
+                                        <TextBlock Text="Duotone" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Мягкие, двухцветные" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                     </StackPanel>
-                                    <TextBlock Text="Duotone" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Мягкие, двухцветные" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="IconPackCardOutline" Tag="Outline" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
                                     MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                        <local:SvgPathIcon Pack="Outline" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Outline" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Outline" Icon="IconSettings" Size="22" />
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                            <local:SvgPathIcon Pack="Outline" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Outline" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Outline" Icon="IconSettings" Size="22" />
+                                        </StackPanel>
+                                        <TextBlock Text="Outline" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Тонкий контур, round cap" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                     </StackPanel>
-                                    <TextBlock Text="Outline" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Тонкий контур, round cap" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="IconPackCardBold" Tag="Bold" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
                                     MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                        <local:SvgPathIcon Pack="Bold" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Bold" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Bold" Icon="IconSettings" Size="22" />
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                            <local:SvgPathIcon Pack="Bold" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Bold" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Bold" Icon="IconSettings" Size="22" />
+                                        </StackPanel>
+                                        <TextBlock Text="Bold" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Плотный, контрастный" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                     </StackPanel>
-                                    <TextBlock Text="Bold" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Плотный, контрастный" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="IconPackCardFill" Tag="Fill" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
                                     MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                        <local:SvgPathIcon Pack="Fill" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Fill" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Fill" Icon="IconSettings" Size="22" />
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                            <local:SvgPathIcon Pack="Fill" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Fill" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Fill" Icon="IconSettings" Size="22" />
+                                        </StackPanel>
+                                        <TextBlock Text="Fill" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Сплошные силуэты" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                     </StackPanel>
-                                    <TextBlock Text="Fill" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Сплошные силуэты" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="IconPackCardThin" Tag="Thin" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
                                     MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                        <local:SvgPathIcon Pack="Thin" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Thin" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="Thin" Icon="IconSettings" Size="22" />
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                            <local:SvgPathIcon Pack="Thin" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Thin" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="Thin" Icon="IconSettings" Size="22" />
+                                        </StackPanel>
+                                        <TextBlock Text="Thin" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Ультратонкая линия" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                     </StackPanel>
-                                    <TextBlock Text="Thin" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Ультратонкая линия" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="IconPackCardFontAwesome" Tag="FontAwesome" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="IconPackCard_MouseLeftButtonDown"
                                     MouseRightButtonDown="IconPackCard_MouseRightButtonDown">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
-                                        <local:SvgPathIcon Pack="FontAwesome" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="FontAwesome" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
-                                        <local:SvgPathIcon Pack="FontAwesome" Icon="IconSettings" Size="22" />
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,12">
+                                            <local:SvgPathIcon Pack="FontAwesome" Icon="IconPlay" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="FontAwesome" Icon="IconHeart" Size="22" Margin="0,0,10,0" />
+                                            <local:SvgPathIcon Pack="FontAwesome" Icon="IconSettings" Size="22" />
+                                        </StackPanel>
+                                        <TextBlock Text="Font Awesome" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Плотные силуэты (Free)" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
                                     </StackPanel>
-                                    <TextBlock Text="Font Awesome" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Плотные силуэты (Free)" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
                         </WrapPanel>
                     </Border>
@@ -341,81 +425,151 @@
                             <Border x:Name="AppIconCardGlass" Tag="Glass" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
-                                <StackPanel>
-                                    <Image Source="/Icons/app/lumisense-glass.png" Width="44" Height="44" Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                           SnapsToDevicePixels="True" UseLayoutRounding="True"
-                                           Margin="0,0,0,12" />
-                                    <TextBlock Text="Glass" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Стекло на ярком фоне" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <Image Source="/Icons/app/lumisense-glass.png" Width="44" Height="44" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               SnapsToDevicePixels="True" UseLayoutRounding="True"
+                                               Margin="0,0,0,12" />
+                                        <TextBlock Text="Glass" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Стекло на ярком фоне" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                    </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="AppIconCardSpotlight" Tag="Spotlight" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
-                                <StackPanel>
-                                    <Image Source="/Icons/app/lumisense-spotlight.png" Width="44" Height="44" Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                           SnapsToDevicePixels="True" UseLayoutRounding="True"
-                                           Margin="0,0,0,12" />
-                                    <TextBlock Text="Spotlight" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Стекло в луче света" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <Image Source="/Icons/app/lumisense-spotlight.png" Width="44" Height="44" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               SnapsToDevicePixels="True" UseLayoutRounding="True"
+                                               Margin="0,0,0,12" />
+                                        <TextBlock Text="Spotlight" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Стекло в луче света" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                    </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="AppIconCardBacklit" Tag="Backlit" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
-                                <StackPanel>
-                                    <Image Source="/Icons/app/lumisense-backlit.png" Width="44" Height="44" Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                           SnapsToDevicePixels="True" UseLayoutRounding="True"
-                                           Margin="0,0,0,12" />
-                                    <TextBlock Text="Backlit" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Подсветка за стеклом" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <Image Source="/Icons/app/lumisense-backlit.png" Width="44" Height="44" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               SnapsToDevicePixels="True" UseLayoutRounding="True"
+                                               Margin="0,0,0,12" />
+                                        <TextBlock Text="Backlit" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Подсветка за стеклом" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                    </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="AppIconCardStripes" Tag="Stripes" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
-                                <StackPanel>
-                                    <Image Source="/Icons/app/lumisense-stripes.png" Width="44" Height="44" Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                           SnapsToDevicePixels="True" UseLayoutRounding="True"
-                                           Margin="0,0,0,12" />
-                                    <TextBlock Text="Stripes" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Play и звуковые полоски" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <Image Source="/Icons/app/lumisense-stripes.png" Width="44" Height="44" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               SnapsToDevicePixels="True" UseLayoutRounding="True"
+                                               Margin="0,0,0,12" />
+                                        <TextBlock Text="Stripes" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Play и звуковые полоски" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                    </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
 
                             <Border x:Name="AppIconCardBeam" Tag="Beam" Width="140" Margin="0,0,12,12"
                                     Padding="14,16" CornerRadius="10" Cursor="Hand"
                                     Background="{DynamicResource ControlFillColorSecondaryBrush}"
-                                    BorderThickness="2" BorderBrush="Transparent"
+                                    BorderThickness="1" BorderBrush="Transparent"
                                     MouseLeftButtonDown="AppIconCard_MouseLeftButtonDown">
-                                <StackPanel>
-                                    <Image Source="/Icons/app/lumisense-beam.png" Width="44" Height="44" Stretch="Uniform"
-                                           RenderOptions.BitmapScalingMode="HighQuality"
-                                           SnapsToDevicePixels="True" UseLayoutRounding="True"
-                                           Margin="0,0,0,12" />
-                                    <TextBlock Text="Beam" HorizontalAlignment="Center" FontSize="13" />
-                                    <TextBlock Text="Свет из кончика Play" HorizontalAlignment="Center"
-                                               FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
-                                </StackPanel>
+                                <Grid>
+                                    <Border CornerRadius="9" Margin="-14,-16" Opacity="0.16" Visibility="Collapsed" IsHitTestVisible="False"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <StackPanel>
+                                        <Image Source="/Icons/app/lumisense-beam.png" Width="44" Height="44" Stretch="Uniform"
+                                               RenderOptions.BitmapScalingMode="HighQuality"
+                                               SnapsToDevicePixels="True" UseLayoutRounding="True"
+                                               Margin="0,0,0,12" />
+                                        <TextBlock Text="Beam" HorizontalAlignment="Center" FontSize="13" />
+                                        <TextBlock Text="Свет из кончика Play" HorizontalAlignment="Center"
+                                                   FontSize="11" Opacity="0.6" TextWrapping="Wrap" TextAlignment="Center" />
+                                    </StackPanel>
+                                    <Border Width="18" Height="18" CornerRadius="9" HorizontalAlignment="Right" VerticalAlignment="Top"
+                                            Margin="0,-10,-8,0" Visibility="Collapsed" RenderTransformOrigin="0.5,0.5"
+                                            Background="{DynamicResource AccentFillColorDefaultBrush}">
+                                        <Border.RenderTransform>
+                                            <ScaleTransform />
+                                        </Border.RenderTransform>
+                                        <Path Data="M1,5 L4.2,8 L10,1.5" Width="11" Height="10" Stretch="Uniform" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Stroke="{DynamicResource TextOnAccentFillColorPrimaryBrush}" StrokeThickness="1.8"
+                                              StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round" />
+                                    </Border>
+                                </Grid>
                             </Border>
                         </WrapPanel>
                     </Border>
@@ -469,7 +623,7 @@
                             </StackPanel>
                         </Grid>
                     </Border>
-                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=AccentSwatchesPanel}">
+                    <Border Style="{StaticResource SettingsRowAttachedStyle}" Visibility="{Binding Visibility, ElementName=AccentSwatchesPanel}">
                         <WrapPanel x:Name="AccentSwatchesPanel" Margin="26,0,0,0">
                             <Border x:Name="AccentSwatch0" Width="26" Height="26" CornerRadius="6"
                                     Margin="0,0,8,8" Background="#0078D4" BorderThickness="2"

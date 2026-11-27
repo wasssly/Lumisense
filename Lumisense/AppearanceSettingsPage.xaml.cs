@@ -159,10 +159,36 @@ public sealed partial class AppearanceSettingsPage : System.Windows.Controls.Use
 
         foreach (var (card, pack) in cards)
         {
-            card.BorderBrush = pack == _settings.IconPack
-                ? (Brush)FindResource("AccentFillColorDefaultBrush")
-                : Brushes.Transparent;
+            SetCardSelected(card, pack == _settings.IconPack);
         }
+    }
+
+    // Активная карточка: заливка акцентным тоном, тонкая рамка акцентного цвета и галочка в углу. Внутри карточки лежит Grid:
+    // подложка с заливкой, содержимое и значок-галочка.
+    private void SetCardSelected(System.Windows.Controls.Border card, bool selected)
+    {
+        card.BorderBrush = selected ? (Brush)FindResource("AccentFillColorDefaultBrush") : Brushes.Transparent;
+        if (card.Child is not System.Windows.Controls.Grid { Children.Count: 3 } layers
+            || layers.Children[0] is not System.Windows.Controls.Border tint
+            || layers.Children[2] is not System.Windows.Controls.Border badge)
+            return;
+
+        bool wasSelected = badge.Visibility == Visibility.Visible;
+        var visibility = selected ? Visibility.Visible : Visibility.Collapsed;
+        tint.Visibility = visibility;
+        badge.Visibility = visibility;
+        if (!selected || wasSelected || _isInitializing || SpringMotion.Reduced(AnimationAreas.SettingsWindow)) return;
+
+        // Галочка вырастает из середины значка и проявляется.
+        var ease = new System.Windows.Media.Animation.BackEase { EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut, Amplitude = 0.6 };
+        var grow = new System.Windows.Media.Animation.DoubleAnimation(0.5, 1, TimeSpan.FromMilliseconds(200)) { EasingFunction = ease };
+        if (badge.RenderTransform is ScaleTransform scale)
+        {
+            scale.BeginAnimation(ScaleTransform.ScaleXProperty, grow);
+            scale.BeginAnimation(ScaleTransform.ScaleYProperty, grow);
+        }
+
+        badge.BeginAnimation(UIElement.OpacityProperty, new System.Windows.Media.Animation.DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(140)));
     }
 
     // Клик по карточке значка приложения (AppIcons.cs) применяется сразу во всех окнах и в трее через AppIconContext,
@@ -198,11 +224,7 @@ public sealed partial class AppearanceSettingsPage : System.Windows.Controls.Use
         };
 
         foreach (var (card, icon) in cards)
-        {
-            card.BorderBrush = icon == _settings.AppIcon
-                ? (Brush)FindResource("AccentFillColorDefaultBrush")
-                : Brushes.Transparent;
-        }
+            SetCardSelected(card, icon == _settings.AppIcon);
     }
 
     private void AccentModeRadio_Changed(object sender, RoutedEventArgs e)
