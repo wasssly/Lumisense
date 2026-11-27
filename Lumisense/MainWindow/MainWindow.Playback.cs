@@ -228,7 +228,9 @@ public partial class MainWindow
         var fadeIn = new FadeInOutSampleProvider(_gapless, initiallySilent: true);
         fadeIn.BeginFadeIn(70);
         _activeFade = fadeIn;
-        InitializeOutputDevice(fadeIn);
+        var dither = new DitherSampleProvider(fadeIn);
+        InitializeOutputDevice(dither);
+        ConfigureDither(dither);
         _settingsWindow?.RefreshOutputDeviceRuntimeStatus();
         performance.MarkStage("initialize-output");
         _outputDevice!.PlaybackStopped += OutputDevice_PlaybackStopped;

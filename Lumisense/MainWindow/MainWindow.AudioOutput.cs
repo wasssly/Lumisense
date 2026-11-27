@@ -69,6 +69,15 @@ public partial class MainWindow
         }
     }
 
+    // Дизеринг нужен только в монопольном режиме на целочисленном устройстве: в Shared сведением и округлением занимается Windows.
+    private void ConfigureDither(DitherSampleProvider dither)
+    {
+        bool exclusive = string.Equals(_outputDiagnostics.ActiveWasapiMode, "Exclusive", StringComparison.OrdinalIgnoreCase);
+        WaveFormat? format = (_outputDevice as WasapiPlayer)?.OutputWaveFormat;
+        bool integerPcm = format is not null && format.Encoding != WaveFormatEncoding.IeeeFloat;
+        dither.TargetBits = exclusive && integerPcm ? format!.BitsPerSample : 0;
+    }
+
     private void EnsureOutputDevice()
     {
         if (_outputDevice is not null) return;
