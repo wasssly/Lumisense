@@ -33,8 +33,10 @@ public sealed partial class SettingsSearchCoverageTests
     [GeneratedRegex("[а-яёa-z]{4,}")]
     private static partial Regex WordRegex();
 
+    // Исходники лежат в подпапках по областям, поэтому файл ищем по имени во всём проекте.
     private static string AppFile(string name, [CallerFilePath] string testFile = "") =>
-        Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "Lumisense", name));
+        Directory.EnumerateFiles(Path.GetFullPath(Path.Combine(Path.GetDirectoryName(testFile)!, "..", "Lumisense")), name, SearchOption.AllDirectories)
+            .First(path => !path.Replace('\\', '/').Contains("/obj/", StringComparison.Ordinal));
 
     [Fact]
     public void EverySettingControl_IsFindableThroughTheSearchIndex()
