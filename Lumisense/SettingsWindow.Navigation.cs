@@ -48,9 +48,8 @@ public partial class SettingsWindow
         PageProfile.Visibility = key == "Profile" ? Visibility.Visible : Visibility.Collapsed;
         PageUpdates.Visibility = key == "Updates" ? Visibility.Visible : Visibility.Collapsed;
         PageAbout.Visibility = key == "About" ? Visibility.Visible : Visibility.Collapsed;
-        if (key == "Updates" && IsLoaded && _basePackagePlan is null)
-            _ = RefreshVelopackBasePackagePlanAsync();
-        if (key == "Updates") StartAllVersionsLoadIfNeeded();
+        if (key == "Updates" && _lazyPages.TryGetValue(key, out ILazySettingsPage? updatesPage))
+            ((UpdatesSettingsPage)updatesPage).OnShown();
         if (key == "About" && _lazyPages.TryGetValue(key, out ILazySettingsPage? aboutPage))
             ((AboutSettingsPage)aboutPage).LoadDeveloperAvatar();
 
@@ -132,6 +131,7 @@ public partial class SettingsWindow
             "Equalizer" => PageEqualizer,
             "Integrations" => PageIntegrations,
             "About" => PageAbout,
+            "Updates" => PageUpdates,
             _ => null
         };
         if (host is null) return;
@@ -144,6 +144,7 @@ public partial class SettingsWindow
             "Equalizer" => new EqualizerSettingsPage(this, _settings, _owner),
             "Integrations" => new IntegrationsSettingsPage(this, _settings, _owner),
             "About" => new AboutSettingsPage(this, _settings, _owner),
+            "Updates" => new UpdatesSettingsPage(this, _settings),
             _ => new NotificationsSettingsPage(this, _settings, _owner)
         };
         page.MoveContentTo(host);
@@ -159,6 +160,7 @@ public partial class SettingsWindow
         : ReferenceEquals(host, PageEqualizer) ? "Equalizer"
         : ReferenceEquals(host, PageIntegrations) ? "Integrations"
         : ReferenceEquals(host, PageAbout) ? "About"
+        : ReferenceEquals(host, PageUpdates) ? "Updates"
         : null;
 
     private FrameworkElement? ResolveLazyTarget(SettingsSearchEntry entry) =>

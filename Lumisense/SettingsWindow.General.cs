@@ -163,15 +163,9 @@ public partial class SettingsWindow
 
         if (_lazyPages.TryGetValue("Equalizer", out ILazySettingsPage? eqPage)) ((EqualizerSettingsPage)eqPage).RefreshBandTexts();
 
-        if (_loadedReleases is not null)
-            RenderAllVersions(_loadedReleases);
+        if (_lazyPages.TryGetValue("Updates", out ILazySettingsPage? updatesPage)) ((UpdatesSettingsPage)updatesPage).RefreshLocalization();
 
         RefreshLyricsCacheInfo();
-        RefreshUpdateSourceProbePresentation();
-        RefreshVelopackBasePackagePresentation();
-        RefreshLegacyInnoCleanupPresentation();
         RefreshMiniArtworkProgressThicknessPresentation();
-        if (_sourceProbeResults is not null)
-            RenderUpdateSourceProbeResults(_sourceProbeResults);
     }
 }

@@ -1,24 +1,105 @@
 using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Net.Http;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Windows;
-using System.Windows.Controls.Primitives;
-using System.Windows.Input;
 using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
-using Wpf.Ui.Appearance;
-using Wpf.Ui.Controls;
 using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
-public partial class SettingsWindow
+// Создаётся при первом показе страницы (см. SettingsWindow.EnsurePageBuilt).
+public sealed partial class UpdatesSettingsPage : System.Windows.Controls.UserControl, ILazySettingsPage
 {
+    private readonly Window _window;
+    private readonly AppSettings _settings;
+
+    // Глушит Checked-обработчики источника, пока значение читается из настроек.
+    private bool _isInitializing = true;
+
+    private CancellationTokenSource? _sourceProbeCts;
+    private IReadOnlyList<UpdateSourceProbeResult>? _sourceProbeResults;
+    private CancellationTokenSource? _basePackageCts;
+    private VelopackBasePackagePlan? _basePackagePlan;
+    private bool _isVelopackManagedInstall;
+    private string? _basePackageError;
+    private string? _lastCheckedReleaseAssetUrl;
+    private bool _isLegacyInnoCleanupRunning;
+    private string? _legacyInnoCleanupStatusKey;
+
+    internal UpdatesSettingsPage(Window window, AppSettings settings)
+    {
+        _window = window;
+        _settings = settings;
+
+        // StaticResource разбирается до того, как элементы попадут в дерево окна, поэтому ресурсы окна подключаются заранее.
+        Resources.MergedDictionaries.Add(window.Resources);
+        InitializeComponent();
+
+        // Velopack берёт пакеты из своего feed на GitHub и зеркала не использует: выбор источника там ни на что не влиял бы.
+        if (UpdateMigrationGuard.IsVelopackManagedInstall())
+        {
+            UpdateSourceContentPanel.IsEnabled = false;
+            UpdateSourceVelopackHint.Text = LocalizationService.Translate("В этой установке обновления загружаются напрямую с GitHub; зеркала действуют только для установщика EXE/MSI.");
+            UpdateSourceVelopackHint.Visibility = Visibility.Visible;
+        }
+
+        (_settings.UpdateDownloadSource switch
+        {
+            "GhProxy" => UpdateSourceGhProxyRadio,
+            "GhProxyV4" => UpdateSourceGhProxyV4Radio,
+            "GhProxyV6" => UpdateSourceGhProxyV6Radio,
+            "GhProxyCdn" => UpdateSourceGhProxyCdnRadio,
+            "GhProxyCom" => UpdateSourceGhProxyComRadio,
+            "GhFast" => UpdateSourceGhFastRadio,
+            _ => UpdateSourceGitHubRadio
+        }).IsChecked = true;
+
+        AllVersionsLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
+        RefreshUpdateSourceProbePresentation();
+        RefreshVelopackBasePackagePresentation();
+        RefreshLegacyInnoCleanupPresentation();
+        _isInitializing = false;
+    }
+
+    public void MoveContentTo(System.Windows.Controls.Panel host) => LazySettingsPage.MoveChildren(PageUpdates, host);
+
+    public FrameworkElement? FindElement(string name) => FindName(name) as FrameworkElement;
+
+    // Вызывается при каждом показе вкладки: план базового пакета читается с диска, а список версий грузится из сети только тут,
+    // а не при открытии окна.
+    public void OnShown()
+    {
+        if (_window.IsLoaded && _basePackagePlan is null)
+            BackgroundTask.FireAndForget(LoadBasePackagePlanAsync(), nameof(LoadBasePackagePlanAsync));
+        StartAllVersionsLoadIfNeeded();
+    }
+
+    public async Task LoadBasePackagePlanAsync()
+    {
+        await RefreshVelopackBasePackagePlanAsync();
+        RefreshLegacyInnoCleanupPresentation();
+    }
+
+    public void RefreshLocalization()
+    {
+        if (_loadedReleases is not null)
+            RenderAllVersions(_loadedReleases);
+
+        RefreshUpdateSourceProbePresentation();
+        RefreshVelopackBasePackagePresentation();
+        RefreshLegacyInnoCleanupPresentation();
+        if (_sourceProbeResults is not null)
+            RenderUpdateSourceProbeResults(_sourceProbeResults);
+    }
+
+    public void CancelBackgroundWork()
+    {
+        _sourceProbeCts?.Cancel();
+        _basePackageCts?.Cancel();
+    }
+
     private async Task RefreshVelopackBasePackagePlanAsync()
     {
         _basePackageCts?.Cancel();
@@ -167,7 +248,7 @@ public partial class SettingsWindow
         }
 
         var answer = LocalizedMessageBox.Show(
-            this,
+            _window,
             LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupMessage),
             LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupTitle),
             System.Windows.MessageBoxButton.YesNo,
@@ -185,7 +266,7 @@ public partial class SettingsWindow
             _legacyInnoCleanupStatusKey = LocalizationKey.UpdateLegacyCleanupFailed;
             RefreshLegacyInnoCleanupPresentation();
             LocalizedMessageBox.Show(
-                this,
+                _window,
                 LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupFailed),
                 LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupTitle),
                 System.Windows.MessageBoxButton.OK,
@@ -217,10 +298,10 @@ public partial class SettingsWindow
 
             _legacyInnoCleanupStatusKey = LocalizationKey.UpdateLegacyCleanupCardCompleted;
             RefreshLegacyInnoCleanupPresentation();
-            if (IsLoaded)
+            if (_window.IsLoaded)
             {
                 LocalizedMessageBox.Show(
-                    this,
+                    _window,
                     LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupCardCompleted),
                     LocalizationService.Get(LocalizationKey.UpdateLegacyCleanupTitle),
                     System.Windows.MessageBoxButton.OK,
@@ -313,13 +394,13 @@ public partial class SettingsWindow
             {
                 case UpdateCheckStatus.UpdateAvailable:
                     CheckUpdatesButtonSubtitle.Text = LocalizationService.Translate($"Доступна версия {result.LatestVersion}");
-                    new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
+                    new UpdateAvailableWindow(result, _settings) { Owner = _window }.ShowDialog();
                     break;
 
                 case UpdateCheckStatus.MsiMigrationAvailable:
                     CheckUpdatesButtonSubtitle.Text = LocalizationService.Get(
                         LocalizationKey.UpdateMsiMigrationManualSubtitle);
-                    new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
+                    new UpdateAvailableWindow(result, _settings) { Owner = _window }.ShowDialog();
                     break;
 
                 case UpdateCheckStatus.UpToDate:
@@ -351,7 +432,7 @@ public partial class SettingsWindow
         CheckUpdatesIcon.Visibility = busy ? Visibility.Collapsed : Visibility.Visible;
     }
 
-        // Источник применяется сразу: UpdateAvailableWindow использует ту же in-memory модель _settings; выбор сохраняем
+    // Источник применяется сразу: UpdateAvailableWindow использует ту же in-memory модель _settings; выбор сохраняем
         // сразу, чтобы он пережил перезапуск без ожидания общего сохранения.
     private void UpdateSourceRadio_Checked(object sender, RoutedEventArgs e)
     {
@@ -399,7 +480,7 @@ public partial class SettingsWindow
     {
         if (_settings.UpdateMirrorWarningSuppressed) return true;
 
-        var dialog = new UpdateMirrorWarningDialog(this);
+        var dialog = new UpdateMirrorWarningDialog(_window);
         if (dialog.ShowDialog() != true) return false;
 
         _settings.UpdateMirrorWarningSuppressed = dialog.DontAskAgain;
@@ -445,7 +526,7 @@ public partial class SettingsWindow
         }
         finally
         {
-            if (IsLoaded)
+            if (_window.IsLoaded)
                 ProbeUpdateSourcesButton.IsEnabled = true;
         }
     }
@@ -704,7 +785,7 @@ public partial class SettingsWindow
 
         if (UpdateMigrationGuard.IsVelopackManagedInstall())
         {
-            if (!string.IsNullOrEmpty(item.Release.ReleaseNotesUrl)) OpenUrl(item.Release.ReleaseNotesUrl);
+            if (!string.IsNullOrEmpty(item.Release.ReleaseNotesUrl)) SettingsWindow.OpenUrl(item.Release.ReleaseNotesUrl);
             return;
         }
 
@@ -721,12 +802,12 @@ public partial class SettingsWindow
 
         try
         {
-            new UpdateAvailableWindow(result, _settings) { Owner = this }.ShowDialog();
+            new UpdateAvailableWindow(result, _settings) { Owner = _window }.ShowDialog();
         }
         catch (Exception ex)
         {
             Logger.Error($"Не удалось открыть окно информации об обновлении: {ex}");
-            LocalizedMessageBox.Show(this,
+            LocalizedMessageBox.Show(_window,
                 "Не удалось открыть информацию об обновлении. Подробности записаны в журнал.",
                 "Ошибка обновления", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
         }

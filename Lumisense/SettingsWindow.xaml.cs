@@ -26,15 +26,6 @@ public partial class SettingsWindow : FluentWindow
     private bool _interfaceScaleRestartNoticeShown;
     private bool _isRefreshingOutputDevices;
     private bool _isRefreshingWasapiMode;
-    private CancellationTokenSource? _sourceProbeCts;
-    private IReadOnlyList<UpdateSourceProbeResult>? _sourceProbeResults;
-    private CancellationTokenSource? _basePackageCts;
-    private VelopackBasePackagePlan? _basePackagePlan;
-    private bool _isVelopackManagedInstall;
-    private string? _basePackageError;
-    private string? _lastCheckedReleaseAssetUrl;
-    private bool _isLegacyInnoCleanupRunning;
-    private string? _legacyInnoCleanupStatusKey;
 
     // Индекс поиска — ручной перечень опций: подпись, страница, ссылка на элемент (для прокрутки и подсветки)
     // и ключевые слова; разметка не читается.
@@ -234,7 +225,6 @@ public partial class SettingsWindow : FluentWindow
         UpdateLyricsPreview();
         UpdateBadgePreview();
         InitializeProgressAppearanceEditor();
-        AllVersionsLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
         LyricsPolicyLocalOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "LocalOnly";
         LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
         LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
@@ -392,25 +382,6 @@ public partial class SettingsWindow : FluentWindow
         AlbumArtGesturesCheckBox.IsChecked = _settings.AlbumArtGesturesEnabled;
 
 
-        // Velopack берёт пакеты из своего feed на GitHub и зеркала не использует: выбор источника там ни на что не влиял бы.
-        if (UpdateMigrationGuard.IsVelopackManagedInstall())
-        {
-            UpdateSourceContentPanel.IsEnabled = false;
-            UpdateSourceVelopackHint.Text = LocalizationService.Translate("В этой установке обновления загружаются напрямую с GitHub; зеркала действуют только для установщика EXE/MSI.");
-            UpdateSourceVelopackHint.Visibility = Visibility.Visible;
-        }
-
-        (_settings.UpdateDownloadSource switch
-        {
-            "GhProxy" => UpdateSourceGhProxyRadio,
-            "GhProxyV4" => UpdateSourceGhProxyV4Radio,
-            "GhProxyV6" => UpdateSourceGhProxyV6Radio,
-            "GhProxyCdn" => UpdateSourceGhProxyCdnRadio,
-            "GhProxyCom" => UpdateSourceGhProxyComRadio,
-            "GhFast" => UpdateSourceGhFastRadio,
-            _ => UpdateSourceGitHubRadio
-        }).IsChecked = true;
-
         RefreshViewModeRadios();
         MainWindowLayoutModernRadio.IsChecked = _settings.MainWindowLayout == "Modern";
         MainWindowLayoutGlassRadio.IsChecked = _settings.MainWindowLayout == "Glass";
@@ -441,9 +412,6 @@ public partial class SettingsWindow : FluentWindow
         BuildSearchIndex();
 
         RefreshLyricsCacheInfo();
-        RefreshUpdateSourceProbePresentation();
-        RefreshVelopackBasePackagePresentation();
-        RefreshLegacyInnoCleanupPresentation();
 
         NavShowLabelsCheckBox.IsChecked = _settings.SettingsNavigationShowLabels;
         NavLabelModeSelectedRadio.IsChecked = _settings.SettingsNavigationLabelMode == "Selected";
@@ -467,15 +435,16 @@ public partial class SettingsWindow : FluentWindow
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;
         Loaded += async (_, _) =>
         {
-            await RefreshVelopackBasePackagePlanAsync();
-            RefreshLegacyInnoCleanupPresentation();
+            // Страница «Обновления» может быть открыта до Loaded (сохранённая вкладка); иначе план читается при первом показе.
+            if (_lazyPages.TryGetValue("Updates", out ILazySettingsPage? updatesPage))
+                await ((UpdatesSettingsPage)updatesPage).LoadBasePackagePlanAsync();
         };
         Closed += (_, _) =>
         {
             _isWindowClosed = true;
             StopAutoScrolling();
-            _sourceProbeCts?.Cancel();
-            _basePackageCts?.Cancel();
+            if (_lazyPages.TryGetValue("Updates", out ILazySettingsPage? updatesPage))
+                ((UpdatesSettingsPage)updatesPage).CancelBackgroundWork();
             LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         };
         LocalizationService.Apply(this);

@@ -139,12 +139,12 @@ public partial class SettingsWindow
         AddLazy("Вернуть состояние до последнего сброса", "Профиль", "Profile", "RestoreResetSnapshotButton", "восстановить вернуть точка сброса backup restore reset recovery");
         AddLazy("Полный сброс данных", "Профиль", "Profile", "ResetAllDataButton", "сброс удалить очистить стереть настройки плейлисты избранное история пресеты wipe erase all data reset");
         AddLazy("О плеере", "О плеере", "About", "AboutInfoCard", "версия lumisense о программе о плеере");
-        Add("Источник загрузки обновлений", "Обновления", "Updates", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник v4.gh proxy.org только ipv4 v6.gh ipv6 cdn.gh через cdn");
-        Add("Все версии", "Обновления", "Updates", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
-        Add("Проверить обновления", "Обновления", "Updates", CheckUpdatesButton, "обновление update github версия проверить");
-        Add("Проверить зеркала", "Обновления", "Updates", ProbeUpdateSourcesButton, "зеркало скорость проверка источник mirror speed probe gh-proxy ghfast");
-        Add("Скачать базовый пакет", "Обновления", "Updates", PrepareVelopackBasePackageButton, "velopack базовый пакет полный пакет компактные обновления delta base package");
-        Add("Удалить старую EXE-копию", "Обновления", "Updates", RemoveLegacyInnoButton, "удалить uninstall деинсталлятор старая exe msi migration cleanup compact updates");
+        AddLazy("Источник загрузки обновлений", "Обновления", "Updates", "UpdateSourceGitHubRadio", "update mirror зеркало gh-proxy обновление скачать источник v4.gh proxy.org только ipv4 v6.gh ipv6 cdn.gh через cdn");
+        AddLazy("Все версии", "Обновления", "Updates", "AllVersionsExpanderControl", "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
+        AddLazy("Проверить обновления", "Обновления", "Updates", "CheckUpdatesButton", "обновление update github версия проверить");
+        AddLazy("Проверить зеркала", "Обновления", "Updates", "ProbeUpdateSourcesButton", "зеркало скорость проверка источник mirror speed probe gh-proxy ghfast");
+        AddLazy("Скачать базовый пакет", "Обновления", "Updates", "PrepareVelopackBasePackageButton", "velopack базовый пакет полный пакет компактные обновления delta base package");
+        AddLazy("Удалить старую EXE-копию", "Обновления", "Updates", "RemoveLegacyInnoButton", "удалить uninstall деинсталлятор старая exe msi migration cleanup compact updates");
         AddLazy("История изменений", "О плеере", "About", "ChangelogButton", "патчноуты changelog версии история изменений");
         AddLazy("Разработчик", "О плеере", "About", "DeveloperGitHubButton", "разработчик автор github telegram wasssly ссылки контакты аватар");
         AddLazy("Открыть папку с логами", "О плеере", "About", "OpenLogsButton", "логи log ошибка краш crash диагностика");
