@@ -1,0 +1,213 @@
+<UserControl x:Class="Lumisense.AboutSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Lumisense">
+    <StackPanel x:Name="PageAbout">
+        <TextBlock Text="О плеере" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Text="Сведения о приложении, разработчике и диагностике." Style="{StaticResource PageDescriptionStyle}" />
+
+        <!-- 1. Описание приложения — без изменений -->
+        <StackPanel x:Name="AboutInfoCard" Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Значок в карточке «О программе» — выбранный в настройках (AppIconContext.CurrentArt), а не всегда
+                                 классический; карточка «Классический» в выборе значка, наоборот, остаётся с классическим рисунком. -->
+                            <Image Grid.Column="0" Source="{Binding CurrentArt, Source={x:Static local:AppIconContext.Instance}}"
+                                   Width="44" Height="44"
+                                   Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"
+                                   Margin="0,0,12,0" />
+
+                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                <TextBlock Text="Lumisense" FontSize="16" FontWeight="SemiBold" />
+                                <TextBlock x:Name="AppVersionText" Text="Версия" Opacity="0.6" FontSize="12" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Lumisense — настраиваемый аудиоплеер для Windows 11 в стиле Fluent Design. Он помогает удобно управлять музыкальной библиотекой, настраивать звучание и адаптировать интерфейс под себя — от мини-плеера и горячих клавиш до темы, зависящей от текущей обложки."
+                            TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Собрано на .NET 10, WPF-UI и NAudio. Лицензия Lumisense — GNU GPL v3.0; лицензии остальных компонентов лежат в папке licenses и в файле THIRD-PARTY-NOTICES.md рядом с программой." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- Разработчик — компактная карточка (аватар, ник, иконки-ссылки) вместо прежнего аккордеона; см. SettingsWindow.LoadDeveloperAvatar/DeveloperGitHubButton_Click. -->
+        <Border Style="{StaticResource SettingsCardStyle}">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <!-- ImageBrush на Background, а не дочерний Image: Border с CornerRadius скругляет только собственную заливку, а ClipToBounds
+                     клипует по прямоугольнику — дочерний Image торчал бы квадратом из-под скруглённых углов. -->
+                <Border Grid.Column="0" Width="48" Height="48" CornerRadius="24" Margin="0,0,12,0">
+                    <Border.Background>
+                        <ImageBrush x:Name="DeveloperAvatarBrush" Stretch="UniformToFill"
+                                    ImageSource="/Icons/app/developer-avatar-placeholder.png" />
+                    </Border.Background>
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Разработчик" FontSize="12" Opacity="0.6" />
+                    <TextBlock Text="wasssly" FontWeight="SemiBold" FontSize="15" />
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- Padding="0" обязателен: внутренний отступ кнопки (под текст) съедал площадь под иконку при малом фиксированном размере;
+                         тот же приём у TrackFavoriteButton/TrackPinButton в MainWindow.xaml. -->
+                    <ui:Button x:Name="DeveloperGitHubButton" Appearance="Secondary"
+                               Width="40" Height="40" Padding="0" Margin="0,0,8,0"
+                               Click="DeveloperGitHubButton_Click" ToolTip="github.com/wasssly" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                        <ui:Button.Icon>
+                            <local:SvgPathIcon Icon="IconGitHub" Size="21" />
+                        </ui:Button.Icon>
+                    </ui:Button>
+                    <ui:Button x:Name="DeveloperTelegramButton" Appearance="Secondary"
+                               Width="40" Height="40" Padding="0"
+                               Click="DeveloperTelegramButton_Click" ToolTip="t.me/dontwritetoblame" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                        <ui:Button.Icon>
+                            <local:SvgPathIcon Icon="IconTelegram" Size="21" />
+                        </ui:Button.Icon>
+                    </ui:Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Логи (Logger.cs): файл на сессию в %AppData%\Lumisense\logs, кнопка открывает папку в Проводнике, чтобы приложить логи к сообщению о проблеме. -->
+        <ui:Button x:Name="OpenLogsButton" Appearance="Secondary"
+                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                   Padding="16,14" Margin="0,14,0,0" Click="OpenLogsButton_Click">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                        Margin="0,0,12,0">
+                    <local:SvgPathIcon Icon="IconWrench" Size="16"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Открыть папку с логами" FontWeight="SemiBold" />
+                    <TextBlock Text="Пригодится, если плеер упал или повёл себя странно" FontSize="12" Opacity="0.6" />
+                </StackPanel>
+            </Grid>
+        </ui:Button>
+
+        <!-- Диагностика нагрузки: рядом с логами, потому что нужна в тех же случаях — когда плеер ведёт себя странно. -->
+        <ui:Button x:Name="DiagnosticsButton" Appearance="Secondary"
+                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                   Padding="16,14" Margin="0,14,0,0" Click="DiagnosticsButton_Click">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                        Margin="0,0,12,0">
+                    <local:SvgPathIcon Icon="IconSpeed" Size="16"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Диагностика производительности" FontWeight="SemiBold" />
+                    <TextBlock Text="Нагрузка процессора, память и утечки ресурсов; ничего не отправляется в сеть"
+                               FontSize="12" Opacity="0.6" TextWrapping="Wrap" />
+                </StackPanel>
+            </Grid>
+        </ui:Button>
+
+
+        <ui:Button x:Name="OpenRepositoryButton" Appearance="Secondary"
+                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                   Padding="16,14" Margin="0,14,0,0" Click="OpenRepositoryButton_Click">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                        Margin="0,0,12,0">
+                    <local:SvgPathIcon Icon="IconGitHub" Size="16"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Открытый исходный код" FontWeight="SemiBold" />
+                    <TextBlock Text="Открыть репозиторий Lumisense на GitHub" FontSize="12" Opacity="0.6" />
+                </StackPanel>
+            </Grid>
+        </ui:Button>
+
+        <!-- Telegram-канал проекта: новости, релизы и ручная загрузка, когда GitHub недоступен (UpdateCheckHealth.TelegramChannelUrl). -->
+        <ui:Button x:Name="OpenTelegramChannelButton" Appearance="Secondary"
+                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                   Padding="16,14" Margin="0,14,0,0" Click="OpenTelegramChannelButton_Click">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                        Margin="0,0,12,0">
+                    <local:SvgPathIcon Icon="IconTelegram" Size="16"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="Telegram-канал @LumisenseApp" FontWeight="SemiBold" />
+                    <TextBlock Text="Новости, релизы и загрузка вручную, если GitHub недоступен" FontSize="12" Opacity="0.6" />
+                </StackPanel>
+            </Grid>
+        </ui:Button>
+
+        <!-- 3. "История изменений" — в самом низу страницы -->
+        <TextBlock Text="История изменений" FontSize="14" FontWeight="SemiBold" Margin="4,20,0,10" />
+
+        <ui:Button x:Name="ChangelogButton" Appearance="Secondary"
+                   HorizontalAlignment="Stretch" HorizontalContentAlignment="Left"
+                   Padding="16,14" Margin="0,0,0,20" Click="ChangelogButton_Click">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <Border Grid.Column="0" Width="34" Height="34" CornerRadius="8"
+                        Background="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                        Margin="0,0,12,0">
+                    <local:SvgPathIcon Icon="IconInfo" Size="16"
+                                        HorizontalAlignment="Center" VerticalAlignment="Center" />
+                </Border>
+
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <TextBlock Text="История изменений" FontWeight="SemiBold" />
+                    <TextBlock Text="Что нового в текущей версии" FontSize="12" Opacity="0.6" />
+                </StackPanel>
+            </Grid>
+        </ui:Button>
+
+    </StackPanel>
+</UserControl>

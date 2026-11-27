@@ -1,0 +1,196 @@
+<UserControl x:Class="Lumisense.IntegrationsSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Lumisense">
+    <StackPanel x:Name="PageIntegrations">
+        <TextBlock Text="Интеграции" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Text="Внешние сервисы, приватность и диагностика подключений." Style="{StaticResource PageDescriptionStyle}" />
+
+        <!-- Discord Rich Presence — локальный Discord IPC, см. DiscordRichPresenceManager. -->
+        <StackPanel x:Name="DiscordCard" Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=DiscordRichPresenceEnabledCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Discord Rich Presence">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=DiscordRichPresenceEnabledCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Показывает активность Lumisense в профиле Discord через локальное соединение. Discord и обмен статусами должны быть включены в самом клиенте Discord." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="DiscordRichPresenceEnabledCheckBox" AutomationProperties.Name="Discord Rich Presence"
+                            Checked="DiscordRichPresenceEnabledCheckBox_Changed"
+                            Unchecked="DiscordRichPresenceEnabledCheckBox_Changed"
+                            />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <StackPanel>
+                            <ui:Button x:Name="ConnectDiscordButton" Appearance="Secondary" HorizontalAlignment="Left"
+                            Content="Подключить Discord"
+                            Click="ConnectDiscordButton_Click" />
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" x:Name="DiscordRichPresenceConnectionStatusText" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=OpenDiscordDiagnosticsLogButton}">
+                        <ui:Button x:Name="OpenDiscordDiagnosticsLogButton" Appearance="Secondary" HorizontalAlignment="Left" Margin="0,0,0,0"
+                        Content="Открыть журнал Discord"
+                        Click="OpenDiscordDiagnosticsLogButton_Click" />
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Журнал сохраняет события подключения, отправки статуса и ошибки Discord Rich Presence — он поможет при диагностике проблем интеграции." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <TextBlock Text="Приватность" Style="{StaticResource SettingsGroupTitleStyle}" />
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=DiscordRichPresenceShowTrackInfoCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Показывать название и исполнителя">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=DiscordRichPresenceShowTrackInfoCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="DiscordRichPresenceShowTrackInfoCheckBox"
+                            AutomationProperties.Name="Показывать название и исполнителя"
+                            Checked="DiscordRichPresencePrivacyCheckBox_Changed"
+                            Unchecked="DiscordRichPresencePrivacyCheckBox_Changed"
+                            />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=DiscordRichPresenceShowTimelineCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Показывать таймлайн воспроизведения">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=DiscordRichPresenceShowTimelineCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="DiscordRichPresenceShowTimelineCheckBox"
+                            AutomationProperties.Name="Показывать таймлайн воспроизведения"
+                            Checked="DiscordRichPresencePrivacyCheckBox_Changed"
+                            Unchecked="DiscordRichPresencePrivacyCheckBox_Changed"
+                            />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=DiscordRichPresenceShowCoverArtCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Показывать обложку трека">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=DiscordRichPresenceShowCoverArtCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Обложка ищется автоматически по названию и исполнителю через открытые каталоги (iTunes, Deezer): берётся только обложка того же исполнителя, а показывается она по прямой HTTPS-ссылке — сам файл с диска в Discord не загружается. Действует только вместе с «Показывать название и исполнителя»." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="DiscordRichPresenceShowCoverArtCheckBox"
+                            AutomationProperties.Name="Показывать обложку трека"
+                            Checked="DiscordRichPresencePrivacyCheckBox_Changed"
+                            Unchecked="DiscordRichPresencePrivacyCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=DiscordRichPresenceShowButtonsCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Показывать кнопку «GitHub»">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=DiscordRichPresenceShowButtonsCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="DiscordRichPresenceShowButtonsCheckBox"
+                            AutomationProperties.Name="Показывать кнопку «GitHub»"
+                            Checked="DiscordRichPresencePrivacyCheckBox_Changed"
+                            Unchecked="DiscordRichPresencePrivacyCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=DiscordRichPresenceShowDownloadButtonCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Показывать кнопку «Скачать Lumisense»">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=DiscordRichPresenceShowDownloadButtonCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="DiscordRichPresenceShowDownloadButtonCheckBox"
+                            AutomationProperties.Name="Показывать кнопку «Скачать Lumisense»"
+                            Checked="DiscordRichPresencePrivacyCheckBox_Changed"
+                            Unchecked="DiscordRichPresencePrivacyCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+    </StackPanel>
+</UserControl>

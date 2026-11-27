@@ -223,7 +223,7 @@ public partial class SettingsWindow
 
     // Обёртка над HWND для System.Windows.Forms.IWin32Window — ColorDialog просит именно
     // этот интерфейс в качестве owner, а не голый IntPtr.
-    private sealed class Wpf32Window : System.Windows.Forms.IWin32Window
+    internal sealed class Wpf32Window : System.Windows.Forms.IWin32Window
     {
         public Wpf32Window(nint handle) => Handle = handle;
         public nint Handle { get; }

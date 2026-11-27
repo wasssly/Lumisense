@@ -1,24 +1,41 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Net.Http;
-using System.Globalization;
-using System.Linq;
 using System.Windows;
-using System.Windows.Controls.Primitives;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
-using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
 using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
-public partial class SettingsWindow
+// Создаётся при первом показе страницы (см. SettingsWindow.EnsurePageBuilt).
+public sealed partial class NotificationsSettingsPage : System.Windows.Controls.UserControl, ILazySettingsPage
 {
+    private readonly Window _window;
+    private readonly AppSettings _settings;
+    private readonly ISettingsHost _owner;
+
+    // Глушит Changed-обработчики, пока значения читаются из настроек.
+    private bool _isInitializing = true;
+
+    internal NotificationsSettingsPage(Window window, AppSettings settings, ISettingsHost owner)
+    {
+        _window = window;
+        _settings = settings;
+        _owner = owner;
+
+        // StaticResource разбирается до того, как элементы попадут в дерево окна, поэтому ресурсы окна подключаются заранее.
+        Resources.MergedDictionaries.Add(window.Resources);
+        InitializeComponent();
+
+        TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
+        InitializeToastPolicy();
+        InitializeToastPositionAndSize();
+        RefreshMonitorCombo();
+        _isInitializing = false;
+    }
+
+    public void MoveContentTo(System.Windows.Controls.Panel host) => LazySettingsPage.MoveChildren(PageNotifications, host);
+
+    public FrameworkElement? FindElement(string name) => FindName(name) as FrameworkElement;
+
     private void TrackChangeToastCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -88,39 +105,14 @@ public partial class SettingsWindow
         UpdateToastWidthValueText();
     }
 
-    // Мониторы собираем при каждом открытии: состав экранов мог измениться, а окно всё равно создаётся заново
-    // (MainWindow.ShowSettingsWindow), так что кэш не нужен.
-    private void InitializeToastMonitorCombo() =>
-        FillMonitorCombo(ToastMonitorCombo, _settings.TrackChangeToastMonitor, "Автоматически (тот же монитор, что и окно плеера)");
-
-    private void InitializeIslandMonitorCombo() =>
-        FillMonitorCombo(IslandMonitorCombo, _settings.IslandMonitor, "Основной монитор");
-
-    private void FillMonitorCombo(System.Windows.Controls.ComboBox combo, string savedMonitor, string autoText)
+    // Мониторы пересобираются при каждом открытии и смене языка: состав экранов мог измениться.
+    public void RefreshMonitorCombo()
     {
-        // Items.Clear и SelectedItem вызывают SelectionChanged: при смене языка выбранный DeviceName должен остаться
-        // настройкой, а не временно стать пустым «Автоматически».
         bool wasInitializing = _isInitializing;
         _isInitializing = true;
         try
         {
-            combo.Items.Clear();
-
-            var autoItem = new System.Windows.Controls.ComboBoxItem { Content = LocalizationService.Translate(autoText), Tag = "" };
-            combo.Items.Add(autoItem);
-
-            var screens = System.Windows.Forms.Screen.AllScreens;
-            for (int i = 0; i < screens.Length; i++)
-            {
-                var s = screens[i];
-                string label = LocalizationService.Translate($"Монитор {i + 1} — {s.Bounds.Width}×{s.Bounds.Height}") +
-                    (s.Primary ? LocalizationService.Translate(" (основной)") : "");
-                combo.Items.Add(new System.Windows.Controls.ComboBoxItem { Content = label, Tag = s.DeviceName });
-            }
-
-            var selected = combo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
-                .FirstOrDefault(i => (string)i.Tag == savedMonitor);
-            combo.SelectedItem = selected ?? autoItem;
+            SettingsMonitorCombo.Fill(ToastMonitorCombo, _settings.TrackChangeToastMonitor, "Автоматически (тот же монитор, что и окно плеера)");
         }
         finally
         {
@@ -160,10 +152,10 @@ public partial class SettingsWindow
             ToastPosBottomCenterRadio.IsChecked = false;
             ToastPosBottomRightRadio.IsChecked = false;
             ToastCustomPositionText.Visibility = Visibility.Visible;
-            InitializeToastMonitorCombo();
+            RefreshMonitorCombo();
         }
 
-        if (IsLoaded) Activate();
+        if (_window.IsLoaded) _window.Activate();
     }
 
     private void ToastSizeRadio_Changed(object sender, RoutedEventArgs e)
@@ -259,8 +251,8 @@ public partial class SettingsWindow
             FullOpen = true
         };
 
-        var handle = new System.Windows.Interop.WindowInteropHelper(this).Handle;
-        if (dialog.ShowDialog(new Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
+        var handle = new System.Windows.Interop.WindowInteropHelper(_window).Handle;
+        if (dialog.ShowDialog(new SettingsWindow.Wpf32Window(handle)) != System.Windows.Forms.DialogResult.OK) return;
 
         var picked = dialog.Color;
         _settings.TrackChangeToastColorHex = $"#{picked.R:X2}{picked.G:X2}{picked.B:X2}";
@@ -288,4 +280,6 @@ public partial class SettingsWindow
     {
         ToastWidthValueText.Text = $"{(int)Math.Round(ToastWidthSlider.Value)} px";
     }
+
+    private void ToastPreviewButton_Click(object sender, RoutedEventArgs e) => _owner.PreviewTrackChangeToast();
 }

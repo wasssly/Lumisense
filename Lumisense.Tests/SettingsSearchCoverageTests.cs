@@ -27,7 +27,7 @@ public sealed partial class SettingsSearchCoverageTests
         "Показать пример", "Сохранить как…",
     ];
 
-    [GeneratedRegex("""^\s*Add\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"(?:[^"\\]|\\.)*"\s*,\s*"[A-Za-z]+"\s*,\s*([A-Za-z0-9_]+)\s*,\s*"((?:[^"\\]|\\.)*)"\s*\);""", RegexOptions.Multiline)]
+    [GeneratedRegex("""^\s*Add(?:Lazy)?\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"(?:[^"\\]|\\.)*"\s*,\s*"[A-Za-z]+"\s*,\s*"?([A-Za-z0-9_]+)"?\s*,\s*"((?:[^"\\]|\\.)*)"\s*\);""", RegexOptions.Multiline)]
     private static partial Regex IndexEntryRegex();
 
     [GeneratedRegex("[а-яёa-z]{4,}")]
@@ -52,11 +52,14 @@ public sealed partial class SettingsSearchCoverageTests
             .Select(entry => $"{entry.Label} {LocalizationService.ToEnglish(entry.Label)} {entry.Keywords}".ToLowerInvariant())
             .ToArray();
 
-        XDocument document = XDocument.Load(xamlPath);
+        // Ленивые страницы лежат в отдельных файлах: их элементы нужно проверять так же, как остальные.
+        XElement[] elements = new[] { xamlPath, AppFile("HotkeysSettingsPage.xaml"), AppFile("ProfileSettingsPage.xaml"), AppFile("NotificationsSettingsPage.xaml"), AppFile("EqualizerSettingsPage.xaml"), AppFile("IntegrationsSettingsPage.xaml"), AppFile("AboutSettingsPage.xaml") }
+            .SelectMany(path => XDocument.Load(path).Descendants())
+            .ToArray();
         var unreachable = new SortedSet<string>(StringComparer.Ordinal);
         int checkedControls = 0;
 
-        foreach (XElement page in document.Descendants().Where(element => Pages.Contains((string?)element.Attribute(Xaml + "Name"))))
+        foreach (XElement page in elements.Where(element => Pages.Contains((string?)element.Attribute(Xaml + "Name"))))
         {
             foreach (XElement control in page.Descendants().Where(element => ControlKinds.Contains(element.Name.LocalName)))
             {

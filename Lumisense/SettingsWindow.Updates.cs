@@ -19,13 +19,6 @@ namespace Lumisense;
 
 public partial class SettingsWindow
 {
-    // Версия в карточке «О плеере» — из assembly metadata (как у UpdateChecker и в release workflow), а не из changelog.
-    private void RefreshAppVersionText()
-    {
-        AppVersionText.Text = LocalizationService.FormatKey(
-            LocalizationKey.ApplicationVersion, UpdateChecker.GetCurrentVersion());
-    }
-
     private async Task RefreshVelopackBasePackagePlanAsync()
     {
         _basePackageCts?.Cancel();

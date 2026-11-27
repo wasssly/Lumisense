@@ -19,8 +19,6 @@ namespace Lumisense;
 
 public partial class SettingsWindow : FluentWindow
 {
-    private enum HotkeyTarget { None, PlayPause, Next, Previous, Stop, VolumeUp, VolumeDown, Mute, Shuffle, Repeat, ToggleFavorite, ToggleLyrics, ToggleMiniPlayer, DeleteTrack, SeekForward, SeekBackward }
-
     private readonly AppSettings _settings;
     private readonly ISettingsHost _owner;
     private bool _isInitializing = true;
@@ -38,17 +36,9 @@ public partial class SettingsWindow : FluentWindow
     private bool _isLegacyInnoCleanupRunning;
     private string? _legacyInnoCleanupStatusKey;
 
-    // См. LoadDeveloperAvatar — держит BitmapImage живым на время асинхронной загрузки, чтобы
-    // его не собрал GC до того, как скачивание завершится.
-    private BitmapImage? _developerAvatarBitmap;
-    private bool _developerAvatarRequested;
-
-    // Пока не None — окно "слушает" следующее нажатие клавиш и запишет его как новую комбинацию
-    private HotkeyTarget _recordingTarget = HotkeyTarget.None;
-
     // Индекс поиска — ручной перечень опций: подпись, страница, ссылка на элемент (для прокрутки и подсветки)
     // и ключевые слова; разметка не читается.
-    private sealed record SettingsSearchEntry(string Label, string PageTitle, string PageKey, string Keywords, FrameworkElement Target)
+    private sealed record SettingsSearchEntry(string Label, string PageTitle, string PageKey, string Keywords, FrameworkElement? Target, string? TargetName = null)
     {
         // Результаты строятся при вводе запроса, уже после прохода локализации, поэтому подписи переводятся здесь.
         public string DisplayLabel => LocalizationService.Translate(Label);
@@ -258,10 +248,6 @@ public partial class SettingsWindow : FluentWindow
         RaisePlaybackPriorityCheckBox.IsChecked = _settings.RaisePlaybackPriority;
         TrackLoadTraceCheckBox.IsChecked = _settings.TrackLoadTraceEnabled;
         NeverAutoPlayLastTrackOnStartupCheckBox.IsChecked = _settings.NeverAutoPlayLastTrackOnStartup;
-        TrackChangeToastCheckBox.IsChecked = _settings.ShowTrackChangeToast;
-        InitializeToastPolicy();
-        InitializeToastPositionAndSize();
-        InitializeToastMonitorCombo();
         MiniStyleIslandRadio.IsChecked = _settings.MiniPlayerStyle == "Island";
         MiniStyleClassicRadio.IsChecked = !MiniStyleIslandRadio.IsChecked.GetValueOrDefault();
         IslandInactiveNote.Visibility = MiniStyleIslandRadio.IsChecked == true ? Visibility.Collapsed : Visibility.Visible;
@@ -399,29 +385,12 @@ public partial class SettingsWindow : FluentWindow
         BadgePartSampleRateCheckBox.IsChecked = _settings.TrackStateBadgeShowSampleRate;
         BadgePartFileSizeCheckBox.IsChecked = _settings.TrackStateBadgeShowFileSize;
         BadgeCustomPartsPanel.Visibility = _settings.TrackStateBadgeMode == "Custom" ? Visibility.Visible : Visibility.Collapsed;
-        DiscordRichPresenceEnabledCheckBox.IsChecked = _settings.DiscordRichPresenceEnabled;
-        DiscordRichPresenceShowTrackInfoCheckBox.IsChecked = _settings.DiscordRichPresenceShowTrackInfo;
-        DiscordRichPresenceShowTimelineCheckBox.IsChecked = _settings.DiscordRichPresenceShowTimeline;
-        DiscordRichPresenceShowCoverArtCheckBox.IsChecked = _settings.DiscordRichPresenceShowCoverArt;
-        DiscordRichPresenceShowButtonsCheckBox.IsChecked = _settings.DiscordRichPresenceShowButtons;
-        DiscordRichPresenceShowDownloadButtonCheckBox.IsChecked = _settings.DiscordRichPresenceShowDownloadButton;
-        UpdateDiscordRichPresenceConnectionStatus();
         bool carousel = _owner.IsAlbumArtTransitionEnabled && _settings.AlbumArtTransitionStyle == "Carousel";
         AlbumArtTransitionStyleCarouselRadio.IsChecked = carousel;
         AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled && !carousel;
         AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
         AlbumArtGesturesCheckBox.IsChecked = _settings.AlbumArtGesturesEnabled;
 
-        EqualizerEnabledCheckBox.IsChecked = _owner.IsEqualizerEnabled;
-        EqualizerAutoHeadroomCheckBox.IsChecked = _owner.IsEqualizerAutoHeadroom;
-        DeviceSoundProfilesCheckBox.IsChecked = _owner.IsDeviceSoundProfilesEnabled;
-        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
-        {
-            double gain = _owner.GetEqualizerBandGain(band);
-            GetEqBandSlider(band).Value = gain;
-            GetEqBandValueText(band).Text = FormatEqGain(gain);
-        }
-        RefreshEqualizerPresetsList();
 
         // Velopack берёт пакеты из своего feed на GitHub и зеркала не использует: выбор источника там ни на что не влиял бы.
         if (UpdateMigrationGuard.IsVelopackManagedInstall())
@@ -461,21 +430,6 @@ public partial class SettingsWindow : FluentWindow
         ModernSlotsGrid.IsEnabled = _settings.ModernShowSideButtons;
         SelectModernSlotCombos(MainWindow.NormalizeModernSlots(_settings.ModernControlSlots));
 
-        RefreshHotkeyButtonText(HotkeyTarget.PlayPause);
-        RefreshHotkeyButtonText(HotkeyTarget.Next);
-        RefreshHotkeyButtonText(HotkeyTarget.Previous);
-        RefreshHotkeyButtonText(HotkeyTarget.Stop);
-        RefreshHotkeyButtonText(HotkeyTarget.VolumeUp);
-        RefreshHotkeyButtonText(HotkeyTarget.VolumeDown);
-        RefreshHotkeyButtonText(HotkeyTarget.Mute);
-        RefreshHotkeyButtonText(HotkeyTarget.Shuffle);
-        RefreshHotkeyButtonText(HotkeyTarget.Repeat);
-        RefreshHotkeyButtonText(HotkeyTarget.ToggleFavorite);
-        RefreshHotkeyButtonText(HotkeyTarget.ToggleLyrics);
-        RefreshHotkeyButtonText(HotkeyTarget.ToggleMiniPlayer);
-        RefreshHotkeyButtonText(HotkeyTarget.DeleteTrack);
-        RefreshHotkeyButtonText(HotkeyTarget.SeekForward);
-        RefreshHotkeyButtonText(HotkeyTarget.SeekBackward);
 
         SearchResultsList.ItemsSource = _searchResults;
         foreach (var (menu, panel) in ContextMenuOrderPanels())
@@ -486,9 +440,7 @@ public partial class SettingsWindow : FluentWindow
 
         BuildSearchIndex();
 
-        RefreshAppVersionText();
         RefreshLyricsCacheInfo();
-        RefreshResetRecoveryButton();
         RefreshUpdateSourceProbePresentation();
         RefreshVelopackBasePackagePresentation();
         RefreshLegacyInnoCleanupPresentation();

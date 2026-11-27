@@ -203,4 +203,18 @@ public partial class SettingsWindow
         _settings.MiniPlayerArtistMarquee = MiniArtistMarqueeCheckBox.IsChecked == true;
         _owner.ApplyMiniPlayerInfoModeLive();
     }
+
+    private void InitializeIslandMonitorCombo()
+    {
+        bool wasInitializing = _isInitializing;
+        _isInitializing = true;
+        try
+        {
+            SettingsMonitorCombo.Fill(IslandMonitorCombo, _settings.IslandMonitor, "Основной монитор");
+        }
+        finally
+        {
+            _isInitializing = wasInitializing;
+        }
+    }
 }

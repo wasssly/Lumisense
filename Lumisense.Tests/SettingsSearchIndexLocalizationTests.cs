@@ -9,7 +9,7 @@ namespace Lumisense.Tests;
 // русской подписи должен быть перевод в словаре, иначе в английском интерфейсе результаты остаются русскими.
 public sealed partial class SettingsSearchIndexLocalizationTests
 {
-    [GeneratedRegex("""^\s*Add\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"[A-Za-z]+"\s*,""", RegexOptions.Multiline)]
+    [GeneratedRegex("""^\s*Add(?:Lazy)?\(\s*"((?:[^"\\]|\\.)*)"\s*,\s*"((?:[^"\\]|\\.)*)"\s*,\s*"[A-Za-z]+"\s*,""", RegexOptions.Multiline)]
     private static partial Regex SearchEntryRegex();
 
     private static string SourceFile([CallerFilePath] string testFile = "") =>

@@ -1,0 +1,239 @@
+<UserControl x:Class="Lumisense.EqualizerSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Lumisense">
+    <StackPanel x:Name="PageEqualizer">
+        <TextBlock Text="Эквалайзер" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Text="Точная настройка звучания и сохранённые пресеты." Style="{StaticResource PageDescriptionStyle}" />
+
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=EqualizerEnabledCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Включить эквалайзер">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=EqualizerEnabledCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="10 полос графического эквалайзера — регулировки применяются сразу же, без перезапуска трека." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="EqualizerEnabledCheckBox" AutomationProperties.Name="Включить эквалайзер"
+                            Checked="EqualizerEnabledCheckBox_Changed" Unchecked="EqualizerEnabledCheckBox_Changed"
+                            />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=DeviceSoundProfilesCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Запоминать звук для каждого устройства">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=DeviceSoundProfilesCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Эквалайзер и баланс сохраняются отдельно для наушников, колонок и других устройств и подставляются при переключении выхода. Новое устройство начинает с текущих значений." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="DeviceSoundProfilesCheckBox"
+                            AutomationProperties.Name="Запоминать звук для каждого устройства"
+                            Checked="DeviceSoundProfilesCheckBox_Changed"
+                            Unchecked="DeviceSoundProfilesCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=EqualizerAutoHeadroomCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Авто-преамп (защита от перегрузки)">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=EqualizerAutoHeadroomCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Снижает общую громкость на величину максимального подъёма эквалайзера, чтобы подъёмы не приводили к искажениям. Поэтому если поднять все полосы на одинаковую величину, громкость не изменится: общий подъём компенсируется. Выключите, если нужна именно большая громкость." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="EqualizerAutoHeadroomCheckBox"
+                            AutomationProperties.Name="Авто-преамп (защита от перегрузки)"
+                            Checked="EqualizerAutoHeadroomCheckBox_Changed"
+                            Unchecked="EqualizerAutoHeadroomCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <!-- 10 одинаковых колонок (дБ сверху, вертикальный слайдер, частота снизу) с одним обработчиком EqualizerBandSlider_ValueChanged;
+                                 номер полосы — в Tag, а не десять отдельных методов. -->
+                            <!-- Width="46" TextAlignment="Center" у EqBandXValueText: без фиксированной ширины StackPanel пересчитывала бы auto-ширину под текст
+                                 разной длины ("0 дБ", "-3.5 дБ"), и слайдер дёргался бы вбок во время перетаскивания. -->
+                            <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand0ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand0Slider" AutomationProperties.Name="Эквалайзер, 31 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="0" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="31" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand1ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand1Slider" AutomationProperties.Name="Эквалайзер, 62 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="1" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="62" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand2ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand2Slider" AutomationProperties.Name="Эквалайзер, 125 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="2" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="125" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand3ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand3Slider" AutomationProperties.Name="Эквалайзер, 250 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="3" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="250" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="4" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand4ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand4Slider" AutomationProperties.Name="Эквалайзер, 500 Гц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="4" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="500" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="5" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand5ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand5Slider" AutomationProperties.Name="Эквалайзер, 1 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="5" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="1к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="6" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand6ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand6Slider" AutomationProperties.Name="Эквалайзер, 2 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="6" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="2к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="7" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand7ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand7Slider" AutomationProperties.Name="Эквалайзер, 4 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="7" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="4к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="8" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand8ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand8Slider" AutomationProperties.Name="Эквалайзер, 8 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="8" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="8к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="9" HorizontalAlignment="Center">
+                                <TextBlock x:Name="EqBand9ValueText" Text="0 дБ" FontSize="11" Opacity="0.6" Width="46" TextAlignment="Center" Margin="0,0,0,4" />
+                                <Slider x:Name="EqBand9Slider" AutomationProperties.Name="Эквалайзер, 16 кГц" Style="{StaticResource SettingsEqualizerSliderStyle}" Tag="9" Orientation="Vertical" Height="140"
+                                        Minimum="-12" Maximum="12" TickFrequency="3" SmallChange="0.5"
+                                        ValueChanged="EqualizerBandSlider_ValueChanged"
+                                        MouseWheel="EqualizerBandSlider_MouseWheel" />
+                                <TextBlock Text="16к" FontSize="11" Opacity="0.6" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=EqualizerResetButton}">
+                        <Button x:Name="EqualizerResetButton" Content="Сбросить всё" HorizontalAlignment="Left"
+                        Margin="0,0,0,0" Click="EqualizerResetButton_Click" />
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <TextBlock Text="Пресеты" Style="{StaticResource SettingsFieldLabelStyle}" />
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <ComboBox x:Name="EqualizerPresetComboBox" AutomationProperties.Name="Пресеты эквалайзера" Grid.Column="0"
+                                      DisplayMemberPath="Name" Margin="0,0,8,0"
+                                      SelectionChanged="EqualizerPresetComboBox_SelectionChanged" />
+                            <Button x:Name="EqualizerApplyPresetButton" Grid.Column="1" Content="Применить"
+                                    Click="EqualizerApplyPresetButton_Click" />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <WrapPanel>
+                            <Button x:Name="EqualizerSavePresetButton" Content="Сохранить как пресет…"
+                                    Margin="0,0,8,8" Click="EqualizerSavePresetButton_Click" />
+                            <Button x:Name="EqualizerDeletePresetButton" Content="Удалить"
+                                    Margin="0,0,8,8" Click="EqualizerDeletePresetButton_Click" />
+                            <Button x:Name="EqualizerExportPresetButton" Content="Поделиться…"
+                                    ToolTip="Сохранить выбранный пресет в файл, чтобы переслать его кому-то ещё"
+                                    Margin="0,0,8,8" Click="EqualizerExportPresetButton_Click" />
+                            <Button x:Name="EqualizerImportPresetButton" Content="Импортировать…"
+                                    ToolTip="Добавить пресет из файла, полученного от кого-то ещё"
+                                    Margin="0,0,8,8" Click="EqualizerImportPresetButton_Click" />
+                        </WrapPanel>
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Сохрани текущие настройки полос как пресет, переключайся между ними или поделись файлом пресета с кем-то ещё." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,297 @@
+<UserControl x:Class="Lumisense.HotkeysSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Lumisense">
+    <StackPanel x:Name="PageHotkeys">
+        <TextBlock Text="Горячие клавиши" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Text="Управляйте воспроизведением из любого приложения." Style="{StaticResource PageDescriptionStyle}" />
+
+        <StackPanel Margin="0,0,0,24">
+            <TextBlock Text="Сочетания клавиш" Style="{StaticResource SettingsGroupTitleStyle}" />
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Пуск / пауза" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyPlayPauseButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyPlayPauseButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyPlayPauseClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Следующий трек" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyNextButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyNextButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyNextClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Предыдущий трек" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyPreviousButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyPreviousButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyPreviousClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Стоп" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyStopButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyStopButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyStopClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Громкость +" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyVolumeUpButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyVolumeUpButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyVolumeUpClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Громкость -" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyVolumeDownButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyVolumeDownButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyVolumeDownClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Без звука" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyMuteButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyMuteButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyMuteClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Перемешать" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyShuffleButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyShuffleButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyShuffleClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Режим повтора" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyRepeatButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyRepeatButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyRepeatClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Избранное: текущий трек" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyToggleFavoriteButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleFavoriteButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyToggleFavoriteClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Показать / скрыть текст" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyToggleLyricsButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleLyricsButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyToggleLyricsClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Переключить мини-плеер" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyToggleMiniPlayerButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyToggleMiniPlayerButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyToggleMiniPlayerClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Перемотка вперёд (5 сек)" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeySeekForwardButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeySeekForwardButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeySeekForwardClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Перемотка назад (5 сек)" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeySeekBackwardButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeySeekBackwardButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeySeekBackwardClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Grid.Column="0" Text="Удалить трек с диска" VerticalAlignment="Center" />
+                            <ui:Button Grid.Column="1" x:Name="HotkeyDeleteTrackButton" Appearance="Secondary"
+                                       MinWidth="140" Margin="8,0,4,0" Click="HotkeyDeleteTrackButton_Click" />
+                            <ui:Button Grid.Column="2" Appearance="Secondary" Width="28" Height="28" Padding="0"
+                                       Click="HotkeyDeleteTrackClearButton_Click" ToolTip="Очистить" AutomationProperties.Name="{Binding RelativeSource={RelativeSource Self}, Path=ToolTip}">
+                                       <ui:Button.Icon>
+                                           <local:SvgPathIcon Icon="IconDismiss" />
+                                       </ui:Button.Icon>
+                                   </ui:Button>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=HotkeysResetAllButton}">
+                        <ui:Button x:Name="HotkeysResetAllButton" Content="Сбросить все горячие клавиши" Appearance="Secondary"
+                        Margin="0,0,0,0" Click="HotkeysResetAllButton_Click" />
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Работают из любого окна, даже когда плеер свёрнут. Нажмите на комбинацию и введите новую — Esc отменяет запись." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

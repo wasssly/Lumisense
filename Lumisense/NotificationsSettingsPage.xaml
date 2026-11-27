@@ -1,0 +1,359 @@
+<UserControl x:Class="Lumisense.NotificationsSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Lumisense">
+    <StackPanel x:Name="PageNotifications">
+        <TextBlock Text="Уведомления" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Text="Всплывающие карточки о смене трека." Style="{StaticResource PageDescriptionStyle}" />
+
+        <!-- См. AppSettings.ShowTrackChangeToast и TrackChangeToastWindow. -->
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=TrackChangeToastCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Уведомление о смене трека">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=TrackChangeToastCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Карточка с обложкой и названием появляется на несколько секунд и скрывается сама." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="TrackChangeToastCheckBox" AutomationProperties.Name="Уведомление о смене трека"
+                            Checked="TrackChangeToastCheckBox_Changed" Unchecked="TrackChangeToastCheckBox_Changed"
+                            />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,8" Text="Когда показывать" Style="{StaticResource SettingsFieldLabelStyle}" />
+                            <StackPanel>
+                                <RadioButton x:Name="ToastPolicyEveryTrackChangeRadio" Content="При каждой смене трека"
+                                             GroupName="ToastPolicy" Checked="ToastPolicyRadio_Changed" />
+                                <RadioButton x:Name="ToastPolicyPlaybackOnlyRadio" Content="Только при начале воспроизведения"
+                                             GroupName="ToastPolicy" Checked="ToastPolicyRadio_Changed" />
+                                <RadioButton x:Name="ToastPolicyManualOnlyRadio" Content="Только при моём выборе"
+                                             GroupName="ToastPolicy" Checked="ToastPolicyRadio_Changed" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Последний вариант не показывает карточку при автопереходе, восстановлении сессии или обновлении трека после редактирования." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- См. AppSettings.TrackChangeToastPosition/Monitor/Width. ToastMonitorCombo заполняется в code-behind (InitializeSettings) —
+             в разметке известен только первый пункт "Автоматически". -->
+        <StackPanel Margin="0,0,0,24">
+            <TextBlock Text="Расположение уведомления" Style="{StaticResource SettingsGroupTitleStyle}" />
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <Grid Margin="0,0,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,18,0">
+                                <RadioButton x:Name="ToastPosTopLeftRadio" Content="Сверху слева"
+                                             GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                <RadioButton x:Name="ToastPosTopCenterRadio" Content="Сверху по центру"
+                                             GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                <RadioButton x:Name="ToastPosTopRightRadio" Content="Сверху справа"
+                                             GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1">
+                                <RadioButton x:Name="ToastPosBottomLeftRadio" Content="Снизу слева"
+                                             GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                <RadioButton x:Name="ToastPosBottomCenterRadio" Content="Снизу по центру"
+                                             GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                                <RadioButton x:Name="ToastPosBottomRightRadio" Content="Снизу справа"
+                                             GroupName="ToastPosition" Checked="ToastPositionRadio_Changed" />
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <StackPanel Margin="0,0,0,0">
+                            <ui:Button x:Name="ToastPickPositionButton" Content="Выбрать своё положение…" Appearance="Secondary"
+                                       HorizontalAlignment="Left" Margin="0,0,0,8"
+                                       Click="ToastPickPositionButton_Click" />
+                            <TextBlock Text="Перетащите карточку в нужное место экрана и подтвердите двойным кликом или клавишей Enter; Esc — отмена."
+                                       Style="{StaticResource SettingsHelperTextStyle}" />
+                            <TextBlock x:Name="ToastCustomPositionText" Text="Сейчас выбрано своё положение."
+                                       Style="{StaticResource SettingsHelperTextStyle}" Margin="0,6,0,0"
+                                       Visibility="Collapsed" />
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,8" Text="Размер" Style="{StaticResource SettingsFieldLabelStyle}" />
+                            <WrapPanel Margin="0,0,0,0">
+                                <RadioButton x:Name="ToastSizeSmallRadio" Content="Маленький"
+                                             GroupName="ToastSize" Checked="ToastSizeRadio_Changed"
+                                             Margin="0,0,16,0" VerticalAlignment="Center" />
+                                <RadioButton x:Name="ToastSizeMediumRadio" Content="Средний"
+                                             GroupName="ToastSize" Checked="ToastSizeRadio_Changed"
+                                             Margin="0,0,16,0" VerticalAlignment="Center" />
+                                <RadioButton x:Name="ToastSizeLargeRadio" Content="Большой"
+                                             GroupName="ToastSize" Checked="ToastSizeRadio_Changed"
+                                             Margin="0" VerticalAlignment="Center" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,8" Text="Обложка" Style="{StaticResource SettingsFieldLabelStyle}" />
+                            <WrapPanel Margin="0,0,0,0">
+                                <RadioButton x:Name="ToastArtLeftRadio" Content="Слева"
+                                             GroupName="ToastArtSide" Checked="ToastArtSideRadio_Changed"
+                                             Margin="0,0,16,0" VerticalAlignment="Center" />
+                                <RadioButton x:Name="ToastArtRightRadio" Content="Справа"
+                                             GroupName="ToastArtSide" Checked="ToastArtSideRadio_Changed"
+                                             Margin="0" VerticalAlignment="Center" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}">
+                        <StackPanel>
+                            <TextBlock Margin="0,0,0,8" Text="Выравнивание текста" Style="{StaticResource SettingsFieldLabelStyle}" />
+                            <WrapPanel Margin="0,0,0,0">
+                                <RadioButton x:Name="ToastTextLeftRadio" Content="Слева"
+                                             GroupName="ToastTextAlignment" Checked="ToastTextAlignmentRadio_Changed"
+                                             Margin="0,0,16,0" VerticalAlignment="Center" />
+                                <RadioButton x:Name="ToastTextCenterRadio" Content="По центру"
+                                             GroupName="ToastTextAlignment" Checked="ToastTextAlignmentRadio_Changed"
+                                             Margin="0,0,16,0" VerticalAlignment="Center" />
+                                <RadioButton x:Name="ToastTextRightRadio" Content="Справа"
+                                             GroupName="ToastTextAlignment" Checked="ToastTextAlignmentRadio_Changed"
+                                             Margin="0" VerticalAlignment="Center" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Выравнивание — в свободном месте карточки рядом с обложкой." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <StackPanel x:Name="ToastArtNextToTextPanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=ToastArtNextToTextCheckBox}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Прижать обложку к тексту">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=ToastArtNextToTextCheckBox}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Обложка и текст располагаются вместе по центру карточки, обложка стоит вплотную к названию." TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="ToastArtNextToTextCheckBox" AutomationProperties.Name="Прижать обложку к тексту"
+                                Checked="ToastArtNextToTextCheckBox_Changed" Unchecked="ToastArtNextToTextCheckBox_Changed" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ToastWidthSlider}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Ширина" Style="{StaticResource SettingsRowTitleStyle}" />
+                            </StackPanel>
+                            <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ToastWidthValueText" Text="300 px"
+                                Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ToastWidthSlider" AutomationProperties.Name="Ширина уведомления о смене трека" Style="{StaticResource SettingsAccentSliderStyle}"
+                                Minimum="220" Maximum="420" Value="300"
+                                TickFrequency="10" local:SliderMilestoneMarkers.IsEnabled="True"
+                                local:SliderMilestoneMarkers.MarkerFrequency="50"
+                                IsSnapToTickEnabled="True"
+                                ValueChanged="ToastWidthSlider_ValueChanged" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ToastOpacitySlider}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Прозрачность фона" Style="{StaticResource SettingsRowTitleStyle}" />
+                            </StackPanel>
+                            <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ToastOpacityValueText" Text="100%"
+                                Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ToastOpacitySlider" AutomationProperties.Name="Прозрачность фона уведомления" Style="{StaticResource SettingsAccentSliderStyle}"
+                                Minimum="30" Maximum="100" Value="100" TickFrequency="5"
+                                IsSnapToTickEnabled="True"
+                                ValueChanged="ToastOpacitySlider_ValueChanged" />
+                            </Grid>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ToastMonitorCombo}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Монитор">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=ToastMonitorCombo}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Автоматический выбор использует экран, на котором находится окно плеера." />
+                            </StackPanel>
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ToastMonitorCombo" AutomationProperties.Name="Монитор уведомления" SelectionChanged="ToastMonitorCombo_SelectionChanged" MinWidth="220" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- См. AppSettings.TrackChangeToastColorMode/Hex/Strength и ToastColorCalculator. -->
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Цвет карточки">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=ToastColorModeRadioCombo}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel x:Name="ToastColorModeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                <ComboBox x:Name="ToastColorModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Цвет карточки" MinWidth="220" HorizontalAlignment="Right">
+                                    <ComboBoxItem Content="Стандартный (по теме, по умолчанию)" Tag="ToastColorDefaultRadio" />
+                                    <ComboBoxItem Content="От обложки текущего трека" Tag="ToastColorCoverRadio" />
+                                    <ComboBoxItem Content="Акцентный цвет приложения" Tag="ToastColorAccentRadio" />
+                                    <ComboBoxItem Content="Свой цвет" Tag="ToastColorCustomRadio" />
+                                </ComboBox>
+                                <StackPanel Visibility="Collapsed">
+                                    <RadioButton x:Name="ToastColorDefaultRadio" Content="Стандартный (по теме, по умолчанию)"
+                                    GroupName="ToastColorMode" Checked="ToastColorModeRadio_Changed" />
+                                    <RadioButton x:Name="ToastColorCoverRadio" Content="От обложки текущего трека"
+                                    GroupName="ToastColorMode" Checked="ToastColorModeRadio_Changed" />
+                                    <RadioButton x:Name="ToastColorAccentRadio" Content="Акцентный цвет приложения"
+                                    GroupName="ToastColorMode" Checked="ToastColorModeRadio_Changed" />
+                                    <RadioButton x:Name="ToastColorCustomRadio" Content="Свой цвет"
+                                    GroupName="ToastColorMode" Checked="ToastColorModeRadio_Changed" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ToastColorCustomPanel}">
+                        <StackPanel x:Name="ToastColorCustomPanel" Orientation="Horizontal" Margin="28,0,0,0" Visibility="Collapsed">
+                            <Border x:Name="ToastColorSwatch" Width="28" Height="28" CornerRadius="6"
+                                    BorderThickness="1" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}" />
+                            <ui:Button x:Name="ToastColorPickButton" Content="Выбрать цвет…" Appearance="Secondary"
+                                       Margin="12,0,0,0" Click="ToastColorPickButton_Click" />
+                        </StackPanel>
+                    </Border>
+                    <StackPanel x:Name="ToastColorStrengthPanel" Visibility="Collapsed">
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ToastColorStrengthSlider}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Сила окрашивания" Style="{StaticResource SettingsRowTitleStyle}" />
+                                </StackPanel>
+                                <Grid Grid.Column="1" Width="340" VerticalAlignment="Center">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock MinWidth="48" TextAlignment="Right" Margin="14,0,0,0" Grid.Column="1" x:Name="ToastColorStrengthValueText" Text="70%"
+                                    Opacity="0.6" FontSize="12" VerticalAlignment="Center" />
+                                    <Slider Grid.Column="0" VerticalAlignment="Center" x:Name="ToastColorStrengthSlider" AutomationProperties.Name="Сила окрашивания уведомления" Style="{StaticResource SettingsAccentSliderStyle}"
+                                    Minimum="20" Maximum="100" Value="70" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    ValueChanged="ToastColorStrengthSlider_ValueChanged" />
+                                </Grid>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Цвет обложки берётся у текущего трека в момент показа уведомления. Цвет текста подбирается автоматически, чтобы он читался на любом фоне." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <!-- Предпросмотр: настоящая карточка с текущими настройками (MainWindow.PreviewTrackChangeToast). -->
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=ToastPreviewButton}">
+                        <ui:Button x:Name="ToastPreviewButton" Content="Показать пример уведомления" Appearance="Secondary"
+                        HorizontalAlignment="Left" Click="ToastPreviewButton_Click" />
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Показывает карточку с текущими настройками на выбранном мониторе, как при смене трека." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

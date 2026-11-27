@@ -70,20 +70,4 @@ public partial class SettingsWindow
             && FindName(name) is System.Windows.Controls.RadioButton radio)
             radio.IsChecked = true;
     }
-
-    // Глобальные хоткеи по умолчанию не заданы, поэтому сброс всех — это очистка всех привязок (как кнопка «Очистить» у каждой).
-    private void HotkeysResetAllButton_Click(object sender, RoutedEventArgs e)
-    {
-        CancelRecording();
-
-        foreach (HotkeyTarget target in System.Enum.GetValues<HotkeyTarget>())
-        {
-            if (target == HotkeyTarget.None) continue;
-
-            SetHotkeyBinding(target, new HotkeyBinding());
-            RefreshHotkeyButtonText(target);
-        }
-
-        _owner.ReapplyHotkeys();
-    }
 }

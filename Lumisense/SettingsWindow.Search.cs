@@ -25,6 +25,11 @@ public partial class SettingsWindow
             => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey,
                 $"{label} {LocalizationService.ToEnglish(label)} {extraKeywords}".ToLowerInvariant(), target));
 
+        // Элементы ленивых страниц ещё не существуют при сборке индекса, поэтому ищутся по имени при переходе.
+        void AddLazy(string label, string pageTitle, string pageKey, string targetName, string extraKeywords = "")
+            => _searchIndex.Add(new SettingsSearchEntry(label, pageTitle, pageKey,
+                $"{label} {LocalizationService.ToEnglish(label)} {extraKeywords}".ToLowerInvariant(), null, targetName));
+
         Add("Язык интерфейса", "Оформление", "Appearance", InterfaceLanguageRadioGroup, "язык русский english language locale локализация");
         Add("Тема", "Оформление", "Appearance", ThemeRadioGroup, "тёмная светлая цвет тема оформление dark light");
         Add("Навигация в настройках", "Оформление", "Appearance", NavigationStyleCard, "навигация меню таблетки панель боковая плавающая нижняя разделы названия подписи текст pills sidebar floating navigation labels");
@@ -49,17 +54,17 @@ public partial class SettingsWindow
         Add("Нормализация имён файлов", "Библиотека и файлы", "Library", NormalizePlaylistFileNamesButton, "нормализация имя файл шаблон переименование artist title album track extension rename");
         Add("Действия контекстного меню трека", "Библиотека и файлы", "Library", TrackContextFavoriteCheckBox, "контекстное меню правый клик пкм трек плейлист скрыть отключить действия проводник копировать теги свойства удалить найти файл замена недоступный locate relink missing");
         Add("Найти файл", "Библиотека и файлы", "Library", TrackContextFindFileCheckBox, "контекстное меню заменить недоступный файл путь locate relink missing file");
-        Add("Discord Rich Presence", "Интеграции", "Integrations", DiscordRichPresenceEnabledCheckBox, "discord статус rich presence rpc активность" );
-        Add("Подключить Discord", "Интеграции", "Integrations", ConnectDiscordButton, "discord подключить connection rich presence статус" );
-        Add("Открыть журнал Discord", "Интеграции", "Integrations", OpenDiscordDiagnosticsLogButton, "discord журнал лог диагностика ошибка rich presence" );
-        Add("Приватность Discord: название и исполнитель", "Интеграции", "Integrations", DiscordRichPresenceShowTrackInfoCheckBox, "discord приватность название исполнитель трек" );
-        Add("Приватность Discord: таймлайн", "Интеграции", "Integrations", DiscordRichPresenceShowTimelineCheckBox, "discord приватность время прогресс таймлайн" );
-        Add("Приватность Discord: кнопка GitHub", "Интеграции", "Integrations", DiscordRichPresenceShowButtonsCheckBox, "discord кнопка github ссылки статус button");
-        Add("Приватность Discord: кнопка Скачать Lumisense", "Интеграции", "Integrations", DiscordRichPresenceShowDownloadButtonCheckBox, "discord кнопка скачать download ссылки статус button");
-        Add("Приватность Discord: обложка трека", "Интеграции", "Integrations", DiscordRichPresenceShowCoverArtCheckBox, "discord обложка cover art musicbrainz itunes deezer" );
-        Add("Эквалайзер", "Эквалайзер", "Equalizer", EqualizerEnabledCheckBox, "equalizer эквалайзер частоты полосы бас звук eq");
-        Add("Звук для каждого устройства", "Эквалайзер", "Equalizer", DeviceSoundProfilesCheckBox, "профиль устройство наушники колонки эквалайзер баланс запоминать device profile");
-        Add("Авто-преамп эквалайзера", "Эквалайзер", "Equalizer", EqualizerAutoHeadroomCheckBox, "преамп headroom клиппинг перегрузка громкость эквалайзер eq подъём");
+        AddLazy("Discord Rich Presence", "Интеграции", "Integrations", "DiscordRichPresenceEnabledCheckBox", "discord статус rich presence rpc активность" );
+        AddLazy("Подключить Discord", "Интеграции", "Integrations", "ConnectDiscordButton", "discord подключить connection rich presence статус" );
+        AddLazy("Открыть журнал Discord", "Интеграции", "Integrations", "OpenDiscordDiagnosticsLogButton", "discord журнал лог диагностика ошибка rich presence" );
+        AddLazy("Приватность Discord: название и исполнитель", "Интеграции", "Integrations", "DiscordRichPresenceShowTrackInfoCheckBox", "discord приватность название исполнитель трек" );
+        AddLazy("Приватность Discord: таймлайн", "Интеграции", "Integrations", "DiscordRichPresenceShowTimelineCheckBox", "discord приватность время прогресс таймлайн" );
+        AddLazy("Приватность Discord: кнопка GitHub", "Интеграции", "Integrations", "DiscordRichPresenceShowButtonsCheckBox", "discord кнопка github ссылки статус button");
+        AddLazy("Приватность Discord: кнопка Скачать Lumisense", "Интеграции", "Integrations", "DiscordRichPresenceShowDownloadButtonCheckBox", "discord кнопка скачать download ссылки статус button");
+        AddLazy("Приватность Discord: обложка трека", "Интеграции", "Integrations", "DiscordRichPresenceShowCoverArtCheckBox", "discord обложка cover art musicbrainz itunes deezer" );
+        AddLazy("Эквалайзер", "Эквалайзер", "Equalizer", "EqualizerEnabledCheckBox", "equalizer эквалайзер частоты полосы бас звук eq");
+        AddLazy("Звук для каждого устройства", "Эквалайзер", "Equalizer", "DeviceSoundProfilesCheckBox", "профиль устройство наушники колонки эквалайзер баланс запоминать device profile");
+        AddLazy("Авто-преамп эквалайзера", "Эквалайзер", "Equalizer", "EqualizerAutoHeadroomCheckBox", "преамп headroom клиппинг перегрузка громкость эквалайзер eq подъём");
         Add("Монитор острова", "Остров", "Island", IslandMonitorCombo, "остров монитор экран дисплей island monitor display");
         Add("Настройки острова", "Остров", "Island", IslandCustomCard, "остров круг капсула вид свёрнутого только обложка размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");
         Add("Вид мини-плеера: карточка или остров", "Мини-плеер", "MiniPlayer", MiniStyleCard, "остров капсула dynamic island монитор экран вид мини плеер island monitor style");
@@ -74,22 +79,22 @@ public partial class SettingsWindow
         Add("Прогресс вокруг обложки (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniShowArtworkProgressCheckBox, "контур скруглённый квадрат прогресс обложка арт мини плеер artwork outline");
         Add("Толщина контура вокруг обложки", "Мини-плеер", "MiniPlayer", MiniArtworkProgressThicknessSlider, "толщина линия контур прогресс обложка мини плеер artwork outline thickness");
         Add("Цвет контура прогресса (мини-плеер)", "Мини-плеер", "MiniPlayer", MiniArtworkProgressColorModeRadioGroup, "акцент фиксированный цвет палитра контур прогресс обложка мини плеер artwork outline color");
-        Add("Пуск / пауза", "Горячие клавиши", "Hotkeys", HotkeyPlayPauseButton, "play pause горячая клавиша");
-        Add("Следующий трек", "Горячие клавиши", "Hotkeys", HotkeyNextButton, "next горячая клавиша");
-        Add("Предыдущий трек", "Горячие клавиши", "Hotkeys", HotkeyPreviousButton, "previous горячая клавиша");
-        Add("Стоп", "Горячие клавиши", "Hotkeys", HotkeyStopButton, "stop горячая клавиша");
-        Add("Громкость +", "Горячие клавиши", "Hotkeys", HotkeyVolumeUpButton, "volume up громкость горячая клавиша");
-        Add("Громкость -", "Горячие клавиши", "Hotkeys", HotkeyVolumeDownButton, "volume down громкость горячая клавиша");
-        Add("Без звука", "Горячие клавиши", "Hotkeys", HotkeyMuteButton, "mute без звука горячая клавиша");
-        Add("Перемешать", "Горячие клавиши", "Hotkeys", HotkeyShuffleButton, "shuffle перемешать горячая клавиша");
-        Add("Режим повтора", "Горячие клавиши", "Hotkeys", HotkeyRepeatButton, "repeat повтор горячая клавиша");
-        Add("Избранное: текущий трек", "Горячие клавиши", "Hotkeys", HotkeyToggleFavoriteButton, "избранное favorite текущий трек переключить горячая клавиша");
-        Add("Показать / скрыть текст", "Горячие клавиши", "Hotkeys", HotkeyToggleLyricsButton, "текст lyrics панель показать скрыть переключить горячая клавиша");
-        Add("Переключить мини-плеер", "Горячие клавиши", "Hotkeys", HotkeyToggleMiniPlayerButton, "мини плеер mini player переключить показать скрыть горячая клавиша");
-        Add("Удалить трек с диска", "Горячие клавиши", "Hotkeys", HotkeyDeleteTrackButton, "delete удалить трек диск горячая клавиша");
-        Add("Перемотка вперёд", "Горячие клавиши", "Hotkeys", HotkeySeekForwardButton, "seek forward вперёд перемотка 5 секунд горячая клавиша");
-        Add("Перемотка назад", "Горячие клавиши", "Hotkeys", HotkeySeekBackwardButton, "seek backward назад перемотка 5 секунд горячая клавиша");
-        Add("Сбросить все горячие клавиши", "Горячие клавиши", "Hotkeys", HotkeysResetAllButton, "сброс сбросить очистить все горячие клавиши reset all hotkeys clear");
+        AddLazy("Пуск / пауза", "Горячие клавиши", "Hotkeys", "HotkeyPlayPauseButton", "play pause горячая клавиша");
+        AddLazy("Следующий трек", "Горячие клавиши", "Hotkeys", "HotkeyNextButton", "next горячая клавиша");
+        AddLazy("Предыдущий трек", "Горячие клавиши", "Hotkeys", "HotkeyPreviousButton", "previous горячая клавиша");
+        AddLazy("Стоп", "Горячие клавиши", "Hotkeys", "HotkeyStopButton", "stop горячая клавиша");
+        AddLazy("Громкость +", "Горячие клавиши", "Hotkeys", "HotkeyVolumeUpButton", "volume up громкость горячая клавиша");
+        AddLazy("Громкость -", "Горячие клавиши", "Hotkeys", "HotkeyVolumeDownButton", "volume down громкость горячая клавиша");
+        AddLazy("Без звука", "Горячие клавиши", "Hotkeys", "HotkeyMuteButton", "mute без звука горячая клавиша");
+        AddLazy("Перемешать", "Горячие клавиши", "Hotkeys", "HotkeyShuffleButton", "shuffle перемешать горячая клавиша");
+        AddLazy("Режим повтора", "Горячие клавиши", "Hotkeys", "HotkeyRepeatButton", "repeat повтор горячая клавиша");
+        AddLazy("Избранное: текущий трек", "Горячие клавиши", "Hotkeys", "HotkeyToggleFavoriteButton", "избранное favorite текущий трек переключить горячая клавиша");
+        AddLazy("Показать / скрыть текст", "Горячие клавиши", "Hotkeys", "HotkeyToggleLyricsButton", "текст lyrics панель показать скрыть переключить горячая клавиша");
+        AddLazy("Переключить мини-плеер", "Горячие клавиши", "Hotkeys", "HotkeyToggleMiniPlayerButton", "мини плеер mini player переключить показать скрыть горячая клавиша");
+        AddLazy("Удалить трек с диска", "Горячие клавиши", "Hotkeys", "HotkeyDeleteTrackButton", "delete удалить трек диск горячая клавиша");
+        AddLazy("Перемотка вперёд", "Горячие клавиши", "Hotkeys", "HotkeySeekForwardButton", "seek forward вперёд перемотка 5 секунд горячая клавиша");
+        AddLazy("Перемотка назад", "Горячие клавиши", "Hotkeys", "HotkeySeekBackwardButton", "seek backward назад перемотка 5 секунд горячая клавиша");
+        AddLazy("Сбросить все горячие клавиши", "Горячие клавиши", "Hotkeys", "HotkeysResetAllButton", "сброс сбросить очистить все горячие клавиши reset all hotkeys clear");
         Add("Режим шаффла", "Воспроизведение", "Playback", ShuffleModeRadioGroup, "шаффл перемешать shuffle режим колода случайный любимые редкие папки альбомы чаще по папкам");
         Add("Баланс левого и правого канала", "Воспроизведение", "Playback", PlaybackBalanceSlider, "баланс левый правый наушник канал balance left right pan earphone");
         Add("Измерять громкость файлов без тегов", "Воспроизведение", "Playback", LoudnessScanCheckBox, "громкость измерение анализ replaygain r128 lufs без тегов нормализация");
@@ -108,14 +113,14 @@ public partial class SettingsWindow
         Add("ReplayGain: предусилитель", "Воспроизведение", "Playback", ReplayGainPreampSlider, "replaygain предусилитель preamp громкость усиление дб");
         Add("ReplayGain", "Воспроизведение", "Playback", ReplayGainCheckBox, "replaygain громкость выравнивание нормализация gain");
         Add("Каналы: стерео и моно", "Воспроизведение", "Playback", ChannelModeRadioGroup, "каналы стерео моно mono stereo downmix один наушник channels по умолчанию");
-        Add("Уведомление о смене трека", "Уведомления", "Notifications", TrackChangeToastCheckBox, "уведомление тост смена трека toast notification");
+        AddLazy("Уведомление о смене трека", "Уведомления", "Notifications", "TrackChangeToastCheckBox", "уведомление тост смена трека toast notification");
         Add("Полоса воспроизведения", "Полоса и ползунки", "Progress", ProgressStyleWaveformRadio, "полоса воспроизведения прогресс seek слайдер waveform форма звука soundcloud material волна цвет толщина ручка форма концов предпросмотр для каждого окна progress bar color thickness wave thumb per window как в главном окне по умолчанию обычная волнистая линия android slider ползунок с зазором");
         Add("Режим текста песни", "Тексты песен", "Lyrics", LyricsDisplayPlainRadio, "текст песни синхронный обычный lrc txt переключить режим synced plain lyrics если он есть по умолчанию");
-        Add("Показать пример уведомления", "Уведомления", "Notifications", ToastPreviewButton, "уведомление пример предпросмотр показать toast preview");
-        Add("Расположение уведомления", "Уведомления", "Notifications", ToastPosTopLeftRadio, "уведомление угол расположение позиция монитор экран размер position monitor screen size сверху по центру справа снизу слева");
-        Add("Своё положение уведомления", "Уведомления", "Notifications", ToastPickPositionButton, "уведомление перенести перетащить положение позиция свой custom drag move position toast notification");
-        Add("Когда показывать", "Уведомления", "Notifications", ToastPolicyEveryTrackChangeRadio, "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual только при начале воспроизведения моём выборе");
-        Add("Размер уведомления", "Уведомления", "Notifications", ToastSizeSmallRadio, "размер уведомление тост маленький средний большой size toast notification");
+        AddLazy("Показать пример уведомления", "Уведомления", "Notifications", "ToastPreviewButton", "уведомление пример предпросмотр показать toast preview");
+        AddLazy("Расположение уведомления", "Уведомления", "Notifications", "ToastPosTopLeftRadio", "уведомление угол расположение позиция монитор экран размер position monitor screen size сверху по центру справа снизу слева");
+        AddLazy("Своё положение уведомления", "Уведомления", "Notifications", "ToastPickPositionButton", "уведомление перенести перетащить положение позиция свой custom drag move position toast notification");
+        AddLazy("Когда показывать", "Уведомления", "Notifications", "ToastPolicyEveryTrackChangeRadio", "уведомление тост смена трека воспроизведение ручной выбор policy toast notification playback manual только при начале воспроизведения моём выборе");
+        AddLazy("Размер уведомления", "Уведомления", "Notifications", "ToastSizeSmallRadio", "размер уведомление тост маленький средний большой size toast notification");
         Add("Выравнивание текста песни", "Тексты песен", "Lyrics", LyricsAlignLeftRadio, "слева по центру справа выравнивание текст песни lyrics alignment now playing");
         Add("Дополнительный источник текстов", "Тексты песен", "Lyrics", UseExtraLyricsSourceCheckBox, "текст песни lyrics источник netease qq kugou paxsenix lyricify русские исполнители extra source");
         Add("Фон Now Playing", "Обложка и Now Playing", "Cover", NowPlayingBackgroundCloudsRadio, "фон now playing размытая обложка один цвет без фона облака цветные шары волны background orbs clouds waves простой тёмный");
@@ -124,30 +129,30 @@ public partial class SettingsWindow
         Add("Скрывать обложку при тексте песни", "Тексты песен", "Lyrics", HideCoverInLyricsCheckBox, "обложка скрыть текст песни больше места lyrics cover hide");
         Add("Анимация избранного", "Обложка и Now Playing", "Cover", FavoriteHeartFillRadio, "сердечко избранное анимация заливка искры кольцо favorite heart animation");
         Add("Размер мини-плеера", "Мини-плеер", "MiniPlayer", MiniPlayerSizePresetRadioGroup, "размер мини плеер компактный классический текущий 1.21 size preset");
-        Add("Цвет уведомления", "Уведомления", "Notifications", ToastColorModeRadioGroup, "цвет уведомления обложка акцент свой окрашивание фон toast color cover accent tint стандартный по теме умолчанию акцентный приложения");
-        Add("Прозрачность уведомления", "Уведомления", "Notifications", ToastOpacitySlider, "прозрачность фона уведомление тост opacity transparency toast");
-        Add("Ширина уведомления", "Уведомления", "Notifications", ToastWidthSlider, "ширина уведомление тост размер width toast notification size");
-        Add("Экспортировать настройки", "Профиль", "Profile", ExportProfileButton, "экспорт настройки профиль lumi файл backup export profile");
-        Add("Импортировать настройки", "Профиль", "Profile", ImportProfileButton, "импорт настройки профиль lumi файл backup import restore profile");
+        AddLazy("Цвет уведомления", "Уведомления", "Notifications", "ToastColorModeRadioGroup", "цвет уведомления обложка акцент свой окрашивание фон toast color cover accent tint стандартный по теме умолчанию акцентный приложения");
+        AddLazy("Прозрачность уведомления", "Уведомления", "Notifications", "ToastOpacitySlider", "прозрачность фона уведомление тост opacity transparency toast");
+        AddLazy("Ширина уведомления", "Уведомления", "Notifications", "ToastWidthSlider", "ширина уведомление тост размер width toast notification size");
+        AddLazy("Экспортировать настройки", "Профиль", "Profile", "ExportProfileButton", "экспорт настройки профиль lumi файл backup export profile");
+        AddLazy("Импортировать настройки", "Профиль", "Profile", "ImportProfileButton", "импорт настройки профиль lumi файл backup import restore profile");
         Add("Кэш текстов песен", "Тексты песен", "Lyrics", ClearLyricsCacheButton, "текст lyrics кэш очистить память локальный cache lyrics clear");
-        Add("Сбросить плеер к исходному состоянию", "Профиль", "Profile", ResetPlayerButton, "сброс сбросить умолчание reset default настройки factory");
-        Add("Вернуть состояние до последнего сброса", "Профиль", "Profile", RestoreResetSnapshotButton, "восстановить вернуть точка сброса backup restore reset recovery");
-        Add("Полный сброс данных", "Профиль", "Profile", ResetAllDataButton, "сброс удалить очистить стереть настройки плейлисты избранное история пресеты wipe erase all data reset");
-        Add("О плеере", "О плеере", "About", AboutInfoCard, "версия lumisense о программе о плеере");
+        AddLazy("Сбросить плеер к исходному состоянию", "Профиль", "Profile", "ResetPlayerButton", "сброс сбросить умолчание reset default настройки factory");
+        AddLazy("Вернуть состояние до последнего сброса", "Профиль", "Profile", "RestoreResetSnapshotButton", "восстановить вернуть точка сброса backup restore reset recovery");
+        AddLazy("Полный сброс данных", "Профиль", "Profile", "ResetAllDataButton", "сброс удалить очистить стереть настройки плейлисты избранное история пресеты wipe erase all data reset");
+        AddLazy("О плеере", "О плеере", "About", "AboutInfoCard", "версия lumisense о программе о плеере");
         Add("Источник загрузки обновлений", "Обновления", "Updates", UpdateSourceGitHubRadio, "update mirror зеркало gh-proxy обновление скачать источник v4.gh proxy.org только ipv4 v6.gh ipv6 cdn.gh через cdn");
         Add("Все версии", "Обновления", "Updates", AllVersionsExpanderControl, "версии история версия откат downgrade install version releases обновление скачать установить zip exe установщик");
         Add("Проверить обновления", "Обновления", "Updates", CheckUpdatesButton, "обновление update github версия проверить");
         Add("Проверить зеркала", "Обновления", "Updates", ProbeUpdateSourcesButton, "зеркало скорость проверка источник mirror speed probe gh-proxy ghfast");
         Add("Скачать базовый пакет", "Обновления", "Updates", PrepareVelopackBasePackageButton, "velopack базовый пакет полный пакет компактные обновления delta base package");
         Add("Удалить старую EXE-копию", "Обновления", "Updates", RemoveLegacyInnoButton, "удалить uninstall деинсталлятор старая exe msi migration cleanup compact updates");
-        Add("История изменений", "О плеере", "About", ChangelogButton, "патчноуты changelog версии история изменений");
-        Add("Разработчик", "О плеере", "About", DeveloperGitHubButton, "разработчик автор github telegram wasssly ссылки контакты аватар");
-        Add("Открыть папку с логами", "О плеере", "About", OpenLogsButton, "логи log ошибка краш crash диагностика");
+        AddLazy("История изменений", "О плеере", "About", "ChangelogButton", "патчноуты changelog версии история изменений");
+        AddLazy("Разработчик", "О плеере", "About", "DeveloperGitHubButton", "разработчик автор github telegram wasssly ссылки контакты аватар");
+        AddLazy("Открыть папку с логами", "О плеере", "About", "OpenLogsButton", "логи log ошибка краш crash диагностика");
         Add("Фон у кнопок управления", "Окно и запуск", "Window", ControlButtonsBackgroundCheckBox, "кнопки плашка подложка прозрачные без фона buttons background plate transparent");
         Add("Вид кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonStyleRadioGroup, "акцентный фон как у остальных кнопок play pause accent");
         Add("Меню «Ещё» (три точки)", "Окно и запуск", "Window", MoreMenuStyleRadioGroup, "три точки очередь текст песни меню пружина анимация dynamic menu more");
         Add("Форма кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonShapeRadioGroup, "квадратный круглый круг квадрат по умолчанию форма кнопки play pause square round circle shape");
-        Add("Диагностика производительности", "О плеере", "About", DiagnosticsButton, "проверка нагрузка процессор память утечки тест фоновое наблюдение за ресурсами watchdog diagnostics performance cpu memory leak");
+        AddLazy("Диагностика производительности", "О плеере", "About", "DiagnosticsButton", "проверка нагрузка процессор память утечки тест фоновое наблюдение за ресурсами watchdog diagnostics performance cpu memory leak");
         Add("Автоматически переводить журнал изменений на английский", "Оформление", "Appearance", ChangelogAutoTranslateCheckBox, "чейнджлог changelog перевод английский google translate история изменений патчноуты");
         Add("Показывать названия рядом с иконками", "Оформление", "Appearance", NavShowLabelsCheckBox, "подписи названия иконки навигация labels icons");
         Add("Сохранить пресет текста песни", "Тексты песен", "Lyrics", LyricsPresetSaveButton, "пресет сохранить удалить preset save delete lyrics style");
@@ -210,14 +215,14 @@ public partial class SettingsWindow
         Add("Убрать из плейлиста", "Библиотека и файлы", "Library", TrackContextRemoveFromPlaylistCheckBox, "контекстное меню трека context menu remove from playlist");
         Add("Удалить с диска", "Библиотека и файлы", "Library", TrackContextDeleteFromDiskCheckBox, "контекстное меню трека context menu delete from disk корзина");
         Add("Шаблон нормализации имён файлов", "Библиотека и файлы", "Library", FileNameNormalizationTemplateTextBox, "шаблон template исполнитель название имена файлов");
-        Add("Положение обложки в уведомлении", "Уведомления", "Notifications", ToastArtLeftRadio, "слева справа cover position left right");
-        Add("Выравнивание текста в уведомлении", "Уведомления", "Notifications", ToastTextLeftRadio, "слева по центру справа text alignment");
-        Add("Прижать обложку к тексту", "Уведомления", "Notifications", ToastArtNextToTextCheckBox, "обложка текст cover text");
-        Add("Монитор уведомления", "Уведомления", "Notifications", ToastMonitorCombo, "монитор экран monitor screen");
-        Add("Сила окрашивания уведомления", "Уведомления", "Notifications", ToastColorStrengthSlider, "цвет окрашивание color tint");
-        Add("Полосы эквалайзера", "Эквалайзер", "Equalizer", EqBand0Slider, "31 62 125 250 500 1k 2k 4k 8k 16k гц hz частоты усиление bands gain");
-        Add("Пресеты эквалайзера", "Эквалайзер", "Equalizer", EqualizerPresetComboBox, "применить сохранить удалить поделиться импортировать экспорт preset apply save delete share import export");
-        Add("Сбросить настройки эквалайзера", "Эквалайзер", "Equalizer", EqualizerResetButton, "сбросить всё reset flat");
+        AddLazy("Положение обложки в уведомлении", "Уведомления", "Notifications", "ToastArtLeftRadio", "слева справа cover position left right");
+        AddLazy("Выравнивание текста в уведомлении", "Уведомления", "Notifications", "ToastTextLeftRadio", "слева по центру справа text alignment");
+        AddLazy("Прижать обложку к тексту", "Уведомления", "Notifications", "ToastArtNextToTextCheckBox", "обложка текст cover text");
+        AddLazy("Монитор уведомления", "Уведомления", "Notifications", "ToastMonitorCombo", "монитор экран monitor screen");
+        AddLazy("Сила окрашивания уведомления", "Уведомления", "Notifications", "ToastColorStrengthSlider", "цвет окрашивание color tint");
+        AddLazy("Полосы эквалайзера", "Эквалайзер", "Equalizer", "EqBand0Slider", "31 62 125 250 500 1k 2k 4k 8k 16k гц hz частоты усиление bands gain");
+        AddLazy("Пресеты эквалайзера", "Эквалайзер", "Equalizer", "EqualizerPresetComboBox", "применить сохранить удалить поделиться импортировать экспорт preset apply save delete share import export");
+        AddLazy("Сбросить настройки эквалайзера", "Эквалайзер", "Equalizer", "EqualizerResetButton", "сбросить всё reset flat");
         Add("Включать автоматически при обнаружении игры или оверлея", "Мини-плеер", "MiniPlayer", GameOverlayAutoDetectCheckBox, "игра оверлей совместимость game overlay compatibility");
         Add("Держать режим совместимости с играми включённым всегда", "Мини-плеер", "MiniPlayer", GameOverlayCompatibilityCheckBox, "игра оверлей совместимость game overlay compatibility always");
         Add("Действия контекстного меню мини-плеера", "Мини-плеер", "MiniPlayer", MiniContextSettingsCheckBox, "контекстное меню настройки now playing закрепить поверх окон совместимость вторая кнопка скорость тон прозрачность прилипание полоса прогресса расположение кнопок context menu actions полный экран с играми и оверлеем выбор второй кнопки");
@@ -321,6 +326,9 @@ public partial class SettingsWindow
             _ => NavAppearance
         };
         navButton.IsChecked = true;
+        EnsurePageBuilt(entry.PageKey);
+        FrameworkElement? target = entry.Target ?? ResolveLazyTarget(entry);
+        if (target is null) return;
 
         // Возвращаемся к обычному виду навигации — поиск своё дело сделал
         SettingsSearchBox.Text = string.Empty;
@@ -331,13 +339,13 @@ public partial class SettingsWindow
         {
             // Часть результатов поиска лежит в свёрнутых Expander (FluentExpanderStyle в App.xaml): BringIntoView и подсветка
             // скрытого элемента ничего не покажут, поэтому заранее разворачиваем все Expander-предки.
-            ExpandAncestorExpanders(entry.Target);
+            ExpandAncestorExpanders(target);
 
             // Раскрытие аккордеона меняет раскладку: ждём ещё один цикл, иначе прокрутка и подсветка считались бы
             // по устаревшим координатам.
             Dispatcher.InvokeAsync(() =>
             {
-                FrameworkElement shown = NearestVisible(entry.Target);
+                FrameworkElement shown = NearestVisible(target);
                 shown.BringIntoView();
                 SearchHighlightAdorner.Flash(shown);
             }, DispatcherPriority.Loaded);

@@ -1,24 +1,43 @@
 using System;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.IO;
-using System.Net.Http;
-using System.Globalization;
-using System.Linq;
 using System.Windows;
-using System.Windows.Controls.Primitives;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Threading;
-using Wpf.Ui.Appearance;
 using Wpf.Ui.Controls;
-using static Lumisense.BackgroundTask;
 
 namespace Lumisense;
 
-public partial class SettingsWindow
+// Создаётся при первом показе страницы (см. SettingsWindow.EnsurePageBuilt).
+public sealed partial class IntegrationsSettingsPage : System.Windows.Controls.UserControl, ILazySettingsPage
 {
+    private readonly Window _window;
+    private readonly AppSettings _settings;
+    private readonly ISettingsHost _owner;
+
+    // Глушит Changed-обработчики, пока значения читаются из настроек.
+    private bool _isInitializing = true;
+
+    internal IntegrationsSettingsPage(Window window, AppSettings settings, ISettingsHost owner)
+    {
+        _window = window;
+        _settings = settings;
+        _owner = owner;
+
+        // StaticResource разбирается до того, как элементы попадут в дерево окна, поэтому ресурсы окна подключаются заранее.
+        Resources.MergedDictionaries.Add(window.Resources);
+        InitializeComponent();
+
+        DiscordRichPresenceEnabledCheckBox.IsChecked = _settings.DiscordRichPresenceEnabled;
+        DiscordRichPresenceShowTrackInfoCheckBox.IsChecked = _settings.DiscordRichPresenceShowTrackInfo;
+        DiscordRichPresenceShowTimelineCheckBox.IsChecked = _settings.DiscordRichPresenceShowTimeline;
+        DiscordRichPresenceShowCoverArtCheckBox.IsChecked = _settings.DiscordRichPresenceShowCoverArt;
+        DiscordRichPresenceShowButtonsCheckBox.IsChecked = _settings.DiscordRichPresenceShowButtons;
+        DiscordRichPresenceShowDownloadButtonCheckBox.IsChecked = _settings.DiscordRichPresenceShowDownloadButton;
+        UpdateDiscordRichPresenceConnectionStatus();
+        _isInitializing = false;
+    }
+
+    public void MoveContentTo(System.Windows.Controls.Panel host) => LazySettingsPage.MoveChildren(PageIntegrations, host);
+
+    public FrameworkElement? FindElement(string name) => FindName(name) as FrameworkElement;
+
     private void DiscordRichPresenceEnabledCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
@@ -49,12 +68,12 @@ public partial class SettingsWindow
         }
         catch (Exception ex)
         {
-            LocalizedMessageBox.Show(this, $"Не удалось открыть журнал Discord:\n{ex.Message}",
+            LocalizedMessageBox.Show(_window, $"Не удалось открыть журнал Discord:\n{ex.Message}",
                 "Discord Rich Presence", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
         }
     }
 
-    private void UpdateDiscordRichPresenceConnectionStatus()
+    public void UpdateDiscordRichPresenceConnectionStatus()
     {
         ConnectDiscordButton.Content = LocalizationService.Translate(_settings.DiscordRichPresenceEnabled
             ? "Обновить подключение Discord"

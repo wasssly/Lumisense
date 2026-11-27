@@ -63,25 +63,6 @@ public partial class SettingsWindow
             : LocalizationService.Translate("Trace подготовки трека выключен");
     }
 
-    private DiagnosticsWindow? _diagnosticsWindow;
-
-    private void DiagnosticsButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_diagnosticsWindow is { IsLoaded: true })
-        {
-            _diagnosticsWindow.Activate();
-            return;
-        }
-
-        // Без владельца: долгая проверка не должна прерываться, если закрыть окно настроек.
-        _diagnosticsWindow = new DiagnosticsWindow(_settings, _owner.GetDiagnosticsHost())
-        {
-            WindowStartupLocation = WindowStartupLocation.CenterScreen
-        };
-        _diagnosticsWindow.Closed += (_, _) => _diagnosticsWindow = null;
-        _diagnosticsWindow.Show();
-    }
-
     private void ClearArtworkCacheButton_Click(object sender, RoutedEventArgs e)
         => BackgroundTask.FireAndForget(ClearArtworkCacheButton_ClickAsync(sender, e), nameof(ClearArtworkCacheButton_Click));
 
@@ -147,9 +128,6 @@ public partial class SettingsWindow
         return $"{bytes / (1024.0 * 1024.0):0.#} {megabytesUnit}";
     }
 
-    private void RefreshResetRecoveryButton() =>
-        RestoreResetSnapshotButton.IsEnabled = SettingsResetRecoveryService.HasRecoverySnapshot;
-
     private void ClearLyricsCacheButton_Click(object sender, RoutedEventArgs e)
     {
         if (LyricsService.GetPastedLyricsCacheInfo().IsEmpty)
@@ -177,14 +155,13 @@ public partial class SettingsWindow
         // Показанные результаты поиска хранят уже выведенные подписи: пересобираем их на новом языке.
         if (SettingsSearchBox.Text.Trim().Length > 0) RefreshSearchResults();
 
-        RefreshAppVersionText();
+        if (_lazyPages.TryGetValue("About", out ILazySettingsPage? aboutPage)) ((AboutSettingsPage)aboutPage).RefreshAppVersionText();
         InitializeOutputDeviceCombo();
-        InitializeToastMonitorCombo();
+        if (_lazyPages.TryGetValue("Notifications", out ILazySettingsPage? toastPage)) ((NotificationsSettingsPage)toastPage).RefreshMonitorCombo();
         InitializeIslandMonitorCombo();
-        UpdateDiscordRichPresenceConnectionStatus();
+        if (_lazyPages.TryGetValue("Integrations", out ILazySettingsPage? discordPage)) ((IntegrationsSettingsPage)discordPage).UpdateDiscordRichPresenceConnectionStatus();
 
-        for (int band = 0; band < EqualizerSampleProvider.BandFrequencies.Length; band++)
-            GetEqBandValueText(band).Text = FormatEqGain(_owner.GetEqualizerBandGain(band));
+        if (_lazyPages.TryGetValue("Equalizer", out ILazySettingsPage? eqPage)) ((EqualizerSettingsPage)eqPage).RefreshBandTexts();
 
         if (_loadedReleases is not null)
             RenderAllVersions(_loadedReleases);

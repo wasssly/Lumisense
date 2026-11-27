@@ -19,6 +19,8 @@ namespace Lumisense;
 
 public partial class SettingsWindow
 {
+    // Навигация: каждый пункт слева — RadioButton с Tag = ключ страницы; Checked прячет все страницы и показывает выбранную
+    // ("О плеере" — тоже просто страница, а не отдельное окно).
     private void NavItem_Checked(object sender, RoutedEventArgs e)
     {
         // Полное имя типа, а не using System.Windows.Controls.Primitives; чтобы не столкнуть RadioButton
@@ -27,6 +29,8 @@ public partial class SettingsWindow
 
         // Защита от раннего вызова до присвоения полей страниц в InitializeComponent (например, из-за IsChecked в XAML).
         if (PageAppearance is null) return;
+
+        EnsurePageBuilt(key);
 
         PageAppearance.Visibility = key == "Appearance" ? Visibility.Visible : Visibility.Collapsed;
         PageWindow.Visibility = key == "Window" ? Visibility.Visible : Visibility.Collapsed;
@@ -47,8 +51,8 @@ public partial class SettingsWindow
         if (key == "Updates" && IsLoaded && _basePackagePlan is null)
             _ = RefreshVelopackBasePackagePlanAsync();
         if (key == "Updates") StartAllVersionsLoadIfNeeded();
-        if (key == "About")
-            LoadDeveloperAvatar();
+        if (key == "About" && _lazyPages.TryGetValue(key, out ILazySettingsPage? aboutPage))
+            ((AboutSettingsPage)aboutPage).LoadDeveloperAvatar();
 
         // Один ScrollViewer на все страницы (см. SettingsWindow.xaml) без сброса помнил бы прокрутку прошлой вкладки;
         // SearchResultItem_Click позже отложенно прокрутит к найденному элементу и просто переопределит позицию.
@@ -112,6 +116,53 @@ public partial class SettingsWindow
             else if (FloatingLabelsStacked && FloatingNavScroll.ScrollableWidth > 1) checkedButton.BringIntoView();
         }
     }
+
+    // Страницы, вынесенные в отдельные UserControl, разбираются при первом показе или в прогреве, а не при создании окна.
+    private readonly Dictionary<string, ILazySettingsPage> _lazyPages = [];
+
+    private void EnsurePageBuilt(string key)
+    {
+        if (_lazyPages.ContainsKey(key)) return;
+
+        System.Windows.Controls.Panel? host = key switch
+        {
+            "Hotkeys" => PageHotkeys,
+            "Profile" => PageProfile,
+            "Notifications" => PageNotifications,
+            "Equalizer" => PageEqualizer,
+            "Integrations" => PageIntegrations,
+            "About" => PageAbout,
+            _ => null
+        };
+        if (host is null) return;
+
+        var clock = System.Diagnostics.Stopwatch.StartNew();
+        ILazySettingsPage page = key switch
+        {
+            "Hotkeys" => new HotkeysSettingsPage(this, _settings, _owner),
+            "Profile" => new ProfileSettingsPage(this, _settings, _owner),
+            "Equalizer" => new EqualizerSettingsPage(this, _settings, _owner),
+            "Integrations" => new IntegrationsSettingsPage(this, _settings, _owner),
+            "About" => new AboutSettingsPage(this, _settings, _owner),
+            _ => new NotificationsSettingsPage(this, _settings, _owner)
+        };
+        page.MoveContentTo(host);
+        LocalizationService.Apply(host);
+        _lazyPages[key] = page;
+        Logger.Info($"TRACE settings-page-build: {key}={clock.ElapsedMilliseconds}ms");
+    }
+
+    private string? LazyPageKeyOf(FrameworkElement host) =>
+        ReferenceEquals(host, PageHotkeys) ? "Hotkeys"
+        : ReferenceEquals(host, PageProfile) ? "Profile"
+        : ReferenceEquals(host, PageNotifications) ? "Notifications"
+        : ReferenceEquals(host, PageEqualizer) ? "Equalizer"
+        : ReferenceEquals(host, PageIntegrations) ? "Integrations"
+        : ReferenceEquals(host, PageAbout) ? "About"
+        : null;
+
+    private FrameworkElement? ResolveLazyTarget(SettingsSearchEntry entry) =>
+        entry.TargetName is { } name && _lazyPages.TryGetValue(entry.PageKey, out ILazySettingsPage? page) ? page.FindElement(name) : null;
 
     // Виды навигации. Пункты — одни и те же RadioButton, что и в боковой панели: ApplyNavigationStyle лишь переносит их между
     // контейнерами и меняет стиль, поэтому NavigateToPage, поиск и NavItem_Checked работают одинаково в любом виде.
@@ -713,6 +764,8 @@ public partial class SettingsWindow
         FrameworkElement page = _pagesToWarm.Dequeue();
         try
         {
+            if (LazyPageKeyOf(page) is { } lazyKey) EnsurePageBuilt(lazyKey);
+
             // Страницу, которую пользователь уже открывал, трогать не нужно.
             if (IsLoaded && page.Visibility == Visibility.Collapsed)
             {

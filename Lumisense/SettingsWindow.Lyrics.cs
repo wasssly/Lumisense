@@ -245,8 +245,6 @@ public partial class SettingsWindow
         };
     }
 
-    private void ToastPreviewButton_Click(object sender, RoutedEventArgs e) => _owner.PreviewTrackChangeToast();
-
     private void NowPlayingBackgroundRadio_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;
