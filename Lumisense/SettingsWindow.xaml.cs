@@ -320,11 +320,6 @@ public partial class SettingsWindow : FluentWindow
                                          && !MiniInfoRemainingRadio.IsChecked.GetValueOrDefault();
         MiniArtistMarqueeCheckBox.IsChecked = _settings.MiniPlayerArtistMarquee;
 
-        FileNameNormalizationTemplateTextBox.Text = string.IsNullOrWhiteSpace(_settings.FileNameNormalizationTemplate)
-            ? FileNameNormalizer.DefaultTemplate
-            : _settings.FileNameNormalizationTemplate;
-        FileNameNormalizationResultText.Visibility = Visibility.Collapsed;
-        InitializeTrackContextMenuActionCheckBoxes();
         InitializeMiniPlayerContextMenuActionCheckBoxes();
         LoadShuffleModeControls();
         SaveQueueBetweenRestartsCheckBox.IsChecked = _settings.SaveQueueBetweenRestarts;
@@ -423,33 +418,6 @@ public partial class SettingsWindow : FluentWindow
             LocalizationService.LanguageChanged -= LocalizationService_LanguageChanged;
         };
         LocalizationService.Apply(this);
-    }
-
-    private void InitializeTrackContextMenuActionCheckBoxes()
-    {
-        var checkBoxes = new[]
-        {
-            TrackContextPlayNextCheckBox,
-            TrackContextAddToQueueCheckBox,
-            TrackContextFindFileCheckBox,
-            TrackContextFavoriteCheckBox,
-            TrackContextShowInExplorerCheckBox,
-            TrackContextCopyNameCheckBox,
-            TrackContextCopyPathCheckBox,
-            TrackContextCopyFileCheckBox,
-            TrackContextExportProcessedCopyCheckBox,
-            TrackContextPropertiesCheckBox,
-            TrackContextEditTagsCheckBox,
-            TrackContextNormalizeFileNameCheckBox,
-            TrackContextRemoveFromPlaylistCheckBox,
-            TrackContextDeleteFromDiskCheckBox
-        };
-
-        foreach (System.Windows.Controls.CheckBox checkBox in checkBoxes)
-        {
-            if (checkBox.Tag is string actionId)
-                checkBox.IsChecked = !_owner.IsTrackContextMenuActionDisabled(actionId);
-        }
     }
 
     private void InitializeMiniPlayerContextMenuActionCheckBoxes()

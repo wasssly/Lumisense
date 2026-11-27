@@ -19,24 +19,15 @@ namespace Lumisense;
 
 public partial class SettingsWindow
 {
+    // Меню «Трек» упорядочивает страница «Библиотека» (LibrarySettingsPage).
     private IEnumerable<(string Menu, System.Windows.Controls.Panel Panel)> ContextMenuOrderPanels() =>
     [
-        (ContextMenuOrdering.Track, TrackContextMenuActionsPanel),
         (ContextMenuOrdering.Mini, MiniContextMenuActionsPanel),
         (ContextMenuOrdering.Island, IslandMenuActionsPanel),
     ];
 
-    private void ContextMenuOrderChanged(string menu, IReadOnlyList<string> ids)
-    {
-        if (_isInitializing) return;
-
-        // Порядок по умолчанию не хранится: так новые пункты будущих версий попадут на свои места сами.
-        if (ids.SequenceEqual(ContextMenuOrdering.Defaults[menu]))
-            _settings.ContextMenuOrder.Remove(menu);
-        else
-            _settings.ContextMenuOrder[menu] = [.. ids];
-        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
-    }
+    private void ContextMenuOrderChanged(string menu, IReadOnlyList<string> ids) =>
+        ContextMenuOrderLink.Changed(_settings, menu, ids, () => _isInitializing);
 
     private void ContextMenuOrderReset_Click(object sender, RoutedEventArgs e)
     {
@@ -44,9 +35,7 @@ public partial class SettingsWindow
 
         foreach (var (key, panel) in ContextMenuOrderPanels())
         {
-            if (key != menu) continue;
-            PanelReorder.Sort(panel, ContextMenuOrdering.Defaults[menu]);
-            ContextMenuOrderChanged(menu, PanelReorder.Ids(panel));
+            if (key == menu) ContextMenuOrderLink.Reset(panel, menu, _settings);
         }
     }
 

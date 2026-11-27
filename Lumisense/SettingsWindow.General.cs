@@ -51,45 +51,6 @@ public partial class SettingsWindow
             : LocalizationService.Translate("Trace подготовки трека выключен");
     }
 
-    private void ClearArtworkCacheButton_Click(object sender, RoutedEventArgs e)
-        => BackgroundTask.FireAndForget(ClearArtworkCacheButton_ClickAsync(sender, e), nameof(ClearArtworkCacheButton_Click));
-
-    private async Task ClearArtworkCacheButton_ClickAsync(object sender, RoutedEventArgs e)
-    {
-        var confirmation = LocalizedMessageBox.Show(this,
-            "Удалить локально сохранённые интернет-обложки?\n\nПри следующем поиске нужные изображения будут скачаны заново.",
-            "Очистить кэш обложек?", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
-        if (confirmation != System.Windows.MessageBoxResult.Yes) return;
-
-        ClearArtworkCacheButton.IsEnabled = false;
-        ArtworkCacheClearResultText.Visibility = Visibility.Collapsed;
-        try
-        {
-            var result = await System.Threading.Tasks.Task.Run(CoverArtSearchWindow.ClearArtworkCache);
-            ArtworkCacheClearResultText.Text = result.DeletedFiles == 0
-                ? "Кэш обложек уже пуст."
-                : $"Удалено файлов: {result.DeletedFiles}; освобождено: {FormatArtworkCacheSize(result.FreedBytes)}."
-                  + (result.FailedFiles > 0 ? $" Не удалось удалить файлов: {result.FailedFiles}." : string.Empty);
-            ArtworkCacheClearResultText.Visibility = Visibility.Visible;
-        }
-        catch (Exception ex)
-        {
-            ArtworkCacheClearResultText.Text = LocalizationService.Translate($"Не удалось очистить кэш: {ex.Message}");
-            ArtworkCacheClearResultText.Visibility = Visibility.Visible;
-        }
-        finally
-        {
-            ClearArtworkCacheButton.IsEnabled = true;
-        }
-    }
-
-    private static string FormatArtworkCacheSize(long bytes)
-    {
-        if (bytes < 1024) return $"{bytes} Б";
-        if (bytes < 1024 * 1024) return $"{bytes / 1024.0:0.#} КБ";
-        return $"{bytes / (1024.0 * 1024.0):0.#} МБ";
-    }
-
     // Подсчёт обходит все файлы кэша и заодно чистит устаревшие: делаем в фоне, чтобы не задерживать открытие окна.
     private int _lyricsCacheInfoVersion;
 

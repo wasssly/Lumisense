@@ -19,67 +19,6 @@ namespace Lumisense;
 
 public partial class SettingsWindow
 {
-    private void TrackContextMenuActionCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-        if (sender is not System.Windows.Controls.CheckBox { Tag: string actionId } checkBox) return;
-
-        _owner.SetTrackContextMenuActionDisabled(actionId, checkBox.IsChecked != true);
-    }
-
-    private void FileNameNormalizationTemplateTextBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        // Пустой шаблон безопасно возвращается к дефолтному в момент запуска операции. Не
-        // переписываем TextBox во время набора, чтобы не ломать редактирование пользователю.
-        _settings.FileNameNormalizationTemplate = string.IsNullOrWhiteSpace(FileNameNormalizationTemplateTextBox.Text)
-            ? FileNameNormalizer.DefaultTemplate
-            : FileNameNormalizationTemplateTextBox.Text.Trim();
-        FileNameNormalizationResultText.Visibility = Visibility.Collapsed;
-    }
-
-    private void NormalizePlaylistFileNamesButton_Click(object sender, RoutedEventArgs e)
-        => BackgroundTask.FireAndForget(NormalizePlaylistFileNamesButton_ClickAsync(sender, e), nameof(NormalizePlaylistFileNamesButton_Click));
-
-    private async Task NormalizePlaylistFileNamesButton_ClickAsync(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.FileNameNormalizationTemplate = string.IsNullOrWhiteSpace(FileNameNormalizationTemplateTextBox.Text)
-            ? FileNameNormalizer.DefaultTemplate
-            : FileNameNormalizationTemplateTextBox.Text.Trim();
-
-        NormalizePlaylistFileNamesButton.IsEnabled = false;
-        FileNameNormalizationResultText.Text = LocalizationService.Translate("Подготавливается предпросмотр файлов…");
-        FileNameNormalizationResultText.Visibility = Visibility.Visible;
-        FileNameNormalizationLoadingIndicator.IsAnimationEnabled = !AccessibilityPreferences.ShouldReduceMotion(_settings, AnimationAreas.Loading);
-        FileNameNormalizationLoadingIndicator.Visibility = Visibility.Visible;
-
-        try
-        {
-            FileNameNormalizer.RenameResult? result = await _owner.NormalizePlaylistFileNamesAsync(this);
-            if (result is null)
-            {
-                FileNameNormalizationResultText.Text = LocalizationService.Translate("Нормализация отменена.");
-                return;
-            }
-
-            string errors = result.Errors.Count > 0 ? $" Ошибок: {result.Errors.Count}." : string.Empty;
-            FileNameNormalizationResultText.Text =
-                LocalizationService.Translate($"Готово. Переименовано: {result.RenamedCount}; пропущено: {result.SkippedCount}.{errors}");
-        }
-        catch (Exception ex)
-        {
-            FileNameNormalizationResultText.Text = LocalizationService.Translate($"Не удалось нормализовать имена: {ex.Message}");
-        }
-        finally
-        {
-            FileNameNormalizationLoadingIndicator.Visibility = Visibility.Collapsed;
-            NormalizePlaylistFileNamesButton.IsEnabled = true;
-        }
-    }
-
     private void LoadShuffleModeControls()
     {
         string mode = ShuffleModes.Normalize(_settings.ShuffleMode);
