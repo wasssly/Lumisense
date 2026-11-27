@@ -19,18 +19,6 @@ namespace Lumisense;
 
 public partial class SettingsWindow
 {
-    private void AlwaysOnTopCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.AlwaysOnTop = AlwaysOnTopCheckBox.IsChecked == true;
-
-        // Пока активен мини-плеер, поверх окон управляет отдельная мини-настройка —
-        // обычную применяем только когда плеер в обычном виде
-        if (!_owner.IsMiniMode)
-            _owner.Topmost = _settings.AlwaysOnTop;
-    }
-
     private void RememberVolumeCheckBox_Changed(object sender, RoutedEventArgs e)
     {
         if (_isInitializing) return;

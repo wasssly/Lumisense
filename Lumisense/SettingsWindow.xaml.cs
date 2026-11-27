@@ -229,7 +229,6 @@ public partial class SettingsWindow : FluentWindow
         LyricsPolicyManualOnlyRadio.IsChecked = _settings.LyricsSearchPolicy == "ManualOnly";
         LyricsPolicyAutoExactRadio.IsChecked = !LyricsPolicyLocalOnlyRadio.IsChecked.GetValueOrDefault() && !LyricsPolicyManualOnlyRadio.IsChecked.GetValueOrDefault();
 
-        AlwaysOnTopCheckBox.IsChecked = _settings.AlwaysOnTop;
         RememberVolumeCheckBox.IsChecked = _settings.RememberVolume;
         LogarithmicVolumeCheckBox.IsChecked = _settings.UseLogarithmicVolume;
         InitializeOutputDeviceCombo();
@@ -281,12 +280,9 @@ public partial class SettingsWindow : FluentWindow
         IslandHideSystemToastCheckBox.IsChecked = _settings.IslandHideSystemToast;
         foreach (var box in IslandMenuActionBoxes())
             box.IsChecked = !_settings.DisabledIslandMenuActions.Contains((string)box.Tag);
-        MinimizeToTrayCheckBox.IsChecked = _settings.MinimizeToTrayOnClose;
 
         // Источник истины для автозапуска — сам реестр (см. StartupManager), а не settings.json —
         // чекбокс всегда показывает то, что реально настроено, а не могло устареть.
-        LaunchOnStartupCheckBox.IsChecked = StartupManager.IsEnabled();
-        StartHiddenInTrayCheckBox.IsChecked = _settings.StartHiddenInTray;
 
         MiniOpacitySlider.Value = _settings.MiniPlayerOpacity;
         MiniOpacityValueText.Text = $"{(int)Math.Round(_settings.MiniPlayerOpacity * 100)}%";
@@ -380,27 +376,6 @@ public partial class SettingsWindow : FluentWindow
         AlbumArtTransitionOnRadio.IsChecked = _owner.IsAlbumArtTransitionEnabled && !carousel;
         AlbumArtTransitionOffRadio.IsChecked = !_owner.IsAlbumArtTransitionEnabled;
         AlbumArtGesturesCheckBox.IsChecked = _settings.AlbumArtGesturesEnabled;
-
-
-        RefreshViewModeRadios();
-        MainWindowLayoutModernRadio.IsChecked = _settings.MainWindowLayout == "Modern";
-        MainWindowLayoutGlassRadio.IsChecked = _settings.MainWindowLayout == "Glass";
-        MainWindowLayoutVinylRadio.IsChecked = _settings.MainWindowLayout == "Vinyl";
-        MainWindowLayoutCompactRadio.IsChecked = _settings.MainWindowLayout == "Compact";
-        MainWindowLayoutPosterRadio.IsChecked = _settings.MainWindowLayout == "Poster";
-        ModernShowSideButtonsCheckBox.IsChecked = _settings.ModernShowSideButtons;
-        GlassControlsBackgroundCheckBox.IsChecked = _settings.GlassControlsBackground;
-        ControlButtonsBackgroundCheckBox.IsChecked = _settings.ControlButtonsBackground;
-        PlayButtonAccentRadio.IsChecked = _settings.PlayButtonAccentBackground;
-        PlayButtonPlainRadio.IsChecked = !_settings.PlayButtonAccentBackground;
-        PlayButtonSquareRadio.IsChecked = !_settings.PlayButtonRound;
-        PlayButtonRoundRadio.IsChecked = _settings.PlayButtonRound;
-        MoreMenuSpringRadio.IsChecked = _settings.MoreMenuSpring;
-        MoreMenuClassicRadio.IsChecked = !_settings.MoreMenuSpring;
-        SelectComboByTag(CompactCoverAlignmentCombo, _settings.CompactCoverAlignment);
-        ModernSlotsGrid.IsEnabled = _settings.ModernShowSideButtons;
-        SelectModernSlotCombos(MainWindow.NormalizeModernSlots(_settings.ModernControlSlots));
-
 
         SearchResultsList.ItemsSource = _searchResults;
         foreach (var (menu, panel) in ContextMenuOrderPanels())
@@ -603,24 +578,9 @@ public partial class SettingsWindow : FluentWindow
         }
     }
 
-    // Отмечает миниатюру текущего вида плеера — при открытии окна и извне (MainWindow), когда вид сменили меню заголовка
-    // или кнопкой мини-плеера, чтобы страница не отставала от состояния.
+    // Страница «Окно» отмечает миниатюру сама; пока она не создана, вид читается при её создании.
     public void RefreshViewModeRadios()
     {
-        bool wasInitializing2 = _isInitializing;
-        _isInitializing = true;
-        try
-        {
-            switch (_owner.CurrentViewModeName)
-            {
-                case "Square": ViewModeSquareRadio.IsChecked = true; break;
-                case "Rectangular": ViewModeRectangularRadio.IsChecked = true; break;
-                case "Mini": ViewModeMiniRadio.IsChecked = true; break;
-            }
-        }
-        finally
-        {
-            _isInitializing = wasInitializing2;
-        }
+        if (_lazyPages.TryGetValue("Window", out ILazySettingsPage? windowPage)) ((WindowSettingsPage)windowPage).RefreshViewModeRadios();
     }
 }

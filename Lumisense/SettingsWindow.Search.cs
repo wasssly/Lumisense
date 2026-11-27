@@ -40,12 +40,12 @@ public partial class SettingsWindow
         Add("Анимация смены обложки", "Обложка и Now Playing", "Cover", AlbumArtTransitionOnRadio, "анимация обложка переход трек itunes слайд карусель соседние предыдущая следующая fly transition carousel album art cover");
         Add("Подпись под названием трека", "Обложка и Now Playing", "Cover", TrackStateBadgeModeRadioGroup, "подпись состояние трека расширение формат качество битрейт размер файла badge extension format bitrate size flac mp3 и частота свой набор отметить что показывать");
         Add("Жесты на обложке", "Обложка и Now Playing", "Cover", AlbumArtGesturesCheckBox, "жесты обложка касание свайп пуск пауза громкость следующий предыдущий gesture swipe cover");
-        Add("Вид главного окна", "Окно и запуск", "Window", MainWindowLayoutCard, "оформление новый классический крупная обложка кнопки управление layout modern classic");
-        Add("Вид плеера", "Окно и запуск", "Window", PlayerViewModeCard, "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
-        Add("Поверх всех окон", "Окно и запуск", "Window", AlwaysOnTopCheckBox, "topmost всегда сверху главное окно");
-        Add("Сворачивать в трей при закрытии", "Окно и запуск", "Window", MinimizeToTrayCheckBox, "трей закрытие свернуть tray");
-        Add("Запускать вместе с Windows", "Окно и запуск", "Window", LaunchOnStartupCheckBox, "автозапуск запуск windows автозагрузка startup");
-        Add("Запускать свёрнутым в трей", "Окно и запуск", "Window", StartHiddenInTrayCheckBox, "запуск свёрнутым трей автозапуск скрыто hidden startup tray");
+        AddLazy("Вид главного окна", "Окно и запуск", "Window", "MainWindowLayoutCard", "оформление новый классический крупная обложка кнопки управление layout modern classic");
+        AddLazy("Вид плеера", "Окно и запуск", "Window", "PlayerViewModeCard", "квадратный прямоугольный мини плеер вид размер окна square rectangular mini");
+        AddLazy("Поверх всех окон", "Окно и запуск", "Window", "AlwaysOnTopCheckBox", "topmost всегда сверху главное окно");
+        AddLazy("Сворачивать в трей при закрытии", "Окно и запуск", "Window", "MinimizeToTrayCheckBox", "трей закрытие свернуть tray");
+        AddLazy("Запускать вместе с Windows", "Окно и запуск", "Window", "LaunchOnStartupCheckBox", "автозапуск запуск windows автозагрузка startup");
+        AddLazy("Запускать свёрнутым в трей", "Окно и запуск", "Window", "StartHiddenInTrayCheckBox", "запуск свёрнутым трей автозапуск скрыто hidden startup tray");
         Add("Запоминать громкость между запусками", "Воспроизведение", "Playback", RememberVolumeCheckBox, "громкость запуск volume");
         Add("Логарифмическая регулировка громкости", "Воспроизведение", "Playback", LogarithmicVolumeCheckBox, "громкость логарифм слух дБ db volume logarithmic");
         Add("Не запускать трек при старте", "Воспроизведение", "Playback", NeverAutoPlayLastTrackOnStartupCheckBox, "старт запуск продолжить воспроизведение последний трек пауза resume autoplay");
@@ -148,10 +148,10 @@ public partial class SettingsWindow
         AddLazy("История изменений", "О плеере", "About", "ChangelogButton", "патчноуты changelog версии история изменений");
         AddLazy("Разработчик", "О плеере", "About", "DeveloperGitHubButton", "разработчик автор github telegram wasssly ссылки контакты аватар");
         AddLazy("Открыть папку с логами", "О плеере", "About", "OpenLogsButton", "логи log ошибка краш crash диагностика");
-        Add("Фон у кнопок управления", "Окно и запуск", "Window", ControlButtonsBackgroundCheckBox, "кнопки плашка подложка прозрачные без фона buttons background plate transparent");
-        Add("Вид кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonStyleRadioGroup, "акцентный фон как у остальных кнопок play pause accent");
-        Add("Меню «Ещё» (три точки)", "Окно и запуск", "Window", MoreMenuStyleRadioGroup, "три точки очередь текст песни меню пружина анимация dynamic menu more");
-        Add("Форма кнопки Пуск/Пауза", "Окно и запуск", "Window", PlayButtonShapeRadioGroup, "квадратный круглый круг квадрат по умолчанию форма кнопки play pause square round circle shape");
+        AddLazy("Фон у кнопок управления", "Окно и запуск", "Window", "ControlButtonsBackgroundCheckBox", "кнопки плашка подложка прозрачные без фона buttons background plate transparent");
+        AddLazy("Вид кнопки Пуск/Пауза", "Окно и запуск", "Window", "PlayButtonStyleRadioGroup", "акцентный фон как у остальных кнопок play pause accent");
+        AddLazy("Меню «Ещё» (три точки)", "Окно и запуск", "Window", "MoreMenuStyleRadioGroup", "три точки очередь текст песни меню пружина анимация dynamic menu more");
+        AddLazy("Форма кнопки Пуск/Пауза", "Окно и запуск", "Window", "PlayButtonShapeRadioGroup", "квадратный круглый круг квадрат по умолчанию форма кнопки play pause square round circle shape");
         AddLazy("Диагностика производительности", "О плеере", "About", "DiagnosticsButton", "проверка нагрузка процессор память утечки тест фоновое наблюдение за ресурсами watchdog diagnostics performance cpu memory leak");
         Add("Автоматически переводить журнал изменений на английский", "Оформление", "Appearance", ChangelogAutoTranslateCheckBox, "чейнджлог changelog перевод английский google translate история изменений патчноуты");
         Add("Показывать названия рядом с иконками", "Оформление", "Appearance", NavShowLabelsCheckBox, "подписи названия иконки навигация labels icons");
@@ -265,9 +265,9 @@ public partial class SettingsWindow
         Add("Масштаб интерфейса", "Оформление", "Appearance", InterfaceScaleSlider, "размер текст scale interface size");
         Add("Все анимации", "Оформление", "Appearance", AnimationsMasterCheckBox, "движение анимация слайдеры переходы обложка текст песни полоса мини-плеер бегущая строка остров меню трея сердечко индикаторы загрузки motion animations reduce");
         Add("Now Playing: фон и переходы", "Оформление", "Appearance", AnimationNowPlayingCheckBox, "анимация фон now playing animation background");
-        Add("Показывать дополнительные кнопки по бокам от кнопок управления", "Окно и запуск", "Window", ModernShowSideButtonsCheckBox, "кнопки слоты управление extra buttons slots");
-        Add("Подложка у кнопок управления (вид «Стекло»)", "Окно и запуск", "Window", GlassControlsBackgroundCheckBox, "стекло glass подложка controls background");
-        Add("Выравнивание обложки в виде «Компакт»", "Окно и запуск", "Window", CompactCoverAlignmentCombo, "компакт обложка выравнивание compact cover alignment");
+        AddLazy("Показывать дополнительные кнопки по бокам от кнопок управления", "Окно и запуск", "Window", "ModernShowSideButtonsCheckBox", "кнопки слоты управление extra buttons slots");
+        AddLazy("Подложка у кнопок управления (вид «Стекло»)", "Окно и запуск", "Window", "GlassControlsBackgroundCheckBox", "стекло glass подложка controls background");
+        AddLazy("Выравнивание обложки в виде «Компакт»", "Окно и запуск", "Window", "CompactCoverAlignmentCombo", "компакт обложка выравнивание compact cover alignment");
     }
 
     private void SettingsSearchBox_TextChanged(object sender, System.Windows.Controls.TextChangedEventArgs e) => RefreshSearchResults();

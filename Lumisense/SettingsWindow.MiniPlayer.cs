@@ -19,39 +19,6 @@ namespace Lumisense;
 
 public partial class SettingsWindow
 {
-    private void MinimizeToTrayCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.MinimizeToTrayOnClose = MinimizeToTrayCheckBox.IsChecked == true;
-    }
-
-    private void LaunchOnStartupCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        if (StartupManager.SetEnabled(LaunchOnStartupCheckBox.IsChecked == true)) return;
-
-        // Реестр не изменился — возвращаем флажок к фактическому состоянию.
-        bool wasInitializing7 = _isInitializing;
-        _isInitializing = true;
-        try
-        {
-            LaunchOnStartupCheckBox.IsChecked = StartupManager.IsEnabled();
-        }
-        finally
-        {
-            _isInitializing = wasInitializing7;
-        }
-    }
-
-    private void StartHiddenInTrayCheckBox_Changed(object sender, RoutedEventArgs e)
-    {
-        if (_isInitializing) return;
-
-        _settings.StartHiddenInTray = StartHiddenInTrayCheckBox.IsChecked == true;
-    }
-
     // Прозрачность мини-плеера — как громкость в главном окне: Slider не ловит мышь (IsHitTestVisible="False"),
     // клик и перетаскивание по всей полосе обрабатывает прозрачный Border поверх него.
 

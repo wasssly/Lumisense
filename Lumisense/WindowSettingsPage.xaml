@@ -1,0 +1,647 @@
+<UserControl x:Class="Lumisense.WindowSettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
+             xmlns:local="clr-namespace:Lumisense">
+    <StackPanel x:Name="PageWindow">
+        <TextBlock Text="Окно и запуск" Style="{StaticResource PageTitleStyle}" />
+        <TextBlock Text="Режим окна и поведение приложения при запуске." Style="{StaticResource PageDescriptionStyle}" />
+
+        <StackPanel x:Name="MainWindowLayoutCard" Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,16">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Вид главного окна">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=MainWindowLayoutRadioCombo}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <StackPanel x:Name="MainWindowLayoutRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                <ComboBox x:Name="MainWindowLayoutRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид главного окна" MinWidth="220" HorizontalAlignment="Right">
+                                    <ComboBoxItem Content="Новый: крупная обложка, управление снизу" Tag="MainWindowLayoutModernRadio" />
+                                    <ComboBoxItem Content="Стекло: размытая обложка на фоне, кнопки в капсуле" Tag="MainWindowLayoutGlassRadio" />
+                                    <ComboBoxItem Content="Винил: круглая обложка, которая вращается при воспроизведении" Tag="MainWindowLayoutVinylRadio" />
+                                    <ComboBoxItem Content="Компакт: обложка слева, название справа" Tag="MainWindowLayoutCompactRadio" />
+                                    <ComboBoxItem Content="Постер: обложка-баннер во всю ширину, название поверх" Tag="MainWindowLayoutPosterRadio" />
+                                </ComboBox>
+                                <StackPanel Visibility="Collapsed">
+                                    <RadioButton x:Name="MainWindowLayoutModernRadio" Content="Новый: крупная обложка, управление снизу"
+                                    GroupName="MainWindowLayout" Tag="Modern" Checked="MainWindowLayoutRadio_Checked" />
+                                    <RadioButton x:Name="MainWindowLayoutGlassRadio" Content="Стекло: размытая обложка на фоне, кнопки в капсуле"
+                                    GroupName="MainWindowLayout" Tag="Glass" Checked="MainWindowLayoutRadio_Checked" />
+                                    <RadioButton x:Name="MainWindowLayoutVinylRadio" Content="Винил: круглая обложка, которая вращается при воспроизведении"
+                                    GroupName="MainWindowLayout" Tag="Vinyl" Checked="MainWindowLayoutRadio_Checked" />
+                                    <RadioButton x:Name="MainWindowLayoutCompactRadio" Content="Компакт: обложка слева, название справа"
+                                    GroupName="MainWindowLayout" Tag="Compact" Checked="MainWindowLayoutRadio_Checked" />
+                                    <RadioButton x:Name="MainWindowLayoutPosterRadio" Content="Постер: обложка-баннер во всю ширину, название поверх"
+                                    GroupName="MainWindowLayout" Tag="Poster" Checked="MainWindowLayoutRadio_Checked" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Grid>
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Оформление главного окна. Режим окна (квадратный, прямоугольный, мини) выбирается ниже и работает с любым видом." TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Кнопки управления идут симметричным рядом. Дополнительные кнопки по бокам от них можно включить, выключить и выбрать самому." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <StackPanel x:Name="ModernLayoutOptionsPanel">
+                        <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=ModernShowSideButtonsCheckBox}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Показывать дополнительные кнопки по бокам от кнопок управления">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=ModernShowSideButtonsCheckBox}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="ModernShowSideButtonsCheckBox"
+                                AutomationProperties.Name="Показывать дополнительные кнопки по бокам от кнопок управления"
+                                Checked="ModernLayoutOptions_Changed" Unchecked="ModernLayoutOptions_Changed" />
+                            </Grid>
+                        </Border>
+                        <StackPanel x:Name="ModernSlotsGrid">
+                            <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ModernSlot0Combo}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                        <TextBlock Text="Слева, дальняя">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled, ElementName=ModernSlot0Combo}" Value="False">
+                                                            <Setter Property="Opacity" Value="0.45" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot0Combo" AutomationProperties.Name="Кнопка слева, дальняя" MinWidth="170" SelectionChanged="ModernLayoutOptions_Changed">
+                                        <ComboBoxItem Tag="" Content="Нет" />
+                                        <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
+                                        <ComboBoxItem Tag="Repeat" Content="Повтор" />
+                                        <ComboBoxItem Tag="Stop" Content="Стоп" />
+                                        <ComboBoxItem Tag="Mini" Content="Мини-плеер" />
+                                        <ComboBoxItem Tag="Favorite" Content="Избранное" />
+                                        <ComboBoxItem Tag="Mute" Content="Без звука" />
+                                        <ComboBoxItem Tag="Speed" Content="Скорость и тон" />
+                                        <ComboBoxItem Tag="Settings" Content="Настройки" />
+                                        <ComboBoxItem Tag="More" Content="Ещё" />
+                                        <ComboBoxItem Tag="Statistics" Content="Статистика" />
+                                        <ComboBoxItem Tag="Queue" Content="Очередь" />
+                                        <ComboBoxItem Tag="Lyrics" Content="Текст песни" />
+                                        <ComboBoxItem Tag="Playlist" Content="Показать или скрыть плейлист" />
+                                    </ComboBox>
+                                </Grid>
+                            </Border>
+                            <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ModernSlot1Combo}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                        <TextBlock Text="Слева, ближняя">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled, ElementName=ModernSlot1Combo}" Value="False">
+                                                            <Setter Property="Opacity" Value="0.45" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot1Combo" AutomationProperties.Name="Кнопка слева, ближняя" MinWidth="170" SelectionChanged="ModernLayoutOptions_Changed">
+                                        <ComboBoxItem Tag="" Content="Нет" />
+                                        <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
+                                        <ComboBoxItem Tag="Repeat" Content="Повтор" />
+                                        <ComboBoxItem Tag="Stop" Content="Стоп" />
+                                        <ComboBoxItem Tag="Mini" Content="Мини-плеер" />
+                                        <ComboBoxItem Tag="Favorite" Content="Избранное" />
+                                        <ComboBoxItem Tag="Mute" Content="Без звука" />
+                                        <ComboBoxItem Tag="Speed" Content="Скорость и тон" />
+                                        <ComboBoxItem Tag="Settings" Content="Настройки" />
+                                        <ComboBoxItem Tag="More" Content="Ещё" />
+                                        <ComboBoxItem Tag="Statistics" Content="Статистика" />
+                                        <ComboBoxItem Tag="Queue" Content="Очередь" />
+                                        <ComboBoxItem Tag="Lyrics" Content="Текст песни" />
+                                        <ComboBoxItem Tag="Playlist" Content="Показать или скрыть плейлист" />
+                                    </ComboBox>
+                                </Grid>
+                            </Border>
+                            <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ModernSlot2Combo}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                        <TextBlock Text="Справа, ближняя">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled, ElementName=ModernSlot2Combo}" Value="False">
+                                                            <Setter Property="Opacity" Value="0.45" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot2Combo" AutomationProperties.Name="Кнопка справа, ближняя" MinWidth="170" SelectionChanged="ModernLayoutOptions_Changed">
+                                        <ComboBoxItem Tag="" Content="Нет" />
+                                        <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
+                                        <ComboBoxItem Tag="Repeat" Content="Повтор" />
+                                        <ComboBoxItem Tag="Stop" Content="Стоп" />
+                                        <ComboBoxItem Tag="Mini" Content="Мини-плеер" />
+                                        <ComboBoxItem Tag="Favorite" Content="Избранное" />
+                                        <ComboBoxItem Tag="Mute" Content="Без звука" />
+                                        <ComboBoxItem Tag="Speed" Content="Скорость и тон" />
+                                        <ComboBoxItem Tag="Settings" Content="Настройки" />
+                                        <ComboBoxItem Tag="More" Content="Ещё" />
+                                        <ComboBoxItem Tag="Statistics" Content="Статистика" />
+                                        <ComboBoxItem Tag="Queue" Content="Очередь" />
+                                        <ComboBoxItem Tag="Lyrics" Content="Текст песни" />
+                                        <ComboBoxItem Tag="Playlist" Content="Показать или скрыть плейлист" />
+                                    </ComboBox>
+                                </Grid>
+                            </Border>
+                            <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ModernSlot3Combo}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                        <TextBlock Text="Справа, дальняя">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsEnabled, ElementName=ModernSlot3Combo}" Value="False">
+                                                            <Setter Property="Opacity" Value="0.45" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </StackPanel>
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot3Combo" AutomationProperties.Name="Кнопка справа, дальняя" MinWidth="170" SelectionChanged="ModernLayoutOptions_Changed">
+                                        <ComboBoxItem Tag="" Content="Нет" />
+                                        <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
+                                        <ComboBoxItem Tag="Repeat" Content="Повтор" />
+                                        <ComboBoxItem Tag="Stop" Content="Стоп" />
+                                        <ComboBoxItem Tag="Mini" Content="Мини-плеер" />
+                                        <ComboBoxItem Tag="Favorite" Content="Избранное" />
+                                        <ComboBoxItem Tag="Mute" Content="Без звука" />
+                                        <ComboBoxItem Tag="Speed" Content="Скорость и тон" />
+                                        <ComboBoxItem Tag="Settings" Content="Настройки" />
+                                        <ComboBoxItem Tag="More" Content="Ещё" />
+                                        <ComboBoxItem Tag="Statistics" Content="Статистика" />
+                                        <ComboBoxItem Tag="Queue" Content="Очередь" />
+                                        <ComboBoxItem Tag="Lyrics" Content="Текст песни" />
+                                        <ComboBoxItem Tag="Playlist" Content="Показать или скрыть плейлист" />
+                                    </ComboBox>
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                        <Border Padding="20,0,20,12">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,0" Text="Слева и справа от «Назад / Пуск / Вперёд» есть по два места. Каждую кнопку можно поставить только в одно из них." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=GlassControlsBackgroundCheckBox}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Подложка у кнопок управления (вид «Стекло»)">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=GlassControlsBackgroundCheckBox}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="GlassControlsBackgroundCheckBox"
+                                AutomationProperties.Name="Подложка у кнопок управления (вид «Стекло»)"
+                                Checked="GlassControlsBackground_Changed" Unchecked="GlassControlsBackground_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=ControlButtonsBackgroundCheckBox}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Фон у кнопок управления">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=ControlButtonsBackgroundCheckBox}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Плашка и контур вокруг каждой кнопки ряда управления главного окна, во всех видах. Включённые Шаффл и Повтор остаются акцентными." TextWrapping="Wrap" />
+                                </StackPanel>
+                                <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="ControlButtonsBackgroundCheckBox"
+                                AutomationProperties.Name="Фон у кнопок управления"
+                                Checked="ControlButtonsBackground_Changed" Unchecked="ControlButtonsBackground_Changed" />
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Кнопка «Пуск/Пауза»">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=PlayButtonStyleRadioCombo}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel x:Name="PlayButtonStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                    <ComboBox x:Name="PlayButtonStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Кнопка «Пуск/Пауза»" MinWidth="220" HorizontalAlignment="Right">
+                                        <ComboBoxItem Content="Акцентный фон" Tag="PlayButtonAccentRadio" />
+                                        <ComboBoxItem Content="Как у остальных кнопок" Tag="PlayButtonPlainRadio" />
+                                    </ComboBox>
+                                    <StackPanel Visibility="Collapsed">
+                                        <RadioButton x:Name="PlayButtonAccentRadio" GroupName="PlayButtonStyle" Content="Акцентный фон"
+                                        Checked="PlayButtonStyle_Changed" />
+                                        <RadioButton x:Name="PlayButtonPlainRadio" GroupName="PlayButtonStyle" Content="Как у остальных кнопок" Checked="PlayButtonStyle_Changed" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Форма кнопки «Пуск/Пауза»">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=PlayButtonShapeRadioCombo}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel x:Name="PlayButtonShapeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                    <ComboBox x:Name="PlayButtonShapeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Форма кнопки «Пуск/Пауза»" MinWidth="220" HorizontalAlignment="Right">
+                                        <ComboBoxItem Content="Квадратный (по умолчанию)" Tag="PlayButtonSquareRadio" />
+                                        <ComboBoxItem Content="Круглый" Tag="PlayButtonRoundRadio" />
+                                    </ComboBox>
+                                    <StackPanel Visibility="Collapsed">
+                                        <RadioButton x:Name="PlayButtonSquareRadio" GroupName="PlayButtonShape" Content="Квадратный (по умолчанию)"
+                                        Checked="PlayButtonShape_Changed" />
+                                        <RadioButton x:Name="PlayButtonRoundRadio" GroupName="PlayButtonShape" Content="Круглый" Checked="PlayButtonShape_Changed" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Меню «Ещё» (три точки)">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=MoreMenuStyleRadioCombo}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <StackPanel x:Name="MoreMenuStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
+                                    <ComboBox x:Name="MoreMenuStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Меню «Ещё» (три точки)" MinWidth="220" HorizontalAlignment="Right">
+                                        <ComboBoxItem Content="Пружинное (растёт из кнопки)" Tag="MoreMenuSpringRadio" />
+                                        <ComboBoxItem Content="Классическое окошко" Tag="MoreMenuClassicRadio" />
+                                    </ComboBox>
+                                    <StackPanel Visibility="Collapsed">
+                                        <RadioButton x:Name="MoreMenuSpringRadio" GroupName="MoreMenuStyle" Content="Пружинное (растёт из кнопки)"
+                                        Checked="MoreMenuStyle_Changed" />
+                                        <RadioButton x:Name="MoreMenuClassicRadio" GroupName="MoreMenuStyle" Content="Классическое окошко" Checked="MoreMenuStyle_Changed" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                        <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=CompactCoverAlignmentCombo}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                    <TextBlock Text="Обложка в виде «Компакт»">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding IsEnabled, ElementName=CompactCoverAlignmentCombo}" Value="False">
+                                                        <Setter Property="Opacity" Value="0.45" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </StackPanel>
+                                <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="CompactCoverAlignmentCombo" AutomationProperties.Name="Выравнивание обложки в виде «Компакт»" MinWidth="170" SelectionChanged="CompactCoverAlignment_Changed">
+                                    <ComboBoxItem Tag="Left" Content="Слева" />
+                                    <ComboBoxItem Tag="Center" Content="По центру" />
+                                </ComboBox>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel x:Name="PlayerViewModeCard" Margin="0,0,0,24">
+            <TextBlock Text="Вид плеера" Style="{StaticResource SettingsGroupTitleStyle}" />
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <StackPanel Orientation="Horizontal">
+
+                            <!-- Квадратный вид: крупный контент + открытый по умолчанию плейлист,
+                                 занимающий всю ширину окна -->
+                            <RadioButton x:Name="ViewModeSquareRadio" Style="{StaticResource ViewModeThumbStyle}"
+                                         GroupName="PlayerViewModeGroup" Tag="Square" Margin="0,0,10,0"
+                                         Checked="PlayerViewModeRadio_Checked">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Border Width="64" Height="64" CornerRadius="6"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <Grid Margin="6">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="26" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <Ellipse Grid.Row="0" Width="22" Height="22"
+                                                     Fill="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                            <StackPanel Grid.Row="1" VerticalAlignment="Bottom" Margin="0,4,0,0">
+                                                <Rectangle Height="5" Margin="0,0,0,3"
+                                                           Fill="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                <Rectangle Height="5" Margin="0,0,0,3"
+                                                           Fill="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                <Rectangle Height="5"
+                                                           Fill="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                    <TextBlock Text="Квадратный" Foreground="White" FontSize="12" Margin="0,6,0,0"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+
+                            <!-- Прямоугольный вид: обычные размеры элементов, плейлист виден сбоку/снизу -->
+                            <RadioButton x:Name="ViewModeRectangularRadio" Style="{StaticResource ViewModeThumbStyle}"
+                                         GroupName="PlayerViewModeGroup" Tag="Rectangular" Margin="0,0,10,0"
+                                         Checked="PlayerViewModeRadio_Checked">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Border Width="44" Height="64" CornerRadius="6"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <Grid Margin="5">
+                                            <Grid.RowDefinitions>
+                                                <RowDefinition Height="18" />
+                                                <RowDefinition Height="*" />
+                                            </Grid.RowDefinitions>
+                                            <Ellipse Grid.Row="0" Width="14" Height="14"
+                                                     HorizontalAlignment="Center"
+                                                     Fill="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                            <StackPanel Grid.Row="1" VerticalAlignment="Bottom" Margin="0,4,0,0">
+                                                <Rectangle Height="4" Margin="0,0,0,3"
+                                                           Fill="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                <Rectangle Height="4" Margin="0,0,0,3"
+                                                           Fill="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                <Rectangle Height="4" Margin="0,0,0,3"
+                                                           Fill="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                                <Rectangle Height="4"
+                                                           Fill="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                    <TextBlock Text="Прямоугольный" Foreground="White" FontSize="12" Margin="0,6,0,0"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+
+                            <!-- Мини-плеер: узкая горизонтальная плашка без плейлиста -->
+                            <RadioButton x:Name="ViewModeMiniRadio" Style="{StaticResource ViewModeThumbStyle}"
+                                         GroupName="PlayerViewModeGroup" Tag="Mini"
+                                         Checked="PlayerViewModeRadio_Checked">
+                                <StackPanel HorizontalAlignment="Center">
+                                    <Border Width="76" Height="64" CornerRadius="6"
+                                            Background="{DynamicResource ControlFillColorSecondaryBrush}"
+                                            BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                            BorderThickness="1">
+                                        <Border Width="60" Height="20" CornerRadius="10"
+                                                HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                Background="{DynamicResource ControlFillColorDefaultBrush}"
+                                                BorderBrush="{DynamicResource ControlStrongFillColorDefaultBrush}"
+                                                BorderThickness="1">
+                                            <Grid Margin="4,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="Auto" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <Ellipse Grid.Column="0" Width="10" Height="10"
+                                                         VerticalAlignment="Center"
+                                                         Fill="{DynamicResource AccentTextFillColorPrimaryBrush}" />
+                                                <Rectangle Grid.Column="1" Height="4" Margin="4,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           Fill="{DynamicResource ControlStrongFillColorDefaultBrush}" />
+                                            </Grid>
+                                        </Border>
+                                    </Border>
+                                    <TextBlock Text="Мини-плеер" Foreground="White" FontSize="12" Margin="0,6,0,0"
+                                               HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </RadioButton>
+
+                        </StackPanel>
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Как выглядит и какого размера главное окно плеера" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=AlwaysOnTopCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Поверх всех окон">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=AlwaysOnTopCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Окно плеера остаётся видимым поверх других приложений." />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="AlwaysOnTopCheckBox" AutomationProperties.Name="Поверх всех окон"
+                            Checked="AlwaysOnTopCheckBox_Changed" Unchecked="AlwaysOnTopCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=MinimizeToTrayCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Сворачивать в трей при закрытии">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=MinimizeToTrayCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Кнопка закрытия не завершает Lumisense: плеер остаётся доступен через значок в области уведомлений." />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="MinimizeToTrayCheckBox" AutomationProperties.Name="Сворачивать в трей при закрытии"
+                            Checked="MinimizeToTrayCheckBox_Changed" Unchecked="MinimizeToTrayCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0" Visibility="{Binding Visibility, ElementName=LaunchOnStartupCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Запускать вместе с Windows">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=LaunchOnStartupCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Lumisense будет открываться после входа в Windows." />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="LaunchOnStartupCheckBox" AutomationProperties.Name="Запускать вместе с Windows"
+                            Checked="LaunchOnStartupCheckBox_Changed" Unchecked="LaunchOnStartupCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                    <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=StartHiddenInTrayCheckBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center" Margin="0,0,24,0">
+                                <TextBlock Text="Запускать свёрнутым в трей">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource SettingsRowTitleStyle}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding IsEnabled, ElementName=StartHiddenInTrayCheckBox}" Value="False">
+                                                    <Setter Property="Opacity" Value="0.45" />
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="При запуске появляется только значок в области уведомлений; плеер можно открыть из него в любой момент." />
+                            </StackPanel>
+                            <ui:ToggleSwitch Grid.Column="1" VerticalAlignment="Center" x:Name="StartHiddenInTrayCheckBox" AutomationProperties.Name="Запускать свёрнутым в трей"
+                            Checked="StartHiddenInTrayCheckBox_Changed" Unchecked="StartHiddenInTrayCheckBox_Changed" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </StackPanel>
+</UserControl>

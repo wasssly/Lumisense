@@ -132,11 +132,11 @@ public partial class SettingsWindow
         SaveIslandSettings();
     }
 
-    private static void SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag) =>
+    internal static void SelectComboByTag(System.Windows.Controls.ComboBox combo, string tag) =>
         combo.SelectedItem = combo.Items.Cast<System.Windows.Controls.ComboBoxItem>()
             .FirstOrDefault(item => item.Tag as string == tag) ?? combo.Items[0];
 
-    private static string SelectedTag(System.Windows.Controls.ComboBox combo, string fallback) =>
+    internal static string SelectedTag(System.Windows.Controls.ComboBox combo, string fallback) =>
         combo.SelectedItem is System.Windows.Controls.ComboBoxItem { Tag: string tag } ? tag : fallback;
 
     private void IslandSideButtonCombo_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
