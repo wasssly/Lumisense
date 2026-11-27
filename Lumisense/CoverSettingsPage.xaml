@@ -163,7 +163,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="TrackStateBadgeModeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="TrackStateBadgeModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Подпись под названием трека" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="TrackStateBadgeModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Подпись под названием трека" MinWidth="330" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Состояние трека (по умолчанию)" Tag="BadgeModeStateRadio" />
                                     <ComboBoxItem Content="Расширение файла (FLAC, MP3…)" Tag="BadgeModeExtensionRadio" />
                                     <ComboBoxItem Content="Качество (битрейт и частота)" Tag="BadgeModeQualityRadio" />

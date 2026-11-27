@@ -607,7 +607,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="AccentModeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="AccentModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Акцентный цвет" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="AccentModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Акцентный цвет" MinWidth="240" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Системный (как в Windows)" Tag="AccentSystemRadio" />
                                     <ComboBoxItem Content="От текущей обложки" Tag="AccentCoverRadio" />
                                     <ComboBoxItem Content="Свой" Tag="AccentManualRadio" />
@@ -773,7 +773,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="BackdropRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="BackdropRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Основа окна" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="BackdropRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Основа окна" MinWidth="420" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Mica (лёгкое размытие, по умолчанию)" Tag="BackdropMicaRadio" />
                                     <ComboBoxItem Content="Mica Alt (более плотная и контрастная основа, Windows 11 22H2+)" Tag="BackdropMicaAltRadio" />
                                     <ComboBoxItem Content="Acrylic (сильнее размытие и прозрачность)" Tag="BackdropAcrylicRadio" />

@@ -36,5 +36,6 @@ public partial class SettingsWindow
 
         if (_lazyPages.TryGetValue("Lyrics", out ILazySettingsPage? lyricsPage)) ((LyricsSettingsPage)lyricsPage).RefreshLocalization();
         RefreshMiniArtworkProgressThicknessPresentation();
+        Dispatcher.BeginInvoke(() => ComboPopupFit.RefreshAll(this), System.Windows.Threading.DispatcherPriority.ContextIdle);
     }
 }

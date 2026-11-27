@@ -33,7 +33,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="ProgressScopeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="ProgressScopeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Полоса воспроизведения" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="ProgressScopeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Полоса воспроизведения" MinWidth="320" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Одинаковая для всех окон" Tag="ProgressScopeSharedRadio" />
                                     <ComboBoxItem Content="Своя для каждого окна (по умолчанию)" Tag="ProgressScopePerWindowRadio" />
                                 </ComboBox>
@@ -155,7 +155,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="ProgressColorRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="ProgressColorRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Цвет активной части" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="ProgressColorRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Цвет активной части" MinWidth="290" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Акцент приложения (по умолчанию)" Tag="ProgressColorAccentRadio" />
                                     <ComboBoxItem Content="От обложки текущего трека" Tag="ProgressColorCoverRadio" />
                                     <ComboBoxItem Content="Свой цвет" Tag="ProgressColorCustomRadio" />
@@ -492,7 +492,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="SliderStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="SliderStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид ползунков" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="SliderStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид ползунков" MinWidth="410" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Обычный (по умолчанию)" Tag="SliderStyleDefaultRadio" />
                                     <ComboBoxItem Content="Material (тонкая ручка с зазором, как в Android)" Tag="SliderStyleMaterialRadio" />
                                 </ComboBox>

@@ -25,7 +25,7 @@
                             <TextBlock Text="Остров остаётся по центру верхнего края выбранного монитора; если монитор отключён, он переезжает на основной." Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" />
                         </StackPanel>
                         <ComboBox x:Name="IslandMonitorCombo" AutomationProperties.Name="Монитор острова" SelectionChanged="IslandMonitorCombo_SelectionChanged"
-                                                                  Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="220" />
+                                                                  Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" />
                     </Grid>
                 </Border>
             </StackPanel>
@@ -105,7 +105,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Вид свёрнутого острова" Style="{StaticResource SettingsRowTitleStyle}" />
                                                                 <ComboBox x:Name="IslandShapeCombo" AutomationProperties.Name="Вид свёрнутого острова" SelectionChanged="IslandLookCombo_SelectionChanged"
-                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="310" Margin="0">
                                                                     <ComboBoxItem Content="Капсула" Tag="Capsule" />
                                                                     <ComboBoxItem Content="Круг (только обложка)" Tag="Circle" />
                                                                     <ComboBoxItem Content="Notch Nook (у верхнего края экрана)" Tag="Notch" />
@@ -405,7 +405,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Левая кнопка раскрытого острова" Style="{StaticResource SettingsRowTitleStyle}" />
                                                                 <ComboBox x:Name="IslandLeftButtonCombo" AutomationProperties.Name="Левая кнопка раскрытого острова" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
-                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="420" Margin="0">
                                                                     <ComboBoxItem Content="Избранное" Tag="Favorite" />
                                                                     <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
                                                                     <ComboBoxItem Content="Текст песни" Tag="Lyrics" />
@@ -420,7 +420,7 @@
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Text="Правая кнопка раскрытого острова" Style="{StaticResource SettingsRowTitleStyle}" />
                                                                 <ComboBox x:Name="IslandRightButtonCombo" AutomationProperties.Name="Правая кнопка раскрытого острова" SelectionChanged="IslandSideButtonCombo_SelectionChanged"
-                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="300" Margin="0">
+                                                                          Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" MinWidth="420" Margin="0">
                                                                     <ComboBoxItem Content="Избранное" Tag="Favorite" />
                                                                     <ComboBoxItem Content="Повтор (перемешивание — ПКМ или вытягивание вверх/вниз)" Tag="Repeat" />
                                                                     <ComboBoxItem Content="Текст песни" Tag="Lyrics" />

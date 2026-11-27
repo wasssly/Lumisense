@@ -258,7 +258,7 @@
                                 </TextBlock>
                                 <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,4,0,0" Text="Автоматический выбор использует экран, на котором находится окно плеера." />
                             </StackPanel>
-                            <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ToastMonitorCombo" AutomationProperties.Name="Монитор уведомления" SelectionChanged="ToastMonitorCombo_SelectionChanged" MinWidth="220" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ToastMonitorCombo" AutomationProperties.Name="Монитор уведомления" SelectionChanged="ToastMonitorCombo_SelectionChanged" MinWidth="300" />
                         </Grid>
                     </Border>
                 </StackPanel>
@@ -289,7 +289,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="ToastColorModeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="ToastColorModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Цвет карточки" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="ToastColorModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Цвет карточки" MinWidth="310" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Стандартный (по теме, по умолчанию)" Tag="ToastColorDefaultRadio" />
                                     <ComboBoxItem Content="От обложки текущего трека" Tag="ToastColorCoverRadio" />
                                     <ComboBoxItem Content="Акцентный цвет приложения" Tag="ToastColorAccentRadio" />

@@ -31,7 +31,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="MiniPlayerStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="MiniPlayerStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид мини-плеера" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="MiniPlayerStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид мини-плеера" MinWidth="420" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Карточка (по умолчанию)" Tag="MiniStyleClassicRadio" />
                                     <ComboBoxItem Content="Остров — капсула у верхнего края экрана, раскрывается по клику" Tag="MiniStyleIslandRadio" />
                                 </ComboBox>
@@ -448,7 +448,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="MiniButtonsLayoutRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="MiniButtonsLayoutRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Расположение кнопок управления" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="MiniButtonsLayoutRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Расположение кнопок управления" MinWidth="420" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Снизу (окно немного подрастает при наведении)" Tag="MiniButtonsBelowRadio" />
                                     <ComboBoxItem Content="На месте обложки и названия (размер окна не меняется)" Tag="MiniButtonsOverlayRadio" />
                                 </ComboBox>
@@ -496,7 +496,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="MiniPlayerArtworkStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="MiniPlayerArtworkStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Отображение обложки" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="MiniPlayerArtworkStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Отображение обложки" MinWidth="420" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="По умолчанию" Tag="MiniArtworkDefaultRadio" />
                                     <ComboBoxItem Content="Винил (медленное вращение во время воспроизведения)" Tag="MiniArtworkVinylRadio" />
                                     <ComboBoxItem Content="Круглая (без вращения)" Tag="MiniArtworkStaticCircleRadio" />
@@ -598,7 +598,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="MiniPlayerArtworkProgressStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="MiniPlayerArtworkProgressStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид контура" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="MiniPlayerArtworkProgressStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид контура" MinWidth="420" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Обычный (по умолчанию)" Tag="MiniArtworkProgressStyleDefaultRadio" />
                                     <ComboBoxItem Content="Material (волнистая линия, как в Android)" Tag="MiniArtworkProgressStyleMaterialRadio" />
                                     <ComboBoxItem Content="Material Slider (ползунок с зазором, как в Android)" Tag="MiniArtworkProgressStyleMaterialSliderRadio" />
@@ -664,7 +664,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="MiniArtworkProgressColorModeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="MiniArtworkProgressColorModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Цвет контура" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="MiniArtworkProgressColorModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Цвет контура" MinWidth="420" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Как у полосы воспроизведения (вкладка «Воспроизведение»)" Tag="MiniArtworkProgressAccentRadio" />
                                     <ComboBoxItem Content="Фиксированный цвет" Tag="MiniArtworkProgressFixedRadio" />
                                 </ComboBox>
@@ -752,7 +752,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="MiniPlayerSizePresetRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="MiniPlayerSizePresetRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Размер мини-плеера" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="MiniPlayerSizePresetRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Размер мини-плеера" MinWidth="350" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Классический — 220×97, как в версии 1.21" Tag="MiniSizeClassicRadio" />
                                     <ComboBoxItem Content="Текущий — 200×88" Tag="MiniSizeCurrentRadio" />
                                     <ComboBoxItem Content="Компактный — 180×79" Tag="MiniSizeCompactRadio" />
@@ -801,7 +801,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="MiniInfoModeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="MiniInfoModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вторая строка в мини-плеере" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="MiniInfoModeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вторая строка в мини-плеере" MinWidth="270" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Исполнитель" Tag="MiniInfoArtistRadio" />
                                     <ComboBoxItem Content="Ничего (только название трека)" Tag="MiniInfoOnlyTitleRadio" />
                                     <ComboBoxItem Content="Оставшееся время трека" Tag="MiniInfoRemainingRadio" />

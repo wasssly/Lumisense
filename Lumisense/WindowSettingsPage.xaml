@@ -30,7 +30,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="MainWindowLayoutRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="MainWindowLayoutRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид главного окна" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="MainWindowLayoutRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Вид главного окна" MinWidth="420" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Новый: крупная обложка, управление снизу" Tag="MainWindowLayoutModernRadio" />
                                     <ComboBoxItem Content="Стекло: размытая обложка на фоне, кнопки в капсуле" Tag="MainWindowLayoutGlassRadio" />
                                     <ComboBoxItem Content="Винил: круглая обложка, которая вращается при воспроизведении" Tag="MainWindowLayoutVinylRadio" />
@@ -107,7 +107,7 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </StackPanel>
-                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot0Combo" AutomationProperties.Name="Кнопка слева, дальняя" MinWidth="170" SelectionChanged="ModernLayoutOptions_Changed">
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot0Combo" AutomationProperties.Name="Кнопка слева, дальняя" MinWidth="260" SelectionChanged="ModernLayoutOptions_Changed">
                                         <ComboBoxItem Tag="" Content="Нет" />
                                         <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
                                         <ComboBoxItem Tag="Repeat" Content="Повтор" />
@@ -144,7 +144,7 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </StackPanel>
-                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot1Combo" AutomationProperties.Name="Кнопка слева, ближняя" MinWidth="170" SelectionChanged="ModernLayoutOptions_Changed">
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot1Combo" AutomationProperties.Name="Кнопка слева, ближняя" MinWidth="260" SelectionChanged="ModernLayoutOptions_Changed">
                                         <ComboBoxItem Tag="" Content="Нет" />
                                         <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
                                         <ComboBoxItem Tag="Repeat" Content="Повтор" />
@@ -181,7 +181,7 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </StackPanel>
-                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot2Combo" AutomationProperties.Name="Кнопка справа, ближняя" MinWidth="170" SelectionChanged="ModernLayoutOptions_Changed">
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot2Combo" AutomationProperties.Name="Кнопка справа, ближняя" MinWidth="260" SelectionChanged="ModernLayoutOptions_Changed">
                                         <ComboBoxItem Tag="" Content="Нет" />
                                         <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
                                         <ComboBoxItem Tag="Repeat" Content="Повтор" />
@@ -218,7 +218,7 @@
                                             </TextBlock.Style>
                                         </TextBlock>
                                     </StackPanel>
-                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot3Combo" AutomationProperties.Name="Кнопка справа, дальняя" MinWidth="170" SelectionChanged="ModernLayoutOptions_Changed">
+                                    <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="ModernSlot3Combo" AutomationProperties.Name="Кнопка справа, дальняя" MinWidth="260" SelectionChanged="ModernLayoutOptions_Changed">
                                         <ComboBoxItem Tag="" Content="Нет" />
                                         <ComboBoxItem Tag="Shuffle" Content="Перемешать" />
                                         <ComboBoxItem Tag="Repeat" Content="Повтор" />
@@ -343,7 +343,7 @@
                                     </TextBlock>
                                 </StackPanel>
                                 <StackPanel x:Name="PlayButtonShapeRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                    <ComboBox x:Name="PlayButtonShapeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Форма кнопки «Пуск/Пауза»" MinWidth="220" HorizontalAlignment="Right">
+                                    <ComboBox x:Name="PlayButtonShapeRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Форма кнопки «Пуск/Пауза»" MinWidth="240" HorizontalAlignment="Right">
                                         <ComboBoxItem Content="Квадратный (по умолчанию)" Tag="PlayButtonSquareRadio" />
                                         <ComboBoxItem Content="Круглый" Tag="PlayButtonRoundRadio" />
                                     </ComboBox>
@@ -375,7 +375,7 @@
                                     </TextBlock>
                                 </StackPanel>
                                 <StackPanel x:Name="MoreMenuStyleRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                    <ComboBox x:Name="MoreMenuStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Меню «Ещё» (три точки)" MinWidth="220" HorizontalAlignment="Right">
+                                    <ComboBox x:Name="MoreMenuStyleRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Меню «Ещё» (три точки)" MinWidth="260" HorizontalAlignment="Right">
                                         <ComboBoxItem Content="Пружинное (растёт из кнопки)" Tag="MoreMenuSpringRadio" />
                                         <ComboBoxItem Content="Классическое окошко" Tag="MoreMenuClassicRadio" />
                                     </ComboBox>

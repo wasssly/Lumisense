@@ -106,6 +106,7 @@ public partial class SettingsWindow : FluentWindow
         MarkOpen("initialize-component");
         InitializeRadioCombos();
         InitializeNavScroll();
+        ComboPopupFit.Register();
         WindowSizing.FitToWorkArea(this);
         // Class handlers получают событие даже если дочерний контрол пометил MouseDown
         // обработанным. Это важно для клика по тексту, Slider и другим элементам страницы.

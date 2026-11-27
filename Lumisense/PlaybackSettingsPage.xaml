@@ -85,7 +85,7 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </StackPanel>
-                            <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="OutputDeviceCombo" AutomationProperties.Name="Устройство вывода" SelectionChanged="OutputDeviceCombo_SelectionChanged" MinWidth="300" />
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="OutputDeviceCombo" AutomationProperties.Name="Устройство вывода" SelectionChanged="OutputDeviceCombo_SelectionChanged" MinWidth="400" />
                         </Grid>
                     </Border>
                     <Border Style="{StaticResource SettingsRowStyle}" Visibility="{Binding Visibility, ElementName=DeviceConnectStyleCombo}">
@@ -132,7 +132,7 @@
                                     </TextBlock.Style>
                                 </TextBlock>
                             </StackPanel>
-                            <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="DeviceCardAnimationCombo" AutomationProperties.Name="Анимация карточки устройства" SelectionChanged="DeviceCardAnimationCombo_SelectionChanged" MinWidth="300">
+                            <ComboBox Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" x:Name="DeviceCardAnimationCombo" AutomationProperties.Name="Анимация карточки устройства" SelectionChanged="DeviceCardAnimationCombo_SelectionChanged" MinWidth="420">
                                 <ComboBoxItem Content="Орбита — дуга обегает значок, затем текст всплывает" Tag="Orbit" />
                                 <ComboBoxItem Content="Свечение — вспышка цвета акцента за значком" Tag="Glow" />
                             </ComboBox>

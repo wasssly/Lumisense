@@ -351,7 +351,7 @@
                                 </TextBlock>
                             </StackPanel>
                             <StackPanel x:Name="LyricsPolicyRadioGroup" Grid.Column="1" VerticalAlignment="Center">
-                                <ComboBox x:Name="LyricsPolicyRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Поиск текста песен" MinWidth="220" HorizontalAlignment="Right">
+                                <ComboBox x:Name="LyricsPolicyRadioCombo" Tag="RadioGroup" AutomationProperties.Name="Поиск текста песен" MinWidth="330" HorizontalAlignment="Right">
                                     <ComboBoxItem Content="Только локальные тексты" Tag="LyricsPolicyLocalOnlyRadio" />
                                     <ComboBoxItem Content="Автоматически искать точное совпадение" Tag="LyricsPolicyAutoExactRadio" />
                                     <ComboBoxItem Content="Искать только по моему запросу" Tag="LyricsPolicyManualOnlyRadio" />
