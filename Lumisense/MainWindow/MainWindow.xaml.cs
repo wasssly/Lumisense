@@ -434,7 +434,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
         AccessibilityPreferences.ApplyToWindow(this, _settings);
         ApplyLyricsTextAlignment();
         LyricsPanelSyncedList.ItemsSource = _mainWindowSyncedLyrics;
-        LocalizationService.Initialize(_settings, _isFirstLaunch);
+        _settings.Language = LocalizationService.Initialize(_settings.Language, _isFirstLaunch);
+        if (_isFirstLaunch)
+            SettingsManager.Save(_settings);
         LocalizationService.Apply(this);
         SetTrackUserState(TrackUserState.NoTrack);
         LocalizationService.LanguageChanged += LocalizationService_LanguageChanged;

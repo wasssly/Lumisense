@@ -1615,37 +1615,34 @@ public static class LocalizationService
     public static bool IsEnglish => CurrentLanguage == English;
     public static event EventHandler? LanguageChanged;
 
-    public static void Initialize(AppSettings settings, bool isFirstLaunch)
+    // Возвращает язык, который нужно записать в настройки: на первом запуске он берётся из установщика или из языка Windows.
+    public static string Initialize(string savedLanguage, bool isFirstLaunch)
     {
+        string language = savedLanguage;
         if (isFirstLaunch && TryReadInstallerLanguage(out var installerLanguage))
         {
-            settings.Language = installerLanguage;
-            SettingsManager.Save(settings);
+            language = installerLanguage;
         }
         else if (isFirstLaunch && IsWindowsUiCultureEnglish())
         {
             // Только legacy Inno Setup создавал installer-language.txt; чистая MSI-установка
             // без этой проверки всегда стартовала бы на русском.
-            settings.Language = English;
-            SettingsManager.Save(settings);
+            language = English;
         }
 
-        CurrentLanguage = NormalizeLanguage(settings.Language);
-        settings.Language = CurrentLanguage;
+        CurrentLanguage = NormalizeLanguage(language);
         ApplyCulture();
+        return CurrentLanguage;
     }
 
-    public static void ChangeLanguage(AppSettings settings, string language)
+    public static void ChangeLanguage(string language)
     {
         CurrentLanguage = NormalizeLanguage(language);
-        settings.Language = CurrentLanguage;
         ApplyCulture();
         LanguageChanged?.Invoke(null, EventArgs.Empty);
 
         foreach (Window window in Application.Current.Windows)
             Apply(window);
-
-        _ = SettingsManager.SaveAsync(settings);
     }
 
     // Новый API для постепенно мигрируемых строк. При отсутствии ключа возвращаем сам ключ:

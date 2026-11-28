@@ -3,7 +3,7 @@ using System.Diagnostics;
 
 namespace Lumisense;
 
-// Повышенный приоритет процесса плеера (AppSettings.RaisePlaybackPriority). Звуковой поток уже работает под MMCSS «Pro Audio», но
+// Повышенный приоритет процесса плеера (настройка RaisePlaybackPriority). Звуковой поток уже работает под MMCSS «Pro Audio», но
 // остальные потоки процесса (декодирование, сборщик мусора, интерфейс) при загрузке ЦП под 100% голодают, а блокирующая сборка
 // мусора ждёт их все: поток вывода стоит, и звук щёлкает. AboveNormal даёт им ЦП раньше фоновых программ.
 internal static class PlaybackProcessPriority

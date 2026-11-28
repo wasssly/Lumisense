@@ -90,7 +90,7 @@ public sealed partial class AppearanceSettingsPage : System.Windows.Controls.Use
     {
         if (_isInitializing) return;
 
-        LocalizationService.ChangeLanguage(_settings,
+        LanguageSettings.Change(_settings,
             LanguageEnglishRadio.IsChecked == true ? LocalizationService.English : LocalizationService.Russian);
     }
 

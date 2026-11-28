@@ -80,7 +80,7 @@ public sealed partial class ProfileSettingsPage : System.Windows.Controls.UserCo
         }
 
         LumiProfileIO.Apply(profile.Settings, _settings);
-        LocalizationService.ChangeLanguage(_settings, _settings.Language);
+        LanguageSettings.Change(_settings, _settings.Language);
         _owner.ApplyImportedSettingsLive();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
 
@@ -112,7 +112,7 @@ public sealed partial class ProfileSettingsPage : System.Windows.Controls.UserCo
         }
 
         LumiProfileIO.ResetToDefaults(_settings);
-        LocalizationService.ChangeLanguage(_settings, _settings.Language);
+        LanguageSettings.Change(_settings, _settings.Language);
         _owner.ApplyImportedSettingsLive();
         FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
 
@@ -139,7 +139,7 @@ public sealed partial class ProfileSettingsPage : System.Windows.Controls.UserCo
             return;
         }
 
-        LocalizationService.ChangeLanguage(_settings, _settings.Language);
+        LanguageSettings.Change(_settings, _settings.Language);
         LocalizedMessageBox.Show(_window,
             LocalizationService.Get(LocalizationKey.ProfileRestoreCompleted),
             LocalizationService.Get(LocalizationKey.ProfileRestoreCompletedTitle), System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
