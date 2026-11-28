@@ -32,6 +32,16 @@ public sealed class TrackReaderFactoryTests : IDisposable
     public void OpusInsideOgg_IsNotTreatedAsVorbis() =>
         Assert.False(TrackReaderFactory.IsOggVorbis(WriteFile("a.ogg", "OggS\0\u0002" + new string('\0', 20) + "OpusHead")));
 
+    [Theory]
+    [InlineData("a.opus")]
+    [InlineData("a.ogg")]
+    public void OpusHeader_IsDetected(string name) =>
+        Assert.True(TrackReaderFactory.IsOggOpus(WriteFile(name, "OggS\0\u0002" + new string('\0', 20) + "OpusHead")));
+
+    [Fact]
+    public void Vorbis_IsNotTreatedAsOpus() =>
+        Assert.False(TrackReaderFactory.IsOggOpus(WriteFile("a.ogg", "OggS\0\u0002" + new string('\0', 20) + "\u0001vorbis")));
+
     [Fact]
     public void OtherExtensions_AreLeftToMediaFoundation() =>
         Assert.False(TrackReaderFactory.IsOggVorbis(WriteFile("a.mp3", "OggS\0\u0002" + new string('\0', 20) + "\u0001vorbis")));

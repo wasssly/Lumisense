@@ -66,27 +66,31 @@ internal static class TrackReaderFactory
 {
     public static ITrackReader Open(string path)
     {
-        if (IsOggVorbis(path))
+        try
         {
-            try
-            {
-                return new VorbisTrackReader(path);
-            }
-            catch (Exception ex)
-            {
-                // Не Vorbis (например, Opus в Ogg) или файл повреждён: пробуем системный декодер, как раньше.
-                Logger.Warn($"NVorbis не открыл {Path.GetFileName(path)}: {ex.Message}");
-            }
+            if (IsOggVorbis(path)) return new VorbisTrackReader(path);
+            if (IsOggOpus(path)) return new OpusTrackReader(path);
+        }
+        catch (Exception ex)
+        {
+            // Нестандартный или повреждённый файл: пробуем системный декодер, как раньше.
+            Logger.Warn($"Управляемый декодер не открыл {Path.GetFileName(path)}: {ex.Message}");
         }
 
         return new MediaTrackReader(path);
     }
 
-    // Контейнер Ogg: страница начинается с «OggS», а Vorbis помечен «\x01vorbis» в первом пакете.
-    internal static bool IsOggVorbis(string path)
+    internal static bool IsOggVorbis(string path) => OggCodecMarker(path, "\u0001vorbis"u8);
+
+    internal static bool IsOggOpus(string path) => OggCodecMarker(path, "OpusHead"u8);
+
+    // Контейнер Ogg: первая страница начинается с «OggS», тип кодека написан в самом первом пакете.
+    private static bool OggCodecMarker(string path, ReadOnlySpan<byte> marker)
     {
         string extension = Path.GetExtension(path);
-        if (!extension.Equals(".ogg", StringComparison.OrdinalIgnoreCase) && !extension.Equals(".oga", StringComparison.OrdinalIgnoreCase))
+        if (!extension.Equals(".ogg", StringComparison.OrdinalIgnoreCase)
+            && !extension.Equals(".oga", StringComparison.OrdinalIgnoreCase)
+            && !extension.Equals(".opus", StringComparison.OrdinalIgnoreCase))
             return false;
 
         try
@@ -95,7 +99,7 @@ internal static class TrackReaderFactory
             Span<byte> head = stackalloc byte[64];
             int read = stream.Read(head);
             ReadOnlySpan<byte> bytes = head[..read];
-            return bytes.StartsWith("OggS"u8) && bytes.IndexOf("\u0001vorbis"u8) >= 0;
+            return bytes.StartsWith("OggS"u8) && bytes.IndexOf(marker) >= 0;
         }
         catch (IOException)
         {
