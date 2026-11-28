@@ -345,6 +345,8 @@ public static class LumiProfileIO
         target.EqualizerEnabled = source.EqualizerEnabled;
         target.EqualizerAutoHeadroom = source.EqualizerAutoHeadroom;
         target.EqualizerBandGainsDb = source.EqualizerBandGainsDb.ToArray();
+        target.EqualizerAutoEqText = source.EqualizerAutoEqText;
+        target.EqualizerAutoEqName = source.EqualizerAutoEqName;
         target.DiscordRichPresenceShowCoverArt = source.DiscordRichPresenceShowCoverArt;
         target.DiscordRichPresenceShowButtons = source.DiscordRichPresenceShowButtons;
         target.DiscordRichPresenceShowDownloadButton = source.DiscordRichPresenceShowDownloadButton;

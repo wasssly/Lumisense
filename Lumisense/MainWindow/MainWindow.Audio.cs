@@ -145,6 +145,61 @@ public partial class MainWindow
         _settings.EqualizerEnabled = enabled;
         if (_equalizer != null)
             _equalizer.Enabled = enabled;
+        if (_parametricEq != null)
+            _parametricEq.Enabled = enabled;
+    }
+
+    public string EqualizerAutoEqName => _settings.EqualizerAutoEqName;
+
+    // Разобранный профиль кэшируется по тексту: цепочка пересобирается на каждом треке, а разбор нужен только при смене текста.
+    private ParametricEqProfile? GetAutoEqProfile()
+    {
+        string text = _settings.EqualizerAutoEqText;
+        if (text != _autoEqCacheText)
+        {
+            _autoEqCache = ParametricEqProfile.Parse(text);
+            _autoEqCacheText = text;
+        }
+
+        return _autoEqCache;
+    }
+
+    // false, если файл слишком большой, нечитаем или в нём нет ни одного поддерживаемого фильтра.
+    public bool ImportAutoEqProfile(string filePath)
+    {
+        string text;
+        try
+        {
+            if (!File.Exists(filePath) || new FileInfo(filePath).Length > ParametricEqProfile.MaxFileBytes)
+                return false;
+            text = File.ReadAllText(filePath);
+        }
+        catch (IOException)
+        {
+            return false;
+        }
+        catch (UnauthorizedAccessException)
+        {
+            return false;
+        }
+
+        if (ParametricEqProfile.Parse(text) is null) return false;
+
+        _settings.EqualizerAutoEqText = text;
+        _settings.EqualizerAutoEqName = Path.GetFileNameWithoutExtension(filePath);
+        if (_parametricEq != null)
+            _parametricEq.Profile = GetAutoEqProfile();
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
+        return true;
+    }
+
+    public void ClearAutoEqProfile()
+    {
+        _settings.EqualizerAutoEqText = "";
+        _settings.EqualizerAutoEqName = "";
+        if (_parametricEq != null)
+            _parametricEq.Profile = null;
+        FireAndForget(SettingsManager.SaveAsync(_settings), "SaveSettingsAsync");
     }
 
     public double GetEqualizerBandGain(int band) =>

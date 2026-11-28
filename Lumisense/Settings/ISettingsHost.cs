@@ -89,6 +89,9 @@ internal interface ISettingsEqualizerHost
     void DeleteEqualizerPreset(EqualizerPreset preset);
     void ExportEqualizerPreset(EqualizerPreset preset, string filePath);
     EqualizerPreset? ImportEqualizerPresetFromFile(string filePath);
+    string EqualizerAutoEqName { get; }
+    bool ImportAutoEqProfile(string filePath);
+    void ClearAutoEqProfile();
 }
 
 // Настройки мини-плеера и совместимость с оверлеями игр.

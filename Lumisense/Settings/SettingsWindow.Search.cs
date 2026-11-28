@@ -60,6 +60,8 @@ public partial class SettingsWindow
         AddLazy("Приватность Discord: обложка трека", "Интеграции", "Integrations", "DiscordRichPresenceShowCoverArtCheckBox", "discord обложка cover art musicbrainz itunes deezer" );
         AddLazy("Эквалайзер", "Эквалайзер", "Equalizer", "EqualizerEnabledCheckBox", "equalizer эквалайзер частоты полосы бас звук eq");
         AddLazy("Звук для каждого устройства", "Эквалайзер", "Equalizer", "DeviceSoundProfilesCheckBox", "профиль устройство наушники колонки эквалайзер баланс запоминать device profile");
+        AddLazy("Профиль AutoEq", "Эквалайзер", "Equalizer", "AutoEqImportButton", "autoeq профиль наушники parametric параметрический эквалайзер apo peq импорт коррекция");
+        AddLazy("Убрать профиль AutoEq", "Эквалайзер", "Equalizer", "AutoEqClearButton", "autoeq убрать удалить сбросить профиль наушники parametric эквалайзер");
         AddLazy("Авто-преамп эквалайзера", "Эквалайзер", "Equalizer", "EqualizerAutoHeadroomCheckBox", "преамп headroom клиппинг перегрузка громкость эквалайзер eq подъём");
         AddLazy("Монитор острова", "Остров", "Island", "IslandMonitorCombo", "остров монитор экран дисплей island monitor display");
         AddLazy("Настройки острова", "Остров", "Island", "IslandCustomCard", "остров круг капсула вид свёрнутого только обложка размер отступ размытие эквалайзер обводка скрыть средняя кнопка колесо громкость обложка игры раскрываться сворачиваться перетягивание свайп круглая кнопки избранное повтор текст песни island scale blur equalizer lag тормоза swipe round cover ширина width эквалайзер точки полоски фон свечение матрица уведомление контекстное меню пункты волна перемотка сегменты мерцание backdrop glow stars matrix seek shimmer");

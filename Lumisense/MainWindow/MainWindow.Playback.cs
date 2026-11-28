@@ -190,6 +190,7 @@ public partial class MainWindow
     // Звенья цепочки после эквалайзера; у гэплесс-следующего трека они строятся заранее и подставляются в поля при переходе.
     private sealed record ChainParts(
         ChannelModeSampleProvider ChannelMode,
+        ParametricEqSampleProvider ParametricEq,
         StereoImageSampleProvider StereoImage,
         LoudnessSampleProvider Loudness,
         MasterVolumeSampleProvider Master,
@@ -198,19 +199,21 @@ public partial class MainWindow
 
     private ChainParts BuildChain(EqualizerSampleProvider equalizer)
     {
-        var channelMode = new ChannelModeSampleProvider(equalizer) { MonoEnabled = _settings.PlaybackChannelMode == "Mono", Balance = _settings.PlaybackBalance };
+        var parametricEq = new ParametricEqSampleProvider(equalizer) { Profile = GetAutoEqProfile(), Enabled = _settings.EqualizerEnabled };
+        var channelMode = new ChannelModeSampleProvider(parametricEq) { MonoEnabled = _settings.PlaybackChannelMode == "Mono", Balance = _settings.PlaybackBalance };
         var stereoImage = new StereoImageSampleProvider(channelMode) { WidthPercent = _settings.StereoWidthPercent, CrossfeedPercent = _settings.CrossfeedPercent };
         float gain = ComputeAudioFileVolume(VolumeSlider.Value, 1.0);
         var loudness = new LoudnessSampleProvider(stereoImage) { StrengthPercent = _settings.LoudnessCompensationPercent, VolumeGain = gain };
         var master = new MasterVolumeSampleProvider(loudness, gain);
         var limiter = new LimiterSampleProvider(master) { Enabled = _settings.LimiterEnabled };
         var meter = new AudioLevelSampleProvider(limiter) { Enabled = AudioLevelMeterWanted };
-        return new ChainParts(channelMode, stereoImage, loudness, master, limiter, meter);
+        return new ChainParts(channelMode, parametricEq, stereoImage, loudness, master, limiter, meter);
     }
 
     private void AssignChain(ChainParts chain)
     {
         _channelMode = chain.ChannelMode;
+        _parametricEq = chain.ParametricEq;
         _stereoImage = chain.StereoImage;
         _loudness = chain.Loudness;
         _masterVolume = chain.Master;
@@ -883,6 +886,7 @@ public partial class MainWindow
         }
         DisposeGaplessPreviousFile();
         _equalizer = null;
+        _parametricEq = null;
         _audioLevelMeter = null;
         _channelMode = null;
         _stereoImage = null;

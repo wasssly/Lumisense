@@ -60,6 +60,9 @@ public partial class MainWindow : FluentWindow, IIntegrationHost, INowPlayingHos
 
     // ReplayGain применяется до эквалайзера, громкость ползунка — после него (_masterVolume).
     private EqualizerSampleProvider? _equalizer;
+    private ParametricEqSampleProvider? _parametricEq;
+    private string? _autoEqCacheText;
+    private ParametricEqProfile? _autoEqCache;
     // Измеряет уже обработанный эквалайзером сигнал для визуальной реакции Now Playing.
     private AudioLevelSampleProvider? _audioLevelMeter;
     private ChannelModeSampleProvider? _channelMode;

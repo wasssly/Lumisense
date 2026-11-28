@@ -707,6 +707,11 @@ public class AppSettings
 
     public double[] EqualizerBandGainsDb { get; set; } = new double[10];
 
+    // Импортированный профиль AutoEq (текст ParametricEQ.txt) и имя файла; пустой текст означает «профиля нет».
+    public string EqualizerAutoEqText { get; set; } = "";
+
+    public string EqualizerAutoEqName { get; set; } = "";
+
     // Шаблон безопасной нормализации имён аудиофайлов, см. FileNameNormalizer. Операция
     // выполняется только вручную по подтверждённому предпросмотру и не запускается при импорте.
     public string FileNameNormalizationTemplate { get; set; } = FileNameNormalizer.DefaultTemplate;

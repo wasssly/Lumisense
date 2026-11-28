@@ -47,6 +47,7 @@ public sealed partial class EqualizerSettingsPage : System.Windows.Controls.User
             GetEqBandValueText(band).Text = FormatEqGain(gain);
         }
         RefreshPresetsList();
+        RefreshAutoEqStatus();
         _isInitializing = false;
     }
 
@@ -277,6 +278,41 @@ public sealed partial class EqualizerSettingsPage : System.Windows.Controls.User
 
         RefreshPresetsList();
         EqualizerPresetComboBox.SelectedItem = imported;
+    }
+
+    private void AutoEqImportButton_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog
+        {
+            Title = LocalizationService.Translate("Загрузить профиль AutoEq"),
+            Filter = LocalizationService.Translate("Профиль AutoEq (*.txt)|*.txt|Все файлы (*.*)|*.*")
+        };
+        if (dialog.ShowDialog(_window) != true) return;
+
+        if (!_owner.ImportAutoEqProfile(dialog.FileName))
+        {
+            LocalizedMessageBox.Show(_window, "Не удалось прочитать профиль: в файле нет поддерживаемых фильтров.",
+                "Ошибка", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
+            return;
+        }
+
+        RefreshAutoEqStatus();
+    }
+
+    private void AutoEqClearButton_Click(object sender, RoutedEventArgs e)
+    {
+        _owner.ClearAutoEqProfile();
+        RefreshAutoEqStatus();
+    }
+
+    private void RefreshAutoEqStatus()
+    {
+        string name = _owner.EqualizerAutoEqName;
+        bool loaded = !string.IsNullOrEmpty(name);
+        AutoEqStatusText.Text = loaded
+            ? string.Format(LocalizationService.Translate("Профиль: {0}"), name)
+            : LocalizationService.Translate("Профиль не загружен");
+        AutoEqClearButton.IsEnabled = loaded;
     }
 
     private System.Windows.Controls.Slider GetEqBandSlider(int band) => band switch

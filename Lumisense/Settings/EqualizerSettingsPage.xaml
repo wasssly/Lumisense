@@ -235,5 +235,27 @@
                 </StackPanel>
             </Border>
         </StackPanel>
+
+        <TextBlock Text="Профиль AutoEq" Style="{StaticResource SettingsFieldLabelStyle}" />
+        <StackPanel Margin="0,0,0,24">
+            <Border Style="{StaticResource SettingsGroupCardStyle}" Margin="0,0,0,0">
+                <StackPanel>
+                    <Border Style="{StaticResource SettingsRowStyle}" BorderThickness="0">
+                        <StackPanel>
+                            <TextBlock x:Name="AutoEqStatusText" Text="Профиль не загружен" TextWrapping="Wrap" Margin="0,0,0,8" />
+                            <WrapPanel>
+                                <Button x:Name="AutoEqImportButton" Content="Загрузить профиль…"
+                                        Margin="0,0,8,0" Click="AutoEqImportButton_Click" />
+                                <Button x:Name="AutoEqClearButton" Content="Убрать профиль"
+                                        Margin="0,0,8,0" Click="AutoEqClearButton_Click" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                    <Border Padding="20,0,20,14">
+                        <TextBlock Style="{StaticResource SettingsHelperTextStyle}" Margin="0,0,0,6" Text="Файл ParametricEQ.txt из AutoEq или Equalizer APO: поддерживаются фильтры PK, LSC и HSC и преамп. Профиль работает вместе с эквалайзером, когда он включён." TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
+            </Border>
+        </StackPanel>
     </StackPanel>
 </UserControl>
